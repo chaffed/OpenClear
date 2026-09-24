@@ -9,7 +9,6 @@ from urllib.parse import quote
 import jwt
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from pospay.auth.login_service import PasswordLoginOutcome, authenticate_password
@@ -30,7 +29,7 @@ from pospay.auth.webauthn_service import (
 )
 from pospay.config import get_settings
 from pospay.db.session import get_db
-from pospay.db.tenancy import TenantContext
+from pospay.db.tenancy import TenantContext, bind_session_to_tenant
 from pospay.domain.tenant import Tenant
 from pospay.domain.user import User
 from pospay.schemas.webauthn import AuthenticationVerifyRequest, RegistrationVerifyRequest
@@ -321,8 +320,7 @@ def _apply_rls_tenant(db: Session, tenant_id: uuid.UUID) -> None:
     # Mirrors auth/deps.py::decode_and_build_context's own inline RLS hint — this is the
     # one place outside of an authenticated request that needs it, since /start and
     # /callback run before any access token exists.
-    if db.get_bind().dialect.name == "postgresql":
-        db.execute(text("SET LOCAL app.current_tenant_id = :tid"), {"tid": str(tenant_id)})
+    bind_session_to_tenant(db, tenant_id)
 
 
 def _redirect_uri(request: Request, connection_id: uuid.UUID) -> str:

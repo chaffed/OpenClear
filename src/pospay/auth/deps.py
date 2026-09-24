@@ -7,13 +7,13 @@ from datetime import datetime, timezone
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from pospay.auth.permissions import CUSTOMER_SCOPE_MASKED_PERMISSIONS
 from pospay.auth.security import decode_token
 from pospay.db.session import get_db
-from pospay.db.tenancy import TenantContext
+from pospay.db.tenancy import TenantContext, bind_session_to_tenant
 from pospay.domain.customer import Customer
 from pospay.domain.exception_item import ExceptionItem, ExceptionStatus
 from pospay.domain.security_group import SecurityGroup
@@ -75,6 +75,12 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     tenant_id = uuid.UUID(payload["tenant_id"])
     security_group_id = uuid.UUID(payload["security_group_id"])
     customer_id = uuid.UUID(payload["customer_id"]) if payload.get("customer_id") else None
+    # Defense-in-depth for Postgres RLS (see db/tenancy.py::bind_session_to_tenant): the
+    # lookups below read RLS-protected tables, and every later transaction on this
+    # request's session (including any after a commit) runs as this tenant too. The
+    # tenant comes from the token's verified signature. FastAPI shares one `db` across a
+    # request's dependencies and handler.
+    bind_session_to_tenant(db, tenant_id)
 
     user = db.get(User, user_id)
     if user is None or not user.is_active:
@@ -160,15 +166,6 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         if "exception:decide" in permissions
         else 0,
     )
-
-    # Defense-in-depth for Postgres: mirrors the tenant_id into a session-local setting
-    # that the RLS policies (see migrations — Postgres only, a no-op elsewhere) read.
-    # FastAPI resolves `db` once per request and shares it across dependencies, so this
-    # SET LOCAL applies to the same transaction every route handler's queries run in.
-    # Primary tenant isolation is still the repository-layer filter (repositories/base.py)
-    # — this is a second, independent layer, not a replacement for it.
-    if db.get_bind().dialect.name == "postgresql":
-        db.execute(text("SET LOCAL app.current_tenant_id = :tid"), {"tid": str(ctx.tenant_id)})
 
     return ctx
 

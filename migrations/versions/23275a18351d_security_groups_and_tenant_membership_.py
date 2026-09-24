@@ -132,6 +132,14 @@ def upgrade() -> None:
         )
 
     # --- now safe to drop the old per-tenant identity columns from user ---
+    # On Postgres, the RLS migration (6b9b23b81e31) put a tenant_id policy on "user". A user
+    # is now a global identity with no single owning tenant, so the policy goes (and RLS
+    # with it) before its column can be dropped. Without this, upgrading a fresh Postgres
+    # database failed here.
+    if bind.dialect.name == 'postgresql':
+        op.execute('DROP POLICY IF EXISTS tenant_isolation_user ON "user"')
+        op.execute('ALTER TABLE "user" NO FORCE ROW LEVEL SECURITY')
+        op.execute('ALTER TABLE "user" DISABLE ROW LEVEL SECURITY')
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.drop_constraint('uq_user_tenant_email', type_='unique')
         batch_op.drop_index('ix_user_tenant_id')

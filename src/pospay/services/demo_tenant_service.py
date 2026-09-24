@@ -30,12 +30,12 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from pospay.config import get_settings
 from pospay.db.base import Base
-from pospay.db.tenancy import TenantContext
+from pospay.db.tenancy import TenantContext, bind_session_to_tenant
 from pospay.domain.ach_transaction import AchTransactionType
 from pospay.domain.customer import Customer
 from pospay.domain.decision import DecisionOutcome
@@ -351,8 +351,7 @@ def _wipe_tenant_children(session: Session, tenant_id: uuid.UUID) -> None:
     variable is normally only set for an already-authenticated request
     (auth/deps.py:132-133) -- a reset triggered from the pre-auth login path would
     otherwise have RLS silently filter every delete down to zero rows."""
-    if session.get_bind().dialect.name == "postgresql":
-        session.execute(text("SET LOCAL app.current_tenant_id = :tid"), {"tid": str(tenant_id)})
+    bind_session_to_tenant(session, tenant_id)
 
     _purge_tenant_files(session, tenant_id)
 

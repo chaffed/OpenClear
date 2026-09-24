@@ -37,7 +37,9 @@ def _seconds_since(occurred_at: datetime) -> float:
     # documents) — a naive value here is always already-UTC by construction.
     if occurred_at.tzinfo is None:
         occurred_at = occurred_at.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - occurred_at).total_seconds()
+    # occurred_at can come from the database server's clock (server_default now()), which
+    # may run slightly ahead of this one; never report negative elapsed time.
+    return max(0.0, (datetime.now(timezone.utc) - occurred_at).total_seconds())
 
 
 @dataclass(frozen=True, slots=True)

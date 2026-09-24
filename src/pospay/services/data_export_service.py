@@ -11,10 +11,10 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.config import get_settings
 from pospay.domain.customer import Customer
 from pospay.domain.data_export_job import DataExportJob, DataExportJobStatus
@@ -161,8 +161,7 @@ def request_export(
 
 
 def _apply_rls_tenant(session: Session, tenant_id: uuid.UUID) -> None:
-    if session.get_bind().dialect.name == "postgresql":
-        session.execute(text("SET LOCAL app.current_tenant_id = :tid"), {"tid": str(tenant_id)})
+    bind_session_to_tenant(session, tenant_id)
 
 
 def _add_file_if_exists(zf: zipfile.ZipFile, source_path: str | None, archive_name: str) -> None:

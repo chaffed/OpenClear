@@ -4,9 +4,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.domain.check_image import CheckImage, OcrStatus
 from pospay.domain.exception_item import ExceptionItem
 from pospay.domain.paid_item import PaidItem, PaidItemMatchStatus
@@ -19,12 +19,9 @@ _adapter = CheckAdapter()
 
 
 def _apply_rls_tenant(session: Session, tenant_id: uuid.UUID) -> None:
-    """SET LOCAL is transaction-scoped and resets on every commit — this must be called
-    again after each commit within this module's multi-step flow, not just once at the
-    top, or Postgres RLS (FORCE ROW LEVEL SECURITY — see migrations) silently returns zero
-    rows for every query after the first commit. A no-op on SQLite/MSSQL."""
-    if session.get_bind().dialect.name == "postgresql":
-        session.execute(text("SET LOCAL app.current_tenant_id = :tid"), {"tid": str(tenant_id)})
+    """Postgres RLS: every transaction on this session, including those after a commit,
+    runs as this tenant (db/tenancy.py::bind_session_to_tenant). A no-op on SQLite/MSSQL."""
+    bind_session_to_tenant(session, tenant_id)
 
 
 def create_check_image(

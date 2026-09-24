@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.auth.security import verify_password
 from pospay.auth.webauthn_service import user_has_webauthn_credentials
 from pospay.config import Settings, get_settings
@@ -84,6 +85,9 @@ def authenticate_password(
     tenant = session.execute(select(Tenant).where(Tenant.slug == tenant_slug)).scalar_one_or_none()
     if tenant is None or not tenant.is_active:
         return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
+    # The rest of login reads RLS-protected tables (memberships, security groups, keys),
+    # so the session runs as this bank from here on (a no-op off Postgres).
+    bind_session_to_tenant(session, tenant.id)
 
     user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
     if user is None or not user.is_active:

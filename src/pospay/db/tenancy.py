@@ -5,6 +5,9 @@ import uuid
 from datetime import datetime
 from dataclasses import dataclass
 
+from sqlalchemy import event, text
+from sqlalchemy.orm import Session
+
 
 @dataclass(frozen=True, slots=True)
 class TenantContext:
@@ -98,3 +101,33 @@ class TenantContext:
     session_id: uuid.UUID | None = None
     access_expires_at: datetime | None = None
     session_expires_at: datetime | None = None
+
+
+# --- Postgres row-level security --------------------------------------------------------
+#
+# The RLS policies (see migrations) only show rows whose tenant_id matches the
+# transaction-local setting app.current_tenant_id. set_config(..., true) lasts only until
+# the transaction ends, and requests commit part-way through (login, ingestion, exports),
+# so the tenant is remembered on the Session and re-applied at the start of every
+# transaction it begins. A no-op on SQLite and SQL Server. Primary isolation is still the
+# repository filter (repositories/base.py); this is the second, independent layer.
+
+_RLS_TENANT_KEY = "rls_tenant_id"
+
+
+def _set_rls_tenant(connection, tenant_id: uuid.UUID) -> None:
+    connection.execute(text("SELECT set_config('app.current_tenant_id', :tid, true)"), {"tid": str(tenant_id)})
+
+
+def bind_session_to_tenant(session: Session, tenant_id: uuid.UUID) -> None:
+    """From now on, every transaction on this session runs as `tenant_id` for RLS."""
+    session.info[_RLS_TENANT_KEY] = tenant_id
+    if session.get_bind().dialect.name == "postgresql":
+        _set_rls_tenant(session.connection(), tenant_id)
+
+
+@event.listens_for(Session, "after_begin")
+def _reapply_rls_tenant(session: Session, _transaction, connection) -> None:
+    tenant_id = session.info.get(_RLS_TENANT_KEY)
+    if tenant_id is not None and connection.dialect.name == "postgresql":
+        _set_rls_tenant(connection, tenant_id)
