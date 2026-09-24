@@ -86,7 +86,11 @@ Isolation has three layers:
    permissions even if its security group grants them (`auth/deps.py`).
 3. **Postgres row-level security (defence in depth).** Migration
    `6b9b23b81e31_postgres_row_level_security_defense_in_` forces RLS on the single-tenant
-   operational tables. It's a no-op on SQLite and SQL Server. `exception_item` and
+   operational tables. It's a no-op on SQLite and SQL Server. Every request, scheduled job
+   and platform-operator call binds its session to one bank (`db/tenancy.py`), re-applied
+   at the start of each transaction; a signed-in user can also see their own memberships
+   in other banks, for switching organization. It only protects anything when the app
+   connects as a role without `BYPASSRLS` (see README, "Postgres"). `exception_item` and
    `decision` are left out on purpose: training the shared ML model reads decisions from
    every bank that chose it (see [ML pipeline](#ml-pipeline)). If you need RLS there too,
    give the training job its own `BYPASSRLS` role rather than weakening the policy.

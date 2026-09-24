@@ -149,30 +149,35 @@ Timestamps could also tie, making the order ambiguous.
 
 ## Phase S1a — Postgres row-level security, end to end
 
-**Status: NOT STARTED.** Added 2026-09-23 from S0's findings.
+**Status: COMPLETE (2026-09-24, branch `scale-s1a`).** Added 2026-09-23 from S0's findings.
 
-S0 made the core request paths work under enforced RLS, with the app connecting as a
-non-superuser role (`tests/test_postgres/`). Two kinds of code still read across banks and
-break when RLS is enforced:
+S0 made web and API requests work under enforced RLS. The code that works across banks
+still broke, and now doesn't:
 
-- [ ] **Scheduled jobs** run with no signed-in user, so no tenant is bound:
-      - the dropbox import would find no customers or accounts;
-      - the expired-disposition sweep's update to `paid_item` / `ach_transaction` would
-        match no rows, leaving an exception "decided" with its item unsettled;
-      - retraining reads `customer_ml_setting`, and the demo reset has the same problem.
-      Bind each unit of work to its bank (`db/tenancy.py::bind_session_to_tenant`) as it
-      starts. This fits S3, where jobs are enqueued per bank anyway.
-- [ ] **Switching organization** lists and checks the user's memberships in *other*
-      banks. Recommended: a second policy on `tenant_membership` that lets a session see
-      its own user's rows (`user_id = app.current_user_id`). The alternative is a narrow
-      `SECURITY DEFINER` function.
-- [ ] Sweep the remaining pre-login and cross-bank paths: SSO start and callback,
-      WebAuthn login, platform-operator API calls, and usage metrics.
-- [ ] Extend `tests/test_postgres/` to each of the above, then recommend (and document)
-      a non-superuser app role as the normal Postgres setup.
-
-Until this is done, README tells Postgres deployments to connect as a role that bypasses
-RLS; the repository filter still isolates banks.
+- [x] **Scheduled jobs** bind each unit of work to its bank:
+      - the disposition sweep binds per exception. Before this it read "no setting" and
+        left items open, and an ACH return's update to `ach_transaction` would have matched
+        no rows;
+      - the dropbox import binds per bank (in `scan_and_import_tenant`, so the CLI is
+        covered too);
+      - retraining a customer model finds the customer's bank from `exception_item`, not the
+        RLS'd `customer` table, which would otherwise have saved the model with no bank.
+- [x] **Switching organization.** A signed-in session also sets `app.current_user_id`, and
+      migration `a1d9e3f5b7c2` lets the membership policy show the user's own rows in any
+      bank (writes stay bank-bound through `WITH CHECK`). `db/tenancy.py::acting_as_tenant`
+      reads a member bank's details (a customer name, WebAuthn keys) temporarily, then
+      restores the binding.
+- [x] **Other cross-bank paths:**
+      - the platform usage report reads each bank while bound to it;
+      - creating a bank binds the new bank for its seed rows;
+      - SSO, WebAuthn login, exports, OCR and the demo reset were already bound;
+      - the platform ML endpoints only read tables without RLS.
+- [x] `tests/test_postgres/` (shared restricted-role fixtures in its `conftest.py`) covers:
+      switching organization, the check and ACH sweeps, the dropbox import across two
+      banks, the usage report, and creating a bank then signing in. With the S1a code
+      changes reverted, all 6 new tests fail.
+- [x] README now recommends a restricted app role, with the grants, instead of telling
+      Postgres deployments to bypass RLS.
 
 ## Phase S2 — Indexes and query fixes
 
@@ -317,3 +322,4 @@ recommendations unless you say otherwise.
 - 2026-09-23 S0 complete. See the S0 section for what was fixed and the baseline. New
   Phase S1a added; S2 and S3 extended.
 - 2026-09-24 S1 complete (audit chain safe under concurrency).
+- 2026-09-24 S1a complete (Postgres RLS end to end).

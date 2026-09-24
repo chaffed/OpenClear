@@ -841,12 +841,24 @@ chose it, see `ml/train.py`) and `user` (a global login identity with no single-
 story — see "Users, security groups, and cross-tenant access" above) are deliberately
 excluded.
 
-**Status (1.5.x):** the full test suite runs against Postgres in CI, and web and API
-requests work with RLS enforced for a non-superuser app role (`tests/test_postgres/`).
-**Scheduled jobs and switching organization do not yet work under enforced RLS** (they
-read across banks; see SCALE_PLAN.md phase S1a). Until that's done, connect the app as a
-role that bypasses RLS (a superuser, or one with `BYPASSRLS`). Tenant isolation then rests
-on the repository filter, as on SQLite and SQL Server.
+**Connect the app as a restricted role so RLS is actually enforced.** A superuser, or a
+role with `BYPASSRLS`, skips every policy, which leaves only the repository filter (as on
+SQLite and SQL Server). Run migrations as the owner, and the app as a separate role:
+
+```sql
+CREATE ROLE pospay_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;
+GRANT USAGE ON SCHEMA public TO pospay_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pospay_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pospay_app;
+-- tables added by later migrations need the same grants (or ALTER DEFAULT PRIVILEGES)
+```
+
+How it works: each request, scheduled job and platform-operator call runs its database
+work bound to one bank (`db/tenancy.py`), re-applied at the start of every transaction.
+Switching organization can also see the signed-in user's own memberships in other banks.
+The full test suite runs against Postgres in CI, and `tests/test_postgres/` exercises the
+web UI, the API, switching organization, the disposition sweep, the dropbox import, usage
+metrics and creating a bank as a restricted role, with other banks' data present.
 
 ## MSSQL
 
