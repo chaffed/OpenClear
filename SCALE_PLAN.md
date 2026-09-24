@@ -37,8 +37,10 @@ queue and dashboard under 500 ms (p95) with 1 million exceptions in the database
 
 ## Phase S0 — Measure, and test on Postgres
 
-**Status: COMPLETE (2026-09-23, branch `scale-s0`).** Docker (Colima) was used locally to
-reproduce CI on Linux and to run Postgres 16.
+**Status: COMPLETE (2026-09-23, branch `scale-s0`, merged to `main` locally, not pushed).**
+Docker (Colima) was used locally to reproduce CI on Linux and to run Postgres 16.
+Full suites: SQLite on macOS (Python 3.13) 1,144 passed, 5 skipped; Postgres 16 1,148
+passed, 1 skipped; Linux Python 3.11 container (as CI) 1,144 passed, 5 skipped.
 
 - [x] **CI green.** It had failed since before 1.5.0 because of 25 tests, all test-only
       problems, reproduced in a `python:3.11-slim` container with the workflow's packages:
