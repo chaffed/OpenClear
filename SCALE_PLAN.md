@@ -113,7 +113,7 @@ What this changes in the plan:
 
 ## Phase S1 — Audit log chain safe under concurrency
 
-**Status: COMPLETE (2026-09-24, branch `scale-s1`).**
+**Status: COMPLETE (2026-09-24, branch `scale-s1`, merged to `main` locally).** Full suites: SQLite 1,148 passed, 6 skipped; Postgres 1,153 passed, 1 skipped.
 
 **The problem:** each new entry read the bank's latest entry (by timestamp) with no lock
 and chained onto it. Two requests at one bank at the same moment could both chain onto the
