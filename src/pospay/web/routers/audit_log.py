@@ -21,7 +21,7 @@ def _rows_for_page(db: Session, tenant_id, page: int):
     page_obj = paginate(
         page=page,
         count_fn=lambda: AuditLogRepository(db, tenant_id).count(),
-        list_fn=lambda **kw: audit_log_service.list_entries(db, tenant_id, order_by=AuditLogEntry.occurred_at.desc(), **kw),
+        list_fn=lambda **kw: audit_log_service.list_entries(db, tenant_id, order_by=AuditLogEntry.sequence.desc(), **kw),
     )
     user_repo = UserRepository(db)
     rows = []

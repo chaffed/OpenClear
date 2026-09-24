@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import hashlib
 import json
 import uuid
 from dataclasses import dataclass
@@ -10,6 +11,8 @@ from typing import Any, Literal
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pospay.auth.keys import load_private_key, load_public_key
@@ -102,9 +105,53 @@ def record_action(
     before the request's db.commit(), so the audit entry and the business change commit
     together atomically. `action` is a short dotted code chosen at the call site (e.g.
     "issued_item.void"), not derived from a table name, so the log reads as a narrative
-    rather than a raw row diff."""
-    repo = AuditLogRepository(session, tenant_id)
-    prev = repo.latest()
+    rather than a raw row diff.
+
+    Safe under concurrency: two requests at one bank can't both chain onto the same entry.
+    On Postgres, writers for a bank queue on a transaction-scoped advisory lock. On every
+    database the (tenant_id, sequence) unique constraint rejects a writer that lost a
+    race; it then re-reads the latest entry and tries again, inside a savepoint, so the
+    request's own changes are kept."""
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(select(func.pg_advisory_xact_lock(_chain_lock_key(tenant_id))))
+
+    for attempt in range(_MAX_ATTEMPTS):
+        entry = _build_entry(
+            session, tenant_id, actor_user_id=actor_user_id, channel=channel, action=action, summary=summary,
+            resource_type=resource_type, resource_id=resource_id, metadata=metadata,
+        )
+        try:
+            with session.begin_nested():
+                session.add(entry)
+                session.flush()
+            return entry
+        except IntegrityError:
+            if attempt == _MAX_ATTEMPTS - 1:
+                raise
+    raise AssertionError("unreachable")
+
+
+_MAX_ATTEMPTS = 5
+
+
+def _chain_lock_key(tenant_id: uuid.UUID) -> int:
+    digest = hashlib.sha256(f"pospay.audit_chain:{tenant_id}".encode()).digest()
+    return int.from_bytes(digest[:8], "big", signed=True)
+
+
+def _build_entry(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    actor_user_id: uuid.UUID | None,
+    channel: str,
+    action: str,
+    summary: str,
+    resource_type: str,
+    resource_id: uuid.UUID | None,
+    metadata: dict[str, Any] | None,
+) -> AuditLogEntry:
+    prev = AuditLogRepository(session, tenant_id).latest()
     prev_hash = prev.entry_hash if prev else None
     occurred_at = datetime.now(timezone.utc)
 
@@ -120,8 +167,9 @@ def record_action(
         prev_entry_hash=prev_hash,
     )
 
-    entry = AuditLogEntry(
+    return AuditLogEntry(
         tenant_id=tenant_id,
+        sequence=(prev.sequence + 1) if prev else 1,
         occurred_at=occurred_at,
         actor_user_id=actor_user_id,
         channel=AuditChannel(channel),
@@ -133,9 +181,6 @@ def record_action(
         prev_entry_hash=prev_hash,
         entry_hash=_sign(fields_bytes),
     )
-    repo.add(entry)
-    session.flush()
-    return entry
 
 
 def list_entries(
@@ -152,10 +197,11 @@ def list_entries(
 def verify_chain(session: Session, tenant_id: uuid.UUID) -> ChainVerificationResult:
     """Walks every entry for this tenant in the order the chain was built and recomputes
     each hash from scratch — proof nothing has been edited, deleted, or reordered since
-    it was written, not just that the stored values are internally consistent."""
-    entries = AuditLogRepository(session, tenant_id).list_in_chain_order()
+    it was written, not just that the stored values are internally consistent. Reads in
+    batches, so memory stays flat however long the log is."""
     prev_hash: str | None = None
-    for index, entry in enumerate(entries):
+    index = 0
+    for index, entry in enumerate(AuditLogRepository(session, tenant_id).iter_in_chain_order()):
         if entry.prev_entry_hash != prev_hash:
             return ChainVerificationResult(valid=False, checked_count=index, broken_at_entry_id=entry.id)
 
@@ -175,4 +221,4 @@ def verify_chain(session: Session, tenant_id: uuid.UUID) -> ChainVerificationRes
 
         prev_hash = entry.entry_hash
 
-    return ChainVerificationResult(valid=True, checked_count=len(entries), broken_at_entry_id=None)
+    return ChainVerificationResult(valid=True, checked_count=index + 1 if prev_hash else 0, broken_at_entry_id=None)

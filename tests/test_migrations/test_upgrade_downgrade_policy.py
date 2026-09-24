@@ -290,3 +290,32 @@ def test_artifact_sha256_migration_pins_existing_files_and_leaves_missing_ones_n
     conn.close()
     assert digests[present_id] == hashlib.sha256(b"model bytes").hexdigest()
     assert digests[missing_id] is None
+
+
+def test_audit_sequence_migration_numbers_entries_by_chain_links_not_timestamps(scratch_db):
+    """f7b2d4e6a8c1: existing entries are numbered by following prev_entry_hash, so entries
+    that share a timestamp still get their true chain order."""
+    command.upgrade(_alembic_config(), "e5a1c7d3b9f2")
+    conn = _connect(scratch_db)
+    tenant_id = uuid.uuid4().hex
+    _insert_with_required_defaults(conn, "tenant", {"id": tenant_id, "name": "Old Bank", "slug": "old-bank-audit"})
+    # Chain order is first -> second -> third, but all share one timestamp and their ids
+    # sort in the opposite order.
+    ids = {"first": "c" * 32, "second": "b" * 32, "third": "a" * 32}
+    prev = None
+    for name in ("first", "second", "third"):
+        conn.execute(
+            "INSERT INTO audit_log_entry (id, tenant_id, occurred_at, channel, action, summary, resource_type, prev_entry_hash, entry_hash) "
+            "VALUES (?, ?, '2026-01-01 00:00:00', 'WEB', 'x', ?, 'tenant', ?, ?)",
+            (ids[name], tenant_id, name, prev, f"hash-{name}"),
+        )
+        prev = f"hash-{name}"
+    conn.commit()
+    conn.close()
+
+    command.upgrade(_alembic_config(), "head")
+
+    conn = _connect(scratch_db)
+    order = [row[0] for row in conn.execute("SELECT summary FROM audit_log_entry ORDER BY sequence")]
+    conn.close()
+    assert order == ["first", "second", "third"]
