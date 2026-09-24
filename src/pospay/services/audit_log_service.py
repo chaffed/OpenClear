@@ -3,6 +3,8 @@
 
 import hashlib
 import json
+import random
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -128,10 +130,13 @@ def record_action(
         except IntegrityError:
             if attempt == _MAX_ATTEMPTS - 1:
                 raise
+            # The winner may not have committed yet, so re-reading at once can lose again.
+            # Only reachable without the Postgres lock (e.g. SQL Server).
+            time.sleep(random.uniform(0.005, 0.05) * (attempt + 1))
     raise AssertionError("unreachable")
 
 
-_MAX_ATTEMPTS = 5
+_MAX_ATTEMPTS = 10
 
 
 def _chain_lock_key(tenant_id: uuid.UUID) -> int:

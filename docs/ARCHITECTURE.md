@@ -235,7 +235,9 @@ can't be made safely (no model yet, or an ACH return with no default return reas
 
 Evidence for a decision (images, OCR, matched issued item, rule details) is assembled by
 `services/exception_evidence.py`. Recommendations, decisions and other significant actions
-are written to the append-only audit log (`services/audit_log_service.py`).
+are written to the append-only audit log (`services/audit_log_service.py`): a signed hash
+chain per bank, numbered by `sequence`, safe under concurrent writers (see README,
+"Immutable action log").
 
 ## ML pipeline
 

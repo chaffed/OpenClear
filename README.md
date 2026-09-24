@@ -531,9 +531,9 @@ row for bulk uploads too, not one entry for the file as a whole (the file itself
 has its own signed audit record — see "Bulk file uploads" above).
 
 Entries form a **hash chain**, not independent per-row signatures: each entry's
-`entry_hash` is an HMAC-SHA256 (`POSPAY_AUDIT_LOG_SIGNING_SECRET`, a dedicated secret,
-distinct from every other signing secret in this app) over its own fields plus the
-*previous* entry's hash. A chain — not independent signatures — is what's needed here,
+`entry_hash` is an ECDSA P-256 signature (made with a dedicated key pair,
+`audit_log_signing_private_key_path` / `audit_log_signing_public_key_path`, distinct from
+every other signing key in this app) over its own fields plus the *previous* entry's hash. A chain — not independent signatures — is what's needed here,
 because the real threat to an action log is deletion or reordering, not just editing one
 row: an independent per-row signature can't detect a row being deleted outright, but a
 broken chain link can. `services/audit_log_service.py::verify_chain` (surfaced as "Verify
@@ -541,6 +541,12 @@ chain" on the audit log page) walks every entry for a tenant and recomputes each
 scratch — proof nothing has been edited, deleted, or reordered since it was written, not a
 cached flag. This is tamper-**evidence**, not OS-level tamper-*prevention* (no DB
 triggers/grants are revoked) — the same posture as bulk-upload file signing.
+
+Each bank's entries are numbered (`sequence`, unique per bank), and that's the order the
+chain is verified in. Two requests at one bank writing at the same moment can't both chain
+onto the same entry: on Postgres they queue on a per-bank lock, and on any database the
+unique number makes the loser retry rather than fork the chain. Verification reads the log
+in batches, so memory stays flat however long it gets.
 
 Logging calls live in the route handlers (both `web/routers/*.py` and `api/v1/*.py`),
 right after the mutating service call succeeds and before that request's `db.commit()` —

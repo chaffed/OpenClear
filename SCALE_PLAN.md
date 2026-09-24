@@ -113,27 +113,39 @@ What this changes in the plan:
 
 ## Phase S1 — Audit log chain safe under concurrency
 
-**Status: NOT STARTED.**
+**Status: COMPLETE (2026-09-24, branch `scale-s1`).**
 
-**The problem:** `services/audit_log_service.py` reads the bank's latest entry by
-`occurred_at` (`repositories/audit_log_repo.py:17`) with no lock, then inserts the next
-entry chained to it. The app handles requests on several threads even in one process, so
-two actions at one bank in the same instant can both chain onto the same entry, and
-`verify_chain` then reports tampering that never happened. Ordering by timestamp is also
-ambiguous when two entries share a timestamp.
+**The problem:** each new entry read the bank's latest entry (by timestamp) with no lock
+and chained onto it. Two requests at one bank at the same moment could both chain onto the
+same entry, and `verify_chain` would then report tampering that never happened.
+Timestamps could also tie, making the order ambiguous.
 
-- [ ] Add a per-bank `sequence` number (`BIGINT`, unique on `(tenant_id, sequence)`). The
-      migration backfills it in the chain's current order.
-- [ ] Writing an entry:
-      - on Postgres, take `pg_advisory_xact_lock` on the bank first, so writers queue
-        instead of colliding;
-      - on every database, insert inside a savepoint and, if another writer took that
-        sequence number, re-read the latest entry and retry (a few attempts).
-      This way the business change and its audit entry still commit together.
-- [ ] `verify_chain` walks entries by `sequence` in batches (constant memory), and can
-      start from a stored, verified checkpoint rather than always from the first entry.
-- [ ] Tests: concurrent writers (threads, on a file-based SQLite and on Postgres in CI)
-      always produce one unbroken chain; the migration keeps existing chains valid.
+- [x] A per-bank `sequence` (`BIGINT`, unique on `(tenant_id, sequence)`). Migration
+      `f7b2d4e6a8c1` numbers existing entries by following their chain links, not
+      timestamps. It isn't a signed field, so existing signatures still verify.
+- [x] Writing an entry (`services/audit_log_service.py::record_action`):
+      - on Postgres, writers for a bank queue on `pg_advisory_xact_lock`;
+      - on every database, the insert runs in a savepoint. A writer that loses the race
+        on the unique number re-reads and retries: up to 10 attempts, with a short random
+        back-off. The request's own changes are kept.
+- [x] `verify_chain` walks by `sequence` in batches of 1,000 and releases each batch, so
+      memory stays flat. The audit log page orders by `sequence`.
+- [x] Tests:
+      - a forced race on any database (a competitor takes the number between read and
+        insert; the writer retries and the chain stays whole);
+      - per-bank numbering, and walking across batch boundaries;
+      - the migration's link-following order with tied timestamps;
+      - on Postgres, 8 threads × 5 entries against one bank: no errors, sequence 1–40,
+        and a valid chain.
+- Probe (not kept as a test): the same 8 threads with the Postgres lock switched off. With
+  5 attempts and no back-off, 5 writers gave up with a clean unique-constraint error; the
+  chain still never forked. With the back-off added, all 40 succeed with about 15
+  retries. That's the SQL Server case, since it has no equivalent lock here.
+- Deferred: starting verification from a stored checkpoint. At the S0 baseline
+  (47 µs per entry) a million entries verifies in under a minute, so it isn't needed yet.
+  It's in S7 along with archiving.
+- Also fixed: the README described audit entries as HMAC-signed; they're ECDSA-signed
+  with a dedicated key pair.
 
 ## Phase S1a — Postgres row-level security, end to end
 
@@ -304,3 +316,4 @@ recommendations unless you say otherwise.
 (Newest last. Each entry is committed.)
 - 2026-09-23 S0 complete. See the S0 section for what was fixed and the baseline. New
   Phase S1a added; S2 and S3 extended.
+- 2026-09-24 S1 complete (audit chain safe under concurrency).
