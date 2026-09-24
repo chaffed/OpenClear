@@ -56,10 +56,11 @@ def _single_page_jpeg() -> bytes:
     return buffer.getvalue()
 
 
-def _fixed_record(record_type: str, fields: dict[slice, str], length: int = 80) -> bytes:
+def _fixed_record(record_type: str, fields, length: int = 80) -> bytes:
+    # (slice, value) pairs: slices aren't hashable before Python 3.12 (3.11 is supported).
     buf = bytearray(b" " * length)
     buf[0:2] = record_type.encode("ascii")
-    for field_slice, value in fields.items():
+    for field_slice, value in fields:
         encoded = value.encode("ascii")
         buf[field_slice] = encoded.ljust(field_slice.stop - field_slice.start)[: field_slice.stop - field_slice.start]
     return bytes(buf)
@@ -74,38 +75,38 @@ def _synthetic_x937_file(*, account_number: str, check_number: str, amount_cents
     return b"".join(
         [
             _fixed_record("01", {}),
-            _fixed_record("10", {_T10_BUSINESS_DATE: "20260115"}),
+            _fixed_record("10", [(_T10_BUSINESS_DATE, "20260115")]),
             _fixed_record(
                 "25",
-                {
-                    _T25_ROUTING_NUMBER: "12345678",
-                    _T25_ON_US: account_number,
-                    _T25_AUX_ON_US: check_number,
-                    _T25_AMOUNT: str(amount_cents).zfill(10),
-                },
+                [
+                    (_T25_ROUTING_NUMBER, "12345678"),
+                    (_T25_ON_US, account_number),
+                    (_T25_AUX_ON_US, check_number),
+                    (_T25_AMOUNT, str(amount_cents).zfill(10)),
+                ],
             ),
             _fixed_record("50", {}, length=200),
             image_record,
             _fixed_record(
                 "70",
-                {
-                    _T70_ITEMS_COUNT: str(1).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start),
-                    _T70_TOTAL_AMOUNT: str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start),
-                },
+                [
+                    (_T70_ITEMS_COUNT, str(1).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start)),
+                    (_T70_TOTAL_AMOUNT, str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start)),
+                ],
             ),
             _fixed_record(
                 "90",
-                {
-                    _T90_ITEMS_COUNT: str(1).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start),
-                    _T90_TOTAL_AMOUNT: str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start),
-                },
+                [
+                    (_T90_ITEMS_COUNT, str(1).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start)),
+                    (_T90_TOTAL_AMOUNT, str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start)),
+                ],
             ),
             _fixed_record(
                 "99",
-                {
-                    _T99_ITEMS_COUNT: str(1).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start),
-                    _T99_TOTAL_AMOUNT: str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start),
-                },
+                [
+                    (_T99_ITEMS_COUNT, str(1).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start)),
+                    (_T99_TOTAL_AMOUNT, str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start)),
+                ],
             ),
         ]
     )

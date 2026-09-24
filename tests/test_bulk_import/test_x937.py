@@ -35,10 +35,12 @@ from pospay.bulk_import.x937 import (
 )
 
 
-def _fixed_record(record_type: str, fields: dict[slice, str], length: int = _STANDARD_RECORD_LEN) -> bytes:
+def _fixed_record(record_type: str, fields, length: int = _STANDARD_RECORD_LEN) -> bytes:
+    # `fields` is (slice, value) pairs, not a dict keyed by slice: slices only became
+    # hashable in Python 3.12, and 3.11 is supported (see pyproject.toml).
     buf = bytearray(b" " * length)
     buf[0:2] = record_type.encode("ascii")
-    for field_slice, value in fields.items():
+    for field_slice, value in fields:
         encoded = value.encode("ascii")
         buf[field_slice] = encoded.ljust(field_slice.stop - field_slice.start)[: field_slice.stop - field_slice.start]
     return bytes(buf)
@@ -49,7 +51,7 @@ def _file_header() -> bytes:
 
 
 def _cash_letter_header(business_date: str = "20260115") -> bytes:
-    return _fixed_record("10", {_T10_BUSINESS_DATE: business_date})
+    return _fixed_record("10", [(_T10_BUSINESS_DATE, business_date)])
 
 
 def _bundle_header() -> bytes:
@@ -59,12 +61,12 @@ def _bundle_header() -> bytes:
 def _check_detail(*, routing: str, on_us: str, aux_on_us: str, amount_cents: int) -> bytes:
     return _fixed_record(
         "25",
-        {
-            _T25_ROUTING_NUMBER: routing,
-            _T25_ON_US: on_us,
-            _T25_AUX_ON_US: aux_on_us,
-            _T25_AMOUNT: str(amount_cents).zfill(_T25_AMOUNT.stop - _T25_AMOUNT.start),
-        },
+        [
+            (_T25_ROUTING_NUMBER, routing),
+            (_T25_ON_US, on_us),
+            (_T25_AUX_ON_US, aux_on_us),
+            (_T25_AMOUNT, str(amount_cents).zfill(_T25_AMOUNT.stop - _T25_AMOUNT.start)),
+        ],
     )
 
 
@@ -82,30 +84,30 @@ def _image_view_data(image_bytes: bytes) -> bytes:
 def _bundle_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
     return _fixed_record(
         "70",
-        {
-            _T70_ITEMS_COUNT: str(items).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start),
-            _T70_TOTAL_AMOUNT: str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start),
-        },
+        [
+            (_T70_ITEMS_COUNT, str(items).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start)),
+            (_T70_TOTAL_AMOUNT, str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start)),
+        ],
     )
 
 
 def _cash_letter_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
     return _fixed_record(
         "90",
-        {
-            _T90_ITEMS_COUNT: str(items).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start),
-            _T90_TOTAL_AMOUNT: str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start),
-        },
+        [
+            (_T90_ITEMS_COUNT, str(items).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start)),
+            (_T90_TOTAL_AMOUNT, str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start)),
+        ],
     )
 
 
 def _file_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
     return _fixed_record(
         "99",
-        {
-            _T99_ITEMS_COUNT: str(items).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start),
-            _T99_TOTAL_AMOUNT: str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start),
-        },
+        [
+            (_T99_ITEMS_COUNT, str(items).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start)),
+            (_T99_TOTAL_AMOUNT, str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start)),
+        ],
     )
 
 

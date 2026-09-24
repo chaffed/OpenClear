@@ -10,10 +10,10 @@ from PIL import Image, ImageDraw, ImageFont
 def make_check_image(*, payee: str = "Acme Test Vendor", amount: str = "123.45") -> bytes:
     img = Image.new("RGB", (1200, 500), "white")
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 36)
-    except OSError:
-        font = ImageFont.load_default()
+    # Pillow's bundled scalable font, so the image is identical on every OS. A macOS system
+    # font path used to fall back to Pillow's tiny bitmap font on Linux, which Tesseract
+    # misreads (the CI failures fixed in SCALE_PLAN.md S0).
+    font = ImageFont.load_default(size=36)
 
     draw.text((50, 50), "DATE: 01/10/2026", fill="black", font=font)
     draw.text((50, 150), f"PAY TO THE ORDER OF: {payee}", fill="black", font=font)
