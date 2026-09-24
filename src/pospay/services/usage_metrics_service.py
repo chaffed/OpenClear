@@ -20,6 +20,7 @@ from datetime import date, datetime, time, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from pospay.db.tenancy import acting_as_tenant
 from pospay.domain.account import Account
 from pospay.domain.ach_transaction import AchTransaction
 from pospay.domain.bulk_upload_file import BulkUploadFile
@@ -101,5 +102,11 @@ def get_tenant_usage(session: Session, tenant: Tenant, period_start: date, perio
 
 
 def get_all_tenants_usage(session: Session, period_start: date, period_end: date) -> list[TenantUsage]:
+    """The platform operator's view across every bank. Under Postgres RLS each bank's
+    counts are read while bound to that bank."""
     tenants = session.execute(select(Tenant).order_by(Tenant.name)).scalars().all()
-    return [get_tenant_usage(session, tenant, period_start, period_end) for tenant in tenants]
+    usage = []
+    for tenant in tenants:
+        with acting_as_tenant(session, tenant.id):
+            usage.append(get_tenant_usage(session, tenant, period_start, period_end))
+    return usage

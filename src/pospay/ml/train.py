@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from pospay.config import get_settings
 from pospay.domain.decision import Decision, DecisionOutcome
-from pospay.domain.customer import Customer
 from pospay.domain.exception_item import ExceptionItem, ExceptionItemSource
 from pospay.domain.ml_model import MlModel, MlModelStatus
 from pospay.domain.tenant import MlModelSource, Tenant
@@ -187,8 +186,11 @@ def train_model(
     than accuracy (a bank left the shared model, so the active model still contains data
     the bank withdrew)."""
     if customer_id is not None and tenant_id is None:
-        customer = session.get(Customer, customer_id)
-        tenant_id = customer.tenant_id if customer is not None else None
+        # From the customer's exceptions, not the customer table: the scheduled retrain
+        # has no bank bound, and under Postgres RLS the customer row isn't visible.
+        tenant_id = session.execute(
+            select(ExceptionItem.tenant_id).where(ExceptionItem.customer_id == customer_id).limit(1)
+        ).scalar_one_or_none()
     slot_tenant_id = tenant_id if customer_id is None else None  # for the bank vs. shared distinction
     scope = _scope_label(slot_tenant_id, customer_id)
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from pospay.config import get_settings
 from pospay.db.session import get_session_factory
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.domain.decision import Decision
 from pospay.domain.exception_item import ExceptionItem, ExceptionStatus
 from pospay.domain.ml_model import MlModelStatus
@@ -232,6 +233,9 @@ def sweep_expired_dispositions_job() -> None:
         decided = 0
         skipped = 0
         for exception_item in rows:
+            # Postgres RLS: the settings and the paid item / ACH transaction it updates
+            # belong to this exception's bank.
+            bind_session_to_tenant(session, exception_item.tenant_id)
             try:
                 decision = auto_disposition_service.auto_decide_exception(session, exception_item)
             except Exception:  # noqa: BLE001 -- isolate one exception's failure from the rest of the sweep

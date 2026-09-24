@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from pospay.config import get_settings
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.domain.tenant import Tenant
 from pospay.domain.tenant_membership import TenantMembership
 from pospay.domain.user import User
@@ -44,6 +45,8 @@ def create_tenant_with_admin(
     )
     session.add(tenant)
     session.flush()
+    # Postgres RLS: everything below is this new bank's own rows.
+    bind_session_to_tenant(session, tenant.id)
 
     groups = security_group_service.seed_default_security_groups(session, tenant.id)
     ach_return_reason_service.seed_default_ach_return_reasons(session, tenant.id)

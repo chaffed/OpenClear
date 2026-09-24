@@ -80,7 +80,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     # request's session (including any after a commit) runs as this tenant too. The
     # tenant comes from the token's verified signature. FastAPI shares one `db` across a
     # request's dependencies and handler.
-    bind_session_to_tenant(db, tenant_id)
+    bind_session_to_tenant(db, tenant_id, user_id=user_id)
 
     user = db.get(User, user_id)
     if user is None or not user.is_active:

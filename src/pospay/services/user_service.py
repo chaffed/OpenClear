@@ -15,6 +15,7 @@ from pospay.auth.security import hash_password, verify_password
 from pospay.bulk_import.fields import RowFieldError, optional_str, require_str
 from pospay.bulk_import.results import UserBulkRowResult
 from pospay.config import get_settings
+from pospay.db.tenancy import acting_as_tenant
 from pospay.domain.tenant import Tenant
 from pospay.domain.tenant_membership import TenantMembership
 from pospay.domain.user import User
@@ -104,7 +105,9 @@ def list_memberships_for_user(session: Session, user_id: uuid.UUID) -> list[Memb
             continue
         customer_name = None
         if membership.customer_id is not None:
-            customer = customer_service.get_customer(session, membership.tenant_id, membership.customer_id)
+            # Postgres RLS: the customer lives in that bank, which this user belongs to.
+            with acting_as_tenant(session, membership.tenant_id):
+                customer = customer_service.get_customer(session, membership.tenant_id, membership.customer_id)
             customer_name = customer.name if customer else None
         rows.append(MembershipRow(membership=membership, tenant=tenant, customer_name=customer_name))
     return rows

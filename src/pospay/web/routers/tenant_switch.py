@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from pospay.auth.security import create_session_tokens, create_token
 from pospay.auth.webauthn_service import user_has_webauthn_credentials
 from pospay.db.session import get_db
-from pospay.db.tenancy import TenantContext
+from pospay.db.tenancy import TenantContext, acting_as_tenant
 from pospay.domain.user import User
 from pospay.services import session_service, user_service
 from pospay.web.deps import get_web_context, render_template
@@ -72,7 +72,8 @@ def switch_tenant(
             token_type="mfa_pending",
             token_version=user.token_version,
         )
-        has_key = user_has_webauthn_credentials(db, target.tenant.id, ctx.user_id)
+        with acting_as_tenant(db, target.tenant.id):  # Postgres RLS: keys belong to the target bank
+            has_key = user_has_webauthn_credentials(db, target.tenant.id, ctx.user_id)
         next_step = "webauthn" if has_key else "webauthn/setup"
         response = RedirectResponse(f"/ui/login/{next_step}?next={quote('/ui/')}", status_code=303)
         set_mfa_cookie(response, mfa_token)

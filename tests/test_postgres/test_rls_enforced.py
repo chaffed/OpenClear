@@ -10,53 +10,12 @@ deployment should, and a second bank's data sits in the same tables. The pool is
 on, so connections are reused between requests exactly as in production."""
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
+from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import Session, sessionmaker
 
-from pospay.db.session import get_db
 from tests.conftest import TEST_DATABASE_URL, TenantFactory, login_headers
 
 pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs POSPAY_TEST_DATABASE_URL (Postgres)")
-
-_APP_ROLE = "pospay_rls_app"
-
-
-@pytest.fixture
-def app_engine(engine):
-    with engine.begin() as conn:
-        conn.execute(text(
-            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{_APP_ROLE}') THEN "
-            f"CREATE ROLE {_APP_ROLE} LOGIN PASSWORD '{_APP_ROLE}' NOSUPERUSER NOBYPASSRLS; END IF; END $$"
-        ))
-        conn.execute(text(f"GRANT USAGE ON SCHEMA public TO {_APP_ROLE}"))
-        conn.execute(text(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {_APP_ROLE}"))
-        conn.execute(text(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {_APP_ROLE}"))
-    app_engine = create_engine(make_url(TEST_DATABASE_URL).set(username=_APP_ROLE, password=_APP_ROLE), pool_size=2)
-    yield app_engine
-    app_engine.dispose()
-
-
-@pytest.fixture
-def rls_client(app_engine):
-    from pospay.main import create_app
-
-    app = create_app()
-    factory = sessionmaker(bind=app_engine, autoflush=False, expire_on_commit=False)
-
-    def _get_db():
-        session = factory()
-        try:
-            yield session
-        finally:
-            session.close()
-
-    app.dependency_overrides[get_db] = _get_db
-    with TestClient(app) as client:
-        yield client
-
 
 def _two_banks(tenant_factory):
     bank_a = tenant_factory.make(slug="rls-bank-a")

@@ -57,6 +57,7 @@ from pospay.bulk_import.tabular import parse_tabular_file
 from pospay.bulk_import.x937 import parse_x937_file
 from pospay.bulk_import.zip_import import parse_zip_manifest
 from pospay.config import get_settings
+from pospay.db.tenancy import bind_session_to_tenant
 from pospay.domain.bulk_upload_file import BulkUploadKind, BulkUploadSource
 from pospay.domain.customer import Customer
 from pospay.domain.tenant import Tenant
@@ -268,6 +269,9 @@ def scan_and_import_tenant(session: Session, tenant: Tenant, *, customer_id: uui
         logger.error("Refusing to scan tenant %s: slug %r is not safe to use as a filesystem path segment", tenant.id, tenant.slug)
         return []
 
+    # Postgres RLS: everything below reads and writes this bank's rows. (Already bound
+    # when called from the API; the scheduled scan has no signed-in user.)
+    bind_session_to_tenant(session, tenant.id)
     settings = get_settings()
     root = Path(settings.auto_import_dropbox_dir) / tenant.slug
     results: list[ImportedFileResult] = []
