@@ -222,7 +222,24 @@ pytest
 
 `.github/workflows/tests.yml` runs the same suite automatically on every push/PR to
 `main` (Python 3.11 and 3.13, with `tesseract-ocr`/Pango/Cairo installed so the
-OCR- and PDF-export-dependent tests actually run rather than skip).
+OCR- and PDF-export-dependent tests actually run rather than skip), and once more
+against Postgres.
+
+To run it against Postgres yourself, point `POSPAY_TEST_DATABASE_URL` at an empty
+database. **It is wiped**: the schema is rebuilt with `alembic upgrade head`, so the
+migrations are tested too. `tests/test_postgres/` (skipped otherwise) then checks row-level
+security with a non-superuser role:
+
+```bash
+pip install -e ".[dev,postgres]"
+docker run -d --name pospay-pg-test -e POSTGRES_USER=pospay -e POSTGRES_PASSWORD=pospay \
+  -e POSTGRES_DB=pospay_test -p 127.0.0.1:55432:5432 postgres:16-alpine
+POSPAY_TEST_DATABASE_URL=postgresql+psycopg://pospay:pospay@127.0.0.1:55432/pospay_test pytest
+```
+
+For performance numbers, `scripts/perf/seed_volume.py` fills a throwaway database with
+banks, checks, exceptions and decisions at a chosen scale, and `scripts/perf/measure.py`
+times pages, ingestion, training, exports and key queries against it (see SCALE_PLAN.md).
 
 ## Bulk file uploads
 
@@ -816,11 +833,14 @@ is what's actually under test in `tests/test_api/test_cross_tenant_isolation.py`
 `exception_item`/`decision` (the shared ML model trains across every organization that
 chose it, see `ml/train.py`) and `user` (a global login identity with no single-tenant row-ownership
 story — see "Users, security groups, and cross-tenant access" above) are deliberately
-excluded. This RLS migration has been schema-compile-verified against the Postgres
-dialect but **not yet exercised against a live Postgres instance** in development (no
-Docker/Postgres available in the environment this was built in) — test it thoroughly,
-including the cross-tenant suite against a real Postgres backend, before relying on it in
-production.
+excluded.
+
+**Status (1.5.x):** the full test suite runs against Postgres in CI, and web and API
+requests work with RLS enforced for a non-superuser app role (`tests/test_postgres/`).
+**Scheduled jobs and switching organization do not yet work under enforced RLS** (they
+read across banks; see SCALE_PLAN.md phase S1a). Until that's done, connect the app as a
+role that bypasses RLS (a superuser, or one with `BYPASSRLS`). Tenant isolation then rests
+on the repository filter, as on SQLite and SQL Server.
 
 ## MSSQL
 
