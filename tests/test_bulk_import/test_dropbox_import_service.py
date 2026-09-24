@@ -3,6 +3,8 @@
 
 import io
 import os
+import shutil
+import tempfile
 import time
 import zipfile
 from pathlib import Path
@@ -403,7 +405,7 @@ def test_customer_number_path_traversal_into_sibling_tenant_is_refused(db_sessio
     assert IssuedItemRepository(db_session, attacker_tenant.id).list() == []
 
 
-def test_customer_number_absolute_path_is_refused(db_session, tenant_factory, monkeypatch, tmp_path):
+def test_customer_number_absolute_path_is_refused(db_session, tenant_factory, monkeypatch, tmp_path, request):
     """pathlib's '/' operator discards everything to its left when the right-hand
     segment looks absolute (Path("/a/b") / "/etc" == Path("/etc")) -- a customer_number
     that looks like an absolute path must never let the scanner read from or move files
@@ -411,7 +413,10 @@ def test_customer_number_absolute_path_is_refused(db_session, tenant_factory, mo
     root = _configure_dropbox(monkeypatch, tmp_path)
     tenant, _account, _users = tenant_factory.make(slug="absolute-path-tenant")
 
-    outside_target = tmp_path / "outside_dropbox_entirely"
+    # A short absolute path: customer_number is VARCHAR(64), which Postgres enforces, and
+    # pytest's tmp_path alone can be longer than that.
+    outside_target = Path(tempfile.mkdtemp(prefix="pp-out-", dir="/tmp"))
+    request.addfinalizer(lambda: shutil.rmtree(outside_target, ignore_errors=True))
     outside_inbox = outside_target / "issued_items" / "inbox"
     outside_inbox.mkdir(parents=True)
     sensitive = outside_inbox / "sensitive.csv"

@@ -16,7 +16,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -63,8 +63,68 @@ def _reset_rate_limiter():
     limiter._hits.clear()
 
 
+# Set to a Postgres URL (e.g. postgresql+psycopg://pospay:pospay@localhost:5432/pospay_test)
+# to run the suite against Postgres instead of in-memory SQLite. The database is WIPED:
+# its public schema is dropped and rebuilt with `alembic upgrade head` once per run, so the
+# migrations themselves are what's under test, and every test starts from empty tables.
+TEST_DATABASE_URL = os.environ.get("POSPAY_TEST_DATABASE_URL")
+
+
+def _seed_payment_networks(engine) -> None:
+    with Session(engine) as session:
+        session.add_all(
+            [
+                PaymentNetwork(code="check", name="Check", settlement_timing=SettlementTiming.ASYNC_REVIEWABLE),
+                PaymentNetwork(code="ach", name="ACH", settlement_timing=SettlementTiming.ASYNC_REVIEWABLE),
+            ]
+        )
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def _postgres_engine():
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    engine = create_engine(TEST_DATABASE_URL)
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+
+    # migrations/env.py takes its URL from pospay's settings.
+    previous_url = os.environ.get("POSPAY_DATABASE_URL")
+    os.environ["POSPAY_DATABASE_URL"] = TEST_DATABASE_URL
+    get_settings.cache_clear()
+    try:
+        root = Path(__file__).resolve().parent.parent
+        cfg = Config(str(root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(root / "migrations"))
+        command.upgrade(cfg, "head")
+    finally:
+        if previous_url is None:
+            os.environ.pop("POSPAY_DATABASE_URL", None)
+        else:
+            os.environ["POSPAY_DATABASE_URL"] = previous_url
+        get_settings.cache_clear()
+
+    tables = [t.name for t in Base.metadata.sorted_tables]
+    yield engine, tables
+    engine.dispose()
+
+
 @pytest.fixture
-def engine():
+def engine(request):
+    if TEST_DATABASE_URL:
+        engine, tables = request.getfixturevalue("_postgres_engine")
+        with engine.begin() as conn:
+            quoted = ", ".join('"' + t + '"' for t in tables)
+            conn.execute(text(f"TRUNCATE {quoted} RESTART IDENTITY CASCADE"))
+        _seed_payment_networks(engine)
+        yield engine
+        return
+
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -76,14 +136,7 @@ def engine():
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     Base.metadata.create_all(engine)
-    with Session(engine) as session:
-        session.add_all(
-            [
-                PaymentNetwork(code="check", name="Check", settlement_timing=SettlementTiming.ASYNC_REVIEWABLE),
-                PaymentNetwork(code="ach", name="ACH", settlement_timing=SettlementTiming.ASYNC_REVIEWABLE),
-            ]
-        )
-        session.commit()
+    _seed_payment_networks(engine)
     yield engine
     Base.metadata.drop_all(engine)
 

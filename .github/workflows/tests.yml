@@ -41,3 +41,46 @@ jobs:
 
       - name: Run tests
         run: pytest
+
+  test-postgres:
+    # The same suite against a real Postgres (tests/conftest.py's POSPAY_TEST_DATABASE_URL):
+    # the schema comes from `alembic upgrade head`, so this also proves the migrations work
+    # on Postgres, and tests/test_postgres/ checks row-level security under a
+    # non-superuser role.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pospay
+          POSTGRES_PASSWORD: pospay
+          POSTGRES_DB: pospay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pospay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSPAY_TEST_DATABASE_URL: postgresql+psycopg://pospay:pospay@localhost:5432/pospay_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr libpango-1.0-0 libcairo2
+
+      - name: Install PosPay (dev + pdf + postgres extras)
+        run: pip install -e ".[dev,pdf,postgres]"
+
+      - name: Run tests against Postgres
+        run: pytest
