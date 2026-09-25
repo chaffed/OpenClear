@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Generates the four ECDSA P-256 key pairs PosPay signs with — one each for JWTs,
+"""Generates the four ECDSA P-256 key pairs OpenClear signs with — one each for JWTs,
 bulk-upload file signing, the audit log hash chain, and signed WSUD statements (see
 README.md's "Signing keys" section for the full picture). Run this once per real
 deployment:
 
     python scripts/generate_keys.py --output-dir keys
 
-then point the printed POSPAY_* env vars at the resulting files and set
-POSPAY_ENVIRONMENT=production. Never run this against dev_keys/ — that directory is a
+then point the printed OPENCLEAR_* env vars at the resulting files and set
+OPENCLEAR_ENVIRONMENT=production. Never run this against dev_keys/ — that directory is a
 deliberately public, checked-in key pair for local dev and the test suite only.
 
-Deliberately stdlib+cryptography only (no pospay import) — this needs to run before the
+Deliberately stdlib+cryptography only (no openclear import) — this needs to run before the
 app's own settings/config are even relevant, same spirit as scripts/launcher.py."""
 
 import argparse
@@ -75,17 +75,17 @@ def main() -> None:
 
     print(
         "\nSet these before starting the app:\n"
-        f"  POSPAY_JWT_PRIVATE_KEY_PATH={output_dir / 'jwt_private.pem'}\n"
-        f"  POSPAY_JWT_PUBLIC_KEY_PATH={output_dir / 'jwt_public.pem'}\n"
-        f"  POSPAY_FILE_SIGNING_PRIVATE_KEY_PATH={output_dir / 'file_signing_private.pem'}\n"
-        f"  POSPAY_FILE_SIGNING_PUBLIC_KEY_PATH={output_dir / 'file_signing_public.pem'}\n"
-        f"  POSPAY_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH={output_dir / 'audit_log_signing_private.pem'}\n"
-        f"  POSPAY_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH={output_dir / 'audit_log_signing_public.pem'}\n"
-        f"  POSPAY_WSUD_SIGNING_PRIVATE_KEY_PATH={output_dir / 'wsud_signing_private.pem'}\n"
-        f"  POSPAY_WSUD_SIGNING_PUBLIC_KEY_PATH={output_dir / 'wsud_signing_public.pem'}\n"
-        "  POSPAY_ENVIRONMENT=production\n"
+        f"  OPENCLEAR_JWT_PRIVATE_KEY_PATH={output_dir / 'jwt_private.pem'}\n"
+        f"  OPENCLEAR_JWT_PUBLIC_KEY_PATH={output_dir / 'jwt_public.pem'}\n"
+        f"  OPENCLEAR_FILE_SIGNING_PRIVATE_KEY_PATH={output_dir / 'file_signing_private.pem'}\n"
+        f"  OPENCLEAR_FILE_SIGNING_PUBLIC_KEY_PATH={output_dir / 'file_signing_public.pem'}\n"
+        f"  OPENCLEAR_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH={output_dir / 'audit_log_signing_private.pem'}\n"
+        f"  OPENCLEAR_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH={output_dir / 'audit_log_signing_public.pem'}\n"
+        f"  OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH={output_dir / 'wsud_signing_private.pem'}\n"
+        f"  OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH={output_dir / 'wsud_signing_public.pem'}\n"
+        "  OPENCLEAR_ENVIRONMENT=production\n"
         "\n"
-        "Also set a real random POSPAY_SSO_ENCRYPTION_KEY (a plain random string, not a "
+        "Also set a real random OPENCLEAR_SSO_ENCRYPTION_KEY (a plain random string, not a "
         "key pair — it's for encrypting stored SSO client secrets, not signing).\n"
         "\n"
         "Rotating any of these keys later invalidates every active login session (JWT "

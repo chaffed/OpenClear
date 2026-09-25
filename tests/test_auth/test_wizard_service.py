@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import account_service, customer_service, provisioning_service, security_group_service, user_service, wizard_service
+from openclear.services import account_service, customer_service, provisioning_service, security_group_service, user_service, wizard_service
 from tests.conftest import TenantFactory
 
 
@@ -73,7 +73,7 @@ def test_bank_wizard_manual_step_acknowledge_and_unacknowledge_round_trip(db_ses
 
 
 def test_acknowledge_step_is_idempotent(db_session):
-    from pospay.domain.wizard_step_ack import WizardStepAck
+    from openclear.domain.wizard_step_ack import WizardStepAck
 
     tenant, admin = _fresh_tenant(db_session, "wizard-idempotent")
     wizard_service.acknowledge_step(db_session, tenant.id, None, "branding", admin.id)
@@ -93,7 +93,7 @@ def test_bank_wizard_complete_ignores_optional_steps(db_session):
         wizard_service.acknowledge_step(db_session, tenant.id, None, key, admin.id)
     # The required "fraud_model" step completes once the data-pooling disclosure is
     # acknowledged (services/tenant_ml_service.py).
-    from pospay.services import tenant_ml_service
+    from openclear.services import tenant_ml_service
 
     tenant_ml_service.record_shared_consent(db_session, tenant.id, actor_user_id=admin.id)
     db_session.commit()

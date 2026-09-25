@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.domain.customer import Customer
-from pospay.domain.ml_model import MlModel
-from pospay.domain.notification import NotificationPreference, NotificationType
-from pospay.domain.platform_api_key import PlatformApiKey
-from pospay.services import schema_summary_service
+from openclear.domain.customer import Customer
+from openclear.domain.ml_model import MlModel
+from openclear.domain.notification import NotificationPreference, NotificationType
+from openclear.domain.platform_api_key import PlatformApiKey
+from openclear.services import schema_summary_service
 
 
 def _counts_dict(db_session, tenant_id):

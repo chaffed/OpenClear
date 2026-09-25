@@ -5,9 +5,9 @@ import logging
 
 import pytest
 
-from pospay.config import Settings
-from pospay.ocr.base import UNIMPLEMENTED_PROVIDERS
-from pospay.ocr.factory import _PROVIDER_CACHE, get_ocr_provider
+from openclear.config import Settings
+from openclear.ocr.base import UNIMPLEMENTED_PROVIDERS
+from openclear.ocr.factory import _PROVIDER_CACHE, get_ocr_provider
 
 
 def test_unimplemented_providers_are_exactly_textract_and_azure_di():

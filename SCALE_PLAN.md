@@ -1,4 +1,4 @@
-# PosPay scalability plan
+# OpenClear scalability plan
 
 Started 2026-09-23, after release 1.5.0. This plan is based on reading the code; nothing
 has been load-tested yet, so Phase S0 measures first. Each phase gets its own branch, a
@@ -49,7 +49,7 @@ passed, 1 skipped; Linux Python 3.11 container (as CI) 1,144 passed, 5 skipped.
       - 5 OCR tests drew the check image in Helvetica from a macOS system path. On Linux
         that fell back to Pillow's tiny bitmap font, which Tesseract misreads. They now use
         Pillow's bundled scalable font, the same on every OS.
-- [x] **Postgres in CI and locally.** `POSPAY_TEST_DATABASE_URL` switches
+- [x] **Postgres in CI and locally.** `OPENCLEAR_TEST_DATABASE_URL` switches
       `tests/conftest.py` to Postgres: the schema is built once with `alembic upgrade head`,
       and each test starts from truncated tables. There's a new `test-postgres` job in
       `.github/workflows/tests.yml`. Running it found these **real bugs**, all fixed:
@@ -221,7 +221,7 @@ still broke, and now doesn't:
 - [ ] A `job` table: type, tenant, payload, status, attempts, `run_after`, `locked_by`,
       heartbeat and error. Jobs are claimed with `SELECT … FOR UPDATE SKIP LOCKED` on
       Postgres, and there's a single worker on SQLite.
-- [ ] A worker entry point, `python -m pospay.workers.run`, runs as its own process or
+- [ ] A worker entry point, `python -m openclear.workers.run`, runs as its own process or
       container. For a one-machine install (the launcher, the Fly demo) the web process
       can run an in-process worker thread instead, so small setups stay one process.
 - [ ] Retries with backoff. A job whose heartbeat stops (its worker died) is picked up

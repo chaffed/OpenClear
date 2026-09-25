@@ -28,7 +28,7 @@ def test_setting_dark_theme_persists_via_cookie(client, tenant_factory):
 
     resp = client.post("/ui/theme", data={"theme": "dark", "csrf_token": csrf, "next": "/ui/"}, follow_redirects=False)
     assert resp.status_code == 303
-    assert client.cookies.get("pospay_theme") == "dark"
+    assert client.cookies.get("openclear_theme") == "dark"
 
     dashboard = client.get("/ui/")
     assert 'data-theme="dark"' in dashboard.text
@@ -39,11 +39,11 @@ def test_setting_light_theme_overrides_and_system_clears_cookie(client, tenant_f
     csrf = _login(client, tenant.slug, users["admin"].email)
 
     client.post("/ui/theme", data={"theme": "light", "csrf_token": csrf, "next": "/ui/"})
-    assert client.cookies.get("pospay_theme") == "light"
+    assert client.cookies.get("openclear_theme") == "light"
     assert 'data-theme="light"' in client.get("/ui/").text
 
     client.post("/ui/theme", data={"theme": "system", "csrf_token": csrf, "next": "/ui/"})
-    assert client.cookies.get("pospay_theme") is None
+    assert client.cookies.get("openclear_theme") is None
     resp = client.get("/ui/")
     assert 'data-theme="light"' not in resp.text
     assert 'data-theme="dark"' not in resp.text
@@ -54,7 +54,7 @@ def test_theme_toggle_works_pre_login(client):
     csrf = client.cookies.get("csrf_token")
     resp = client.post("/ui/theme", data={"theme": "dark", "csrf_token": csrf, "next": "/ui/login"}, follow_redirects=False)
     assert resp.status_code == 303
-    assert client.cookies.get("pospay_theme") == "dark"
+    assert client.cookies.get("openclear_theme") == "dark"
 
     login_again = client.get("/ui/login")
     assert 'data-theme="dark"' in login_again.text

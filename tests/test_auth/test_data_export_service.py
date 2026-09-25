@@ -9,14 +9,14 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.auth.permissions import PERMISSION_CATALOG
-from pospay.bulk_import.file_storage import save_uploaded_file
-from pospay.config import get_settings
-from pospay.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
-from pospay.domain.data_export_job import DataExportJobStatus
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.networks.check.ocr_processing import create_check_image
-from pospay.services import (
+from openclear.auth.permissions import PERMISSION_CATALOG
+from openclear.bulk_import.file_storage import save_uploaded_file
+from openclear.config import get_settings
+from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
+from openclear.domain.data_export_job import DataExportJobStatus
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.networks.check.ocr_processing import create_check_image
+from openclear.services import (
     account_service,
     customer_service,
     data_export_service,
@@ -76,9 +76,9 @@ def test_tenant_wide_export_includes_expected_data_files(db_session, tenant_fact
 
 
 def test_export_never_includes_secret_columns(db_session, tenant_factory):
-    from pospay.domain.sso_connection import SsoProvider
-    from pospay.services import sso_service
-    from pospay.services.sso_service import SsoConnectionInput
+    from openclear.domain.sso_connection import SsoProvider
+    from openclear.services import sso_service
+    from openclear.services.sso_service import SsoConnectionInput
 
     tenant, _account, users = tenant_factory.make(slug="export-no-secrets")
     connection = sso_service.create_connection(
@@ -240,9 +240,9 @@ def test_no_exporter_ever_emits_a_secret_column(db_session, tenant_factory):
     test_export_never_includes_secret_columns above already checks by name. Walks every
     data/*.json file in a rich, fully-populated tenant-wide export and asserts none of
     _SECRET_COLUMNS appears as a key anywhere in it."""
-    from pospay.domain.sso_connection import SsoProvider
-    from pospay.services import sso_service
-    from pospay.services.sso_service import SsoConnectionInput
+    from openclear.domain.sso_connection import SsoProvider
+    from openclear.services import sso_service
+    from openclear.services.sso_service import SsoConnectionInput
 
     tenant, account, users = tenant_factory.make(slug="export-secret-tripwire")
     issued_item_service.create_issued_item(

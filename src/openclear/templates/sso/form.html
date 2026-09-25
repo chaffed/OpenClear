@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% set base = "/ui/customers/" ~ customer.id ~ "/sso" if customer is defined else "/ui/admin/sso" %}
+{% set action = base if not connection else base ~ "/" ~ connection.id %}
+{% block title %}{{ "Edit" if connection else "Add" }} SSO connection — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About this form{% endblock %}
+{% block help_body %}
+<p>Both Okta and Azure AD are OIDC-compliant, so the same form works for either —
+  "Issuer URL" is the identity provider's OIDC issuer (Okta: your authorization server's
+  issuer URL; Azure AD: <code>https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0</code>).
+  "Groups/roles claim name" is which claim in the sign-in token carries the person's
+  group/role membership — you'll need to configure your IdP to include one (an Okta
+  Authorization Server claim, or an Azure AD App Role / groups claim).</p>
+<p>A connection refuses every login until at least one group mapping exists below —
+  the federated org's own current group membership always governs access; there's no
+  "anyone who can sign in gets access" mode.</p>
+{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>{{ "Edit" if connection else "Add" }} SSO connection</h1>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  <form method="post" action="{{ action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Provider
+      <select name="provider" required>
+        {% for p in providers %}
+        <option value="{{ p.value }}" {{ "selected" if connection and connection.provider == p else "" }}>{{ "Okta" if p.value == "okta" else "Azure AD" }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Display name
+      <input type="text" name="display_name" value="{{ connection.display_name if connection else '' }}" required placeholder="e.g. Acme Bank Okta">
+    </label>
+    <label>Issuer URL
+      <input type="url" name="issuer" value="{{ connection.issuer if connection else '' }}" required placeholder="https://your-domain.okta.com">
+    </label>
+    <label>Client ID
+      <input type="text" name="client_id" value="{{ connection.client_id if connection else '' }}" required>
+    </label>
+    <label>Client secret
+      {% if connection %}
+      <input type="password" name="client_secret" placeholder="Leave blank to keep the current secret">
+      {% else %}
+      <input type="password" name="client_secret" required>
+      {% endif %}
+    </label>
+    <label>Groups/roles claim name
+      <input type="text" name="groups_claim_name" value="{{ connection.groups_claim_name if connection else 'groups' }}" required>
+    </label>
+    <label>
+      <input type="checkbox" name="auto_provision" value="true" {{ "checked" if connection and connection.auto_provision else "" }}>
+      Auto-provision a new OpenClear account the first time someone signs in
+    </label>
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+  <p><a href="{{ back_path }}">Cancel</a></p>
+</div>
+
+{% if connection %}
+<div class="card">
+  <h1>Group mappings</h1>
+  {% if mappings %}
+  <table>
+    <thead><tr><th>External group</th><th>Security group</th><th data-type="number">Priority</th><th></th></tr></thead>
+    <tbody>
+      {% for m in mappings %}
+      <tr>
+        <td>{{ m.external_group }}</td>
+        <td>{{ (groups | selectattr("id", "equalto", m.security_group_id) | first).name if groups else m.security_group_id }}</td>
+        <td>{{ m.priority }}</td>
+        <td>
+          <form method="post" action="{{ base }}/{{ connection.id }}/mappings/{{ m.id }}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="flash flash-error">No group mappings yet — this connection will refuse every login until at least one is added, and won't appear on the login page.</p>
+  {% endif %}
+  <form method="post" action="{{ base }}/{{ connection.id }}/mappings" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>External group <input type="text" name="external_group" required placeholder="e.g. openclear-approvers"></label>
+    <label>Security group
+      <select name="security_group_id" required>
+        {% for g in groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Priority <input type="number" name="priority" value="100"></label>
+    <button type="submit">{{ icon("add_link") }}Add mapping</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

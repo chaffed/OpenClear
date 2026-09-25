@@ -11,15 +11,15 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.db.tenancy import TenantContext
-from pospay.domain.customer_ml_setting import MlScoringMode
-from pospay.domain.ml_model import MlModelStatus
-from pospay.domain.tenant import MlModelSource
-from pospay.ml.predict import _resolve_scoring_source
-from pospay.ml.registry import activate_model, create_model_row, get_active_model_row
-from pospay.ml.train import _load_labeled_decisions, train_model
-from pospay.services import customer_ml_service
+from openclear.config import get_settings
+from openclear.db.tenancy import TenantContext
+from openclear.domain.customer_ml_setting import MlScoringMode
+from openclear.domain.ml_model import MlModelStatus
+from openclear.domain.tenant import MlModelSource
+from openclear.ml.predict import _resolve_scoring_source
+from openclear.ml.registry import activate_model, create_model_row, get_active_model_row
+from openclear.ml.train import _load_labeled_decisions, train_model
+from openclear.services import customer_ml_service
 from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception, _seed_decisions
 
 
@@ -75,7 +75,7 @@ def test_a_bank_only_model_trains_on_its_own_bank_only(db_session, tenant_factor
 
 
 def _submit_fraud_example(db_session, tenant, account, users, check_number):
-    from pospay.services.fraud_training_service import CheckFraudRawInput, submit_check_fraud_example
+    from openclear.services.fraud_training_service import CheckFraudRawInput, submit_check_fraud_example
 
     ctx = TenantContext(
         tenant_id=tenant.id, user_id=users["admin"].id, security_group_id=uuid.uuid4(), permissions=frozenset(),
@@ -112,7 +112,7 @@ def test_a_bank_only_banks_fraud_examples_train_its_own_model_without_approval(d
 
 
 def test_tenant_id_is_no_longer_a_model_feature(db_session, tenant_factory):
-    from pospay.networks.registry import get_adapter
+    from openclear.networks.registry import get_adapter
 
     tenant, account, users = _bank(tenant_factory, db_session, "feat-xyz", decisions=0)
     exception = _make_exception(db_session, tenant, account, users, "8001", "100.00", "999.00")
@@ -219,7 +219,7 @@ def test_challenger_is_compared_with_the_active_model_on_the_same_recent_decisio
 
 
 def test_scheduled_retrain_trains_each_bank_only_bank_separately(db_session, tenant_factory, session_factory, monkeypatch):
-    from pospay.workers import tasks
+    from openclear.workers import tasks
 
     monkeypatch.setattr(get_settings(), "ml_min_new_decisions_for_retrain", 1)
     monkeypatch.setattr(tasks, "get_session_factory", lambda: session_factory)

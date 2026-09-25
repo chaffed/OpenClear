@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 from tests.conftest import TenantFactory
 
 
@@ -44,7 +44,7 @@ def test_login_success_sets_cookies_and_redirects_to_dashboard(client, tenant_fa
 
 
 def test_login_success_records_last_login_at(client, db_session, tenant_factory):
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.user_repo import UserRepository
 
     tenant, _account, users = tenant_factory.make(slug="web-login-last-login")
     assert UserRepository(db_session).get(users["admin"].id).last_login_at is None

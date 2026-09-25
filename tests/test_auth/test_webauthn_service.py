@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.auth.webauthn_service import (
+from openclear.auth.webauthn_service import (
     WebauthnError,
     begin_authentication,
     begin_registration,
@@ -17,7 +17,7 @@ from tests.test_auth.webauthn_helpers import FakeAuthenticator
 
 
 def _rp_settings():
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     settings = get_settings()
     return settings.webauthn_rp_id, settings.webauthn_origin

@@ -7,9 +7,9 @@ so the Postgres path runs against a fake engine that records the SQL it's sent."
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.workers import scheduler
-from pospay.workers.leader_lock import lock_key, run_exclusively
+from openclear.config import get_settings
+from openclear.workers import scheduler
+from openclear.workers.leader_lock import lock_key, run_exclusively
 
 
 class _FakeResult:

@@ -3,8 +3,8 @@
 
 import pytest
 
-from pospay.services import ach_return_reason_service
-from pospay.services.ach_return_reason_service import (
+from openclear.services import ach_return_reason_service
+from openclear.services.ach_return_reason_service import (
     DEFAULT_ACH_RETURN_REASONS,
     AchReturnReasonInput,
     InvalidAchReturnReasonInput,

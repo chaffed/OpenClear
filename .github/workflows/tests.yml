@@ -36,14 +36,14 @@ jobs:
           # that code path instead of perpetually skipping it.
           sudo apt-get install -y tesseract-ocr libpango-1.0-0 libcairo2
 
-      - name: Install PosPay (dev + pdf extras)
+      - name: Install OpenClear (dev + pdf extras)
         run: pip install -e ".[dev,pdf]"
 
       - name: Run tests
         run: pytest
 
   test-postgres:
-    # The same suite against a real Postgres (tests/conftest.py's POSPAY_TEST_DATABASE_URL):
+    # The same suite against a real Postgres (tests/conftest.py's OPENCLEAR_TEST_DATABASE_URL):
     # the schema comes from `alembic upgrade head`, so this also proves the migrations work
     # on Postgres, and tests/test_postgres/ checks row-level security under a
     # non-superuser role.
@@ -52,18 +52,18 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: pospay
-          POSTGRES_PASSWORD: pospay
-          POSTGRES_DB: pospay_test
+          POSTGRES_USER: openclear
+          POSTGRES_PASSWORD: openclear
+          POSTGRES_DB: openclear_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U pospay"
+          --health-cmd "pg_isready -U openclear"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      POSPAY_TEST_DATABASE_URL: postgresql+psycopg://pospay:pospay@localhost:5432/pospay_test
+      OPENCLEAR_TEST_DATABASE_URL: postgresql+psycopg://openclear:openclear@localhost:5432/openclear_test
 
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +79,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr libpango-1.0-0 libcairo2
 
-      - name: Install PosPay (dev + pdf + postgres extras)
+      - name: Install OpenClear (dev + pdf + postgres extras)
         run: pip install -e ".[dev,pdf,postgres]"
 
       - name: Run tests against Postgres

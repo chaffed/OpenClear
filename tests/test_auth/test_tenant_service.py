@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.services.tenant_service import (
+from openclear.services.tenant_service import (
     InvalidTenantSettingsInput,
     get_tenant_branding_by_id,
     get_tenant_branding_by_slug,

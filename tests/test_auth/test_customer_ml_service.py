@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.domain.customer_ml_setting import MlScoringMode
-from pospay.services import customer_ml_service, customer_service
+from openclear.domain.customer_ml_setting import MlScoringMode
+from openclear.services import customer_ml_service, customer_service
 
 
 def _make_customer(db_session, tenant, customer_number="C-1"):
@@ -41,7 +41,7 @@ def test_set_mode_twice_updates_the_same_row_not_a_duplicate(db_session, tenant_
     customer_ml_service.set_mode(db_session, tenant.id, customer.id, "check", MlScoringMode.CUSTOMER)
     db_session.commit()
 
-    from pospay.repositories.customer_ml_setting_repo import CustomerMlSettingRepository
+    from openclear.repositories.customer_ml_setting_repo import CustomerMlSettingRepository
 
     rows = CustomerMlSettingRepository(db_session, tenant.id).list(customer_id=customer.id, network_code="check")
     assert len(rows) == 1

@@ -6,7 +6,7 @@ import zipfile
 
 from PIL import Image
 
-from pospay.bulk_import.x937 import (
+from openclear.bulk_import.x937 import (
     _T10_BUSINESS_DATE,
     _T25_AMOUNT,
     _T25_AUX_ON_US,
@@ -19,8 +19,8 @@ from pospay.bulk_import.x937 import (
     _T99_ITEMS_COUNT,
     _T99_TOTAL_AMOUNT,
 )
-from pospay.repositories.check_image_repo import CheckImageRepository
-from pospay.services import account_service, customer_service, security_group_service, user_service
+from openclear.repositories.check_image_repo import CheckImageRepository
+from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 
@@ -258,7 +258,7 @@ def test_check_image_download_routes_serve_normalized_png(client, db_session, te
         files={"upload_file": ("checks.zip", zip_bytes, "application/zip")},
     )
 
-    from pospay.repositories.check_image_repo import CheckImageRepository
+    from openclear.repositories.check_image_repo import CheckImageRepository
 
     image = CheckImageRepository(db_session, tenant.id).list()[0]
 

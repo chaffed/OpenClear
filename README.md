@@ -1,4 +1,7 @@
-# PosPay
+# OpenClear
+
+*Formerly PosPay. Existing installs keep working after the rename: see
+[CHANGELOG.md](CHANGELOG.md).*
 
 [![Tests](https://github.com/chaffed/PosPay/actions/workflows/tests.yml/badge.svg)](https://github.com/chaffed/PosPay/actions/workflows/tests.yml)
 
@@ -127,7 +130,7 @@ python scripts/generate_screenshots.py
 ```
 
 This spins up the app against a throwaway SQLite database (never your real
-`.pospay-run/` or `pospay.db`), seeds a demo bank with realistic accounts, issued items,
+`.openclear-run/` or `openclear.db`), seeds a demo bank with realistic accounts, issued items,
 exceptions, ACH activity, and users, and drives a real headless browser through each
 screen to (re)write the PNGs under `docs/screenshots/`.
 
@@ -135,9 +138,9 @@ screen to (re)write the PNGs under `docs/screenshots/`.
 
 **One-click (SQLite, zero manual setup)**:
 
-- **macOS**: double-click `run_pospay.command` (opens Terminal.app and runs it there).
-- **Windows**: double-click `run_pospay.bat` (opens a Command Prompt window).
-- **Linux**: run `./run_pospay.sh` from a terminal — most file managers don't run a
+- **macOS**: double-click `run_openclear.command` (opens Terminal.app and runs it there).
+- **Windows**: double-click `run_openclear.bat` (opens a Command Prompt window).
+- **Linux**: run `./run_openclear.sh` from a terminal — most file managers don't run a
   double-clicked `.sh` file in a terminal by default (varies by distro/desktop
   environment and usually needs "Allow executing file as program" enabled first in the
   file's properties), so this one isn't meant to be double-clicked.
@@ -154,16 +157,16 @@ python3 scripts/launcher.py
 ```
 
 Everything this creates — the virtual environment, the SQLite database, uploaded check
-images, and trained ML models — lives under `.pospay-run/` next to the project, never in
+images, and trained ML models — lives under `.openclear-run/` next to the project, never in
 the source tree itself. **To fully reset and leave the checkout exactly as cloned, just
 delete that one folder:**
 
 ```bash
-rm -rf .pospay-run
+rm -rf .openclear-run
 ```
 
 **Manual setup**, if you'd rather control each step yourself (and are fine with `.venv`,
-`pospay.db`, `data/`, and `ml_artifacts/` living directly in the project root as
+`openclear.db`, `data/`, and `ml_artifacts/` living directly in the project root as
 persistent local dev state, rather than one disposable folder):
 
 ```bash
@@ -172,7 +175,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 
 alembic upgrade head
-uvicorn pospay.main:app --reload
+uvicorn openclear.main:app --reload
 ```
 
 Web UI at `http://localhost:8000/ui/login`. JSON API docs at `http://localhost:8000/docs`.
@@ -182,7 +185,7 @@ if it's missing but still runs.
 
 **PDF export of the documentation** (the "Download PDF" link on `/ui/docs/end-user` and
 `/ui/docs/admin`) needs the optional `pdf` extra plus system libraries WeasyPrint depends
-on — Pango, Cairo, and GLib. `run_pospay.command`/`scripts/launcher.py` installs the
+on — Pango, Cairo, and GLib. `run_openclear.command`/`scripts/launcher.py` installs the
 `pdf` extra automatically; for a manual setup, install it yourself:
 
 ```bash
@@ -212,7 +215,7 @@ python scripts/render_schema_diagrams.py
 This spins up the app against a throwaway SQLite database, drives a real headless
 browser to the Data Dictionary page with pan/zoom disabled so each diagram renders at
 full natural size, and (re)writes the PNGs under
-`src/pospay/static/generated/schema-diagrams/`.
+`src/openclear/static/generated/schema-diagrams/`.
 
 ## Running tests
 
@@ -225,16 +228,16 @@ pytest
 OCR- and PDF-export-dependent tests actually run rather than skip), and once more
 against Postgres.
 
-To run it against Postgres yourself, point `POSPAY_TEST_DATABASE_URL` at an empty
+To run it against Postgres yourself, point `OPENCLEAR_TEST_DATABASE_URL` at an empty
 database. **It is wiped**: the schema is rebuilt with `alembic upgrade head`, so the
 migrations are tested too. `tests/test_postgres/` (skipped otherwise) then checks row-level
 security with a non-superuser role:
 
 ```bash
 pip install -e ".[dev,postgres]"
-docker run -d --name pospay-pg-test -e POSTGRES_USER=pospay -e POSTGRES_PASSWORD=pospay \
-  -e POSTGRES_DB=pospay_test -p 127.0.0.1:55432:5432 postgres:16-alpine
-POSPAY_TEST_DATABASE_URL=postgresql+psycopg://pospay:pospay@127.0.0.1:55432/pospay_test pytest
+docker run -d --name openclear-pg-test -e POSTGRES_USER=openclear -e POSTGRES_PASSWORD=openclear \
+  -e POSTGRES_DB=openclear_test -p 127.0.0.1:55432:5432 postgres:16-alpine
+OPENCLEAR_TEST_DATABASE_URL=postgresql+psycopg://openclear:openclear@127.0.0.1:55432/openclear_test pytest
 ```
 
 For performance numbers, `scripts/perf/seed_volume.py` fills a throwaway database with
@@ -275,10 +278,10 @@ one file is only created once.
 **Every submitted file is saved and signed** (`bulk_import/file_storage.py`,
 `bulk_import/signing.py`, `services/bulk_upload_file_service.py`) — issued items, ACH
 (tabular and NACHA), and the user bulk upload (see below) all keep the original bytes on
-local disk (`POSPAY_BULK_UPLOAD_STORAGE_DIR`, default
-`./data/bulk_uploads`, consolidated under `.pospay-run/` by the quickstart launcher) plus
+local disk (`OPENCLEAR_BULK_UPLOAD_STORAGE_DIR`, default
+`./data/bulk_uploads`, consolidated under `.openclear-run/` by the quickstart launcher) plus
 a SHA-256 fingerprint and an HMAC-SHA256 signature computed with a server-held secret
-(`POSPAY_FILE_SIGNING_SECRET` — same HS256 pattern already used for JWTs). This is saved
+(`OPENCLEAR_FILE_SIGNING_SECRET` — same HS256 pattern already used for JWTs). This is saved
 **even when the file is rejected outright** (bad format, no data rows) — a malformed
 submission is still evidence of what was actually sent, so it's recorded before parsing
 ever runs, with a link to it shown right on the error page. Every results/error page links
@@ -499,8 +502,8 @@ today.
 Each tenant can customize a logo, favicon, accent color, and display name from
 `/ui/settings` (gated by a dedicated `tenant:manage` permission, not folded into
 `admin:manage`, so a security group can be scoped to branding alone). Uploaded images are
-stored on local disk under `POSPAY_TENANT_ASSET_STORAGE_DIR` (default
-`./data/tenant_assets`, consolidated under `.pospay-run/` by the quickstart launcher, same
+stored on local disk under `OPENCLEAR_TENANT_ASSET_STORAGE_DIR` (default
+`./data/tenant_assets`, consolidated under `.openclear-run/` by the quickstart launcher, same
 as check-image storage) — the DB only ever stores the path and content-type, never the
 blob. The accent color reuses the single `--accent` CSS custom property `app.css` already
 threads through every button/link/nav highlight, applied via a small inline `<style>`
@@ -580,13 +583,13 @@ path without a browser. `webauthn_rp_id`/`webauthn_origin` default to `localhost
 `http://localhost:8000` — set both to your real domain before deploying, or every
 registered credential will fail verification against the wrong origin.
 
-**SSO (OIDC) issuer addresses** must be public `https://` URLs. PosPay refuses to save an
+**SSO (OIDC) issuer addresses** must be public `https://` URLs. OpenClear refuses to save an
 issuer that's `http://`, `localhost`, or a private/internal IP address, and every time it
 contacts an identity provider (discovery, signing keys, token exchange) it re-checks what the
 hostname resolves to and won't connect to a non-public address (`auth/outbound_http.py`).
 Otherwise anyone able to edit an SSO connection could make the server send requests into its
 own network. To test against a local identity provider (e.g. Keycloak on
-`http://localhost:8080`), set `POSPAY_OIDC_ALLOW_PRIVATE_HOSTS=true`. This is for local use
+`http://localhost:8080`), set `OPENCLEAR_OIDC_ALLOW_PRIVATE_HOSTS=true`. This is for local use
 only, and a production deployment refuses to start with it on. The server also doesn't use
 proxy environment variables for these requests, so it needs direct outbound HTTPS to the
 identity provider.
@@ -612,7 +615,7 @@ deployment.** Generate your own before deploying:
 python scripts/generate_keys.py --output-dir keys
 ```
 
-This prints the eight `POSPAY_*_PRIVATE_KEY_PATH`/`POSPAY_*_PUBLIC_KEY_PATH` env vars to
+This prints the eight `OPENCLEAR_*_PRIVATE_KEY_PATH`/`OPENCLEAR_*_PUBLIC_KEY_PATH` env vars to
 set. Prefer `openssl` instead? The equivalent for each of the four pairs (`jwt`,
 `file_signing`, `audit_log_signing`, `wsud_signing`) is:
 
@@ -621,13 +624,13 @@ openssl ecparam -genkey -name prime256v1 -noout -out keys/<name>_private.pem
 openssl ec -in keys/<name>_private.pem -pubout -out keys/<name>_public.pem
 ```
 
-Then set `POSPAY_ENVIRONMENT=production` — this is what actually turns on the check
+Then set `OPENCLEAR_ENVIRONMENT=production` — this is what actually turns on the check
 (`config.py::assert_production_safe`, run at app startup): a production deployment
-still pointing at `dev_keys/`, or still using the default `POSPAY_SSO_ENCRYPTION_KEY`
+still pointing at `dev_keys/`, or still using the default `OPENCLEAR_SSO_ENCRYPTION_KEY`
 (a separate, plain random secret — it encrypts stored SSO client secrets rather than
 signing anything, so it stays a string, not a key pair), refuses to start. Local dev
 (`scripts/launcher.py`) and the test suite both explicitly set
-`POSPAY_ENVIRONMENT=development`, so neither is affected by this check.
+`OPENCLEAR_ENVIRONMENT=development`, so neither is affected by this check.
 
 Rotating a key pair later is a one-time, expected cost, not a bug: rotating the JWT
 key logs out every active session; rotating the file-signing or audit-log key means
@@ -638,15 +641,15 @@ out-of-scope design question from this initial hardening pass).
 `assert_production_safe` also refuses to start in production for two other
 still-at-their-checked-in-default conditions, unrelated to signing keys:
 
-- **`POSPAY_OCR_PROVIDER` set to a stub.** Only `tesseract` (the default) is a working
+- **`OPENCLEAR_OCR_PROVIDER` set to a stub.** Only `tesseract` (the default) is a working
   OCR provider — `textract` and `azure_document_intelligence` both exist as real,
-  installable extras (`pip install pospay[textract]`/`pospay[azure-di]`) but their
+  installable extras (`pip install openclear[textract]`/`openclear[azure-di]`) but their
   `.extract()` is a bare `NotImplementedError` (see `ocr/textract_provider.py` /
   `ocr/azure_di_provider.py`'s own docstrings for what wiring up a real cloud call would
   need). Without this check, choosing either in production would only fail the moment
   someone actually uploaded a check image, not at startup.
-- **WSUD e-signature text still at its placeholder default.** `POSPAY_WSUD_CONSENT_
-  DISCLOSURE_TEXT`/`POSPAY_WSUD_ATTESTATION_TEXT` default to placeholder legal language
+- **WSUD e-signature text still at its placeholder default.** `OPENCLEAR_WSUD_CONSENT_
+  DISCLOSURE_TEXT`/`OPENCLEAR_WSUD_ATTESTATION_TEXT` default to placeholder legal language
   implementing only the *structural* elements the federal E-SIGN Act requires — **not
   reviewed by a lawyer.** Have your own counsel review and supply real text via those two
   env vars before relying on this for a real Written Statement of Unauthorized Debit
@@ -668,7 +671,7 @@ That per-IP limiting (and the signer IP recorded on a Written Statement of Unaut
 Debit attestation, `web/routers/wsud.py`) both resolve "the caller's IP" via
 `web/client_ip.py::get_client_ip`, which by default trusts nothing but the direct TCP
 connection. Deployed behind a reverse proxy or WAF, every request's direct connection is
-actually the proxy's own address — set `POSPAY_TRUSTED_PROXY_COUNT` to the number of
+actually the proxy's own address — set `OPENCLEAR_TRUSTED_PROXY_COUNT` to the number of
 proxy hops in front of the app (usually `1`) so it instead trusts exactly that many
 entries from the *right* end of the `X-Forwarded-For` header — the hop your own proxy
 chain appended, never a client-supplied value further left in the chain, which is
@@ -683,11 +686,11 @@ layers on top of the production one rather than duplicating its build, so there'
 one place that installs dependencies:
 
 ```bash
-docker build -t pospay:latest .
+docker build -t openclear:latest .
 docker build -t pospay-demo:latest -f Dockerfile.demo .   # only if you want the demo image too
 ```
 
-Both run with `POSPAY_ENVIRONMENT=production` baked in — including the demo image, since
+Both run with `OPENCLEAR_ENVIRONMENT=production` baked in — including the demo image, since
 the demo tenant serves real public traffic and runs the exact same OCR/ML/storage code
 path a real tenant would (see "Reverse proxy / WAF deployment" above and
 `services/demo_tenant_service.py`'s own module docstring). That means both need everything
@@ -696,13 +699,13 @@ the image:
 
 - The four signing key pairs (`python scripts/generate_keys.py --output-dir keys`,
   mount `keys/` into the container, e.g. at `/secrets/keys`, and set all eight
-  `POSPAY_*_KEY_PATH` env vars to point there)
-- A random `POSPAY_SSO_ENCRYPTION_KEY`
-- Real, counsel-reviewed `POSPAY_WSUD_CONSENT_DISCLOSURE_TEXT` /
-  `POSPAY_WSUD_ATTESTATION_TEXT`
-- `POSPAY_WEBAUTHN_RP_ID` / `POSPAY_WEBAUTHN_ORIGIN` set to your real domain
-- For the demo image only: `POSPAY_DEMO_TENANT_ENABLED=true` (already set by
-  `Dockerfile.demo`) and `POSPAY_DEMO_TENANT_PASSWORD` (a real secret — set it yourself,
+  `OPENCLEAR_*_KEY_PATH` env vars to point there)
+- A random `OPENCLEAR_SSO_ENCRYPTION_KEY`
+- Real, counsel-reviewed `OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT` /
+  `OPENCLEAR_WSUD_ATTESTATION_TEXT`
+- `OPENCLEAR_WEBAUTHN_RP_ID` / `OPENCLEAR_WEBAUTHN_ORIGIN` set to your real domain
+- For the demo image only: `OPENCLEAR_DEMO_TENANT_ENABLED=true` (already set by
+  `Dockerfile.demo`) and `OPENCLEAR_DEMO_TENANT_PASSWORD` (a real secret — set it yourself,
   it has no default)
 
 A container that's missing any of the first four refuses to start at all
@@ -719,17 +722,17 @@ docker run -d \
   -p 8000:8000 \
   -v pospay_data:/data \
   -v /path/to/your/keys:/secrets/keys:ro \
-  -e POSPAY_JWT_PRIVATE_KEY_PATH=/secrets/keys/jwt_private.pem \
-  # ...the other seven POSPAY_*_KEY_PATH vars, same pattern...
-  -e POSPAY_SSO_ENCRYPTION_KEY=... \
-  -e POSPAY_WSUD_CONSENT_DISCLOSURE_TEXT=... \
-  -e POSPAY_WSUD_ATTESTATION_TEXT=... \
-  -e POSPAY_WEBAUTHN_RP_ID=your-domain.example.com \
-  -e POSPAY_WEBAUTHN_ORIGIN=https://your-domain.example.com \
-  pospay:latest
+  -e OPENCLEAR_JWT_PRIVATE_KEY_PATH=/secrets/keys/jwt_private.pem \
+  # ...the other seven OPENCLEAR_*_KEY_PATH vars, same pattern...
+  -e OPENCLEAR_SSO_ENCRYPTION_KEY=... \
+  -e OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT=... \
+  -e OPENCLEAR_WSUD_ATTESTATION_TEXT=... \
+  -e OPENCLEAR_WEBAUTHN_RP_ID=your-domain.example.com \
+  -e OPENCLEAR_WEBAUTHN_ORIGIN=https://your-domain.example.com \
+  openclear:latest
 ```
 
-Point `POSPAY_DATABASE_URL` at Postgres instead of the SQLite default the same way any
+Point `OPENCLEAR_DATABASE_URL` at Postgres instead of the SQLite default the same way any
 other deployment would (see "Postgres" below) — rebuild with
 `--build-arg EXTRAS=.[postgres,pdf]` first so the driver's actually installed.
 
@@ -739,8 +742,8 @@ a one-time manual step after the container is up:
 
 ```bash
 docker exec -it <container> python -c "
-from pospay.db.session import get_session_factory
-from pospay.services.provisioning_service import create_tenant_with_admin
+from openclear.db.session import get_session_factory
+from openclear.services.provisioning_service import create_tenant_with_admin
 session = get_session_factory()()
 create_tenant_with_admin(session, tenant_name='Your Bank', tenant_slug='your-bank', admin_email='admin@example.com', admin_password='...')
 session.commit()
@@ -768,14 +771,14 @@ per-customer ML model, safe to hand a prospect or put on the open web, since it 
 itself. This isn't Docker-specific — the settings below work with the plain one-click
 launcher too, just set them as env vars before running it:
 
-- `POSPAY_DEMO_TENANT_ENABLED=true` — makes app startup seed the demo tenant if one
+- `OPENCLEAR_DEMO_TENANT_ENABLED=true` — makes app startup seed the demo tenant if one
   doesn't already exist yet (`main.py`'s lifespan, idempotent on every later restart).
-- `POSPAY_DEMO_TENANT_PASSWORD=...` — required for the above; there's no default, since
+- `OPENCLEAR_DEMO_TENANT_PASSWORD=...` — required for the above; there's no default, since
   there's no safe hardcoded password for something this public. Deliberately meant to be
   shared, not kept secret — this is a demo tenant's whole point.
-- `POSPAY_DEMO_TENANT_SESSION_MINUTES` (default `60`) — how long the demo can sit idle
+- `OPENCLEAR_DEMO_TENANT_SESSION_MINUTES` (default `60`) — how long the demo can sit idle
   before it resets.
-- `POSPAY_DEMO_TENANT_RESET_INTERVAL_MINUTES` (default `60`, `0` to turn off) — the demo
+- `OPENCLEAR_DEMO_TENANT_RESET_INTERVAL_MINUTES` (default `60`, `0` to turn off) — the demo
   also resets on this fixed schedule, since a demo that visitors keep using is never idle.
 
 **Resets** happen three ways: on the fixed schedule above (anyone signed in at that moment
@@ -808,13 +811,13 @@ not demo-specific) — pre-fills the slug and shows that tenant's own name/accen
 generic `/ui/login` form.
 
 **Deploying one publicly**: see [Docker](#docker) above for `Dockerfile.demo` — it's the
-production image with `POSPAY_DEMO_TENANT_ENABLED=true` layered on, needing everything a
-real deployment needs (real signing keys, `POSPAY_SSO_ENCRYPTION_KEY`, WSUD text — the
+production image with `OPENCLEAR_DEMO_TENANT_ENABLED=true` layered on, needing everything a
+real deployment needs (real signing keys, `OPENCLEAR_SSO_ENCRYPTION_KEY`, WSUD text — the
 demo tenant serves real public traffic and runs the exact same code path a real tenant
 would, so it gets no shortcuts). `fly.toml` at the repo root is a working, minimal-cost
 example for [Fly.io](https://fly.io) specifically — one machine on the smallest VM size
 this app runs reliably on, a persistent volume for `/data`, and
-`POSPAY_TRUSTED_PROXY_COUNT=1` already set for Fly's own edge proxy (see "Reverse proxy /
+`OPENCLEAR_TRUSTED_PROXY_COUNT=1` already set for Fly's own edge proxy (see "Reverse proxy /
 WAF deployment" above). The demo runs on SQLite, so whatever host you use, keep it to one
 instance (see "Running more than one instance").
 
@@ -823,7 +826,7 @@ instance (see "Running more than one instance").
 ```bash
 pip install -e ".[dev,postgres]"
 docker compose up -d postgres
-POSPAY_DATABASE_URL=postgresql+psycopg://pospay:pospay@localhost:5432/pospay alembic upgrade head
+OPENCLEAR_DATABASE_URL=postgresql+psycopg://openclear:openclear@localhost:5432/openclear alembic upgrade head
 ```
 
 Or bring up the whole stack (app + Postgres) with `docker compose up --build`.
@@ -846,10 +849,10 @@ role with `BYPASSRLS`, skips every policy, which leaves only the repository filt
 SQLite and SQL Server). Run migrations as the owner, and the app as a separate role:
 
 ```sql
-CREATE ROLE pospay_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;
-GRANT USAGE ON SCHEMA public TO pospay_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pospay_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pospay_app;
+CREATE ROLE openclear_app LOGIN PASSWORD '...' NOSUPERUSER NOBYPASSRLS;
+GRANT USAGE ON SCHEMA public TO openclear_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO openclear_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO openclear_app;
 -- tables added by later migrations need the same grants (or ALTER DEFAULT PRIVILEGES)
 ```
 
@@ -869,7 +872,7 @@ to get one for local dev.
 
 ```bash
 pip install -e ".[dev,mssql]"
-POSPAY_DATABASE_URL="mssql+pyodbc://pospay:<password>@localhost:1433/pospay?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes" alembic upgrade head
+OPENCLEAR_DATABASE_URL="mssql+pyodbc://openclear:<password>@localhost:1433/openclear?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes" alembic upgrade head
 ```
 
 Known friction points, not yet exercised against a live instance in this build:
@@ -888,7 +891,7 @@ By default, run **one** app process. `scripts/launcher.py`, the Docker image and
 **Postgres**, and two things change:
 
 - **Scheduled jobs** (ML retrain, dropbox import, notification sending, expired-disposition
-  sweep, demo reset) run on whichever instances enable their `POSPAY_*` flags. On Postgres,
+  sweep, demo reset) run on whichever instances enable their `OPENCLEAR_*` flags. On Postgres,
   each run first takes a per-job advisory lock (`workers/leader_lock.py`), so one instance
   runs each tick and the rest skip it. If an instance dies mid-job, Postgres releases its
   lock with the connection. On SQLite and SQL Server there is no such lock: every instance
@@ -896,7 +899,7 @@ By default, run **one** app process. `scripts/launcher.py`, the Docker image and
   scheduler flags on just one instance and leave them off on the rest.)
 - **Rate limits are per process** (`web/rate_limit.py`, see "Reverse proxy / WAF
   deployment" above). With N processes, a client can make up to N times the configured
-  limit. Divide `POSPAY_RATE_LIMIT_PER_MINUTE` by N, or enforce the real limit at your proxy
+  limit. Divide `OPENCLEAR_RATE_LIMIT_PER_MINUTE` by N, or enforce the real limit at your proxy
   or WAF. A shared limiter (for example, Redis) isn't built in.
 
 - **Files are on local disk.** Check images, tenant logos, bulk-upload originals, data
@@ -929,7 +932,7 @@ there and actually runs the downgrade against a scratch database. It skips clean
 silently, not failing) whenever there isn't yet 2 minor versions of recorded history to
 test against.
 
-**Cutting a release**: bump the version in `pyproject.toml` and `src/pospay/main.py`
+**Cutting a release**: bump the version in `pyproject.toml` and `src/openclear/main.py`
 together, then add one new entry to `VERSION_HISTORY` in `migrations/version_history.py`
 mapping the new version to the current Alembic head — only if that release actually added
 a migration (a patch that doesn't touch the schema doesn't need an entry). Never edit or
@@ -959,7 +962,7 @@ cosmetic, the POST route's own permission check is what actually enforces it.
 The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - `db/` — engine/session factory (one code path for all three backends), tenant context
-- `domain/` — SQLAlchemy models (import `pospay.domain` to register every mapper — see
+- `domain/` — SQLAlchemy models (import `openclear.domain` to register every mapper — see
   its `__init__.py` docstring for why this matters)
 - `networks/` — the pluggable per-payment-network layer (`check/`, `ach/`); each
   implements `networks.base.NetworkAdapter` and self-registers via
@@ -978,14 +981,14 @@ The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs
   Scoring" docs for the details a bank sees.
 - `api/v1/` — FastAPI routers; `exceptions.py`/`decisions.py` are network-agnostic
 - `workers/` — the scheduled jobs (ML retrain, dropbox import, notifications, disposition
-  sweep, demo reset), run by an opt-in in-process APScheduler (`POSPAY_ENABLE_ML_SCHEDULER`
+  sweep, demo reset), run by an opt-in in-process APScheduler (`OPENCLEAR_ENABLE_ML_SCHEDULER`
   and friends) or an external cron/k8s CronJob calling the functions in `workers/tasks.py`.
   `workers/leader_lock.py` keeps each job to one instance at a time on Postgres
 - `web/` — the server-rendered UI (see "Web UI" above); `templates/` and `static/` live
   inside the package so they ship with it wherever it's installed
 - `scripts/launcher.py` — the one-click local setup/run script (stdlib-only until it
-  re-execs itself under a freshly-created venv's own interpreter); `run_pospay.command`
-  (macOS), `run_pospay.bat` (Windows), and `run_pospay.sh` (Linux) are thin
+  re-execs itself under a freshly-created venv's own interpreter); `run_openclear.command`
+  (macOS), `run_openclear.bat` (Windows), and `run_openclear.sh` (Linux) are thin
   platform-specific wrappers around it — all three just locate a Python interpreter and
   hand off to the same script
 
@@ -993,10 +996,10 @@ The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs
 
 Copyright (C) 2026 Chaffed
 
-PosPay is free software: you can redistribute it and/or modify it under the terms of the
+OpenClear is free software: you can redistribute it and/or modify it under the terms of the
 GNU Affero General Public License as published by the Free Software Foundation, either
 version 3 of the License, or (at your option) any later version.
 
-This means that if you run a modified version of PosPay as a network service, you must
+This means that if you run a modified version of OpenClear as a network service, you must
 make the modified source available to that service's users — see [LICENSE](LICENSE) for
 the full text.

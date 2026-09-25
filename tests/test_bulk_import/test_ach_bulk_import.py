@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.networks.ach.bulk_import import ingest_ach_rows, ingest_nacha_entries
-from pospay.repositories.account_repo import AccountRepository
-from pospay.repositories.ach_transaction_repo import AchTransactionRepository
-from pospay.services import ach_authorization_service
+from openclear.networks.ach.bulk_import import ingest_ach_rows, ingest_nacha_entries
+from openclear.repositories.account_repo import AccountRepository
+from openclear.repositories.ach_transaction_repo import AchTransactionRepository
+from openclear.services import ach_authorization_service
 from datetime import date
 
 
@@ -67,7 +67,7 @@ def test_ach_rows_bad_account_isolated(db_session, tenant_factory):
 
 
 def test_ingest_nacha_entries_creates_transactions(db_session, tenant_factory):
-    from pospay.bulk_import.nacha import NachaEntry
+    from openclear.bulk_import.nacha import NachaEntry
 
     tenant, account, users = tenant_factory.make(slug="bulk-ach-nacha")
     ach_authorization_service.create_ach_authorization(
@@ -111,7 +111,7 @@ def test_ingest_nacha_entries_creates_transactions(db_session, tenant_factory):
 
 
 def test_ingest_nacha_entries_unmatched_account_reported(db_session, tenant_factory):
-    from pospay.bulk_import.nacha import NachaEntry
+    from openclear.bulk_import.nacha import NachaEntry
 
     tenant, account, users = tenant_factory.make(slug="bulk-ach-nacha-bad-acct")
     entry = NachaEntry(
@@ -158,7 +158,7 @@ def test_ingest_ach_rows_auto_create_accounts(db_session, tenant_factory):
 
 
 def test_ingest_nacha_entries_auto_create_accounts(db_session, tenant_factory):
-    from pospay.bulk_import.nacha import NachaEntry
+    from openclear.bulk_import.nacha import NachaEntry
 
     tenant, _account, users = tenant_factory.make(slug="bulk-ach-nacha-auto-create")
     entry = NachaEntry(

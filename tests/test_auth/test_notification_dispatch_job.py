@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.db.session import get_session_factory
-from pospay.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
-from pospay.services import notification_service
-from pospay.workers import tasks
+from openclear.db.session import get_session_factory
+from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
+from openclear.services import notification_service
+from openclear.workers import tasks
 
 
 class _FakeEmailProvider:

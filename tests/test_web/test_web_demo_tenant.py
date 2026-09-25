@@ -4,10 +4,10 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from pospay.config import get_settings
-from pospay.domain.issued_item import IssuedItem
-from pospay.domain.user import User
-from pospay.services import account_service, demo_tenant_service, issued_item_service
+from openclear.config import get_settings
+from openclear.domain.issued_item import IssuedItem
+from openclear.domain.user import User
+from openclear.services import account_service, demo_tenant_service, issued_item_service
 from tests.conftest import TenantFactory
 
 
@@ -59,7 +59,7 @@ def test_manual_reset_requires_admin_permission(client, db_session, monkeypatch)
     _configure_demo_password(monkeypatch)
     tenant = demo_tenant_service.ensure_demo_tenant(db_session)
 
-    from pospay.services import security_group_service, user_service
+    from openclear.services import security_group_service, user_service
 
     viewer_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Viewer")
     viewer = user_service.create_user_with_membership(

@@ -1,11 +1,11 @@
-# PosPay architecture
+# OpenClear architecture
 
-How PosPay is put together, and why. It's written for engineers changing the code. For
+How OpenClear is put together, and why. It's written for engineers changing the code. For
 setup and deployment see [README.md](../README.md), for the JSON API see
 [API.md](../API.md), and for onboarding a bank or customer see
 [RUNBOOK.md](../RUNBOOK.md).
 
-Paths below are relative to `src/pospay/` unless they start with `tests/`, `migrations/`
+Paths below are relative to `src/openclear/` unless they start with `tests/`, `migrations/`
 or `docs/`.
 
 ## Contents
@@ -29,8 +29,8 @@ or `docs/`.
 
 Positive pay: a bank's business customer tells the bank which checks it wrote (issued
 items) and which ACH debits it expects (authorization rules). When a check is presented
-or an ACH debit arrives, PosPay compares it with what the customer said. If it matches,
-it clears. If it doesn't, PosPay raises an **exception**, and a person decides whether to
+or an ACH debit arrives, OpenClear compares it with what the customer said. If it matches,
+it clears. If it doesn't, OpenClear raises an **exception**, and a person decides whether to
 pay or return it before the settlement deadline.
 
 ```
@@ -100,7 +100,7 @@ carry a **denormalized `customer_id`** copied from their account at creation tim
 makes the customer filter a single-column `WHERE` rather than a join, and it's also what
 per-customer ML training groups on.
 
-The **platform operator** (whoever runs the PosPay installation) is not a tenant. They act
+The **platform operator** (whoever runs the OpenClear installation) is not a tenant. They act
 through platform API keys (`domain/platform_api_key.py`, `auth/platform_api_key_deps.py`)
 with explicit scopes, for example running the shared ML model (`api/v1/platform_ml.py`)
 or reading usage metrics.
@@ -400,7 +400,7 @@ them even if a future change adds them by mistake.
 Two kinds of background work:
 
 - **Scheduled jobs** (`workers/tasks.py`, started by `workers/scheduler.py` when their
-  `POSPAY_*` flags are on): ML retrain, dropbox import, notification sending, the
+  `OPENCLEAR_*` flags are on): ML retrain, dropbox import, notification sending, the
   expired-disposition sweep, and the demo tenant reset. On Postgres each run takes a
   per-job advisory lock (`workers/leader_lock.py`), so with several instances only one
   runs each tick. The jobs are plain functions, so an external cron can call them instead.

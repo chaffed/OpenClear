@@ -11,20 +11,20 @@ from pathlib import Path
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.domain.bulk_upload_file import BulkUploadSource
-from pospay.repositories.bulk_upload_file_repo import BulkUploadFileRepository
-from pospay.repositories.issued_item_repo import IssuedItemRepository
-from pospay.repositories.paid_item_repo import PaidItemRepository
-from pospay.services import customer_service, dropbox_import_service
-from pospay.services.customer_service import CustomerInput
+from openclear.config import get_settings
+from openclear.domain.bulk_upload_file import BulkUploadSource
+from openclear.repositories.bulk_upload_file_repo import BulkUploadFileRepository
+from openclear.repositories.issued_item_repo import IssuedItemRepository
+from openclear.repositories.paid_item_repo import PaidItemRepository
+from openclear.services import customer_service, dropbox_import_service
+from openclear.services.customer_service import CustomerInput
 
 _OLD_ENOUGH = 60  # seconds in the past -- comfortably older than the default 30s age gate
 
 
 def _configure_dropbox(monkeypatch, tmp_path) -> Path:
     root = tmp_path / "dropbox"
-    monkeypatch.setenv("POSPAY_AUTO_IMPORT_DROPBOX_DIR", str(root))
+    monkeypatch.setenv("OPENCLEAR_AUTO_IMPORT_DROPBOX_DIR", str(root))
     get_settings.cache_clear()
     return root
 
@@ -146,7 +146,7 @@ def test_malformed_file_moves_to_failed_and_does_not_block_the_rest_of_the_scan(
 
 def test_oversized_file_rejected_unread(db_session, tenant_factory, monkeypatch, tmp_path):
     root = _configure_dropbox(monkeypatch, tmp_path)
-    monkeypatch.setenv("POSPAY_AUTO_IMPORT_MAX_FILE_BYTES", "10")
+    monkeypatch.setenv("OPENCLEAR_AUTO_IMPORT_MAX_FILE_BYTES", "10")
     get_settings.cache_clear()
     tenant, account, _users = tenant_factory.make(slug="dropbox-too-big")
     path = _drop(root, tenant.slug, "issued_items", "big.csv", _issued_items_csv([(account.account_number, "9001", "150.00")]))
@@ -166,7 +166,7 @@ def test_customer_subdirectory_is_scoped_to_that_customer(db_session, tenant_fac
     customer = customer_service.create_customer(
         db_session, tenant.id, CustomerInput(customer_number="CUST1", name="Client One")
     )
-    from pospay.services import account_service
+    from openclear.services import account_service
 
     account = account_service.create_account(
         db_session, tenant.id, account_service.AccountInput(account_number="7777", name="Client Acct", customer_id=customer.id)
@@ -197,7 +197,7 @@ def test_scan_scoped_to_one_customer_id_never_touches_tenant_wide_or_other_custo
     tenant, account, _users = tenant_factory.make(slug="dropbox-customer-isolation")
     customer_a = customer_service.create_customer(db_session, tenant.id, CustomerInput(customer_number="A", name="Customer A"))
     customer_b = customer_service.create_customer(db_session, tenant.id, CustomerInput(customer_number="B", name="Customer B"))
-    from pospay.services import account_service
+    from openclear.services import account_service
 
     account_a = account_service.create_account(
         db_session, tenant.id, account_service.AccountInput(account_number="1111", name="A Acct", customer_id=customer_a.id)
@@ -306,7 +306,7 @@ def _tiny_tiff() -> bytes:
 
 
 def test_nacha_dispatch(db_session, tenant_factory, monkeypatch, tmp_path):
-    from pospay.repositories.ach_transaction_repo import AchTransactionRepository
+    from openclear.repositories.ach_transaction_repo import AchTransactionRepository
     from tests.test_bulk_import.test_nacha import _batch_control, _batch_header, _entry_detail, _entry_spec
 
     root = _configure_dropbox(monkeypatch, tmp_path)

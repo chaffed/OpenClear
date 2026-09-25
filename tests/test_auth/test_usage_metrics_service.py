@@ -4,14 +4,14 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from pospay.domain.ach_transaction import AchTransactionType
-from pospay.domain.bulk_upload_file import BulkUploadKind
-from pospay.domain.decision import DecisionOutcome
-from pospay.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import (
+from openclear.domain.ach_transaction import AchTransactionType
+from openclear.domain.bulk_upload_file import BulkUploadKind
+from openclear.domain.decision import DecisionOutcome
+from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import (
     account_service,
     bulk_upload_file_service,
     customer_service,
@@ -21,7 +21,7 @@ from pospay.services import (
     usage_metrics_service,
     user_service,
 )
-from pospay.db.tenancy import TenantContext
+from openclear.db.tenancy import TenantContext
 from tests.conftest import TenantFactory
 import uuid
 
@@ -147,8 +147,8 @@ def test_get_tenant_usage_users_counts_distinct_humans_not_memberships(db_sessio
 
 
 def test_get_tenant_usage_returns_counts_regardless_of_decision_source(db_session, tenant_factory):
-    from pospay.domain.customer_disposition_setting import DispositionMode
-    from pospay.services import auto_disposition_service
+    from openclear.domain.customer_disposition_setting import DispositionMode
+    from openclear.services import auto_disposition_service
 
     tenant, account, users = tenant_factory.make(slug="usage-metrics-auto-returns")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))

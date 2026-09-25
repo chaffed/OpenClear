@@ -4,8 +4,8 @@
 import zipfile
 from io import BytesIO
 
-from pospay.services import security_group_service, user_service
-from pospay.services.security_group_service import SecurityGroupInput
+from openclear.services import security_group_service, user_service
+from openclear.services.security_group_service import SecurityGroupInput
 from tests.conftest import TenantFactory
 
 
@@ -95,7 +95,7 @@ def test_download_404s_for_a_job_that_does_not_exist(client, db_session, tenant_
 
 
 def test_customer_scoped_export_flow_via_web(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, _users = tenant_factory.make(slug="web-export-customer")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
@@ -146,7 +146,7 @@ def _make_customer_scoped_exporter(db_session, tenant, email="cust-exporter@exam
     """A customer's own user whose (misconfigured or deliberate) group grants
     data_export:run — the permission is intentionally NOT masked for customer-scoped
     sessions, so the routes themselves must confine it to that one customer."""
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     own = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="OWN", name="Own Co"))
     other = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="OTH", name="Other Co"))

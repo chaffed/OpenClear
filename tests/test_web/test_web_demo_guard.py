@@ -12,12 +12,12 @@ import uuid
 import pytest
 from fastapi.routing import APIRoute
 
-import pospay.api.v1 as api_v1
-import pospay.web.routers as web_routers
-from pospay.config import get_settings
-from pospay.services import demo_tenant_service
-from pospay.web.demo_guard import _LOCKED_PATTERNS, DEMO_LOCKED_MESSAGE, is_locked_in_demo
-from pospay.workers import tasks
+import openclear.api.v1 as api_v1
+import openclear.web.routers as web_routers
+from openclear.config import get_settings
+from openclear.services import demo_tenant_service
+from openclear.web.demo_guard import _LOCKED_PATTERNS, DEMO_LOCKED_MESSAGE, is_locked_in_demo
+from openclear.workers import tasks
 from tests.conftest import TenantFactory, login_headers
 
 DEMO_PASSWORD = "DemoGuardTest123!"
@@ -125,7 +125,7 @@ def test_demo_pages_say_it_is_a_demo(client, demo, tenant_factory):
 
 
 def test_scheduled_reset_undoes_visitor_changes(client, db_session, session_factory, demo, monkeypatch):
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     _login_demo(client, demo)
     client.post("/ui/settings/messages", data={"csrf_token": client.cookies.get("csrf_token"),
@@ -147,7 +147,7 @@ def test_scheduled_reset_is_a_no_op_without_a_demo(session_factory, monkeypatch)
 
 
 def test_scheduler_registers_the_reset_only_when_the_demo_is_enabled(monkeypatch):
-    from pospay.workers import scheduler
+    from openclear.workers import scheduler
 
     monkeypatch.setattr(get_settings(), "demo_tenant_enabled", True)
     assert scheduler.demo_reset_enabled(get_settings())

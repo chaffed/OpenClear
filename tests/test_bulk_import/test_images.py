@@ -6,7 +6,7 @@ import io
 import pytest
 from PIL import Image
 
-from pospay.bulk_import.images import UnsupportedImageError, normalize_and_split_image
+from openclear.bulk_import.images import UnsupportedImageError, normalize_and_split_image
 
 
 def _encode(fmt: str, *, size=(20, 10), color="white") -> bytes:

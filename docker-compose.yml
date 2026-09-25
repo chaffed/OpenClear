@@ -1,6 +1,6 @@
 # Local convenience for testing against Postgres instead of the SQLite default -- NOT a
 # production deployment descriptor (see README.md's "Docker" section for that; the two
-# Dockerfiles there are what actually get deployed). Runs with POSPAY_ENVIRONMENT=
+# Dockerfiles there are what actually get deployed). Runs with OPENCLEAR_ENVIRONMENT=
 # development, same as the local one-click launcher, so it uses the checked-in dev_keys/
 # rather than requiring real generated signing keys just to try Postgres out --
 # config.py::assert_production_safe is a no-op outside of production, by design.
@@ -8,17 +8,17 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: pospay
-      POSTGRES_PASSWORD: pospay
-      POSTGRES_DB: pospay
+      POSTGRES_USER: openclear
+      POSTGRES_PASSWORD: openclear
+      POSTGRES_DB: openclear
     ports:
       # Loopback only: the dev password below is public, so never expose this database
       # to the rest of the network. The app container reaches it over the compose network.
       - "127.0.0.1:5432:5432"
     volumes:
-      - pospay_postgres_data:/var/lib/postgresql/data
+      - openclear_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pospay"]
+      test: ["CMD-SHELL", "pg_isready -U openclear"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -32,13 +32,13 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSPAY_ENVIRONMENT: development
-      POSPAY_DATABASE_URL: postgresql+psycopg://pospay:pospay@postgres:5432/pospay
+      OPENCLEAR_ENVIRONMENT: development
+      OPENCLEAR_DATABASE_URL: postgresql+psycopg://openclear:openclear@postgres:5432/openclear
     volumes:
       - pospay_data:/data
     ports:
       - "8000:8000"
 
 volumes:
-  pospay_postgres_data:
+  openclear_postgres_data:
   pospay_data:

@@ -19,21 +19,21 @@ primary_region = "iad"
   # every visitor looks like the same client; get it wrong the other way (too high) and
   # a client-supplied header could be trusted instead. See README.md's "Reverse proxy /
   # WAF deployment" section.
-  POSPAY_TRUSTED_PROXY_COUNT = "1"
-  POSPAY_WEBAUTHN_RP_ID = "pospay-demo.fly.dev"
-  POSPAY_WEBAUTHN_ORIGIN = "https://pospay-demo.fly.dev"
-  POSPAY_DEMO_TENANT_ENABLED = "true"
+  OPENCLEAR_TRUSTED_PROXY_COUNT = "1"
+  OPENCLEAR_WEBAUTHN_RP_ID = "pospay-demo.fly.dev"
+  OPENCLEAR_WEBAUTHN_ORIGIN = "https://pospay-demo.fly.dev"
+  OPENCLEAR_DEMO_TENANT_ENABLED = "true"
   # Signing keys live on the persistent volume mounted below, uploaded once via `fly ssh
   # console` -- see the deployment walkthrough. Not secrets themselves (the PATH isn't
   # sensitive, only the file contents are, which live on the volume, not here).
-  POSPAY_JWT_PRIVATE_KEY_PATH = "/data/keys/jwt_private.pem"
-  POSPAY_JWT_PUBLIC_KEY_PATH = "/data/keys/jwt_public.pem"
-  POSPAY_FILE_SIGNING_PRIVATE_KEY_PATH = "/data/keys/file_signing_private.pem"
-  POSPAY_FILE_SIGNING_PUBLIC_KEY_PATH = "/data/keys/file_signing_public.pem"
-  POSPAY_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH = "/data/keys/audit_log_signing_private.pem"
-  POSPAY_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH = "/data/keys/audit_log_signing_public.pem"
-  POSPAY_WSUD_SIGNING_PRIVATE_KEY_PATH = "/data/keys/wsud_signing_private.pem"
-  POSPAY_WSUD_SIGNING_PUBLIC_KEY_PATH = "/data/keys/wsud_signing_public.pem"
+  OPENCLEAR_JWT_PRIVATE_KEY_PATH = "/data/keys/jwt_private.pem"
+  OPENCLEAR_JWT_PUBLIC_KEY_PATH = "/data/keys/jwt_public.pem"
+  OPENCLEAR_FILE_SIGNING_PRIVATE_KEY_PATH = "/data/keys/file_signing_private.pem"
+  OPENCLEAR_FILE_SIGNING_PUBLIC_KEY_PATH = "/data/keys/file_signing_public.pem"
+  OPENCLEAR_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH = "/data/keys/audit_log_signing_private.pem"
+  OPENCLEAR_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH = "/data/keys/audit_log_signing_public.pem"
+  OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH = "/data/keys/wsud_signing_private.pem"
+  OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH = "/data/keys/wsud_signing_public.pem"
 
 [http_service]
   internal_port = 8000

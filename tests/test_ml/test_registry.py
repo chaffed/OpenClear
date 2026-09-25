@@ -3,9 +3,9 @@
 
 import pytest
 
-from pospay.domain.ml_model import MlModelStatus
-from pospay.ml.registry import activate_model, create_model_row
-from pospay.services import customer_service
+from openclear.domain.ml_model import MlModelStatus
+from openclear.ml.registry import activate_model, create_model_row
+from openclear.services import customer_service
 
 
 def _make_row(db_session, *, customer_id=None, status=MlModelStatus.TRAINING):

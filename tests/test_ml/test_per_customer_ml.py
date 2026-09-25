@@ -10,12 +10,12 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.customer_ml_setting import MlScoringMode
-from pospay.domain.decision import DecisionOutcome
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import account_service, customer_service, decision_service, issued_item_service
+from openclear.db.tenancy import TenantContext
+from openclear.domain.customer_ml_setting import MlScoringMode
+from openclear.domain.decision import DecisionOutcome
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import account_service, customer_service, decision_service, issued_item_service
 
 
 def _make_customer_with_account(db_session, tenant, customer_number: str):
@@ -103,7 +103,7 @@ def test_exception_denormalizes_customer_id_from_source_item(db_session, tenant_
 
 
 def test_train_model_scoped_to_customer_ignores_other_customers_decisions(db_session, tenant_factory):
-    from pospay.ml.train import InsufficientTrainingData, train_model
+    from openclear.ml.train import InsufficientTrainingData, train_model
 
     tenant, _account, users = tenant_factory.make(slug="ml-cust-scope")
     customer_a, account_a = _make_customer_with_account(db_session, tenant, "C-A")
@@ -124,8 +124,8 @@ def test_train_model_scoped_to_customer_ignores_other_customers_decisions(db_ses
 
 
 def test_customer_model_and_global_model_are_independent_active_slots(db_session, tenant_factory):
-    from pospay.ml.registry import get_active_model_row
-    from pospay.ml.train import train_model
+    from openclear.ml.registry import get_active_model_row
+    from openclear.ml.train import train_model
 
     tenant, account, users = tenant_factory.make(slug="ml-cust-slots")
     customer, customer_account = _make_customer_with_account(db_session, tenant, "C-1")
@@ -145,8 +145,8 @@ def test_customer_model_and_global_model_are_independent_active_slots(db_session
 
 
 def test_score_exception_auto_switches_to_customer_model_once_active(db_session, tenant_factory):
-    from pospay.ml.predict import reset_model_cache, score_exception
-    from pospay.ml.train import train_model
+    from openclear.ml.predict import reset_model_cache, score_exception
+    from openclear.ml.train import train_model
 
     reset_model_cache()
     tenant, account, users = tenant_factory.make(slug="ml-cust-autoswitch")
@@ -175,9 +175,9 @@ def test_score_exception_auto_switches_to_customer_model_once_active(db_session,
 
 
 def test_mode_global_override_forces_global_scoring_even_with_active_customer_model(db_session, tenant_factory):
-    from pospay.ml.predict import reset_model_cache, score_exception
-    from pospay.ml.train import train_model
-    from pospay.services import customer_ml_service
+    from openclear.ml.predict import reset_model_cache, score_exception
+    from openclear.ml.train import train_model
+    from openclear.services import customer_ml_service
 
     reset_model_cache()
     tenant, account, users = tenant_factory.make(slug="ml-cust-globaloverride")
@@ -198,9 +198,9 @@ def test_mode_global_override_forces_global_scoring_even_with_active_customer_mo
 
 
 def test_mode_customer_falls_back_to_global_when_no_customer_model_trained_yet(db_session, tenant_factory):
-    from pospay.ml.predict import reset_model_cache, score_exception
-    from pospay.ml.train import train_model
-    from pospay.services import customer_ml_service
+    from openclear.ml.predict import reset_model_cache, score_exception
+    from openclear.ml.train import train_model
+    from openclear.services import customer_ml_service
 
     reset_model_cache()
     tenant, account, users = tenant_factory.make(slug="ml-cust-fallback")
@@ -220,9 +220,9 @@ def test_mode_customer_falls_back_to_global_when_no_customer_model_trained_yet(d
 
 
 def test_retrain_job_trains_a_customer_model_once_enough_customer_decisions_exist(db_session, tenant_factory, monkeypatch):
-    import pospay.workers.tasks as tasks_module
-    from pospay.config import get_settings
-    from pospay.ml.registry import get_active_model_row
+    import openclear.workers.tasks as tasks_module
+    from openclear.config import get_settings
+    from openclear.ml.registry import get_active_model_row
 
     tenant, _account, users = tenant_factory.make(slug="ml-cust-retrainjob")
     customer, customer_account = _make_customer_with_account(db_session, tenant, "C-1")
@@ -230,7 +230,7 @@ def test_retrain_job_trains_a_customer_model_once_enough_customer_decisions_exis
 
     # See test_train_and_predict.py::test_retrain_job_skips_networks_below_threshold's
     # comment — patch the name as workers/tasks.py itself references it, not
-    # pospay.db.session's own attribute.
+    # openclear.db.session's own attribute.
     monkeypatch.setattr(tasks_module, "get_session_factory", lambda: lambda: db_session)
     original_threshold = get_settings().ml_min_new_decisions_for_retrain
     get_settings().ml_min_new_decisions_for_retrain = 10

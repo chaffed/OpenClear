@@ -4,9 +4,9 @@
 import re
 from pathlib import Path
 
-from pospay.domain.bulk_upload_file import BulkUploadKind
-from pospay.repositories.bulk_upload_file_repo import BulkUploadFileRepository
-from pospay.services import account_service, customer_service, security_group_service, user_service
+from openclear.domain.bulk_upload_file import BulkUploadKind
+from openclear.repositories.bulk_upload_file_repo import BulkUploadFileRepository
+from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 
@@ -211,8 +211,8 @@ def test_bulk_upload_download_never_echoes_the_uploaded_content_type(client, db_
     origin would make the file loadable by a <script src>."""
     import uuid as _uuid
 
-    from pospay.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
-    from pospay.bulk_import.file_storage import save_uploaded_file
+    from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
+    from openclear.bulk_import.file_storage import save_uploaded_file
 
     tenant, _account, users = tenant_factory.make(slug="bulk-download-type")
     upload_id = _uuid.uuid4()

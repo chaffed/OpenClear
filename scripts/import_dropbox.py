@@ -7,12 +7,12 @@ services/dropbox_import_service.py for the directory layout and isolation model.
 what a Unix cron entry or a Windows Task Scheduler action should invoke; it does exactly
 what the in-app scheduler's job does (workers/tasks.py::dropbox_import_job), just as a
 one-shot process instead of a long-running background thread. Use this instead of the
-in-app scheduler (POSPAY_AUTO_IMPORT_ENABLED=false, the default) when you'd rather control
-the schedule from the OS than from PosPay's own config.
+in-app scheduler (OPENCLEAR_AUTO_IMPORT_ENABLED=false, the default) when you'd rather control
+the schedule from the OS than from OpenClear's own config.
 
-Run with the same environment (POSPAY_* env vars, or a .env file in the working
+Run with the same environment (OPENCLEAR_* env vars, or a .env file in the working
 directory) the app itself runs with — it needs the same database connection and the
-same POSPAY_AUTO_IMPORT_DROPBOX_DIR:
+same OPENCLEAR_AUTO_IMPORT_DROPBOX_DIR:
 
     python scripts/import_dropbox.py
 
@@ -24,8 +24,8 @@ all (e.g. a database connection error).
 import logging
 import sys
 
-from pospay.db.session import get_session_factory
-from pospay.services.dropbox_import_service import scan_and_import_all_tenants
+from openclear.db.session import get_session_factory
+from openclear.services.dropbox_import_service import scan_and_import_all_tenants
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("import_dropbox")

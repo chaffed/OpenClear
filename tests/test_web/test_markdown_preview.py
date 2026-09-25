@@ -6,7 +6,7 @@ import io
 
 from PIL import Image
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 from tests.conftest import TenantFactory
 
 

@@ -7,7 +7,7 @@ import io
 import pytest
 from PIL import Image
 
-from pospay.services.message_content import InvalidMessageContent, validate_and_normalize_message
+from openclear.services.message_content import InvalidMessageContent, validate_and_normalize_message
 
 
 def _png_data_uri(size=(10, 10), color="red"):

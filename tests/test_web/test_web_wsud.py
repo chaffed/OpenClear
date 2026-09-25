@@ -4,14 +4,14 @@
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.ach_transaction import (
+from openclear.domain.ach_transaction import (
     AchMatchStatus,
     AchSettlementStatus,
     AchTransaction,
     AchTransactionSource,
     AchTransactionType,
 )
-from pospay.services import account_service, customer_service, security_group_service, user_service
+from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 

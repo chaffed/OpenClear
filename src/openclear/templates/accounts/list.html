@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros/pagination.html" as pg %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Accounts — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About accounts{% endblock %}
+{% block help_body %}
+<p>An account is one of your bank accounts that OpenClear watches for positive-pay
+  matching — every issued item, paid item, stop payment, and ACH activity is tied to
+  one. An account with no customer assigned is a "house" account, visible only to
+  bank-wide staff.</p>
+<p><strong>ACH debit mode</strong>: <code>filter_by_authorization</code> evaluates
+  debits against your ACH Authorizations; <code>block_all</code> rejects every ACH
+  debit outright, no exceptions.</p>
+<p><strong>External account ID</strong> (optional) is a customer's own internal
+  reference for the account — once set, bulk file uploads (issued items, paid items, ACH)
+  can use it in place of the real account number, so a customer never has to learn
+  OpenClear's own numbering just to submit a file.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Accounts</h1>
+    {% if can(ctx, "account:write") %}
+    <div class="actions">
+      <a href="/ui/accounts/new" class="button">{{ icon("add") }}New account</a>
+      <a href="/ui/accounts/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>
+    </div>
+    {% endif %}
+  </div>
+  {% if page_obj.total_count > 0 %}
+  <table data-sortable>
+    <thead><tr><th>Account number</th><th>Name</th>{% if not ctx.customer_id %}<th>Customer</th>{% endif %}<th>ACH debit mode</th><th>External ID</th></tr></thead>
+    <tbody>
+      {% for a in page_obj.items %}
+      <tr>
+        <td>{{ a.account_number }}</td>
+        <td>{{ a.name }}</td>
+        {% if not ctx.customer_id %}<td>{{ customer_names.get(a.customer_id, "—") }}</td>{% endif %}
+        <td><span class="badge">{{ a.ach_debit_block_mode.value }}</span></td>
+        <td>{{ a.external_account_id or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ pg.pager(page_obj, request) }}
+  {% else %}
+  <p>No accounts yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

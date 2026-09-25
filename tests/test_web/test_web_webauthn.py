@@ -3,8 +3,8 @@
 
 import webauthn
 
-from pospay.config import get_settings
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.config import get_settings
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 from tests.conftest import TenantFactory
 from tests.test_auth.webauthn_helpers import FakeAuthenticator
 
@@ -104,7 +104,7 @@ def test_full_web_login_mfa_flow(client, db_session, tenant_factory):
     dashboard = client.get("/ui/")
     assert dashboard.status_code == 200
 
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.user_repo import UserRepository
 
     db_session.expire_all()
     assert UserRepository(db_session).get(users["admin"].id).last_login_at is not None

@@ -1,0 +1,22 @@
+{% extends extend_from|default("docs/_layout.html") %}
+{% import "docs/_macros.html" as docs %}
+
+{% block doc_body %}
+<h1>Audit Log</h1>
+<p>The audit log is an immutable, tenant-wide record of every write action taken in
+OpenClear, across both the web UI and the API — who did what, and when.</p>
+
+{{ docs.screenshot("audit_log", "Audit log screen") }}
+
+<h2>How to</h2>
+<ul>
+  <li><strong>Browse</strong> — open <a href="/ui/audit-log">Audit Log</a> to see entries
+  in order, most recent first.</li>
+  <li><strong>Verify integrity</strong> — the "Verify" action checks the log's hash chain
+  end to end, confirming no entry has been altered or removed since it was written.</li>
+</ul>
+
+<p>This is a bank-wide view (not available in a customer-scoped session) and, like other
+management-oriented permissions, isn't automatically included in every default security
+group — only Admin has it out of the box.</p>
+{% endblock %}

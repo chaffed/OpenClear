@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from pospay.domain.audit_log_entry import AuditLogEntry
+from openclear.domain.audit_log_entry import AuditLogEntry
 from tests.conftest import TenantFactory, login_headers
 
 
@@ -26,7 +26,7 @@ def test_audit_log_requires_permission(client, tenant_factory):
 
 
 def test_issued_item_create_and_void_appear_in_audit_log(client, db_session, tenant_factory):
-    from pospay.repositories.issued_item_repo import IssuedItemRepository
+    from openclear.repositories.issued_item_repo import IssuedItemRepository
 
     tenant, account, users = tenant_factory.make(slug="audit-web-issued-item")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -91,9 +91,9 @@ def test_decision_recommend_and_decide_appear_in_audit_log(client, db_session, t
     from datetime import date
     from decimal import Decimal
 
-    from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-    from pospay.repositories.exception_repo import ExceptionRepository
-    from pospay.services import issued_item_service
+    from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+    from openclear.repositories.exception_repo import ExceptionRepository
+    from openclear.services import issued_item_service
 
     tenant, account, users = tenant_factory.make(slug="audit-web-decision", require_dual_control=True)
     issued_item_service.create_issued_item(

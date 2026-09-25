@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.auth.password_policy import PasswordPolicy, describe, effective_policy, validate_password
+from openclear.auth.password_policy import PasswordPolicy, describe, effective_policy, validate_password
 
 
 def _tenant(**overrides):

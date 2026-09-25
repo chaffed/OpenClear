@@ -1,4 +1,4 @@
-# PosPay implementation runbook
+# OpenClear implementation runbook
 
 This is a standalone version of the in-app "Getting Started" checklists
 (`/ui/wizard/bank` and `/ui/customers/{id}/wizard`) — useful for reading or printing
@@ -6,13 +6,13 @@ outside a browser session, e.g. during a kickoff call with a bank's implementati
 Each step below links to the real page in the app; nothing here needs to be done through
 a separate "wizard" flow — the checklists just track which of these you've completed.
 
-Two runbooks: **implementing a new bank** (a new PosPay tenant) and **implementing a new
+Two runbooks: **implementing a new bank** (a new OpenClear tenant) and **implementing a new
 customer** (one of a bank's own business clients, with its own segregated data).
 
 ## Part 1 — Implementing a new bank
 
 A tenant (and its first admin login) must already exist before any of this — that's a
-one-time bootstrap step run by whoever is deploying PosPay
+one-time bootstrap step run by whoever is deploying OpenClear
 (`scripts/launcher.py` / `services/provisioning_service.py::create_tenant_with_admin`),
 not a self-service signup flow. Everything below assumes you can already log in.
 
@@ -27,13 +27,13 @@ not a self-service signup flow. Everything below assumes you can already log in.
   match how your organization splits responsibilities, or whether you'll need custom
   groups with a different permission mix. See the full permission catalog at
   `/ui/security-groups`.
-- The account numbers and names for every bank account PosPay should monitor.
+- The account numbers and names for every bank account OpenClear should monitor.
 - Your initial staff list: each person's email and which security group they should
   start in.
 - If you plan to use single sign-on (Okta or Azure AD): the identity provider's issuer
   URL, a client ID/secret for a registered OIDC application, which claim carries
   group/role membership (commonly `groups` or `roles`), and — critically — **the mapping
-  from your own IdP groups to PosPay security groups**, since federated login always
+  from your own IdP groups to OpenClear security groups**, since federated login always
   requires at least one such mapping before anyone can sign in that way (see
   `API.md`/the SSO admin help text for why: IdP authentication alone is never treated as
   sufficient, current group membership always is).
@@ -102,7 +102,7 @@ redirects straight into this checklist at `/ui/customers/{id}/wizard`.
 - **Data export**: if granted the `data_export:run` permission (deliberately *not*
   included in the default Admin group — see the Security Groups page), a bank or a
   single customer can generate a full, downloadable export of their own data and files
-  at any time, for migrating away from PosPay. `/ui/settings/data-export` (bank-wide) or
+  at any time, for migrating away from OpenClear. `/ui/settings/data-export` (bank-wide) or
   `/ui/customers/{id}/data-export` (one customer).
 - **Audit log**: every setup action above is recorded in the tamper-evident action log
   (`/ui/audit-log`, `audit_log:read` permission) — useful for confirming exactly who

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Time PosPay's hot paths against a database filled by seed_volume.py (SCALE_PLAN.md S0).
+"""Time OpenClear's hot paths against a database filled by seed_volume.py (SCALE_PLAN.md S0).
 
-    POSPAY_DATABASE_URL=postgresql+psycopg://pospay:pospay@127.0.0.1:55432/pospay_perf \\
+    OPENCLEAR_DATABASE_URL=postgresql+psycopg://openclear:openclear@127.0.0.1:55432/openclear_perf \\
         python scripts/perf/measure.py --ingest-rows 2000
 
 Prints a Markdown report: page and API timings (through the real app, as perf-bank-0's
@@ -25,11 +25,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-os.environ.setdefault("POSPAY_ENVIRONMENT", "development")
-os.environ["POSPAY_RATE_LIMIT_PER_MINUTE"] = "1000000"
-_scratch = Path(tempfile.mkdtemp(prefix="pospay-perf-"))
+os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
+os.environ["OPENCLEAR_RATE_LIMIT_PER_MINUTE"] = "1000000"
+_scratch = Path(tempfile.mkdtemp(prefix="openclear-perf-"))
 for name in ("ML_ARTIFACT_DIR", "CHECK_IMAGE_STORAGE_DIR", "TENANT_ASSET_STORAGE_DIR", "BULK_UPLOAD_STORAGE_DIR", "DATA_EXPORT_STORAGE_DIR"):
-    os.environ.setdefault(f"POSPAY_{name}", str(_scratch / name.lower()))
+    os.environ.setdefault(f"OPENCLEAR_{name}", str(_scratch / name.lower()))
 
 BANK = "perf-bank-0"
 PASSWORD = "Perf-test-password-1"
@@ -51,7 +51,7 @@ def _timed(fn):
 def _pages(repeats: int) -> None:
     from fastapi.testclient import TestClient
 
-    from pospay.main import create_app
+    from openclear.main import create_app
 
     print("Pages and API", flush=True)
     with TestClient(create_app()) as client:
@@ -75,9 +75,9 @@ def _pages(repeats: int) -> None:
 
 
 def _ingest(session, tenant, rows: int) -> None:
-    from pospay.domain.account import Account
-    from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_items_bulk
-    from pospay.services import issued_item_service
+    from openclear.domain.account import Account
+    from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_items_bulk
+    from openclear.services import issued_item_service
 
     print("Bulk ingestion", flush=True)
     accounts = session.query(Account).filter(Account.tenant_id == tenant.id).limit(20).all()
@@ -102,8 +102,8 @@ def _ingest(session, tenant, rows: int) -> None:
 
 
 def _retrain(session) -> None:
-    from pospay.config import get_settings
-    from pospay.ml.train import train_model
+    from openclear.config import get_settings
+    from openclear.ml.train import train_model
 
     print("ML", flush=True)
     get_settings().ml_retrain_cooldown_seconds = 0
@@ -113,9 +113,9 @@ def _retrain(session) -> None:
 
 
 def _export(session, tenant, admin_id) -> None:
-    from pospay.db.session import get_engine
-    from pospay.domain.data_export_job import DataExportJob
-    from pospay.services import data_export_service
+    from openclear.db.session import get_engine
+    from openclear.domain.data_export_job import DataExportJob
+    from openclear.services import data_export_service
 
     print("Export", flush=True)
     job = data_export_service.request_export(session, tenant.id, admin_id)
@@ -127,8 +127,8 @@ def _export(session, tenant, admin_id) -> None:
 
 
 def _verify_chain(session, tenant) -> None:
-    from pospay.domain.audit_log_entry import AuditLogEntry
-    from pospay.services import audit_log_service
+    from openclear.domain.audit_log_entry import AuditLogEntry
+    from openclear.services import audit_log_service
 
     print("Audit", flush=True)
     count = session.query(AuditLogEntry).filter(AuditLogEntry.tenant_id == tenant.id).count()
@@ -169,17 +169,17 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--skip", nargs="*", default=[], choices=["pages", "ingest", "ml", "export", "audit", "explain"])
     args = parser.parse_args()
-    if not os.environ.get("POSPAY_DATABASE_URL"):
-        sys.exit("Set POSPAY_DATABASE_URL to the database seed_volume.py filled.")
+    if not os.environ.get("OPENCLEAR_DATABASE_URL"):
+        sys.exit("Set OPENCLEAR_DATABASE_URL to the database seed_volume.py filled.")
 
-    import pospay.domain  # noqa: F401
+    import openclear.domain  # noqa: F401
     from sqlalchemy import func, select
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.exception_item import ExceptionItem
-    from pospay.domain.paid_item import PaidItem
-    from pospay.domain.tenant import Tenant
-    from pospay.domain.user import User
+    from openclear.db.session import get_session_factory
+    from openclear.domain.exception_item import ExceptionItem
+    from openclear.domain.paid_item import PaidItem
+    from openclear.domain.tenant import Tenant
+    from openclear.domain.user import User
 
     session = get_session_factory()()
     tenant = session.execute(select(Tenant).where(Tenant.slug == BANK)).scalar_one()

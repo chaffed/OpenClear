@@ -3,7 +3,7 @@
 
 from decimal import Decimal
 
-from pospay.web.templates import _currency, _format_metrics, _render_markdown
+from openclear.web.templates import _currency, _format_metrics, _render_markdown
 
 
 def test_currency_formats_decimal():

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import customer_service, security_group_service, user_service
+from openclear.services import customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 
@@ -71,7 +71,7 @@ def test_add_existing_email_from_other_tenant_requires_confirmation(client, db_s
 def test_deactivate_and_reactivate_user(client, db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="web-users-deactivate")
     csrf = _login(client, tenant.slug, users["admin"].email)
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     membership = TenantMembershipRepository(db_session, tenant.id).list(user_id=users["viewer"].id)[0]
 
@@ -88,7 +88,7 @@ def test_deactivate_and_reactivate_user(client, db_session, tenant_factory):
 def test_unlock_button_shown_only_for_locked_users_and_clears_lockout(client, db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="web-users-unlock")
     csrf = _login(client, tenant.slug, users["admin"].email)
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     membership = TenantMembershipRepository(db_session, tenant.id).list(user_id=users["viewer"].id)[0]
 
@@ -221,7 +221,7 @@ def test_export_csv_neutralizes_formula_injection_but_json_export_is_unaffected(
 
 
 def test_export_reflects_deactivated_status(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     tenant, _account, users = tenant_factory.make(slug="web-users-export-deactivated")
     _login(client, tenant.slug, users["admin"].email)
@@ -235,7 +235,7 @@ def test_export_reflects_deactivated_status(client, db_session, tenant_factory):
 
 
 def test_edit_entitlements_page_requires_permission(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     tenant, _account, users = tenant_factory.make(slug="web-users-edit-forbidden")
     membership = TenantMembershipRepository(db_session, tenant.id).list(user_id=users["viewer"].id)[0]
@@ -246,7 +246,7 @@ def test_edit_entitlements_page_requires_permission(client, db_session, tenant_f
 
 
 def test_edit_entitlements_changes_security_group(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     tenant, _account, users = tenant_factory.make(slug="web-users-edit-group")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -273,8 +273,8 @@ def test_edit_entitlements_changes_security_group(client, db_session, tenant_fac
 
 
 def test_edit_entitlements_changes_customer_scope(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-    from pospay.services import customer_service
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-users-edit-customer")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -296,8 +296,8 @@ def test_edit_entitlements_changes_customer_scope(client, db_session, tenant_fac
 
 
 def test_edit_entitlements_shows_error_on_scope_collision(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-    from pospay.services import customer_service
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-users-edit-collision")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -342,7 +342,7 @@ def test_edit_entitlements_404s_for_unknown_membership(client, tenant_factory):
 
 
 def test_edit_entitlements_404s_for_other_tenants_membership(client, db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     tenant_a, _account_a, users_a = tenant_factory.make(slug="web-users-edit-cross-a")
     tenant_b, _account_b, users_b = tenant_factory.make(slug="web-users-edit-cross-b")
@@ -512,7 +512,7 @@ def test_access_grant_require_webauthn_checkbox_survives_needs_confirmation(clie
 
 
 def _demote_to_viewer(db_session, tenant, user):
-    from pospay.domain.tenant_membership import TenantMembership
+    from openclear.domain.tenant_membership import TenantMembership
 
     viewer = next(g for g in security_group_service.list_security_groups(db_session, tenant.id) if g.name.lower() == "viewer")
     membership = db_session.query(TenantMembership).filter_by(user_id=user.id, tenant_id=tenant.id).one()

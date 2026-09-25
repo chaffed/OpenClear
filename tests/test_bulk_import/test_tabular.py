@@ -5,7 +5,7 @@ import io
 
 import pytest
 
-from pospay.bulk_import.tabular import TabularParseError, parse_tabular_file
+from openclear.bulk_import.tabular import TabularParseError, parse_tabular_file
 
 
 def test_parses_comma_delimited_csv():

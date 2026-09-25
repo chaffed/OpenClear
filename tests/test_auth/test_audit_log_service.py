@@ -3,8 +3,8 @@
 
 import uuid
 
-from pospay.domain.audit_log_entry import AuditLogEntry
-from pospay.services import audit_log_service
+from openclear.domain.audit_log_entry import AuditLogEntry
+from openclear.services import audit_log_service
 
 
 def _record(db_session, tenant, users, action="issued_item.create", summary="did a thing"):
@@ -179,7 +179,7 @@ def test_sequence_numbers_are_per_bank(db_session, tenant_factory):
 
 
 def test_verify_chain_walks_across_batches(db_session, tenant_factory, monkeypatch):
-    from pospay.repositories.audit_log_repo import AuditLogRepository
+    from openclear.repositories.audit_log_repo import AuditLogRepository
 
     tenant, _account, users = tenant_factory.make(slug="audit-batches")
     recorded = [_record(db_session, tenant, users, summary=f"entry {n}").id for n in range(7)]

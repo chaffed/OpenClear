@@ -5,9 +5,9 @@ import uuid
 
 import pytest
 
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.repositories.user_repo import UserRepository
-from pospay.services import customer_service, security_group_service, tenant_service, user_service
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.repositories.user_repo import UserRepository
+from openclear.services import customer_service, security_group_service, tenant_service, user_service
 
 
 def test_add_user_creates_brand_new_identity(db_session, tenant_factory):

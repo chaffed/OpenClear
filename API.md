@@ -1,4 +1,4 @@
-# PosPay REST API
+# OpenClear REST API
 
 All endpoints are prefixed with `/api/v1`. This is the JSON API surface — it exists
 alongside (and, where equivalent, is backed by the same services as) the server-rendered

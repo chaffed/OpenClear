@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.auth.permissions import PERMISSION_CATALOG
-from pospay.services import security_group_service
+from openclear.auth.permissions import PERMISSION_CATALOG
+from openclear.services import security_group_service
 
 
 def test_seed_default_security_groups_matches_old_role_behavior(db_session, tenant_factory):

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.bulk_import.signing import content_hash, sign_file, verify_signature
+from openclear.bulk_import.signing import content_hash, sign_file, verify_signature
 
 
 def test_sign_and_verify_roundtrip():

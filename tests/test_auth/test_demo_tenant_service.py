@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.domain.issued_item import IssuedItem
-from pospay.domain.ml_model import MlModel
-from pospay.domain.tenant import Tenant
-from pospay.domain.user import User
-from pospay.services import account_service, demo_tenant_service, issued_item_service
+from openclear.config import get_settings
+from openclear.domain.issued_item import IssuedItem
+from openclear.domain.ml_model import MlModel
+from openclear.domain.tenant import Tenant
+from openclear.domain.user import User
+from openclear.services import account_service, demo_tenant_service, issued_item_service
 
 
 def _configure_demo_password(monkeypatch, password: str = "DemoSmokeTest123!") -> None:

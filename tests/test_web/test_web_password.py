@@ -9,13 +9,13 @@ import re
 
 from fastapi.testclient import TestClient
 
-from pospay.auth.password_policy import PasswordPolicy, validate_password
-from pospay.domain.audit_log_entry import AuditLogEntry
-from pospay.domain.notification import Notification, NotificationChannel, NotificationType
-from pospay.domain.tenant_membership import TenantMembership
-from pospay.domain.user import User
-from pospay.services import customer_service, security_group_service, user_service
-from pospay.services.security_group_service import SecurityGroupInput
+from openclear.auth.password_policy import PasswordPolicy, validate_password
+from openclear.domain.audit_log_entry import AuditLogEntry
+from openclear.domain.notification import Notification, NotificationChannel, NotificationType
+from openclear.domain.tenant_membership import TenantMembership
+from openclear.domain.user import User
+from openclear.services import customer_service, security_group_service, user_service
+from openclear.services.security_group_service import SecurityGroupInput
 from tests.conftest import TenantFactory
 
 NEW_PASSWORD = "Brand-new-password-42"
@@ -86,7 +86,7 @@ def test_user_can_change_own_password(client, db_session, tenant_factory):
 
 
 def test_password_email_is_sent_even_if_user_opted_out_of_email(client, db_session, tenant_factory):
-    from pospay.services import notification_service
+    from openclear.services import notification_service
 
     tenant, _account, users = tenant_factory.make(slug="pw-always-email")
     viewer = users["viewer"]
@@ -328,7 +328,7 @@ def test_customer_scoped_admin_cannot_reset_passwords(client, db_session, tenant
 
 
 def test_generated_temporary_password_satisfies_a_strict_policy():
-    from pospay.services.user_service import _generate_temporary_password
+    from openclear.services.user_service import _generate_temporary_password
 
     policy = PasswordPolicy(min_length=24, require_uppercase=True, require_lowercase=True, require_number=True, require_symbol=True)
     passwords = {_generate_temporary_password(policy) for _ in range(50)}

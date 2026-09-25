@@ -25,7 +25,7 @@ def upgrade() -> None:
     # HMAC-SHA256/plain hash values were String(64) (a 64-hex-char digest); an ECDSA
     # P-256 DER signature hex-encodes to up to ~144 chars, so these need to widen
     # regardless of the rename below. Existing rows (all local dev/test data — see the
-    # plan's note on pospay.db's row counts) won't re-verify under the new keys; that's
+    # plan's note on openclear.db's row counts) won't re-verify under the new keys; that's
     # an accepted one-time cutover cost for a pre-launch platform, not a migration bug.
     with op.batch_alter_table('bulk_upload_file') as batch_op:
         batch_op.alter_column('hmac_signature_hex', new_column_name='signature_hex', type_=sa.String(200), existing_nullable=False)

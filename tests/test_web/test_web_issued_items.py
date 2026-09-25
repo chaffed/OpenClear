@@ -86,7 +86,7 @@ def test_issued_items_list_paginates(client, db_session, tenant_factory):
     from datetime import date
     from decimal import Decimal
 
-    from pospay.services import issued_item_service
+    from openclear.services import issued_item_service
 
     tenant, account, users = tenant_factory.make(slug="web-issued-items-pagination")
     for i in range(60):

@@ -1,0 +1,28 @@
+{% extends extend_from|default("docs/_layout.html") %}
+{% import "docs/_macros.html" as docs %}
+
+{% block doc_body %}
+<h1>ACH Authorizations &amp; Allow Rules</h1>
+<p>An ACH authorization is an allow rule for a specific account: it tells OpenClear which
+originators are pre-approved to debit or credit that account, so matching transactions
+don't generate an exception. Rules can be scoped by originator ID, originator name,
+receiver ID, and SEC code.</p>
+
+<h2>How to</h2>
+<ul>
+  <li><strong>Create a rule from scratch</strong> — open
+  <a href="/ui/ach/authorizations">ACH Authorizations</a> and choose "New," then fill in
+  the account and originator details.</li>
+  <li><strong>Create a rule directly from an exception</strong> — when you're reviewing an
+  ACH exception that turns out to be legitimate, use the "Add allow rule" action on the
+  exception. It opens the new-authorization form already filled in with that transaction's
+  account, originator ID, originator name, receiver ID, SEC code, and today's date as the
+  effective date — so approving a one-off false positive and pre-approving future activity
+  from the same originator is a single click plus a save, instead of retyping everything.</li>
+  <li><strong>Revoke a rule</strong> — once an originator should no longer be pre-approved,
+  revoke its rule from the authorizations list.</li>
+</ul>
+
+<p>See <a href="/ui/docs/end-user/exceptions">Exceptions &amp; Decisioning</a> for how
+allow rules interact with the exception queue.</p>
+{% endblock %}

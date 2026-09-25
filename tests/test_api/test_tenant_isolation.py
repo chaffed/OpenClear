@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.domain.account import Account
-from pospay.repositories.base import TenantScopedRepository
+from openclear.domain.account import Account
+from openclear.repositories.base import TenantScopedRepository
 
 
 class AccountRepository(TenantScopedRepository[Account]):

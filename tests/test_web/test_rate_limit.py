@@ -3,7 +3,7 @@
 
 import time
 
-from pospay.web.rate_limit import RateLimiter
+from openclear.web.rate_limit import RateLimiter
 
 
 def test_allows_up_to_the_limit_then_blocks():

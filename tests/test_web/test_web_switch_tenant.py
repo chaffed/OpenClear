@@ -3,8 +3,8 @@
 
 import webauthn
 
-from pospay.config import get_settings
-from pospay.services import security_group_service, user_service
+from openclear.config import get_settings
+from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory
 from tests.test_auth.webauthn_helpers import FakeAuthenticator
 

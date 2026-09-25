@@ -14,7 +14,7 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.bulk_import.x937 import (
+from openclear.bulk_import.x937 import (
     _STANDARD_RECORD_LEN,
     _T10_BUSINESS_DATE,
     _T25_AMOUNT,

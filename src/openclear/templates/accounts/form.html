@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}New Account — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About this form{% endblock %}
+{% block help_body %}
+<p>An account is one of your bank accounts that OpenClear watches for positive-pay
+  matching. External account ID (optional) is a customer's own internal reference —
+  once set, bulk file uploads can use it in place of the real account number.</p>
+{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>New account</h1>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/accounts">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Account number <input type="text" name="account_number" value="{{ form.account_number or '' }}" required></label>
+    <label>Name <input type="text" name="name" value="{{ form.name or '' }}" required></label>
+    <label>External account ID (optional) <input type="text" name="external_account_id" value="{{ form.external_account_id or '' }}"></label>
+    {% if not ctx.customer_id %}
+    <label>Customer (optional)
+      <select name="customer_id">
+        <option value="">— unassigned (house account) —</option>
+        {% for customer in customers %}
+        <option value="{{ customer.id }}" {{ "selected" if form.customer_id == customer.id|string else "" }}>{{ customer.name }} ({{ customer.customer_number }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button type="submit">{{ icon("add") }}Create</button>
+  </form>
+</div>
+{% endblock %}

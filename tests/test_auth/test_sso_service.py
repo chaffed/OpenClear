@@ -3,14 +3,14 @@
 
 import pytest
 
-from pospay.auth.oidc_service import OidcClaims
-from pospay.domain.sso_connection import SsoProvider
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.services import security_group_service, sso_service
+from openclear.auth.oidc_service import OidcClaims
+from openclear.domain.sso_connection import SsoProvider
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.services import security_group_service, sso_service
 
 
 def _connection_input(**overrides):
-    from pospay.services.sso_service import SsoConnectionInput
+    from openclear.services.sso_service import SsoConnectionInput
 
     defaults = dict(
         provider=SsoProvider.OKTA,
@@ -33,7 +33,7 @@ def test_create_connection_encrypts_secret_at_rest(db_session, tenant_factory):
     db_session.commit()
 
     assert connection.client_secret_encrypted != "hunter2-secret"
-    from pospay.auth.crypto import decrypt_secret
+    from openclear.auth.crypto import decrypt_secret
 
     assert decrypt_secret(connection.client_secret_encrypted) == "hunter2-secret"
 
@@ -84,7 +84,7 @@ def test_get_login_connections_excludes_inactive(db_session, tenant_factory):
 
 
 def test_get_login_connections_scoped_to_customer(db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, _users = tenant_factory.make(slug="sso-login-scope")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
@@ -99,7 +99,7 @@ def test_get_login_connections_scoped_to_customer(db_session, tenant_factory):
     assert [c.id for c in sso_service.get_login_connections(db_session, tenant.id, customer_id=customer.id)] == [customer_connection.id]
 
 
-def _make_mapped_connection(db_session, tenant, *, customer_id=None, auto_provision=False, external_group="pospay-users", group_name="Viewer"):
+def _make_mapped_connection(db_session, tenant, *, customer_id=None, auto_provision=False, external_group="openclear-users", group_name="Viewer"):
     connection = sso_service.create_connection(db_session, tenant.id, _connection_input(customer_id=customer_id, auto_provision=auto_provision))
     group = security_group_service.get_security_group_by_name(db_session, tenant.id, group_name)
     sso_service.add_group_mapping(db_session, tenant.id, connection.id, external_group=external_group, security_group_id=group.id)
@@ -115,7 +115,7 @@ def test_complete_sso_login_refuses_when_no_group_matches(db_session, tenant_fac
     result = sso_service.complete_sso_login(db_session, tenant.id, connection, claims)
 
     assert result.outcome == "not_authorized"
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.user_repo import UserRepository
 
     assert UserRepository(db_session).get_by_email("newperson@example.com") is None
 
@@ -123,7 +123,7 @@ def test_complete_sso_login_refuses_when_no_group_matches(db_session, tenant_fac
 def test_complete_sso_login_auto_provisions_new_user(db_session, tenant_factory):
     tenant, _account, _users = tenant_factory.make(slug="sso-login-autoprov")
     connection, group = _make_mapped_connection(db_session, tenant, auto_provision=True)
-    claims = OidcClaims(email="newperson@example.com", subject="sub-1", groups=["pospay-users"])
+    claims = OidcClaims(email="newperson@example.com", subject="sub-1", groups=["openclear-users"])
 
     result = sso_service.complete_sso_login(db_session, tenant.id, connection, claims)
     db_session.commit()
@@ -137,7 +137,7 @@ def test_complete_sso_login_auto_provisions_new_user(db_session, tenant_factory)
 def test_complete_sso_login_without_auto_provision_refuses_new_user(db_session, tenant_factory):
     tenant, _account, _users = tenant_factory.make(slug="sso-login-noautoprov")
     connection, _group = _make_mapped_connection(db_session, tenant, auto_provision=False)
-    claims = OidcClaims(email="newperson@example.com", subject="sub-1", groups=["pospay-users"])
+    claims = OidcClaims(email="newperson@example.com", subject="sub-1", groups=["openclear-users"])
 
     result = sso_service.complete_sso_login(db_session, tenant.id, connection, claims)
 
@@ -146,8 +146,8 @@ def test_complete_sso_login_without_auto_provision_refuses_new_user(db_session, 
 
 def test_complete_sso_login_syncs_security_group_for_returning_user(db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="sso-login-sync")
-    connection, _viewer_group = _make_mapped_connection(db_session, tenant, auto_provision=True, external_group="pospay-approvers", group_name="Approver")
-    claims = OidcClaims(email=users["viewer"].email, subject="sub-1", groups=["pospay-approvers"])
+    connection, _viewer_group = _make_mapped_connection(db_session, tenant, auto_provision=True, external_group="openclear-approvers", group_name="Approver")
+    claims = OidcClaims(email=users["viewer"].email, subject="sub-1", groups=["openclear-approvers"])
 
     membership_before = [m for m in TenantMembershipRepository(db_session, tenant.id).list(user_id=users["viewer"].id) if m.customer_id is None][0]
     approver_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Approver")
@@ -162,8 +162,8 @@ def test_complete_sso_login_syncs_security_group_for_returning_user(db_session, 
 
 def test_complete_sso_login_deactivates_membership_when_group_no_longer_matches(db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="sso-login-revoke")
-    connection, _group = _make_mapped_connection(db_session, tenant, auto_provision=True, external_group="pospay-viewers", group_name="Viewer")
-    claims_ok = OidcClaims(email=users["viewer"].email, subject="sub-1", groups=["pospay-viewers"])
+    connection, _group = _make_mapped_connection(db_session, tenant, auto_provision=True, external_group="openclear-viewers", group_name="Viewer")
+    claims_ok = OidcClaims(email=users["viewer"].email, subject="sub-1", groups=["openclear-viewers"])
     result = sso_service.complete_sso_login(db_session, tenant.id, connection, claims_ok)
     db_session.commit()
     assert result.outcome == "success"
@@ -207,13 +207,13 @@ def test_set_tenant_password_login_enabled_guards_against_lockout(db_session, te
     sso_service.set_tenant_password_login_enabled(db_session, tenant.id, enabled=False)
     db_session.commit()
 
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     assert db_session.get(Tenant, tenant.id).password_login_enabled is False
 
 
 def test_set_customer_password_login_enabled_guards_against_lockout(db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, _users = tenant_factory.make(slug="sso-lockout-customer")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))

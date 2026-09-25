@@ -4,12 +4,12 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from pospay.domain.customer_disposition_setting import DispositionMode
-from pospay.domain.exception_item import ExceptionStatus
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import account_service, auto_disposition_service, customer_service, issued_item_service
-from pospay.workers import tasks
+from openclear.domain.customer_disposition_setting import DispositionMode
+from openclear.domain.exception_item import ExceptionStatus
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import account_service, auto_disposition_service, customer_service, issued_item_service
+from openclear.workers import tasks
 
 
 def _make_customer(db_session, tenant, number="S-1"):

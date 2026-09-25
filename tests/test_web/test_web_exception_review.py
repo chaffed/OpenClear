@@ -9,14 +9,14 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.ach_transaction import AchTransactionType
-from pospay.domain.customer_disposition_setting import DispositionMode
-from pospay.domain.decision import DecisionOutcome
-from pospay.domain.exception_item import ExceptionStatus
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import ach_authorization_service, auto_disposition_service, decision_service, stop_payment_service
+from openclear.db.tenancy import TenantContext
+from openclear.domain.ach_transaction import AchTransactionType
+from openclear.domain.customer_disposition_setting import DispositionMode
+from openclear.domain.decision import DecisionOutcome
+from openclear.domain.exception_item import ExceptionStatus
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import ach_authorization_service, auto_disposition_service, decision_service, stop_payment_service
 from tests.conftest import TenantFactory
 from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
 
@@ -68,7 +68,7 @@ def test_check_evidence_puts_issued_and_presented_side_by_side(client, db_sessio
 
 
 def test_check_not_in_file_explains_there_is_nothing_to_compare(client, db_session, tenant_factory):
-    from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+    from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
 
     tenant, account, users = tenant_factory.make(slug="rev-nif")
     paid = ingest_paid_item(db_session, tenant.id, PaidItemSubmission(
@@ -170,7 +170,7 @@ def test_fraud_risk_is_shown_as_risk_not_a_raw_score(client, db_session, tenant_
 
 
 def test_template_helper_levels():
-    from pospay.web.templates import _fraud_risk
+    from openclear.web.templates import _fraud_risk
 
     assert _fraud_risk(None) is None
     assert _fraud_risk(0.95)["level"] == "Low"
@@ -253,7 +253,7 @@ def test_empty_queue_points_to_all_exceptions(client, tenant_factory):
 
 
 def test_recommended_ach_return_reason_is_stored_and_preselected(client, db_session, tenant_factory):
-    from pospay.services import ach_return_reason_service
+    from openclear.services import ach_return_reason_service
 
     tenant, account, users = tenant_factory.make(slug="rev-ach-reason", require_dual_control=True)
     exception = _ach_exception(db_session, tenant, account, trace="REV-R1")

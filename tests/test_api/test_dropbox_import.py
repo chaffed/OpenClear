@@ -5,8 +5,8 @@ import os
 import time
 from pathlib import Path
 
-from pospay.config import get_settings
-from pospay.services import account_service, customer_service, security_group_service, user_service
+from openclear.config import get_settings
+from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
 
 _OLD_ENOUGH = 60
@@ -14,7 +14,7 @@ _OLD_ENOUGH = 60
 
 def _configure_dropbox(monkeypatch, tmp_path) -> Path:
     root = tmp_path / "dropbox"
-    monkeypatch.setenv("POSPAY_AUTO_IMPORT_DROPBOX_DIR", str(root))
+    monkeypatch.setenv("OPENCLEAR_AUTO_IMPORT_DROPBOX_DIR", str(root))
     get_settings.cache_clear()
     return root
 

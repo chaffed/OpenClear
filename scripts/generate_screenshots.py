@@ -5,7 +5,7 @@
 """Regenerates the screenshots referenced by README.md.
 
 Seeds a throwaway demo tenant with realistic-looking data in a scratch SQLite database
-(never the real .pospay-run/ or project-root pospay.db), runs the actual app against it,
+(never the real .openclear-run/ or project-root openclear.db), runs the actual app against it,
 and drives a real headless browser (Playwright) through the key screens to capture PNGs
 into docs/screenshots/ — once in light mode (the existing filenames, e.g. dashboard.png)
 and once in dark mode (a `_dark` suffix, e.g. dashboard_dark.png), forcing the theme via
@@ -46,28 +46,28 @@ VIEWPORT = {"width": 1440, "height": 900}
 
 def _configure_env(run_dir: Path) -> None:
     # Mirrors scripts/launcher.py::_configure_run_env's pattern — must run before any
-    # `from pospay...` import, since config.Settings is @lru_cache'd. Points everything
-    # at a throwaway temp dir so this never touches the real .pospay-run/ or a
-    # project-root pospay.db.
-    os.environ["POSPAY_ENVIRONMENT"] = "development"
-    os.environ["POSPAY_DATABASE_URL"] = f"sqlite:///{run_dir / 'screenshots.db'}"
-    os.environ["POSPAY_CHECK_IMAGE_STORAGE_DIR"] = str(run_dir / "check_images")
-    os.environ["POSPAY_TENANT_ASSET_STORAGE_DIR"] = str(run_dir / "tenant_assets")
-    os.environ["POSPAY_BULK_UPLOAD_STORAGE_DIR"] = str(run_dir / "bulk_uploads")
-    os.environ["POSPAY_ML_ARTIFACT_DIR"] = str(run_dir / "ml_artifacts")
+    # `from openclear...` import, since config.Settings is @lru_cache'd. Points everything
+    # at a throwaway temp dir so this never touches the real .openclear-run/ or a
+    # project-root openclear.db.
+    os.environ["OPENCLEAR_ENVIRONMENT"] = "development"
+    os.environ["OPENCLEAR_DATABASE_URL"] = f"sqlite:///{run_dir / 'screenshots.db'}"
+    os.environ["OPENCLEAR_CHECK_IMAGE_STORAGE_DIR"] = str(run_dir / "check_images")
+    os.environ["OPENCLEAR_TENANT_ASSET_STORAGE_DIR"] = str(run_dir / "tenant_assets")
+    os.environ["OPENCLEAR_BULK_UPLOAD_STORAGE_DIR"] = str(run_dir / "bulk_uploads")
+    os.environ["OPENCLEAR_ML_ARTIFACT_DIR"] = str(run_dir / "ml_artifacts")
 
 
 def _seed_demo_data() -> None:
     # Registers each network's adapter (register_adapter side effect) — normally done by
     # main.py::create_app(), but seeding here runs in this process, before the app
     # subprocess even starts.
-    import pospay.networks.ach  # noqa: F401
-    import pospay.networks.check  # noqa: F401
-    import pospay.domain  # noqa: F401  (populates Base.metadata with every model)
+    import openclear.networks.ach  # noqa: F401
+    import openclear.networks.check  # noqa: F401
+    import openclear.domain  # noqa: F401  (populates Base.metadata with every model)
 
-    from pospay.db.base import Base
-    from pospay.db.session import get_engine, get_session_factory
-    from pospay.services import demo_tenant_service, provisioning_service
+    from openclear.db.base import Base
+    from openclear.db.session import get_engine, get_session_factory
+    from openclear.services import demo_tenant_service, provisioning_service
 
     engine = get_engine()
     Base.metadata.create_all(engine)
@@ -77,7 +77,7 @@ def _seed_demo_data() -> None:
         # This script's own scratch database has no baseline migration data, unlike a
         # real app deployment (see 9327972d0952_seed_payment_network_rows_for_check_and_
         # .py) — Base.metadata.create_all above only creates the tables, not their rows.
-        from pospay.domain.payment_network import PaymentNetwork, SettlementTiming
+        from openclear.domain.payment_network import PaymentNetwork, SettlementTiming
 
         session.add_all(
             [
@@ -143,7 +143,7 @@ PAGES: list[Page] = [
 
 
 def _run_capture_pass(browser, theme: str) -> None:
-    from pospay.web.security import THEME_COOKIE_NAME
+    from openclear.web.security import THEME_COOKIE_NAME
 
     # suffix distinguishes the dark-mode set on disk without disturbing the existing
     # light-mode filenames README.md already references (dashboard.png stays
@@ -228,7 +228,7 @@ def main() -> None:
         print("Playwright isn't installed. Run:\n  pip install -e \".[dev]\"\n  playwright install chromium", file=sys.stderr)
         sys.exit(1)
 
-    run_dir = Path(tempfile.mkdtemp(prefix="pospay-screenshots-"))
+    run_dir = Path(tempfile.mkdtemp(prefix="openclear-screenshots-"))
     _configure_env(run_dir)
 
     server: subprocess.Popen | None = None
@@ -237,7 +237,7 @@ def main() -> None:
 
         print(f"Starting the app on {BASE_URL} ...")
         server = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "pospay.main:app", "--host", HOST, "--port", str(PORT), "--log-level", "warning"],
+            [sys.executable, "-m", "uvicorn", "openclear.main:app", "--host", HOST, "--port", str(PORT), "--log-level", "warning"],
             cwd=PROJECT_ROOT,
             env=os.environ.copy(),
         )

@@ -3,7 +3,7 @@
 
 """Fixtures for running the app as a restricted Postgres role, so row-level security is
 actually enforced (the rest of the suite connects as the owner/superuser, which RLS never
-applies to). Only used with POSPAY_TEST_DATABASE_URL set."""
+applies to). Only used with OPENCLEAR_TEST_DATABASE_URL set."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,10 +11,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
-from pospay.db.session import get_db
+from openclear.db.session import get_db
 from tests.conftest import TEST_DATABASE_URL
 
-_APP_ROLE = "pospay_rls_app"
+_APP_ROLE = "openclear_rls_app"
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def app_engine(engine):
 
 @pytest.fixture
 def rls_client(app_engine):
-    from pospay.main import create_app
+    from openclear.main import create_app
 
     app = create_app()
     factory = sessionmaker(bind=app_engine, autoflush=False, expire_on_commit=False)

@@ -5,11 +5,11 @@ import os
 
 # Relaxes config.py::assert_production_safe's checks so the test suite can use the
 # checked-in dev_keys/ signing keys and default SSO encryption key — set before any
-# pospay import (mirrors scripts/launcher.py::_configure_run_env's own documented
-# "before any `from pospay...` import" pattern, since Settings is @lru_cache'd).
+# openclear import (mirrors scripts/launcher.py::_configure_run_env's own documented
+# "before any `from openclear...` import" pattern, since Settings is @lru_cache'd).
 # "development" (not a separate "test" value — config.Settings.environment only
 # distinguishes production from everything else).
-os.environ.setdefault("POSPAY_ENVIRONMENT", "development")
+os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
 
 import uuid
 from collections.abc import Generator
@@ -20,17 +20,17 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from pospay.config import get_settings
-from pospay.db.base import Base
-from pospay.db.session import get_db
-from pospay.domain.account import Account
-from pospay.domain.payment_network import PaymentNetwork, SettlementTiming
-from pospay.domain.tenant import Tenant
-from pospay.services import ach_return_reason_service, security_group_service, user_service
+from openclear.config import get_settings
+from openclear.db.base import Base
+from openclear.db.session import get_db
+from openclear.domain.account import Account
+from openclear.domain.payment_network import PaymentNetwork, SettlementTiming
+from openclear.domain.tenant import Tenant
+from openclear.services import ach_return_reason_service, security_group_service, user_service
 
-# pospay.domain's __init__ imports every model module, fully populating Base.metadata
+# openclear.domain's __init__ imports every model module, fully populating Base.metadata
 # before create_all — see its docstring for why this must be centralized in one place.
-import pospay.domain  # noqa: F401
+import openclear.domain  # noqa: F401
 
 
 @pytest.fixture(autouse=True)
@@ -40,10 +40,10 @@ def isolated_filesystem_settings(tmp_path, monkeypatch):
     leaves ml_artifacts/ behind in the project root exactly like the launcher's runtime
     state used to, since these paths default to plain relative paths meant for a real
     single-instance deployment, not test isolation."""
-    monkeypatch.setenv("POSPAY_ML_ARTIFACT_DIR", str(tmp_path / "ml_artifacts"))
-    monkeypatch.setenv("POSPAY_CHECK_IMAGE_STORAGE_DIR", str(tmp_path / "check_images"))
-    monkeypatch.setenv("POSPAY_TENANT_ASSET_STORAGE_DIR", str(tmp_path / "tenant_assets"))
-    monkeypatch.setenv("POSPAY_BULK_UPLOAD_STORAGE_DIR", str(tmp_path / "bulk_uploads"))
+    monkeypatch.setenv("OPENCLEAR_ML_ARTIFACT_DIR", str(tmp_path / "ml_artifacts"))
+    monkeypatch.setenv("OPENCLEAR_CHECK_IMAGE_STORAGE_DIR", str(tmp_path / "check_images"))
+    monkeypatch.setenv("OPENCLEAR_TENANT_ASSET_STORAGE_DIR", str(tmp_path / "tenant_assets"))
+    monkeypatch.setenv("OPENCLEAR_BULK_UPLOAD_STORAGE_DIR", str(tmp_path / "bulk_uploads"))
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -56,18 +56,18 @@ def _reset_rate_limiter():
     every request, so without resetting between tests, the global per-IP limit
     (main.py's middleware, applied to every request) would silently exhaust itself partway
     through the suite and every web test after that would start failing with 429s."""
-    from pospay.web.rate_limit import limiter
+    from openclear.web.rate_limit import limiter
 
     limiter._hits.clear()
     yield
     limiter._hits.clear()
 
 
-# Set to a Postgres URL (e.g. postgresql+psycopg://pospay:pospay@localhost:5432/pospay_test)
+# Set to a Postgres URL (e.g. postgresql+psycopg://openclear:openclear@localhost:5432/openclear_test)
 # to run the suite against Postgres instead of in-memory SQLite. The database is WIPED:
 # its public schema is dropped and rebuilt with `alembic upgrade head` once per run, so the
 # migrations themselves are what's under test, and every test starts from empty tables.
-TEST_DATABASE_URL = os.environ.get("POSPAY_TEST_DATABASE_URL")
+TEST_DATABASE_URL = os.environ.get("OPENCLEAR_TEST_DATABASE_URL") or os.environ.get("POSPAY_TEST_DATABASE_URL")  # the pre-1.6 name
 
 
 def _seed_payment_networks(engine) -> None:
@@ -93,9 +93,9 @@ def _postgres_engine():
         conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
 
-    # migrations/env.py takes its URL from pospay's settings.
-    previous_url = os.environ.get("POSPAY_DATABASE_URL")
-    os.environ["POSPAY_DATABASE_URL"] = TEST_DATABASE_URL
+    # migrations/env.py takes its URL from openclear's settings.
+    previous_url = os.environ.get("OPENCLEAR_DATABASE_URL")
+    os.environ["OPENCLEAR_DATABASE_URL"] = TEST_DATABASE_URL
     get_settings.cache_clear()
     try:
         root = Path(__file__).resolve().parent.parent
@@ -104,9 +104,9 @@ def _postgres_engine():
         command.upgrade(cfg, "head")
     finally:
         if previous_url is None:
-            os.environ.pop("POSPAY_DATABASE_URL", None)
+            os.environ.pop("OPENCLEAR_DATABASE_URL", None)
         else:
-            os.environ["POSPAY_DATABASE_URL"] = previous_url
+            os.environ["OPENCLEAR_DATABASE_URL"] = previous_url
         get_settings.cache_clear()
 
     tables = [t.name for t in Base.metadata.sorted_tables]
@@ -201,7 +201,7 @@ def tenant_factory(db_session) -> TenantFactory:
 
 @pytest.fixture
 def app(session_factory):
-    from pospay.main import create_app
+    from openclear.main import create_app
 
     app = create_app()
 

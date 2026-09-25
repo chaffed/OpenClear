@@ -4,7 +4,7 @@
 import uuid
 from decimal import Decimal
 
-from pospay.networks.ach.types import AchExceptionType, AchMatchInputs, AuthorizationSnapshot
+from openclear.networks.ach.types import AchExceptionType, AchMatchInputs, AuthorizationSnapshot
 
 WILDCARD_AUTH = AuthorizationSnapshot(
     id=uuid.uuid4(), receiver_id=None, max_amount=Decimal("500.00"), frequency_limit=3, allowed_sec_codes=["PPD", "WEB"]
@@ -29,7 +29,7 @@ def base_inputs(**overrides) -> AchMatchInputs:
 
 
 def test_credit_transactions_are_never_evaluated():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(base_inputs(is_debit=False, candidate_authorizations=[]))
 
@@ -38,7 +38,7 @@ def test_credit_transactions_are_never_evaluated():
 
 
 def test_clean_debit_within_limits_matches_wildcard_rule():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(base_inputs())
 
@@ -47,7 +47,7 @@ def test_clean_debit_within_limits_matches_wildcard_rule():
 
 
 def test_debit_block_all_rejects_regardless_of_authorization():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(base_inputs(debit_block_all=True))
 
@@ -56,7 +56,7 @@ def test_debit_block_all_rejects_regardless_of_authorization():
 
 
 def test_no_candidate_authorizations_flags_unauthorized_originator():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(base_inputs(candidate_authorizations=[]))
 
@@ -67,7 +67,7 @@ def test_no_candidate_authorizations_flags_unauthorized_originator():
 def test_receiver_id_not_covered_by_any_rule_is_a_distinct_exception():
     """Originator has an authorization, just not one covering this receiver_id — must be
     distinguishable from 'no authorization at all' for a reviewer."""
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     scoped_auth = AuthorizationSnapshot(
         id=uuid.uuid4(), receiver_id="SOMEONE_ELSE", max_amount=None, frequency_limit=None, allowed_sec_codes=None
@@ -81,7 +81,7 @@ def test_receiver_id_not_covered_by_any_rule_is_a_distinct_exception():
 
 
 def test_exact_receiver_match_takes_precedence_over_wildcard():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(
         base_inputs(
@@ -96,7 +96,7 @@ def test_exact_receiver_match_takes_precedence_over_wildcard():
 
 
 def test_wildcard_rule_matches_any_receiver_when_no_exact_rule_exists():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, related_id = evaluate_ach_rules(base_inputs(receiver_id="ANY_RANDOM_RECEIVER"))
 
@@ -105,7 +105,7 @@ def test_wildcard_rule_matches_any_receiver_when_no_exact_rule_exists():
 
 
 def test_amount_exceeds_limit():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(amount=Decimal("600.00")))
 
@@ -113,7 +113,7 @@ def test_amount_exceeds_limit():
 
 
 def test_amount_at_exactly_the_limit_is_not_flagged():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(amount=Decimal("500.00")))
 
@@ -121,7 +121,7 @@ def test_amount_at_exactly_the_limit_is_not_flagged():
 
 
 def test_no_amount_limit_on_authorization_never_flags():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     unlimited = AuthorizationSnapshot(
         id=WILDCARD_AUTH.id, receiver_id=None, max_amount=None, frequency_limit=None, allowed_sec_codes=None
@@ -134,7 +134,7 @@ def test_no_amount_limit_on_authorization_never_flags():
 
 
 def test_frequency_exceeded_when_prior_count_meets_limit():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(debit_count_this_period=3))
 
@@ -142,7 +142,7 @@ def test_frequency_exceeded_when_prior_count_meets_limit():
 
 
 def test_frequency_not_exceeded_below_limit():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(debit_count_this_period=2))
 
@@ -150,7 +150,7 @@ def test_frequency_not_exceeded_below_limit():
 
 
 def test_sec_code_not_permitted():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(sec_code="CCD"))
 
@@ -158,7 +158,7 @@ def test_sec_code_not_permitted():
 
 
 def test_sec_code_permitted_not_flagged():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(base_inputs(sec_code="WEB"))
 
@@ -166,7 +166,7 @@ def test_sec_code_permitted_not_flagged():
 
 
 def test_multiple_violations_all_aggregate():
-    from pospay.networks.ach.rules import evaluate_ach_rules
+    from openclear.networks.ach.rules import evaluate_ach_rules
 
     exceptions, _ = evaluate_ach_rules(
         base_inputs(amount=Decimal("999.00"), sec_code="CCD", debit_count_this_period=5)

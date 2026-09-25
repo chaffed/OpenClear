@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.bulk_import.fields import RowFieldError, optional_str, parse_date, parse_decimal, require_str
+from openclear.bulk_import.fields import RowFieldError, optional_str, parse_date, parse_decimal, require_str
 
 
 def test_require_str_returns_stripped_value():

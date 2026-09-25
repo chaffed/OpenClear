@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}PDF export unavailable — {{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}
+
+{% block content %}
+<h1>PDF export isn't available</h1>
+<p>This OpenClear instance doesn't have the optional PDF-export dependency installed, or the
+system libraries it needs. Ask your OpenClear administrator to install the <code>pdf</code>
+extra (<code>pip install -e ".[pdf]"</code>) along with Pango, Cairo, and GLib on the host
+— see the README's PDF export section for details. Everything else in the documentation
+is still available in the regular web view.</p>
+<p><a href="{{ back_href }}">&larr; Back to documentation</a></p>
+{% endblock %}

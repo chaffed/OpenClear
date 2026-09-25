@@ -7,14 +7,14 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.domain.ach_transaction import (
+from openclear.domain.ach_transaction import (
     AchMatchStatus,
     AchSettlementStatus,
     AchTransaction,
     AchTransactionSource,
     AchTransactionType,
 )
-from pospay.services import account_service, customer_service, wsud_service
+from openclear.services import account_service, customer_service, wsud_service
 
 
 def _make_customer_and_account(db_session, tenant, number="C1"):

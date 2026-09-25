@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import account_service
+from openclear.services import account_service
 from tests.conftest import TenantFactory
 
 
@@ -133,7 +133,7 @@ def test_malformed_customer_id_shows_form_error_not_500(client, tenant_factory):
 
 
 def test_another_tenants_customer_id_is_rejected(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-acct-foreign-customer")
     other_tenant, _other_account, _other_users = tenant_factory.make(slug="web-acct-foreign-customer-2")

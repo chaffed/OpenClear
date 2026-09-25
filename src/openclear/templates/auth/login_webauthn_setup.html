@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Register a security key — OpenClear{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Register a security key</h1>
+  <p>Access to this organization requires a FIDO2/WebAuthn security key alongside your
+    password. Register one now to finish signing in — you'll only need to do this once
+    per organization.</p>
+  <p id="webauthn-error" class="flash flash-error" style="display:none;"></p>
+  <button type="button" id="webauthn-setup-btn">{{ icon("vpn_key") }}Register security key</button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/webauthn.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+  const nextPath = {{ next_path | tojson }};
+  const errorEl = document.getElementById("webauthn-error");
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.style.display = "block";
+  }
+
+  document.getElementById("webauthn-setup-btn").addEventListener("click", () => {
+    errorEl.style.display = "none";
+    registerWebAuthn(
+      "Registered at mandatory sign-in",
+      (result) => { window.location = result.redirect || nextPath; },
+      showError,
+      "/ui/login/webauthn/setup"
+    );
+  });
+
+  if (!window.PublicKeyCredential) {
+    showError("This browser doesn't support security keys (WebAuthn).");
+  }
+</script>
+{% endblock %}

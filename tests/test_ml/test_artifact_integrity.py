@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from pospay.config import get_settings
-from pospay.domain.exception_item import ExceptionItem
-from pospay.ml import predict, registry
-from pospay.ml.predict import score_exception
-from pospay.ml.registry import ArtifactIntegrityError, ArtifactStore, get_active_model_row
-from pospay.ml.train import train_model
-from pospay.services import tenant_ml_service
+from openclear.config import get_settings
+from openclear.domain.exception_item import ExceptionItem
+from openclear.ml import predict, registry
+from openclear.ml.predict import score_exception
+from openclear.ml.registry import ArtifactIntegrityError, ArtifactStore, get_active_model_row
+from openclear.ml.train import train_model
+from openclear.services import tenant_ml_service
 from tests.test_ml.test_bank_model_choice import _bank, _row
 
 

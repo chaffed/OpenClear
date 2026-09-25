@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+### Renamed: PosPay is now OpenClear
+
+The project, its Python package (`openclear`), its settings (`OPENCLEAR_*`) and its launcher
+(`run_openclear.command` / `.sh` / `.bat`) are renamed. **Existing installs keep working
+without changes:**
+- `POSPAY_*` settings are still read, from the environment and from `.env`. When both are
+  set, `OPENCLEAR_*` wins. Rename them when convenient.
+- A local `./pospay.db` is still used if there's no `./openclear.db`.
+- The desktop launcher moves `.pospay-run/` to `.openclear-run/` on its first run (your
+  database, keys and uploads come with it). It rebuilds its Python environment, which
+  takes a minute.
+- Platform API keys issued before the rename (`pospay_platform_...`) still work. New keys
+  start `openclear_platform_`.
+- A saved light/dark theme carries over.
+- Kept as they are, because they identify existing deployments: the demo's Fly app and
+  hostname (`pospay-demo`; WebAuthn keys are bound to it), its volume, and the Docker
+  image's database path `/data/pospay.db`.
+- If you import the package in your own scripts, change `pospay` to `openclear`.
+- `docker-compose.yml` (development only) now names its Postgres user, database and
+  volume `openclear`, so a local compose database starts fresh.
+
+### Scalability (SCALE_PLAN.md S0, S1, S1a)
+
+- **Postgres fixes:**
+  - a fresh Postgres database can now be migrated;
+  - authenticated API requests no longer fail on Postgres;
+  - row-level security works end to end for a restricted app role. That covers login,
+    requests, scheduled jobs, switching organization, usage metrics and creating a bank.
+  - Connect the app as a role without `BYPASSRLS` (see README, "Postgres").
+- **The audit log's hash chain is safe under concurrent writers:** a per-bank sequence
+  number, a per-bank lock on Postgres, and a retry.
+- **Tests:** the suite runs against Postgres in CI (`OPENCLEAR_TEST_DATABASE_URL`), and the
+  CI failures on Linux / Python 3.11 are fixed.
+- **Tools:** `scripts/perf/` has a volume generator and a timing script.
+
 ## 1.5.0 — 2026-09-23
 
 A security, reliability and usability release. It fixes every finding from the September
@@ -53,7 +90,7 @@ model scores its exceptions, and it adds new screens for deciding exceptions.
 - **Sessions:** activity keeps a session alive, and the page warns 5 minutes before it
   would expire.
 - A dashboard built around what needs doing.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how PosPay fits together, and why.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how OpenClear fits together, and why.
 
 ### Fixes
 

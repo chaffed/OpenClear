@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.auth.security import decode_token
-from pospay.config import get_settings
+from openclear.auth.security import decode_token
+from openclear.config import get_settings
 from tests import image_helpers
 from tests.conftest import TenantFactory
 
@@ -90,8 +90,8 @@ def test_settings_shows_auto_import_status_disabled_by_default(client, tenant_fa
 
 
 def test_settings_shows_recent_auto_imports(client, db_session, tenant_factory):
-    from pospay.domain.bulk_upload_file import BulkUploadKind, BulkUploadSource
-    from pospay.services import bulk_upload_file_service
+    from openclear.domain.bulk_upload_file import BulkUploadKind, BulkUploadSource
+    from openclear.services import bulk_upload_file_service
 
     tenant, _account, users = tenant_factory.make(slug="web-settings-auto-import-recent")
     bulk_upload_file_service.record_uploaded_file(
@@ -222,7 +222,7 @@ def test_session_timeout_rejects_non_positive_value(client, tenant_factory):
 
 
 def test_data_export_timeout_persists_override(client, db_session, tenant_factory):
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     tenant, _account, users = tenant_factory.make(slug="web-settings-export-timeout")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -239,7 +239,7 @@ def test_data_export_timeout_persists_override(client, db_session, tenant_factor
 
 
 def test_data_export_timeout_blank_resets_to_global_default(client, db_session, tenant_factory):
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     tenant, _account, users = tenant_factory.make(slug="web-settings-export-timeout-reset")
     csrf = _login(client, tenant.slug, users["admin"].email)
@@ -298,7 +298,7 @@ def test_branded_login_page_shows_login_message(client, tenant_factory):
 def test_unbranded_login_falls_back_to_generic(client):
     resp = client.get("/ui/login/does-not-exist-at-all")
     assert resp.status_code == 200
-    assert "PosPay" in resp.text
+    assert "OpenClear" in resp.text
 
 
 def test_plain_login_page_still_works(client):
@@ -333,7 +333,7 @@ def test_update_password_policy_via_web(client, db_session, tenant_factory):
     assert resp.status_code == 303
 
     db_session.expire_all()
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     updated = db_session.get(Tenant, tenant.id)
     assert updated.password_min_length == 12
@@ -363,7 +363,7 @@ def test_update_messages_via_web(client, db_session, tenant_factory):
     assert resp.status_code == 303
 
     db_session.expire_all()
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     updated = db_session.get(Tenant, tenant.id)
     assert updated.login_message == "Login notice"

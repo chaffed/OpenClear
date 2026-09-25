@@ -3,7 +3,7 @@
 
 from fastapi.testclient import TestClient
 
-from pospay.services import security_group_service
+from openclear.services import security_group_service
 from tests.conftest import TenantFactory
 
 

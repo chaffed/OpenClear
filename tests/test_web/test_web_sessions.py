@@ -11,13 +11,13 @@ from datetime import datetime, timedelta, timezone
 import webauthn
 from fastapi.testclient import TestClient
 
-from pospay.auth.security import create_session_tokens, create_token, decode_token
-from pospay.config import get_settings
-from pospay.domain.audit_log_entry import AuditLogEntry
-from pospay.domain.tenant_membership import TenantMembership
-from pospay.domain.user import User
-from pospay.services import customer_service, security_group_service, user_service
-from pospay.services.security_group_service import SecurityGroupInput
+from openclear.auth.security import create_session_tokens, create_token, decode_token
+from openclear.config import get_settings
+from openclear.domain.audit_log_entry import AuditLogEntry
+from openclear.domain.tenant_membership import TenantMembership
+from openclear.domain.user import User
+from openclear.services import customer_service, security_group_service, user_service
+from openclear.services.security_group_service import SecurityGroupInput
 from tests.conftest import TenantFactory, login_headers
 from tests.test_auth.webauthn_helpers import FakeAuthenticator
 
@@ -253,7 +253,7 @@ def test_tokens_minted_before_session_claims_still_work(client, db_session, tena
     simply not individually revocable."""
     import jwt
 
-    from pospay.auth.keys import load_private_key
+    from openclear.auth.keys import load_private_key
 
     tenant, _account, users = tenant_factory.make(slug="sess-legacy-token")
     viewer = users["viewer"]
@@ -399,13 +399,13 @@ def test_cross_site_referer_is_never_used_as_the_return_page(client, db_session,
 
 def test_signed_in_pages_publish_session_times_and_the_warning_dialog(client, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="sess-meta")
-    assert "pospay-access-expires" not in client.get("/ui/login").text
+    assert "openclear-access-expires" not in client.get("/ui/login").text
     _login(client, tenant.slug, users["viewer"].email)
 
     page = client.get("/ui/exceptions").text
 
-    assert 'name="pospay-access-expires"' in page
-    assert 'name="pospay-session-expires"' in page
+    assert 'name="openclear-access-expires"' in page
+    assert 'name="openclear-session-expires"' in page
     assert 'id="session-dialog"' in page
     assert "/static/js/session.js" in page
 

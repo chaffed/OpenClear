@@ -6,7 +6,7 @@ import io
 
 from PIL import Image
 
-from pospay.services import customer_service, security_group_service, user_service
+from openclear.services import customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 

@@ -4,8 +4,8 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from pospay.services import account_service, customer_service
-from pospay.services.account_service import AccountInput
+from openclear.services import account_service, customer_service
+from openclear.services.account_service import AccountInput
 
 
 def test_create_account_with_external_id(db_session, tenant_factory):

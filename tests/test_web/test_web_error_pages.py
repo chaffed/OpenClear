@@ -68,7 +68,7 @@ def test_duplicate_security_group_name_is_shown_on_the_form(lenient_client, tena
 
 
 def test_duplicate_customer_number_shows_a_plain_message_not_database_text(lenient_client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-err-dup-customer")
     customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="First"))
@@ -99,7 +99,7 @@ def test_duplicate_issued_check_number_shows_a_plain_message(lenient_client, ten
 
 
 def test_friendly_error_keeps_service_messages_and_hides_the_rest():
-    from pospay.web.form_errors import friendly_error
+    from openclear.web.form_errors import friendly_error
 
     assert friendly_error(ValueError("Account not found"), action="Could not create") == "Could not create: Account not found"
     assert "secret" not in friendly_error(RuntimeError("secret internals"), action="Could not create")

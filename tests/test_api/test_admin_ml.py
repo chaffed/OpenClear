@@ -5,17 +5,17 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.decision import DecisionOutcome
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.services import decision_service, issued_item_service
+from openclear.db.tenancy import TenantContext
+from openclear.domain.decision import DecisionOutcome
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.services import decision_service, issued_item_service
 from tests.conftest import login_headers
 
 
 def _bank_only(db_session, tenant):
     """Bank admins retrain/activate only their own bank-only model (FIX_PLAN.md Phase 5);
     the shared model is the platform operator's (tests/test_api/test_platform_ml.py)."""
-    from pospay.domain.tenant import MlModelSource
+    from openclear.domain.tenant import MlModelSource
 
     tenant.ml_model_source = MlModelSource.PRIVATE
     db_session.commit()
@@ -48,7 +48,7 @@ def _seed_labeled_decisions(db_session, tenant, account, users, count: int = 12)
         )
         db_session.commit()
 
-        from pospay.repositories.exception_repo import ExceptionRepository
+        from openclear.repositories.exception_repo import ExceptionRepository
 
         exception = ExceptionRepository(db_session, tenant.id).list(source_item_id=paid_item.id)[0]
         # decision_service.decide only reads ctx.tenant_id/user_id (not permissions or
@@ -137,9 +137,9 @@ def test_immediate_reretrain_is_rejected_by_cooldown(client, db_session, tenant_
 
 
 def test_activate_rejects_a_customer_scoped_model_via_the_bank_wide_route(client, db_session, tenant_factory):
-    from pospay.domain.ml_model import MlModelStatus
-    from pospay.ml.registry import create_model_row
-    from pospay.services import customer_service
+    from openclear.domain.ml_model import MlModelStatus
+    from openclear.ml.registry import create_model_row
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="admin-ml-activate-scope")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
@@ -155,8 +155,8 @@ def test_activate_rejects_a_customer_scoped_model_via_the_bank_wide_route(client
 
 
 def test_bank_on_the_shared_model_cannot_retrain_or_activate_it(client, db_session, tenant_factory):
-    from pospay.domain.ml_model import MlModelStatus
-    from pospay.ml.registry import create_model_row
+    from openclear.domain.ml_model import MlModelStatus
+    from openclear.ml.registry import create_model_row
 
     tenant, account, users = tenant_factory.make(slug="admin-ml-shared-403")
     _seed_labeled_decisions(db_session, tenant, account, users)
@@ -176,8 +176,8 @@ def test_bank_on_the_shared_model_cannot_retrain_or_activate_it(client, db_sessi
 
 
 def test_model_list_shows_only_this_banks_models(client, db_session, tenant_factory):
-    from pospay.domain.ml_model import MlModelStatus
-    from pospay.ml.registry import create_model_row
+    from openclear.domain.ml_model import MlModelStatus
+    from openclear.ml.registry import create_model_row
 
     tenant, _account, users = tenant_factory.make(slug="admin-ml-list-mine")
     other, _other_account, _other_users = tenant_factory.make(slug="admin-ml-list-other")
@@ -195,8 +195,8 @@ def test_model_list_shows_only_this_banks_models(client, db_session, tenant_fact
 
 
 def test_bank_cannot_activate_another_banks_model(client, db_session, tenant_factory):
-    from pospay.domain.ml_model import MlModelStatus
-    from pospay.ml.registry import create_model_row
+    from openclear.domain.ml_model import MlModelStatus
+    from openclear.ml.registry import create_model_row
 
     tenant, _account, users = tenant_factory.make(slug="admin-ml-activate-other")
     _bank_only(db_session, tenant)

@@ -1,5 +1,0 @@
-Your PosPay account was locked after too many failed sign-in attempts.
-
-If this was you, the lock clears itself automatically after a short wait. If you don't
-recognize these attempts, contact your organization's administrator so they can look
-into it and unlock your account early if needed.

@@ -7,7 +7,7 @@ and config.py but never wired into this gate, so that scheduler could never actu
 start even with the flag enabled. Caught while wiring the demo tenant startup hook into
 the same function; this locks the fix in."""
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 
 
 def _reset_all_scheduler_flags(monkeypatch):
@@ -21,11 +21,11 @@ def test_disposition_scheduler_flag_alone_starts_the_scheduler(monkeypatch):
     monkeypatch.setattr(get_settings(), "enable_disposition_scheduler", True)
 
     started = []
-    monkeypatch.setattr("pospay.workers.scheduler.start_scheduler", lambda: started.append(True))
-    monkeypatch.setattr("pospay.workers.scheduler.stop_scheduler", lambda: None)
+    monkeypatch.setattr("openclear.workers.scheduler.start_scheduler", lambda: started.append(True))
+    monkeypatch.setattr("openclear.workers.scheduler.stop_scheduler", lambda: None)
 
     from fastapi.testclient import TestClient
-    from pospay.main import create_app
+    from openclear.main import create_app
 
     with TestClient(create_app()):
         pass
@@ -37,11 +37,11 @@ def test_no_scheduler_flags_never_starts_the_scheduler(monkeypatch):
     _reset_all_scheduler_flags(monkeypatch)
 
     started = []
-    monkeypatch.setattr("pospay.workers.scheduler.start_scheduler", lambda: started.append(True))
-    monkeypatch.setattr("pospay.workers.scheduler.stop_scheduler", lambda: None)
+    monkeypatch.setattr("openclear.workers.scheduler.start_scheduler", lambda: started.append(True))
+    monkeypatch.setattr("openclear.workers.scheduler.stop_scheduler", lambda: None)
 
     from fastapi.testclient import TestClient
-    from pospay.main import create_app
+    from openclear.main import create_app
 
     with TestClient(create_app()):
         pass

@@ -4,7 +4,7 @@
 # Public-demo image. Build the production image first (see README.md's "Docker"
 # section), then this one on top of it:
 #
-#   docker build -t pospay:latest .
+#   docker build -t openclear:latest .
 #   docker build -t pospay-demo:latest -f Dockerfile.demo .
 #
 # Layering rather than duplicating the whole build keeps there being exactly one place
@@ -14,17 +14,17 @@
 # The demo tenant is a REAL tenant serving real public traffic (see
 # services/demo_tenant_service.py's own module docstring: it resets on an idle timer, but
 # between resets it runs the exact same OCR/ML/storage code path a real tenant would), so
-# this still runs with POSPAY_ENVIRONMENT=production (inherited from the base image) and
-# still needs its own real signing keys / POSPAY_SSO_ENCRYPTION_KEY / WSUD text supplied
+# this still runs with OPENCLEAR_ENVIRONMENT=production (inherited from the base image) and
+# still needs its own real signing keys / OPENCLEAR_SSO_ENCRYPTION_KEY / WSUD text supplied
 # at deploy time -- a public demo sharing the checked-in dev/test keys with every other
 # clone of this repo would be a real, not hypothetical, vulnerability. The one thing this
 # image actually changes is demo_tenant_enabled=true, which makes main.py's startup seed
 # and idle-reset (services/demo_tenant_service.py) actually run.
 #
-# POSPAY_DEMO_TENANT_PASSWORD is still a real secret -- supply it at `docker run`/deploy
-# time (e.g. `-e POSPAY_DEMO_TENANT_PASSWORD=...`), never bake it into an image layer.
+# OPENCLEAR_DEMO_TENANT_PASSWORD is still a real secret -- supply it at `docker run`/deploy
+# time (e.g. `-e OPENCLEAR_DEMO_TENANT_PASSWORD=...`), never bake it into an image layer.
 
-ARG BASE_IMAGE=pospay:latest
+ARG BASE_IMAGE=openclear:latest
 FROM ${BASE_IMAGE}
 
-ENV POSPAY_DEMO_TENANT_ENABLED=true
+ENV OPENCLEAR_DEMO_TENANT_ENABLED=true

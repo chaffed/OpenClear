@@ -3,8 +3,8 @@
 
 import uuid
 
-from pospay.auth.security import create_token, decode_token
-from pospay.config import get_settings
+from openclear.auth.security import create_token, decode_token
+from openclear.config import get_settings
 
 
 def test_create_token_uses_global_default_when_no_override():

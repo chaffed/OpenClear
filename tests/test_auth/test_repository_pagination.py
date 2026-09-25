@@ -4,9 +4,9 @@
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.issued_item import IssuedItem, IssuedItemStatus
-from pospay.repositories.issued_item_repo import IssuedItemRepository
-from pospay.services import issued_item_service
+from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
+from openclear.repositories.issued_item_repo import IssuedItemRepository
+from openclear.services import issued_item_service
 
 
 def _make_items(db_session, tenant, account, admin_user, count: int) -> None:

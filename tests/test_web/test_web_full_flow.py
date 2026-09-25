@@ -163,8 +163,8 @@ def test_admin_ml_page_lists_networks(client, tenant_factory):
 
 
 def _make_single_permission_user(db_session, tenant, *, permission: str, email: str):
-    from pospay.services import security_group_service, user_service
-    from pospay.services.security_group_service import SecurityGroupInput
+    from openclear.services import security_group_service, user_service
+    from openclear.services.security_group_service import SecurityGroupInput
 
     group = security_group_service.create_security_group(
         db_session, tenant.id, SecurityGroupInput(name=f"Only {permission}", permissions=[permission])

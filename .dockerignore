@@ -1,9 +1,9 @@
 # Both Dockerfiles COPY only specific, named paths (never `COPY . .`), so nothing here
 # is a correctness requirement -- this just keeps the build context small and the upload
-# to the Docker daemon fast, especially for .git/.venv/.pospay-run on a repo this old.
+# to the Docker daemon fast, especially for .git/.venv/.openclear-run on a repo this old.
 .git/
 .venv/
-.pospay-run/
+.openclear-run/
 __pycache__/
 *.pyc
 .pytest_cache/

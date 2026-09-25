@@ -5,15 +5,15 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from pospay.domain.ach_transaction import AchSettlementStatus, AchTransactionType
-from pospay.domain.customer_disposition_setting import DispositionMode
-from pospay.domain.decision import DecisionOutcome, DecisionSource
-from pospay.domain.exception_item import ExceptionStatus
-from pospay.domain.notification import Notification, NotificationType
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import account_service, ach_return_reason_service, auto_disposition_service, customer_service, issued_item_service
+from openclear.domain.ach_transaction import AchSettlementStatus, AchTransactionType
+from openclear.domain.customer_disposition_setting import DispositionMode
+from openclear.domain.decision import DecisionOutcome, DecisionSource
+from openclear.domain.exception_item import ExceptionStatus
+from openclear.domain.notification import Notification, NotificationType
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import account_service, ach_return_reason_service, auto_disposition_service, customer_service, issued_item_service
 
 
 def _make_customer(db_session, tenant, number="D-1"):
@@ -83,7 +83,7 @@ def test_set_disposition_setting_upserts(db_session, tenant_factory):
     )
     db_session.commit()
     assert auto_disposition_service.get_disposition_mode(db_session, tenant.id, customer.id, "check") == DispositionMode.FIXED_RETURN
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     assert auto_disposition_service.get_response_window_hours(db_session, tenant.id, customer.id, "check") == get_settings().default_disposition_response_window_hours
 

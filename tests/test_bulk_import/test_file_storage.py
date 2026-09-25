@@ -4,7 +4,7 @@
 import uuid
 from pathlib import Path
 
-from pospay.bulk_import.file_storage import read_uploaded_file, save_uploaded_file
+from openclear.bulk_import.file_storage import read_uploaded_file, save_uploaded_file
 
 
 def test_save_and_read_roundtrip():
@@ -30,7 +30,7 @@ def test_different_tenants_do_not_collide():
 
 
 def test_path_traversal_shaped_filename_is_stored_safely(tmp_path, monkeypatch):
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     monkeypatch.setattr(get_settings(), "bulk_upload_storage_dir", str(tmp_path))
     tenant_id = uuid.uuid4()
@@ -46,7 +46,7 @@ def test_path_traversal_shaped_filename_is_stored_safely(tmp_path, monkeypatch):
 
 
 def test_filename_with_no_usable_basename_falls_back_to_a_default(tmp_path, monkeypatch):
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     monkeypatch.setattr(get_settings(), "bulk_upload_storage_dir", str(tmp_path))
     path = save_uploaded_file(uuid.uuid4(), uuid.uuid4(), "../../", b"data")

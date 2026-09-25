@@ -5,16 +5,16 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.ach_transaction import AchTransactionType
-from pospay.domain.bulk_upload_file import BulkUploadKind
-from pospay.domain.exception_item import ExceptionStatus
-from pospay.domain.issued_item import IssuedItemStatus
-from pospay.domain.paid_item import PaidItemSettlementStatus
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.services import (
+from openclear.domain.ach_transaction import AchTransactionType
+from openclear.domain.bulk_upload_file import BulkUploadKind
+from openclear.domain.exception_item import ExceptionStatus
+from openclear.domain.issued_item import IssuedItemStatus
+from openclear.domain.paid_item import PaidItemSettlementStatus
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.services import (
     account_service,
     bulk_upload_file_service,
     bulk_upload_reversal_service,
@@ -319,8 +319,8 @@ def test_back_out_unmatched_paid_item_leaves_already_decided_exception_alone(db_
     exception = ExceptionRepository(db_session, tenant.id).list(source_item_id=paid_item.id)[0]
     db_session.commit()
 
-    from pospay.db.tenancy import TenantContext
-    from pospay.domain.decision import DecisionOutcome
+    from openclear.db.tenancy import TenantContext
+    from openclear.domain.decision import DecisionOutcome
 
     ctx = TenantContext(
         tenant_id=tenant.id,

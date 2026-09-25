@@ -3,8 +3,8 @@
 
 from starlette.requests import Request
 
-from pospay.config import get_settings
-from pospay.web.client_ip import get_client_ip
+from openclear.config import get_settings
+from openclear.web.client_ip import get_client_ip
 
 
 def _make_request(client_host, forwarded_for=None):

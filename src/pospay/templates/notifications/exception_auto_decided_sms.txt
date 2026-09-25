@@ -1,1 +1,0 @@
-PosPay: A {{ network_code }} exception was auto-decided ({{ outcome }}) after no response within its window.

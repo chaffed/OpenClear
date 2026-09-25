@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.auth.security import decode_sso_state_token
-from pospay.domain.sso_connection import SsoProvider
-from pospay.services import security_group_service, sso_service
-from pospay.services.sso_service import SsoConnectionInput
+from openclear.auth.security import decode_sso_state_token
+from openclear.domain.sso_connection import SsoProvider
+from openclear.services import security_group_service, sso_service
+from openclear.services.sso_service import SsoConnectionInput
 from tests.conftest import TenantFactory
 from tests.test_auth.oidc_helpers import FakeOidcProvider, patch_provider
 
@@ -21,7 +21,7 @@ def _csrf(client):
     return client.cookies.get("csrf_token")
 
 
-def _make_mapped_connection(db_session, tenant, *, customer_id=None, auto_provision=True, issuer="https://idp.example.com", external_group="pospay-users", group_name="Viewer"):
+def _make_mapped_connection(db_session, tenant, *, customer_id=None, auto_provision=True, issuer="https://idp.example.com", external_group="openclear-users", group_name="Viewer"):
     data = SsoConnectionInput(
         provider=SsoProvider.OKTA, display_name="Test Okta", issuer=issuer, client_id="test-client-id",
         client_secret="hunter2-secret", groups_claim_name="groups", auto_provision=auto_provision, customer_id=customer_id,
@@ -36,7 +36,7 @@ def _make_mapped_connection(db_session, tenant, *, customer_id=None, auto_provis
 def _start_sso(client, connection, tenant_id, monkeypatch, next_path="/ui/"):
     # /start itself calls build_authorization_url, which fetches the discovery
     # document — patch that out here too, not just for the callback's token exchange.
-    import pospay.auth.oidc_service as oidc_service
+    import openclear.auth.oidc_service as oidc_service
 
     provider = FakeOidcProvider(issuer=connection.issuer, client_id=connection.client_id)
     monkeypatch.setattr(oidc_service, "_get_discovery_document", lambda issuer: provider.discovery_document())
@@ -75,7 +75,7 @@ def test_full_sso_login_flow_auto_provisions_new_user(client, db_session, tenant
     nonce = _start_sso(client, connection, tenant.id, monkeypatch)
 
     provider = FakeOidcProvider(issuer=connection.issuer, client_id=connection.client_id)
-    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["pospay-users"], nonce=nonce)
+    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["openclear-users"], nonce=nonce)
     patch_provider(monkeypatch, provider, id_token)
 
     resp = client.get(
@@ -86,8 +86,8 @@ def test_full_sso_login_flow_auto_provisions_new_user(client, db_session, tenant
     assert resp.headers["location"] == "/ui/"
     assert client.cookies.get("access_token") is not None
 
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.user_repo import UserRepository
 
     db_session.expire_all()
     user = UserRepository(db_session).get_by_email("newperson@example.com")
@@ -118,13 +118,13 @@ def test_sso_login_not_provisioned_shows_error(client, db_session, tenant_factor
     nonce = _start_sso(client, connection, tenant.id, monkeypatch)
 
     provider = FakeOidcProvider(issuer=connection.issuer, client_id=connection.client_id)
-    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["pospay-users"], nonce=nonce)
+    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["openclear-users"], nonce=nonce)
     patch_provider(monkeypatch, provider, id_token)
 
     resp = client.get(f"/ui/login/sso/{connection.id}/callback", params={"code": "c", "state": _state(client)})
 
     assert resp.status_code == 401
-    assert "no pospay account" in resp.text.lower()
+    assert "no openclear account" in resp.text.lower()
 
 
 def test_sso_callback_missing_state_cookie_shows_error(client, db_session, tenant_factory):
@@ -138,7 +138,7 @@ def test_sso_callback_missing_state_cookie_shows_error(client, db_session, tenan
 
 
 def test_customer_branded_login_shows_only_that_customers_connection(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, _users = tenant_factory.make(slug="web-sso-custlogin")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme Co"))
@@ -274,7 +274,7 @@ def test_require_sso_toggle_via_web_guards_against_lockout(client, db_session, t
 
 
 def test_customer_sso_settings_requires_customer_manage_permission(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-sso-cust-forbidden")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
@@ -287,7 +287,7 @@ def test_customer_sso_settings_requires_customer_manage_permission(client, db_se
 
 
 def test_create_customer_connection_via_web(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-sso-cust-create")
     customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
@@ -312,7 +312,7 @@ def test_create_customer_connection_via_web(client, db_session, tenant_factory):
 
 
 def test_customer_sso_edit_404s_for_connection_belonging_to_a_different_customer(client, db_session, tenant_factory):
-    from pospay.services import customer_service
+    from openclear.services import customer_service
 
     tenant, _account, users = tenant_factory.make(slug="web-sso-cust-crosscheck")
     customer_a = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-A", name="A"))
@@ -332,7 +332,7 @@ def test_sso_callback_with_wrong_state_is_rejected(client, db_session, tenant_fa
     connection, _group = _make_mapped_connection(db_session, tenant)
     nonce = _start_sso(client, connection, tenant.id, monkeypatch)
     provider = FakeOidcProvider(issuer=connection.issuer, client_id=connection.client_id)
-    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["pospay-users"], nonce=nonce)
+    id_token = provider.sign_id_token(sub="sub-1", email="newperson@example.com", groups=["openclear-users"], nonce=nonce)
     patch_provider(monkeypatch, provider, id_token)
 
     resp = client.get(f"/ui/login/sso/{connection.id}/callback", params={"code": "c", "state": "not-the-real-state"})
@@ -345,7 +345,7 @@ def test_sso_callback_with_wrong_state_is_rejected(client, db_session, tenant_fa
 def test_sso_start_with_unreachable_provider_shows_clean_error(client, db_session, tenant_factory, monkeypatch):
     import httpx
 
-    import pospay.auth.oidc_service as oidc_service
+    import openclear.auth.oidc_service as oidc_service
 
     tenant, _account, _users = tenant_factory.make(slug="web-sso-unreachable")
     connection, _group = _make_mapped_connection(db_session, tenant)

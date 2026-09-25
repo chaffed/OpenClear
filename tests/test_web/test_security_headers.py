@@ -3,7 +3,7 @@
 
 import re
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 from tests.conftest import TenantFactory
 
 _NONCE_RE = re.compile(r"'nonce-([A-Za-z0-9_-]+)'")
@@ -53,7 +53,7 @@ def test_hsts_absent_by_default_dev_origin(client):
 
 
 def test_hsts_present_when_deployment_is_https(client, monkeypatch):
-    monkeypatch.setattr(get_settings(), "webauthn_origin", "https://pospay.example.com")
+    monkeypatch.setattr(get_settings(), "webauthn_origin", "https://openclear.example.com")
 
     resp = client.get("/health")
 

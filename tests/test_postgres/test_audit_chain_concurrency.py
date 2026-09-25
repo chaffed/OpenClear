@@ -3,7 +3,7 @@
 
 """Real concurrent writers to one bank's audit log, on Postgres (the in-memory SQLite
 used by the rest of the suite has one shared connection, so it can't run writers in
-parallel). Runs only with POSPAY_TEST_DATABASE_URL set."""
+parallel). Runs only with OPENCLEAR_TEST_DATABASE_URL set."""
 
 import threading
 import uuid
@@ -11,10 +11,10 @@ import uuid
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from pospay.services import audit_log_service
+from openclear.services import audit_log_service
 from tests.conftest import TEST_DATABASE_URL
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs POSPAY_TEST_DATABASE_URL (Postgres)")
+pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
 
 _WRITERS = 8
 _ENTRIES_EACH = 5

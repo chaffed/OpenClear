@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import security_group_service, user_service
+from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory
 
 
@@ -64,7 +64,7 @@ def test_submit_ach_raw_entry_creates_example(client, db_session, tenant_factory
     reasons_page = client.get("/ui/ml-training/fraud-examples")
     assert reasons_page.status_code == 200
 
-    from pospay.services import ach_return_reason_service
+    from openclear.services import ach_return_reason_service
 
     reason = ach_return_reason_service.list_ach_return_reasons(db_session, tenant.id, active_only=True)[0]
 
@@ -119,7 +119,7 @@ def test_retract_example_removes_it_from_future_training(client, db_session, ten
         },
     )
 
-    from pospay.domain.exception_item import ExceptionItem, ExceptionItemSource
+    from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 
     db_session.expire_all()
     example = (

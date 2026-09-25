@@ -5,9 +5,9 @@ import re
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.exception_item import ExceptionStatus
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.services import issued_item_service, stop_payment_service
+from openclear.domain.exception_item import ExceptionStatus
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.services import issued_item_service, stop_payment_service
 from tests.conftest import TenantFactory
 
 

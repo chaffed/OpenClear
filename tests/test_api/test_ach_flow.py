@@ -45,7 +45,7 @@ def test_authorized_debit_within_limits_matches(client, tenant_factory):
 def test_unauthorized_originator_creates_exception_through_shared_endpoints(client, db_session, tenant_factory):
     """Proves the network-adapter abstraction holds: /exceptions and /decide are the exact
     same endpoints the check flow uses, unmodified, now serving an ACH exception."""
-    from pospay.services import ach_return_reason_service
+    from openclear.services import ach_return_reason_service
 
     tenant, account, users = tenant_factory.make(slug="ach-unauthorized")
     headers = login_headers(client, tenant.slug, users["preparer"].email)
@@ -125,10 +125,10 @@ def test_debit_block_all_rejects_even_authorized_originator(db_session, tenant_f
     from datetime import date
     from decimal import Decimal
 
-    from pospay.domain.account import AchDebitBlockMode
-    from pospay.domain.ach_transaction import AchTransactionType
-    from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-    from pospay.services import ach_authorization_service
+    from openclear.domain.account import AchDebitBlockMode
+    from openclear.domain.ach_transaction import AchTransactionType
+    from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+    from openclear.services import ach_authorization_service
 
     tenant, account, users = tenant_factory.make(slug="ach-block-all")
     account.ach_debit_block_mode = AchDebitBlockMode.BLOCK_ALL

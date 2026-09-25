@@ -3,7 +3,7 @@
 
 """Fill a database with realistic volume for performance measurement (SCALE_PLAN.md S0).
 
-    POSPAY_DATABASE_URL=postgresql+psycopg://pospay:pospay@127.0.0.1:55432/pospay_perf \\
+    OPENCLEAR_DATABASE_URL=postgresql+psycopg://openclear:openclear@127.0.0.1:55432/openclear_perf \\
         python scripts/perf/seed_volume.py --banks 5 --items-per-bank 100000
 
 Use a throwaway database: it runs `alembic upgrade head`, then ADDS data (banks named
@@ -29,7 +29,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-os.environ.setdefault("POSPAY_ENVIRONMENT", "development")
+os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
 
 PASSWORD = "Perf-test-password-1"
 _BATCH = 5_000
@@ -70,13 +70,13 @@ def _check_features(rng: random.Random, exception_types: list[str]) -> dict:
 
 
 def _seed_bank(session, index: int, args, rng: random.Random) -> dict:
-    from pospay.domain.account import Account
-    from pospay.domain.ach_transaction import AchMatchStatus, AchTransaction, AchTransactionSource, AchTransactionType
-    from pospay.domain.decision import Decision, DecisionOutcome
-    from pospay.domain.exception_item import ExceptionItem, ExceptionStatus
-    from pospay.domain.issued_item import IssuedItem, IssuedItemSource, IssuedItemStatus
-    from pospay.domain.paid_item import PaidItem, PaidItemMatchStatus, PaidItemSettlementStatus, PaidItemSource
-    from pospay.services import audit_log_service, provisioning_service
+    from openclear.domain.account import Account
+    from openclear.domain.ach_transaction import AchMatchStatus, AchTransaction, AchTransactionSource, AchTransactionType
+    from openclear.domain.decision import Decision, DecisionOutcome
+    from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
+    from openclear.domain.issued_item import IssuedItem, IssuedItemSource, IssuedItemStatus
+    from openclear.domain.paid_item import PaidItem, PaidItemMatchStatus, PaidItemSettlementStatus, PaidItemSource
+    from openclear.services import audit_log_service, provisioning_service
 
     slug = f"perf-bank-{index}"
     identity = provisioning_service.create_tenant_with_admin(
@@ -160,8 +160,8 @@ def _seed_bank(session, index: int, args, rng: random.Random) -> dict:
 
 def main() -> None:
     args = _args()
-    if not os.environ.get("POSPAY_DATABASE_URL"):
-        sys.exit("Set POSPAY_DATABASE_URL to a throwaway database first.")
+    if not os.environ.get("OPENCLEAR_DATABASE_URL"):
+        sys.exit("Set OPENCLEAR_DATABASE_URL to a throwaway database first.")
 
     from alembic import command
     from alembic.config import Config
@@ -170,15 +170,15 @@ def main() -> None:
     cfg.set_main_option("script_location", str(ROOT / "migrations"))
     command.upgrade(cfg, "head")
 
-    import pospay.domain  # noqa: F401 -- registers every mapper
-    from pospay.db.session import get_session_factory
+    import openclear.domain  # noqa: F401 -- registers every mapper
+    from openclear.db.session import get_session_factory
 
     rng = random.Random(args.seed)
     session = get_session_factory()()
     try:
         from sqlalchemy import select
 
-        from pospay.domain.tenant import Tenant
+        from openclear.domain.tenant import Tenant
 
         existing = set(session.execute(select(Tenant.slug).where(Tenant.slug.like("perf-bank-%"))).scalars())
         start = time.perf_counter()

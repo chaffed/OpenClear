@@ -172,7 +172,7 @@ def test_back_out_check_images_upload_requires_dual_permission_and_reverses(clie
     assert "paid" in issued_page.text.lower()
 
     # a group with only check_image:write (not paid_item:write) must be refused
-    from pospay.services import security_group_service, user_service
+    from openclear.services import security_group_service, user_service
 
     scoped_group = security_group_service.create_security_group(
         db_session, tenant.id, security_group_service.SecurityGroupInput(name="CheckImageOnly", permissions=frozenset({"check_image:write"}))

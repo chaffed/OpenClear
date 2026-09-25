@@ -11,7 +11,7 @@ deployment would let anyone forge login sessions, file signatures, or audit log
 entries.
 
 `config.py::assert_production_safe` refuses to start the app with
-`POSPAY_ENVIRONMENT=production` while any of the `*_private_key_path`/
+`OPENCLEAR_ENVIRONMENT=production` while any of the `*_private_key_path`/
 `*_public_key_path` settings still point here. Generate your own key pair with:
 
 ```

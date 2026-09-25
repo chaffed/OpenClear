@@ -2,26 +2,26 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""One-click local launcher for PosPay (SQLite, zero external services).
+"""One-click local launcher for OpenClear (SQLite, zero external services).
 
 Run this directly (`python3 scripts/launcher.py`) or via the platform wrapper
-(run_pospay.command on macOS): it creates a virtual environment if needed, installs the
+(run_openclear.command on macOS): it creates a virtual environment if needed, installs the
 project into it, runs database migrations, prompts for first-run setup info if the
 database is empty, then starts the server and opens your browser.
 
 Everything this script creates — the virtual environment, the SQLite database, uploaded
-check images, and trained ML model files — lives under .pospay-run/ next to this project,
+check images, and trained ML model files — lives under .openclear-run/ next to this project,
 never inside the source tree itself. To fully reset (wipe the database, uploads, trained
 models, and installed dependencies) and start over, just delete that one folder:
 
-    rm -rf .pospay-run
+    rm -rf .openclear-run
 
 Safe to re-run any time otherwise — every step is idempotent and skips whatever's
 already done.
 
 Deliberately stdlib-only until AFTER the re-exec into the venv's own interpreter (see
 _create_venv_and_install/_reexec_under_venv below): this script must run under whatever
-bare Python the user has, before any of PosPay's dependencies exist anywhere.
+bare Python the user has, before any of OpenClear's dependencies exist anywhere.
 """
 
 import os
@@ -32,7 +32,7 @@ import venv
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RUN_DIR = PROJECT_ROOT / ".pospay-run"  # delete this one folder to fully reset — see module docstring
+RUN_DIR = PROJECT_ROOT / ".openclear-run"  # delete this one folder to fully reset — see module docstring
 VENV_DIR = RUN_DIR / "venv"
 # Written only after a fully successful install, holding a hash of pyproject.toml at
 # install time (see _pyproject_fingerprint/_create_venv_and_install) — an interrupted
@@ -41,7 +41,7 @@ VENV_DIR = RUN_DIR / "venv"
 # environment; a marker whose hash no longer matches the current pyproject.toml (e.g.
 # after `git pull` brings in a commit that added a dependency) triggers a dependency
 # refresh instead, without wiping the existing venv.
-VENV_MARKER = VENV_DIR / ".pospay-setup-complete"
+VENV_MARKER = VENV_DIR / ".openclear-setup-complete"
 
 HOST = "127.0.0.1"  # never a LAN IP: WebAuthn requires a secure context, and this is a
 PORT = 8000  # local single-user tool, not something that should be network-reachable.
@@ -78,9 +78,9 @@ def _create_venv_and_install() -> None:
         # A complete, previously-installed venv — pyproject.toml just changed since (a
         # `git pull` bringing in a commit that added a dependency, most commonly), so
         # this only needs its dependencies refreshed, not a full recreate.
-        print("PosPay's dependencies have changed since your last run — updating...\n")
+        print("OpenClear's dependencies have changed since your last run — updating...\n")
     else:
-        print("Setting up PosPay for the first time — this can take a minute...\n")
+        print("Setting up OpenClear for the first time — this can take a minute...\n")
         if VENV_DIR.exists():
             # No marker but a venv dir exists — a previous run was interrupted mid-install
             # (e.g. Ctrl+C during `pip install`), so it can't be trusted; start clean.
@@ -94,7 +94,7 @@ def _create_venv_and_install() -> None:
         print("  Upgrading pip...")
         subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "--upgrade", "pip"], check=True)
 
-    print("  Installing PosPay and its dependencies (this is the slow part)...")
+    print("  Installing OpenClear and its dependencies (this is the slow part)...")
     subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "-e", str(PROJECT_ROOT)], check=True)
 
     VENV_MARKER.write_text(fingerprint)
@@ -114,29 +114,29 @@ def _reexec_under_venv() -> None:
 
 def _configure_run_env() -> None:
     """Points the app's database, check-image storage, tenant branding assets, saved bulk
-    upload files, and ML artifacts at .pospay-run/ instead of their normal
+    upload files, and ML artifacts at .openclear-run/ instead of their normal
     project-root-relative defaults (used by a manual `alembic upgrade head && uvicorn ...`
     dev setup) — this is what keeps the quickstart from ever writing into the checked-out
-    source tree. setdefault() so an advanced user's own POSPAY_* env vars still win. Must
-    run before the first `pospay.config.get_settings()` call anywhere (it's @lru_cache'd),
-    so this is called before any `from pospay...` import."""
+    source tree. setdefault() so an advanced user's own OPENCLEAR_* env vars still win. Must
+    run before the first `openclear.config.get_settings()` call anywhere (it's @lru_cache'd),
+    so this is called before any `from openclear...` import."""
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     # Relaxes config.py::assert_production_safe's checks — this launcher is explicitly a
     # local, single-user, SQLite-only tool (see the module docstring), so the checked-in
     # dev/test signing keys and default SSO encryption key are fine here.
-    os.environ.setdefault("POSPAY_ENVIRONMENT", "development")
-    os.environ.setdefault("POSPAY_DATABASE_URL", f"sqlite:///{RUN_DIR / 'pospay.db'}")
-    os.environ.setdefault("POSPAY_CHECK_IMAGE_STORAGE_DIR", str(RUN_DIR / "check_images"))
-    os.environ.setdefault("POSPAY_TENANT_ASSET_STORAGE_DIR", str(RUN_DIR / "tenant_assets"))
-    os.environ.setdefault("POSPAY_BULK_UPLOAD_STORAGE_DIR", str(RUN_DIR / "bulk_uploads"))
-    os.environ.setdefault("POSPAY_ML_ARTIFACT_DIR", str(RUN_DIR / "ml_artifacts"))
+    os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
+    os.environ.setdefault("OPENCLEAR_DATABASE_URL", f"sqlite:///{RUN_DIR / 'openclear.db'}")
+    os.environ.setdefault("OPENCLEAR_CHECK_IMAGE_STORAGE_DIR", str(RUN_DIR / "check_images"))
+    os.environ.setdefault("OPENCLEAR_TENANT_ASSET_STORAGE_DIR", str(RUN_DIR / "tenant_assets"))
+    os.environ.setdefault("OPENCLEAR_BULK_UPLOAD_STORAGE_DIR", str(RUN_DIR / "bulk_uploads"))
+    os.environ.setdefault("OPENCLEAR_ML_ARTIFACT_DIR", str(RUN_DIR / "ml_artifacts"))
 
 
 def _check_tesseract() -> None:
     if shutil.which("tesseract") is None:
         print(
             "NOTE: Tesseract (used for check-image OCR) was not found on your PATH.\n"
-            "      PosPay will still run — uploading a check image just won't extract\n"
+            "      OpenClear will still run — uploading a check image just won't extract\n"
             "      an amount/payee until you install it:\n"
             "        macOS:  brew install tesseract\n"
             "        Linux:  apt install tesseract-ocr\n"
@@ -165,12 +165,12 @@ def _check_weasyprint() -> None:
     # always installed by _ensure_pdf_extra_installed() above, but *importing* it can
     # still raise OSError if the host is missing the underlying Pango/Cairo/GLib system
     # libraries, which pip can't install for you.
-    from pospay.services.doc_pdf_service import weasyprint_usable
+    from openclear.services.doc_pdf_service import weasyprint_usable
 
     if not weasyprint_usable():
         print(
             "NOTE: PDF export (in the documentation pages) needs Pango, Cairo, and GLib\n"
-            "      on your system, which weren't found. PosPay will still run —\n"
+            "      on your system, which weren't found. OpenClear will still run —\n"
             "      everything else works normally — until you install them:\n"
             "        macOS:  brew install pango\n"
             "        Linux:  apt install libpango-1.0-0 libcairo2\n"
@@ -192,9 +192,9 @@ def _prompt_first_run_setup() -> None:
 
     from sqlalchemy import select
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.tenant import Tenant
-    from pospay.services.provisioning_service import create_tenant_with_admin
+    from openclear.db.session import get_session_factory
+    from openclear.domain.tenant import Tenant
+    from openclear.services.provisioning_service import create_tenant_with_admin
 
     session = get_session_factory()()
     try:
@@ -250,9 +250,28 @@ def _open_browser_when_ready(url: str) -> None:
     threading.Thread(target=_wait_and_open, daemon=True).start()
 
 
+LEGACY_POSPAY_RUN_DIR = PROJECT_ROOT / ".pospay-run"
+
+
+def _adopt_legacy_run_dir() -> None:
+    """The project was called PosPay before 1.6 and kept everything under .pospay-run/.
+    Move that data (database, uploads, model files, keys) to the new folder instead of
+    starting over. The old virtual environment isn't moved (its scripts hold absolute
+    paths, and it has the old package installed), so it's rebuilt on this run."""
+    if not LEGACY_POSPAY_RUN_DIR.is_dir() or RUN_DIR.exists():
+        return
+    print(f"Moving your existing data from {LEGACY_POSPAY_RUN_DIR.name}/ to {RUN_DIR.name}/ (the project is now OpenClear)...")
+    shutil.rmtree(LEGACY_POSPAY_RUN_DIR / "venv", ignore_errors=True)
+    LEGACY_POSPAY_RUN_DIR.rename(RUN_DIR)
+    legacy_db = RUN_DIR / "pospay.db"
+    if legacy_db.exists() and not (RUN_DIR / "openclear.db").exists():
+        legacy_db.rename(RUN_DIR / "openclear.db")
+
+
 def main() -> None:
     os.chdir(PROJECT_ROOT)  # pin cwd regardless of how this was invoked (double-click,
     # `python3 scripts/launcher.py` from elsewhere, etc.) — everything else uses absolute paths anyway
+    _adopt_legacy_run_dir()
 
     if not _is_running_under_venv():
         _create_venv_and_install()
@@ -267,14 +286,14 @@ def main() -> None:
     _prompt_first_run_setup()
 
     url = f"http://{HOST}:{PORT}/ui/login"
-    print(f"Starting PosPay at {url}")
+    print(f"Starting OpenClear at {url}")
     print(f"Everything this run creates lives under {RUN_DIR} — delete that folder to fully reset.")
     print("Press Ctrl+C to stop.\n")
     _open_browser_when_ready(url)
 
     import uvicorn
 
-    from pospay.main import app
+    from openclear.main import app
 
     try:
         uvicorn.run(app, host=HOST, port=PORT)

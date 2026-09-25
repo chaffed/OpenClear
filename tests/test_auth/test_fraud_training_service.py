@@ -7,15 +7,15 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.ach_transaction import AchTransactionType
-from pospay.domain.decision import DecisionOutcome
-from pospay.domain.exception_item import ExceptionItemSource, ExceptionStatus
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import ach_return_reason_service, decision_service, issued_item_service
-from pospay.services.fraud_training_service import (
+from openclear.db.tenancy import TenantContext
+from openclear.domain.ach_transaction import AchTransactionType
+from openclear.domain.decision import DecisionOutcome
+from openclear.domain.exception_item import ExceptionItemSource, ExceptionStatus
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import ach_return_reason_service, decision_service, issued_item_service
+from openclear.services.fraud_training_service import (
     AchFraudRawInput,
     CheckFraudRawInput,
     FraudTrainingError,
@@ -253,7 +253,7 @@ def test_submit_ach_fraud_example_attaches_to_existing_transaction(db_session, t
 
     assert exception_item.source_item_id == txn.id
     db_session.expire_all()
-    from pospay.domain.ach_transaction import AchSettlementStatus
+    from openclear.domain.ach_transaction import AchSettlementStatus
 
     assert txn.settlement_status == AchSettlementStatus.RETURNED
 

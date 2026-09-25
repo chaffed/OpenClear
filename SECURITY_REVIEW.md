@@ -20,7 +20,7 @@ The three signing secrets (`jwt_secret_key`, `file_signing_secret`,
 strings — the checked-in `dev_keys/` pair is deliberately public and only usable
 locally. `config.py::assert_production_safe`, called at the top of
 `main.py::create_app()`, now refuses to start the app at all if
-`POSPAY_ENVIRONMENT=production` and any of the three key pairs (or `sso_encryption_key`,
+`OPENCLEAR_ENVIRONMENT=production` and any of the three key pairs (or `sso_encryption_key`,
 which stays a symmetric secret since it's encryption, not signing) are still at their
 checked-in/default values — verified by hand: the app raises `RuntimeError` and exits
 immediately rather than serving requests insecurely.

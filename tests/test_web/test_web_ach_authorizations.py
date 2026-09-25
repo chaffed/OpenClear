@@ -4,13 +4,13 @@
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.ach_authorization_rule import AchAuthorizationRule
-from pospay.domain.ach_transaction import AchMatchStatus, AchTransactionType
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.ach_authorization_repo import AchAuthorizationRepository
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import issued_item_service
+from openclear.domain.ach_authorization_rule import AchAuthorizationRule
+from openclear.domain.ach_transaction import AchMatchStatus, AchTransactionType
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.ach_authorization_repo import AchAuthorizationRepository
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import issued_item_service
 from tests.conftest import TenantFactory
 
 
@@ -124,7 +124,7 @@ def test_submit_prefilled_form_creates_rule_and_audits_source_exception(client, 
     assert len(rules) == 1
     assert rules[0].receiver_id == "RCV-1"
 
-    from pospay.domain.audit_log_entry import AuditLogEntry
+    from openclear.domain.audit_log_entry import AuditLogEntry
 
     entry = db_session.query(AuditLogEntry).filter(AuditLogEntry.resource_id == rules[0].id).one()
     assert str(exception.id) in entry.summary

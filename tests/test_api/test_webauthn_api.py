@@ -3,7 +3,7 @@
 
 import webauthn
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 from tests.conftest import login_headers
 from tests.test_auth.webauthn_helpers import FakeAuthenticator
 
@@ -79,7 +79,7 @@ def test_full_register_and_mfa_login_flow(client, db_session, tenant_factory):
     ok = client.get("/api/v1/issued-items", headers={"Authorization": f"Bearer {tokens['access_token']}"})
     assert ok.status_code == 200
 
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.user_repo import UserRepository
 
     db_session.expire_all()
     assert UserRepository(db_session).get(user.id).last_login_at is not None

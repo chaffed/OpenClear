@@ -4,12 +4,12 @@
 from datetime import date
 from decimal import Decimal
 
-from pospay.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import customer_service, decision_service, notification_service, user_service
-from pospay.services.customer_service import CustomerInput
-from pospay.services.decision_service import DecisionOutcome
+from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus, NotificationType
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import customer_service, decision_service, notification_service, user_service
+from openclear.services.customer_service import CustomerInput
+from openclear.services.decision_service import DecisionOutcome
 
 
 def _notifications(db_session, recipient_user_id=None, notification_type=None):
@@ -48,7 +48,7 @@ def test_exception_created_notifies_users_with_recommend_permission(db_session, 
 
 
 def test_exception_created_customer_scoped_visibility(db_session, tenant_factory):
-    from pospay.services import account_service, security_group_service
+    from openclear.services import account_service, security_group_service
 
     tenant, house_account, users = tenant_factory.make(slug="notif-exception-customer-scope")
     customer_a = customer_service.create_customer(db_session, tenant.id, CustomerInput(customer_number="A", name="Customer A"))
@@ -82,7 +82,7 @@ def test_exception_created_customer_scoped_visibility(db_session, tenant_factory
 def test_recommendation_awaiting_approval_excludes_the_maker(db_session, tenant_factory):
     import uuid
 
-    from pospay.db.tenancy import TenantContext
+    from openclear.db.tenancy import TenantContext
 
     tenant, account, users = tenant_factory.make(slug="notif-recommendation")
     _make_mismatched_paid_item(db_session, tenant, account)
@@ -138,7 +138,7 @@ def test_account_unlocked_notification_respects_preference(db_session, tenant_fa
 
 
 def test_unlock_user_service_triggers_notification(db_session, tenant_factory):
-    from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
+    from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
     tenant, _account, users = tenant_factory.make(slug="notif-unlock-service")
     user = users["admin"]

@@ -15,9 +15,9 @@ opening a generated PDF and looking, not just checking that generation didn't ra
 real browser screenshot sidesteps that entirely.
 
 Seeds a throwaway demo tenant in a scratch SQLite database (never the real
-.pospay-run/ or project-root pospay.db), runs the actual app against it, and drives a
+.openclear-run/ or project-root openclear.db), runs the actual app against it, and drives a
 real headless browser (Playwright) to the data-dictionary page with pan/zoom disabled via
-an init script (see static/js/mermaid-diagrams.js's `window.__pospaySkipPanZoom` check),
+an init script (see static/js/mermaid-diagrams.js's `window.__openclearSkipPanZoom` check),
 so every diagram renders at its full natural size instead of clamped to the small on-page
 preview box, then screenshots each one by its `data-diagram-slug` attribute (see
 _macros/mermaid_diagram.html).
@@ -42,7 +42,7 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = PROJECT_ROOT / "src" / "pospay" / "static" / "generated" / "schema-diagrams"
+OUTPUT_DIR = PROJECT_ROOT / "src" / "openclear" / "static" / "generated" / "schema-diagrams"
 HOST = "127.0.0.1"
 PORT = 8798
 BASE_URL = f"http://{HOST}:{PORT}"
@@ -57,20 +57,20 @@ EXPECTED_SLUGS = ["tenancy-access", "positive-pay", "ach", "exceptions-ml", "bul
 
 
 def _configure_env(run_dir: Path) -> None:
-    os.environ["POSPAY_ENVIRONMENT"] = "development"
-    os.environ["POSPAY_DATABASE_URL"] = f"sqlite:///{run_dir / 'schema_render.db'}"
-    os.environ["POSPAY_CHECK_IMAGE_STORAGE_DIR"] = str(run_dir / "check_images")
-    os.environ["POSPAY_TENANT_ASSET_STORAGE_DIR"] = str(run_dir / "tenant_assets")
-    os.environ["POSPAY_BULK_UPLOAD_STORAGE_DIR"] = str(run_dir / "bulk_uploads")
-    os.environ["POSPAY_ML_ARTIFACT_DIR"] = str(run_dir / "ml_artifacts")
+    os.environ["OPENCLEAR_ENVIRONMENT"] = "development"
+    os.environ["OPENCLEAR_DATABASE_URL"] = f"sqlite:///{run_dir / 'schema_render.db'}"
+    os.environ["OPENCLEAR_CHECK_IMAGE_STORAGE_DIR"] = str(run_dir / "check_images")
+    os.environ["OPENCLEAR_TENANT_ASSET_STORAGE_DIR"] = str(run_dir / "tenant_assets")
+    os.environ["OPENCLEAR_BULK_UPLOAD_STORAGE_DIR"] = str(run_dir / "bulk_uploads")
+    os.environ["OPENCLEAR_ML_ARTIFACT_DIR"] = str(run_dir / "ml_artifacts")
 
 
 def _seed() -> None:
-    import pospay.domain  # noqa: F401
-    from pospay.db.base import Base
-    from pospay.db.session import get_engine, get_session_factory
-    from pospay.domain.payment_network import PaymentNetwork, SettlementTiming
-    from pospay.services import provisioning_service
+    import openclear.domain  # noqa: F401
+    from openclear.db.base import Base
+    from openclear.db.session import get_engine, get_session_factory
+    from openclear.domain.payment_network import PaymentNetwork, SettlementTiming
+    from openclear.services import provisioning_service
 
     engine = get_engine()
     Base.metadata.create_all(engine)
@@ -113,7 +113,7 @@ def _render() -> None:
         # Read by mermaid-diagrams.js's DOMContentLoaded handler on every subsequent
         # navigation in this context -- runs before any page script, so it's in place
         # before the app's own script executes.
-        context.add_init_script("window.__pospaySkipPanZoom = true;")
+        context.add_init_script("window.__openclearSkipPanZoom = true;")
         page = context.new_page()
 
         page.goto(f"{BASE_URL}/ui/login")
@@ -128,7 +128,7 @@ def _render() -> None:
         page.wait_for_load_state("networkidle")
         # Scoped to .mermaid-container specifically -- a bare ".mermaid-wrap svg" selector
         # also matches the toolbar's own icon <svg> elements, which this script hides (see
-        # mermaid-diagrams.js's __pospaySkipPanZoom branch) and so would never satisfy a
+        # mermaid-diagrams.js's __openclearSkipPanZoom branch) and so would never satisfy a
         # "become visible" wait if Playwright happened to resolve to one of those first.
         page.wait_for_selector(".mermaid-container svg", timeout=15000)
         page.wait_for_timeout(500)
@@ -152,13 +152,13 @@ def _render() -> None:
 
 def main() -> None:
     os.chdir(PROJECT_ROOT)
-    run_dir = Path(tempfile.mkdtemp(prefix="pospay-schema-render-"))
+    run_dir = Path(tempfile.mkdtemp(prefix="openclear-schema-render-"))
     _configure_env(run_dir)
     server = None
     try:
         _seed()
         server = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "pospay.main:app", "--host", HOST, "--port", str(PORT), "--log-level", "warning"],
+            [sys.executable, "-m", "uvicorn", "openclear.main:app", "--host", HOST, "--port", str(PORT), "--log-level", "warning"],
             cwd=PROJECT_ROOT, env=os.environ.copy(),
         )
         _wait_for_server()

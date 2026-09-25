@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.config import Settings, assert_production_safe
+from openclear.config import Settings, assert_production_safe
 
 _OVERRIDDEN = {
     "jwt_private_key_path": "keys/jwt_private.pem",

@@ -1,4 +1,4 @@
-# PosPay Evaluation — Security, Incomplete Features, UI/UX
+# OpenClear Evaluation — Security, Incomplete Features, UI/UX
 
 Started: 2026-09-22. Baseline commit: `db146c0` (plus uncommitted approvals-queue work).
 Prior review: `SECURITY_REVIEW.md` (2026-07-28) — findings there are not repeated unless
@@ -151,7 +151,7 @@ deactivation, WebAuthn requirements, branding uploads), plus a periodic (not onl
 reset.
 
 **S11 — FIXED 2026-09-23 (Phase 4) — Info — `docker-compose.yml` publishes Postgres on `0.0.0.0:5432` with
-`pospay/pospay`.** Documented as local-only; bind to `127.0.0.1:5432` to be safe on
+`openclear/openclear`.** Documented as local-only; bind to `127.0.0.1:5432` to be safe on
 shared networks.
 
 What's solid (deployment): `environment` defaults to `production`; startup refuses
@@ -330,6 +330,6 @@ waiting on approval right now").
   [FIX_PLAN.md](FIX_PLAN.md) — track implementation progress there.
 - Reproductions used throwaway files that have since been deleted. Nothing in the repo was
   modified except this file.
-- Live UI check setup: a scratch SQLite DB with `POSPAY_ENVIRONMENT=development`,
-  `POSPAY_DEMO_TENANT_ENABLED=true`, `POSPAY_DEMO_TENANT_PASSWORD=...`; log in at
+- Live UI check setup: a scratch SQLite DB with `OPENCLEAR_ENVIRONMENT=development`,
+  `OPENCLEAR_DEMO_TENANT_ENABLED=true`, `OPENCLEAR_DEMO_TENANT_PASSWORD=...`; log in at
   `/ui/login/riverside-bank` as `admin@riversidebank.example.com`.

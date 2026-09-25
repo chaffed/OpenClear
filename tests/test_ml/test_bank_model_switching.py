@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.domain.tenant import MlModelSource, Tenant
-from pospay.ml.predict import _resolve_scoring_source
-from pospay.ml.registry import ArtifactStore, get_active_model_row
-from pospay.ml.train import train_model
-from pospay.services import provisioning_service, tenant_ml_service
+from openclear.config import get_settings
+from openclear.domain.tenant import MlModelSource, Tenant
+from openclear.ml.predict import _resolve_scoring_source
+from openclear.ml.registry import ArtifactStore, get_active_model_row
+from openclear.ml.train import train_model
+from openclear.services import provisioning_service, tenant_ml_service
 from tests.test_ml.test_bank_model_choice import _bank
 
 
@@ -159,7 +159,7 @@ def test_already_on_the_requested_model_is_rejected(db_session, tenant_factory):
 
 
 def test_scheduled_retrain_replaces_the_shared_model_after_a_bank_leaves(db_session, tenant_factory, session_factory, monkeypatch):
-    from pospay.workers import tasks
+    from openclear.workers import tasks
 
     monkeypatch.setattr(tasks, "get_session_factory", lambda: session_factory)
     monkeypatch.setattr(get_settings(), "ml_min_new_decisions_for_retrain", 10_000)  # only the "bank left" rule can fire

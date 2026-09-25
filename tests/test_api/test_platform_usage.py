@@ -4,7 +4,7 @@
 import csv
 import io
 
-from pospay.services import platform_api_key_service
+from openclear.services import platform_api_key_service
 from tests.conftest import login_headers
 
 

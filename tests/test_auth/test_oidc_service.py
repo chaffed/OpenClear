@@ -3,9 +3,9 @@
 
 import pytest
 
-from pospay.auth.crypto import encrypt_secret
-from pospay.auth.oidc_service import OidcError, build_authorization_url, exchange_code_for_claims, reset_oidc_cache
-from pospay.domain.sso_connection import SsoConnection, SsoProvider
+from openclear.auth.crypto import encrypt_secret
+from openclear.auth.oidc_service import OidcError, build_authorization_url, exchange_code_for_claims, reset_oidc_cache
+from openclear.domain.sso_connection import SsoConnection, SsoProvider
 from tests.test_auth.oidc_helpers import FakeOidcProvider, patch_provider
 
 
@@ -28,7 +28,7 @@ def test_build_authorization_url_includes_expected_params(monkeypatch):
     reset_oidc_cache()
     provider = FakeOidcProvider()
     monkeypatch.setattr(
-        "pospay.auth.oidc_service._get_discovery_document", lambda issuer: provider.discovery_document()
+        "openclear.auth.oidc_service._get_discovery_document", lambda issuer: provider.discovery_document()
     )
     connection = _make_connection()
 
@@ -44,14 +44,14 @@ def test_exchange_code_for_claims_success_with_groups(monkeypatch):
     reset_oidc_cache()
     provider = FakeOidcProvider()
     connection = _make_connection()
-    id_token = provider.sign_id_token(sub="user-1", email="person@example.com", groups=["pospay-approvers"], nonce="the-nonce")
+    id_token = provider.sign_id_token(sub="user-1", email="person@example.com", groups=["openclear-approvers"], nonce="the-nonce")
     patch_provider(monkeypatch, provider, id_token)
 
     claims = exchange_code_for_claims(connection, code="fake-code", redirect_uri="https://app.example.com/callback", expected_nonce="the-nonce")
 
     assert claims.email == "person@example.com"
     assert claims.subject == "user-1"
-    assert claims.groups == ["pospay-approvers"]
+    assert claims.groups == ["openclear-approvers"]
 
 
 def test_exchange_code_for_claims_falls_back_to_preferred_username(monkeypatch):
@@ -129,7 +129,7 @@ def test_exchange_code_for_claims_rejects_missing_email_and_username(monkeypatch
 def test_discovery_document_is_cached_across_calls(monkeypatch):
     """Exercises the REAL _get_discovery_document cache dict — only the underlying HTTP
     GET is stubbed, so a second call within the cache TTL must not hit it again."""
-    import pospay.auth.oidc_service as oidc_service
+    import openclear.auth.oidc_service as oidc_service
 
     reset_oidc_cache()
     provider = FakeOidcProvider()

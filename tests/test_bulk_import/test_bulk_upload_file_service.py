@@ -3,8 +3,8 @@
 
 from pathlib import Path
 
-from pospay.domain.bulk_upload_file import BulkUploadKind
-from pospay.services import bulk_upload_file_service
+from openclear.domain.bulk_upload_file import BulkUploadKind
+from openclear.services import bulk_upload_file_service
 
 
 def test_record_uploaded_file_saves_hashes_and_signs(db_session, tenant_factory):

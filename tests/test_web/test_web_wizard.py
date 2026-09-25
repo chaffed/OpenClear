@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import customer_service
+from openclear.services import customer_service
 from tests.conftest import TenantFactory
 
 
@@ -38,7 +38,7 @@ def test_bank_wizard_page_renders_and_shows_progress(client, tenant_factory):
 
 
 def test_acknowledge_and_unacknowledge_bank_step_via_web(client, db_session, tenant_factory):
-    from pospay.services import wizard_service
+    from openclear.services import wizard_service
 
     tenant, _account, users = tenant_factory.make(slug="web-wizard-ack")
     _login(client, tenant.slug, users["admin"].email)
@@ -109,7 +109,7 @@ def test_customer_wizard_page_renders(client, db_session, tenant_factory):
 
 
 def test_dual_control_toggle_via_web(client, db_session, tenant_factory):
-    from pospay.domain.tenant import Tenant
+    from openclear.domain.tenant import Tenant
 
     tenant, _account, users = tenant_factory.make(slug="web-wizard-dualcontrol")
     _login(client, tenant.slug, users["admin"].email)
@@ -134,7 +134,7 @@ def test_every_bank_wizard_step_link_resolves(client, tenant_factory):
     never existed (e.g. wizard_service.py once linked "Add an account" to
     /ui/accounts/new before that page existed, and separately kept pointing SSO at
     /ui/settings/sso after it moved to /ui/admin/sso)."""
-    from pospay.services import wizard_service
+    from openclear.services import wizard_service
 
     tenant, _account, users = tenant_factory.make(slug="web-wizard-links-bank")
     _login(client, tenant.slug, users["admin"].email)
@@ -145,7 +145,7 @@ def test_every_bank_wizard_step_link_resolves(client, tenant_factory):
 
 
 def test_every_customer_wizard_step_link_resolves(client, db_session, tenant_factory):
-    from pospay.services import wizard_service
+    from openclear.services import wizard_service
 
     tenant, _account, users = tenant_factory.make(slug="web-wizard-links-customer")
     customer = customer_service.create_customer(

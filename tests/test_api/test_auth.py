@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 
 
 def test_login_succeeds_with_correct_credentials(client, tenant_factory):
@@ -20,7 +20,7 @@ def test_login_succeeds_with_correct_credentials(client, tenant_factory):
 
 
 def test_login_records_last_login_at(client, db_session, tenant_factory):
-    from pospay.repositories.user_repo import UserRepository
+    from openclear.repositories.user_repo import UserRepository
 
     tenant, _account, users = tenant_factory.make(slug="login-last-login")
     assert UserRepository(db_session).get(users["admin"].id).last_login_at is None

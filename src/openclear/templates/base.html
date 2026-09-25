@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en"{% if theme %} data-theme="{{ theme }}"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version('css/app.css') }}">
+  {% if ctx and ctx.has_favicon %}<link rel="icon" href="/ui/branding/{{ ctx.tenant_slug }}/favicon">{% endif %}
+  {% if ctx and ctx.accent_color %}<style>:root{ --accent: {{ ctx.accent_color }}; }</style>{% endif %}
+  {% if ctx and ctx.access_expires_at %}
+  {# Read by static/js/session.js: when this session's idle timeout and maximum length
+     run out (Unix seconds), so it can keep an active user signed in and warn an idle one. #}
+  <meta name="openclear-access-expires" content="{{ ctx.access_expires_at.timestamp() | int }}">
+  {% if ctx.session_expires_at %}<meta name="openclear-session-expires" content="{{ ctx.session_expires_at.timestamp() | int }}">{% endif %}
+  {% endif %}
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <div class="app-shell">
+    {% if ctx %}
+    {% from "_macros/icon.html" import icon %}
+    {% macro nav_link(href, label, icon_name, badge=0) %}
+    <a href="{{ href }}" class="{{ 'active' if (request.url.path == href or request.url.path.startswith(href + '/')) else '' }}">{{ icon(icon_name) }}{{ label }}{% if badge %}<span class="nav-count" aria-label="{{ badge }} waiting">{{ badge }}</span>{% endif %}</a>
+    {% endmacro %}
+    {% set show_ach_return_reasons = can(ctx, "ach_return_reason:manage") %}
+    {% set show_wsud = ctx.customer_id is not none and can(ctx, "wsud:sign") %}
+    {% set show_customer_banner = ctx.customer_id is not none and can(ctx, "customer_banner:manage") %}
+    {% set show_org_section = can(ctx, "customer:manage") or can(ctx, "admin:manage") or can(ctx, "user:manage")
+        or can(ctx, "security_group:manage") or can(ctx, "tenant:manage") or can(ctx, "audit_log:read") %}
+    {% set show_end_user_docs = can(ctx, "end_user_documentation:read") %}
+    {% set show_admin_docs = can(ctx, "admin_documentation:read") %}
+    <nav class="sidenav">
+      <div class="sidenav-header">
+        <a href="/ui/" class="brand">
+          {% if ctx.has_logo %}<img src="/ui/branding/{{ ctx.tenant_slug }}/logo" alt="{{ ctx.tenant_name }}" class="brand-logo">{% else %}{{ ctx.tenant_name }}{% endif %}
+        </a>
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="sidenav-panel">
+          {{ icon("menu") }}
+        </button>
+      </div>
+      <div class="sidenav-panel" id="sidenav-panel">
+      {% if ctx.customer_id %}<p class="customer-scope-badge">Scoped to <strong>{{ ctx.customer_name }}</strong></p>{% endif %}
+      {# While an admin-issued temporary password must be replaced, every other page just
+         redirects back to the change form (web/deps.py), so don't offer links to them. #}
+      {% if not ctx.must_change_password %}
+      <div class="nav-links">
+        <p class="nav-section">Positive Pay</p>
+        {{ nav_link("/ui/accounts", "Accounts", "account_balance") }}
+        {{ nav_link("/ui/issued-items", "Issued Items", "receipt_long") }}
+        {{ nav_link("/ui/stop-payments", "Stop Payments", "block") }}
+        {{ nav_link("/ui/paid-items", "Paid Items", "paid") }}
+        {{ nav_link("/ui/check-images", "Check Images", "image") }}
+
+        <p class="nav-section">ACH</p>
+        {{ nav_link("/ui/ach/authorizations", "ACH Authorizations", "fact_check") }}
+        {{ nav_link("/ui/ach/transactions", "ACH Transactions", "sync_alt") }}
+        {% if show_ach_return_reasons %}{{ nav_link("/ui/ach-return-reasons", "ACH Return Reasons", "assignment_return") }}{% endif %}
+
+        <p class="nav-section">Review</p>
+        {{ nav_link("/ui/exceptions", "Exceptions", "flag") }}
+        {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
+        {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
+        {% if show_customer_banner %}{{ nav_link("/ui/customers/" ~ ctx.customer_id ~ "/banner", "Banner Message", "campaign") }}{% endif %}
+        {% if can(ctx, "ml_training_example:write") %}{{ nav_link("/ui/ml-training/fraud-examples", "Fraud Training Data", "model_training") }}{% endif %}
+
+        {% if show_org_section %}
+        <p class="nav-section">Organization</p>
+        {% if can(ctx, "customer:manage") %}{{ nav_link("/ui/customers", "Customers", "groups") }}{% endif %}
+        {% if can(ctx, "user:manage") %}{{ nav_link("/ui/users", "Users", "person") }}{% endif %}
+        {% if can(ctx, "security_group:manage") %}{{ nav_link("/ui/security-groups", "Security Groups", "admin_panel_settings") }}{% endif %}
+        {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/wizard/bank", "Getting Started", "checklist") }}{% endif %}
+        {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
+        {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Audit Log", "history") }}{% endif %}
+        {% if can(ctx, "admin:manage") or can(ctx, "tenant:manage") %}{{ nav_link("/ui/admin", "Admin", "tune") }}{% endif %}
+        {% endif %}
+      </div>
+      <div class="nav-bottom">
+        {% if show_end_user_docs %}{{ nav_link("/ui/docs/end-user", "End User Documentation", "menu_book") }}{% endif %}
+        {% if show_admin_docs %}{{ nav_link("/ui/docs/admin", "Admin Documentation", "library_books") }}{% endif %}
+        {{ nav_link("/ui/switch-tenant", "Switch organization", "swap_horiz") }}
+        {{ nav_link("/ui/security", "Security", "vpn_key") }}
+      {% else %}
+      <div class="nav-bottom">
+      {% endif %}
+        <form method="post" action="/ui/logout" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="link-button">Log out</button>
+        </form>
+      </div>
+      </div>
+    </nav>
+    {% endif %}
+
+    <div class="page" id="main-content">
+      {% if ctx and ctx.is_demo %}
+      <p class="flash flash-warn demo-notice" role="note"><strong>Public demo.</strong> Everyone
+        shares this organization, and it resets every hour. A few settings that could lock other
+        visitors out are turned off.</p>
+      {% endif %}
+      {% include "partials/_flash.html" %}
+      {% include "partials/_banner.html" %}
+      {% set has_help = self.help_body()|trim %}
+      <div class="page-controls">
+        <form method="post" action="/ui/theme" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="{{ request.url.path }}{{ ('?' + request.url.query) if request.url.query else '' }}">
+          <select name="theme" class="theme-select" data-auto-submit aria-label="Color theme">
+            <option value="system" {{ "selected" if not theme else "" }}>System</option>
+            <option value="light" {{ "selected" if theme == "light" else "" }}>Light</option>
+            <option value="dark" {{ "selected" if theme == "dark" else "" }}>Dark</option>
+          </select>
+        </form>
+        {% if has_help %}<button type="button" id="page-help-button" class="help-button" aria-label="Help">?</button>{% endif %}
+      </div>
+      {% if has_help %}
+      <dialog id="page-help-dialog" class="help-dialog">
+        <button type="button" class="help-close" aria-label="Close">&times;</button>
+        <h2>{% block help_title %}Help{% endblock %}</h2>
+        {% block help_body %}{% endblock %}
+      </dialog>
+      {% endif %}
+      {% block content %}{% endblock %}
+      {% set contact = ctx if ctx else branding %}
+      <footer class="app-footer">
+        {% if contact and (contact.support_email or contact.support_phone or contact.website or contact.address_line1) %}
+        <p>
+          {{ contact.tenant_name if ctx else contact.name }}
+          {%- if contact.address_line1 %} · {{ contact.address_line1 }}{% if contact.address_line2 %}, {{ contact.address_line2 }}{% endif %}{% if contact.city %}, {{ contact.city }}{% endif %}{% if contact.state %}, {{ contact.state }}{% endif %} {{ contact.postal_code or "" }}{% endif -%}
+          {%- if contact.support_email %} · <a href="mailto:{{ contact.support_email }}">{{ contact.support_email }}</a>{% endif -%}
+          {%- if contact.support_phone %} · {{ contact.support_phone }}{% endif -%}
+          {%- if contact.website %} · <a href="{{ contact.website }}">{{ contact.website }}</a>{% endif -%}
+        </p>
+        {% endif %}
+        <p class="app-footer-license">OpenClear is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation. <a href="/ui/license">View the full license</a>.</p>
+      </footer>
+    </div>
+  </div>
+
+  {% if ctx and ctx.access_expires_at %}
+  <dialog id="session-dialog" class="session-dialog" aria-labelledby="session-dialog-title" aria-describedby="session-dialog-message">
+    <h2 id="session-dialog-title" data-session-title>Are you still there?</h2>
+    <p id="session-dialog-message" data-session-message>You'll be signed out in <strong data-session-countdown>5:00</strong> because you haven't been active.</p>
+    <div class="actions">
+      <button type="button" data-session-stay>Stay signed in</button>
+      <button type="button" class="secondary" data-session-signout>Sign out now</button>
+    </div>
+  </dialog>
+  <script src="/static/js/session.js?v={{ asset_version('js/session.js') }}"></script>
+  {% endif %}
+  <script src="/static/js/app.js?v={{ asset_version('js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

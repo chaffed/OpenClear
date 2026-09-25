@@ -7,10 +7,10 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.decision import DecisionOutcome
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.services import decision_service, issued_item_service
+from openclear.db.tenancy import TenantContext
+from openclear.domain.decision import DecisionOutcome
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.services import decision_service, issued_item_service
 
 
 def _make_exception(db_session, tenant, account, users, check_number: str, issued_amount: str, presented_amount: str):
@@ -40,7 +40,7 @@ def _make_exception(db_session, tenant, account, users, check_number: str, issue
     )
     db_session.commit()
 
-    from pospay.repositories.exception_repo import ExceptionRepository
+    from openclear.repositories.exception_repo import ExceptionRepository
 
     exceptions = ExceptionRepository(db_session, tenant.id).list(source_item_id=paid_item.id)
     return exceptions[0]
@@ -71,7 +71,7 @@ def _decide(db_session, tenant, users, exception, outcome: DecisionOutcome):
 
 
 def test_train_model_raises_below_minimum_decision_count(db_session, tenant_factory):
-    from pospay.ml.train import InsufficientTrainingData, train_model
+    from openclear.ml.train import InsufficientTrainingData, train_model
 
     tenant, _account, _users = tenant_factory.make(slug="ml-insufficient")
 
@@ -80,7 +80,7 @@ def test_train_model_raises_below_minimum_decision_count(db_session, tenant_fact
 
 
 def test_score_exception_returns_none_before_any_model_trained(db_session, tenant_factory):
-    from pospay.ml.predict import reset_model_cache, score_exception
+    from openclear.ml.predict import reset_model_cache, score_exception
 
     reset_model_cache()
     tenant, account, users = tenant_factory.make(slug="ml-cold-start")
@@ -93,8 +93,8 @@ def test_score_exception_returns_none_before_any_model_trained(db_session, tenan
 
 
 def test_train_then_score_populates_ml_score_on_new_exceptions(db_session, tenant_factory):
-    from pospay.ml.predict import reset_model_cache, score_exception
-    from pospay.ml.train import train_model
+    from openclear.ml.predict import reset_model_cache, score_exception
+    from openclear.ml.train import train_model
 
     reset_model_cache()
     tenant, account, users = tenant_factory.make(slug="ml-train-score", require_dual_control=False)
@@ -122,9 +122,9 @@ def test_train_then_score_populates_ml_score_on_new_exceptions(db_session, tenan
 
 
 def test_retracted_backfilled_decision_excluded_from_training(db_session, tenant_factory, monkeypatch):
-    from pospay.config import get_settings
-    from pospay.ml.train import InsufficientTrainingData, train_model
-    from pospay.services.fraud_training_service import CheckFraudRawInput, retract_fraud_example, submit_check_fraud_example
+    from openclear.config import get_settings
+    from openclear.ml.train import InsufficientTrainingData, train_model
+    from openclear.services.fraud_training_service import CheckFraudRawInput, retract_fraud_example, submit_check_fraud_example
 
     monkeypatch.setattr(get_settings(), "ml_retrain_cooldown_seconds", 0)
     tenant, account, users = tenant_factory.make(slug="ml-retract-excluded", require_dual_control=False)
@@ -170,15 +170,15 @@ def test_retracted_backfilled_decision_excluded_from_training(db_session, tenant
 
 
 def test_retrain_job_skips_networks_below_threshold(db_session, tenant_factory, monkeypatch):
-    import pospay.workers.tasks as tasks_module
+    import openclear.workers.tasks as tasks_module
 
     tenant, account, users = tenant_factory.make(slug="ml-retrain-job-skip")
     _make_exception(db_session, tenant, account, users, "9401", "100.00", "999.00")
 
     # Only 1 decision exists, well below the default threshold (20) — must not raise,
     # just skip. Bind the job to the same in-memory engine the test uses: patch the name
-    # as workers/tasks.py itself references it (`from pospay.db.session import
-    # get_session_factory`), not pospay.db.session's own attribute — a `from X import Y`
+    # as workers/tasks.py itself references it (`from openclear.db.session import
+    # get_session_factory`), not openclear.db.session's own attribute — a `from X import Y`
     # binds Y directly into this module's namespace, so patching X.Y afterward doesn't
     # affect what workers.tasks already has bound to that name.
     monkeypatch.setattr(tasks_module, "get_session_factory", lambda: lambda: db_session)
@@ -186,7 +186,7 @@ def test_retrain_job_skips_networks_below_threshold(db_session, tenant_factory, 
 
 
 def test_retrain_cooldown_rejects_immediate_reretrain(db_session, tenant_factory):
-    from pospay.ml.train import RetrainCooldownActive, train_model
+    from openclear.ml.train import RetrainCooldownActive, train_model
 
     tenant, account, users = tenant_factory.make(slug="ml-cooldown", require_dual_control=False)
     for i in range(12):
@@ -201,8 +201,8 @@ def test_retrain_cooldown_rejects_immediate_reretrain(db_session, tenant_factory
 
 
 def test_retrain_cooldown_lifts_after_the_window_elapses(db_session, tenant_factory, monkeypatch):
-    from pospay.config import get_settings
-    from pospay.ml.train import train_model
+    from openclear.config import get_settings
+    from openclear.ml.train import train_model
 
     monkeypatch.setattr(get_settings(), "ml_retrain_cooldown_seconds", 0)
     tenant, account, users = tenant_factory.make(slug="ml-cooldown-lifted", require_dual_control=False)
@@ -217,11 +217,11 @@ def test_retrain_cooldown_lifts_after_the_window_elapses(db_session, tenant_fact
 
 
 def test_retrain_job_continues_and_records_failure_after_unexpected_error(db_session, tenant_factory, monkeypatch):
-    import pospay.workers.tasks as tasks_module
-    from pospay.domain.ml_model import MlModel, MlModelStatus
-    from pospay.ml.model import LogisticRegressionScoringModel
-    from pospay.ml.registry import get_active_model_row
-    from pospay.services import account_service, customer_service
+    import openclear.workers.tasks as tasks_module
+    from openclear.domain.ml_model import MlModel, MlModelStatus
+    from openclear.ml.model import LogisticRegressionScoringModel
+    from openclear.ml.registry import get_active_model_row
+    from openclear.services import account_service, customer_service
     from sqlalchemy import select
 
     tenant, account, users = tenant_factory.make(slug="ml-retrain-resilience")

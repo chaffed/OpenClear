@@ -65,7 +65,7 @@ def patch_provider(monkeypatch, provider: FakeOidcProvider, id_token: str) -> No
     """Wires provider.discovery_document()/jwks() into oidc_service's cache functions,
     and stubs the token-endpoint HTTP exchange to return the given id_token directly —
     no real network call, but the id_token itself is verified for real."""
-    import pospay.auth.oidc_service as oidc_service
+    import openclear.auth.oidc_service as oidc_service
 
     monkeypatch.setattr(oidc_service, "_get_discovery_document", lambda issuer: provider.discovery_document())
     monkeypatch.setattr(oidc_service, "_get_jwks", lambda jwks_uri: provider.jwks())

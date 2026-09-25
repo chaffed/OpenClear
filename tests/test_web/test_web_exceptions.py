@@ -3,7 +3,7 @@
 
 import re
 
-from pospay.services import ach_return_reason_service
+from openclear.services import ach_return_reason_service
 from tests.conftest import TenantFactory
 
 

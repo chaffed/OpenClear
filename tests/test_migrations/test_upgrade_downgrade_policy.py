@@ -26,8 +26,8 @@ from alembic import command
 from alembic.config import Config
 
 from migrations.version_history import VERSION_HISTORY, minor_versions_back
-from pospay.config import get_settings
-from pospay.db.session import reset_engine_cache
+from openclear.config import get_settings
+from openclear.db.session import reset_engine_cache
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -46,11 +46,11 @@ def _alembic_config() -> Config:
 @pytest.fixture
 def scratch_db(tmp_path, monkeypatch):
     """A throwaway, file-backed sqlite db -- migrations/env.py reads the URL from
-    pospay's own (lru_cache'd) settings, so the env var must be set and the cache
-    cleared before Alembic's Config is ever touched, same "before any `from pospay...`
+    openclear's own (lru_cache'd) settings, so the env var must be set and the cache
+    cleared before Alembic's Config is ever touched, same "before any `from openclear...`
     import" ordering scripts/launcher.py's own doc comments call out."""
     db_path = tmp_path / "migration_policy.db"
-    monkeypatch.setenv("POSPAY_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("OPENCLEAR_DATABASE_URL", f"sqlite:///{db_path}")
     get_settings.cache_clear()
     reset_engine_cache()
     yield db_path
@@ -66,7 +66,7 @@ def test_upgrade_does_not_disable_other_loggers(scratch_db):
     """Regression test: migrations/env.py's fileConfig(alembic.ini) call defaults to
     disable_existing_loggers=True, which silently sets .disabled = True on every Python
     logger that already exists at that point and isn't explicitly named in alembic.ini's
-    [loggers] section -- e.g. any pospay.* module logger created by an import that ran
+    [loggers] section -- e.g. any openclear.* module logger created by an import that ran
     before this migration did. That's a standard fileConfig() gotcha (confirmed directly
     by reproducing it before the fix), not something alembic.ini's [loggers] section is
     meant to enumerate every application logger to avoid. Once disabled, a logger stays
@@ -74,7 +74,7 @@ def test_upgrade_does_not_disable_other_loggers(scratch_db):
     (ocr/factory.py's stub-provider warning) depends on its own logger actually firing."""
     import logging
 
-    logger = logging.getLogger("pospay.some_arbitrary_module_not_in_alembic_ini")
+    logger = logging.getLogger("openclear.some_arbitrary_module_not_in_alembic_ini")
     assert logger.disabled is False
 
     command.upgrade(_alembic_config(), "head")
@@ -132,8 +132,8 @@ def _connect(db_path) -> sqlite3.Connection:
 def test_payment_network_settlement_timing_survives_migration_and_orm_read(scratch_db):
     command.upgrade(_alembic_config(), "9327972d0952")  # inserts the check/ach rows itself
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.payment_network import PaymentNetwork
+    from openclear.db.session import get_session_factory
+    from openclear.domain.payment_network import PaymentNetwork
 
     session = get_session_factory()()
     try:
@@ -157,8 +157,8 @@ def test_bulk_upload_file_source_survives_migration_and_orm_read(scratch_db):
 
     command.upgrade(_alembic_config(), "b1c2d3e4f5a6")
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.bulk_upload_file import BulkUploadFile, BulkUploadSource
+    from openclear.db.session import get_session_factory
+    from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadSource
 
     session = get_session_factory()()
     try:
@@ -184,8 +184,8 @@ def test_exception_item_source_survives_migration_and_orm_read(scratch_db):
     # the ORM model below is today's, so reading through it needs every later column too.
     command.upgrade(_alembic_config(), "head")
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.exception_item import ExceptionItem, ExceptionItemSource
+    from openclear.db.session import get_session_factory
+    from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 
     session = get_session_factory()()
     try:
@@ -209,8 +209,8 @@ def test_decision_source_survives_migration_and_orm_read(scratch_db):
 
     command.upgrade(_alembic_config(), "f7a8b9c0d1e2")
 
-    from pospay.db.session import get_session_factory
-    from pospay.domain.decision import Decision, DecisionSource
+    from openclear.db.session import get_session_factory
+    from openclear.domain.decision import Decision, DecisionSource
 
     session = get_session_factory()()
     try:

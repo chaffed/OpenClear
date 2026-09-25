@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.services import customer_service, security_group_service, user_service
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.services import customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
 
 

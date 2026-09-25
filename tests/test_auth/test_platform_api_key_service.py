@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import platform_api_key_service
+from openclear.services import platform_api_key_service
 
 
 def test_generate_and_create_returns_verifiable_key(db_session):
@@ -9,7 +9,7 @@ def test_generate_and_create_returns_verifiable_key(db_session):
     db_session.commit()
 
     assert row.key_hash != raw_key  # never stored in plaintext
-    assert raw_key.startswith("pospay_platform_")
+    assert raw_key.startswith("openclear_platform_")
 
     verified = platform_api_key_service.verify(db_session, raw_key)
     assert verified is not None

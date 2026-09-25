@@ -6,12 +6,12 @@ scopes (FIX_PLAN.md Phase 5)."""
 
 import pytest
 
-from pospay.config import get_settings
-from pospay.domain.audit_log_entry import AuditLogEntry
-from pospay.domain.ml_model import MlModelStatus
-from pospay.domain.tenant import MlModelSource
-from pospay.ml.registry import create_model_row
-from pospay.services import platform_api_key_service, provisioning_service
+from openclear.config import get_settings
+from openclear.domain.audit_log_entry import AuditLogEntry
+from openclear.domain.ml_model import MlModelStatus
+from openclear.domain.tenant import MlModelSource
+from openclear.ml.registry import create_model_row
+from openclear.services import platform_api_key_service, provisioning_service
 from tests.test_api.test_admin_ml import _seed_labeled_decisions
 from tests.test_ml.test_bank_model_choice import _submit_fraud_example
 

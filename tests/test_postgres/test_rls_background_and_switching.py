@@ -4,20 +4,20 @@
 """Code that works across banks, with Postgres row-level security enforced (the app runs
 as a restricted role; see conftest.py): switching organization, the scheduled jobs, the
 platform operator's usage report, and creating a new bank. Runs only with
-POSPAY_TEST_DATABASE_URL set."""
+OPENCLEAR_TEST_DATABASE_URL set."""
 
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 
-from pospay.domain.ach_transaction import AchSettlementStatus, AchTransaction, AchTransactionType
-from pospay.domain.customer_disposition_setting import DispositionMode
-from pospay.domain.exception_item import ExceptionItem, ExceptionStatus
-from pospay.domain.issued_item import IssuedItem
-from pospay.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import (
+from openclear.domain.ach_transaction import AchSettlementStatus, AchTransaction, AchTransactionType
+from openclear.domain.customer_disposition_setting import DispositionMode
+from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
+from openclear.domain.issued_item import IssuedItem
+from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import (
     ach_return_reason_service,
     auto_disposition_service,
     provisioning_service,
@@ -25,12 +25,12 @@ from pospay.services import (
     usage_metrics_service,
     user_service,
 )
-from pospay.workers import tasks
+from openclear.workers import tasks
 from tests.conftest import TEST_DATABASE_URL, TenantFactory
 from tests.test_auth.test_sweep_expired_dispositions_job import _expired_exception, _make_customer
 from tests.test_bulk_import.test_dropbox_import_service import _configure_dropbox, _drop, _issued_items_csv
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs POSPAY_TEST_DATABASE_URL (Postgres)")
+pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
 
 
 def _web_login(client, tenant_slug, email):

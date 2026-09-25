@@ -3,12 +3,12 @@
 
 from datetime import datetime, timedelta, timezone
 
-from pospay.auth.login_service import PasswordLoginOutcome, authenticate_password
-from pospay.config import get_settings
-from pospay.domain.webauthn_credential import WebauthnCredential
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.repositories.webauthn_credential_repo import WebauthnCredentialRepository
-from pospay.services import sso_service, user_service
+from openclear.auth.login_service import PasswordLoginOutcome, authenticate_password
+from openclear.config import get_settings
+from openclear.domain.webauthn_credential import WebauthnCredential
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.repositories.webauthn_credential_repo import WebauthnCredentialRepository
+from openclear.services import sso_service, user_service
 from tests.conftest import TenantFactory
 from tests.test_web.test_web_sso_login import _make_mapped_connection
 
@@ -84,7 +84,7 @@ def test_account_locks_after_max_failed_attempts(db_session, tenant_factory):
     assert result.outcome == PasswordLoginOutcome.LOCKED
     assert users["admin"].locked_until is not None
 
-    from pospay.domain.notification import Notification, NotificationType
+    from openclear.domain.notification import Notification, NotificationType
 
     notifs = (
         db_session.query(Notification)
@@ -110,7 +110,7 @@ def test_lockout_notification_fires_once_not_on_every_subsequent_rejected_attemp
         db_session.commit()
         assert result.outcome == PasswordLoginOutcome.LOCKED
 
-    from pospay.domain.notification import Notification, NotificationType
+    from openclear.domain.notification import Notification, NotificationType
 
     notifs = (
         db_session.query(Notification)

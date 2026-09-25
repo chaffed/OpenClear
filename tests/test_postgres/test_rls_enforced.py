@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Postgres row-level security, actually enforced. Runs only with POSPAY_TEST_DATABASE_URL
+"""Postgres row-level security, actually enforced. Runs only with OPENCLEAR_TEST_DATABASE_URL
 set (see tests/conftest.py).
 
 The rest of the suite connects as the database owner/superuser, which RLS never applies
@@ -15,7 +15,7 @@ from sqlalchemy.exc import DBAPIError
 
 from tests.conftest import TEST_DATABASE_URL, TenantFactory, login_headers
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs POSPAY_TEST_DATABASE_URL (Postgres)")
+pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
 
 def _two_banks(tenant_factory):
     bank_a = tenant_factory.make(slug="rls-bank-a")

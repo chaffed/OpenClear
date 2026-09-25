@@ -32,7 +32,7 @@ def test_help_modal_absent_on_pre_auth_login_page(client):
 
 
 def test_help_modal_absent_on_transient_confirm_page(client, db_session, tenant_factory):
-    from pospay.services import security_group_service, user_service
+    from openclear.services import security_group_service, user_service
 
     tenant_a, _account_a, users_a = tenant_factory.make(slug="help-modal-confirm-a")
     tenant_b, _account_b, users_b = tenant_factory.make(slug="help-modal-confirm-b")

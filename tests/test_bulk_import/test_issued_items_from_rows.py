@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.repositories.account_repo import AccountRepository
-from pospay.repositories.issued_item_repo import IssuedItemRepository
-from pospay.services.issued_item_service import create_issued_items_from_rows
+from openclear.repositories.account_repo import AccountRepository
+from openclear.repositories.issued_item_repo import IssuedItemRepository
+from openclear.services.issued_item_service import create_issued_items_from_rows
 
 
 def test_creates_issued_items_from_valid_rows(db_session, tenant_factory):

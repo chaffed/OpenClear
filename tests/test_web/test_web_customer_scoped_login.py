@@ -9,8 +9,8 @@ test_cross_customer_isolation.py's API-channel masking test."""
 
 import datetime as dt
 
-from pospay.repositories.tenant_membership_repo import TenantMembershipRepository
-from pospay.services import customer_service, security_group_service, user_service
+from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
+from openclear.services import customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 

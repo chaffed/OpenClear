@@ -9,8 +9,8 @@ import httpcore
 import httpx
 import pytest
 
-from pospay.auth.outbound_http import UnsafeUrlError, check_url, public_only_client
-from pospay.config import get_settings
+from openclear.auth.outbound_http import UnsafeUrlError, check_url, public_only_client
+from openclear.config import get_settings
 
 
 @pytest.mark.parametrize(
@@ -51,7 +51,7 @@ def test_unsafe_urls_are_rejected(url, reason):
 
 
 def test_local_testing_flag_allows_http_localhost(monkeypatch):
-    monkeypatch.setenv("POSPAY_OIDC_ALLOW_PRIVATE_HOSTS", "true")
+    monkeypatch.setenv("OPENCLEAR_OIDC_ALLOW_PRIVATE_HOSTS", "true")
     get_settings.cache_clear()
 
     assert check_url("http://localhost:8080/realms/test") == "http://localhost:8080/realms/test"
@@ -102,8 +102,8 @@ def test_client_does_not_follow_redirects():
 
 
 def test_sso_connection_with_internal_issuer_cannot_be_saved(db_session, tenant_factory):
-    from pospay.domain.sso_connection import SsoProvider
-    from pospay.services import sso_service
+    from openclear.domain.sso_connection import SsoProvider
+    from openclear.services import sso_service
 
     tenant, _account, _users = tenant_factory.make(slug="ssrf-save")
     for issuer in ("http://idp.example.com", "https://169.254.169.254", "https://localhost:8443"):

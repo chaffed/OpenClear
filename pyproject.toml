@@ -1,5 +1,5 @@
 [project]
-name = "pospay"
+name = "openclear"
 version = "1.5.0"
 description = "Multi-tenant, multi-network positive pay platform (checks, ACH) with pluggable OCR and ML-assisted exception review."
 license = "AGPL-3.0-or-later"
@@ -62,7 +62,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-pospay = ["templates/**/*.html", "static/**/*"]
+openclear = ["templates/**/*.html", "static/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

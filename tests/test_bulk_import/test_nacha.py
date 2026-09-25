@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from pospay.bulk_import.nacha import NachaParseError, parse_nacha_file, transaction_type_for_code
+from openclear.bulk_import.nacha import NachaParseError, parse_nacha_file, transaction_type_for_code
 
 _ENTRY_HASH_MODULUS = 10**10
 _CREDIT_CODES = {"22", "23", "24", "32", "33", "34"}

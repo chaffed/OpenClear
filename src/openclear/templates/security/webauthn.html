@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Security — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About security keys{% endblock %}
+{% block help_body %}
+<p>A security key (WebAuthn/FIDO2 — a hardware key, or your device's built-in
+  fingerprint/face unlock) is a second factor: once you register one, future logins
+  need your password <em>and</em> the key. Keys are registered per organization
+  membership, not once for your whole login identity — if you belong to more than one
+  organization, you register separately in each.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Security keys</h1>
+    <div class="actions">
+      <a href="/ui/security/password" class="button secondary">{{ icon("vpn_key") }}Change password</a>
+      <a href="/ui/security/notifications" class="button secondary">{{ icon("notifications") }}Notification preferences</a>
+      <button type="button" id="register-btn">{{ icon("vpn_key") }}Register a new key</button>
+    </div>
+  </div>
+  <p id="register-error" class="flash flash-error" style="display:none;"></p>
+  <p>Registering a key turns on a second factor for this account: future logins will
+    require your password AND this key.</p>
+
+  {% if credentials %}
+  <table data-sortable>
+    <thead><tr><th>Nickname</th><th>Registered</th><th>Last used</th><th></th></tr></thead>
+    <tbody>
+      {% for cred in credentials %}
+      <tr>
+        <td>{{ cred.nickname or "(unnamed)" }}</td>
+        <td>{{ cred.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ cred.last_used_at.strftime("%Y-%m-%d %H:%M") if cred.last_used_at else "never" }}</td>
+        <td>
+          <form method="post" action="/ui/security/webauthn/{{ cred.id }}/delete" class="inline-form" data-confirm="Remove this security key?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="danger">{{ icon("delete") }}Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No security keys registered yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Signed in somewhere else?</h2>
+  <p>If you left OpenClear signed in on another computer, or think someone else may be using
+    your account, sign out everywhere except here. Changing your password does this too.</p>
+  <form method="post" action="/ui/security/sign-out-others"
+        data-confirm="Sign out of OpenClear on every other device and browser? You'll stay signed in here.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Sign out other devices</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/webauthn.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+  const errorEl = document.getElementById("register-error");
+  document.getElementById("register-btn").addEventListener("click", () => {
+    errorEl.style.display = "none";
+    const nickname = window.prompt("Name this key (e.g. 'YubiKey', 'Laptop Touch ID'):", "");
+    if (nickname === null) return;
+    registerWebAuthn(
+      nickname,
+      () => window.location.reload(),
+      (message) => {
+        errorEl.textContent = message;
+        errorEl.style.display = "block";
+      }
+    );
+  });
+</script>
+{% endblock %}

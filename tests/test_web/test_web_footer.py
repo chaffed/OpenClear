@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.services import tenant_service
+from openclear.services import tenant_service
 from tests.conftest import TenantFactory
 
 

@@ -4,13 +4,13 @@
 from datetime import date
 from decimal import Decimal
 
-from pospay.db.tenancy import TenantContext
-from pospay.domain.decision import DecisionOutcome
-from pospay.domain.ml_model import MlModelStatus
-from pospay.ml.registry import create_model_row
-from pospay.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
-from pospay.repositories.exception_repo import ExceptionRepository
-from pospay.services import account_service, customer_service, decision_service, issued_item_service, security_group_service, user_service
+from openclear.db.tenancy import TenantContext
+from openclear.domain.decision import DecisionOutcome
+from openclear.domain.ml_model import MlModelStatus
+from openclear.ml.registry import create_model_row
+from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
+from openclear.repositories.exception_repo import ExceptionRepository
+from openclear.services import account_service, customer_service, decision_service, issued_item_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 
 
@@ -113,8 +113,8 @@ def test_set_customer_ml_mode(client, db_session, tenant_factory):
     assert resp.status_code == 303
     assert "error" not in resp.headers["location"]
 
-    from pospay.domain.customer_ml_setting import MlScoringMode
-    from pospay.services import customer_ml_service
+    from openclear.domain.customer_ml_setting import MlScoringMode
+    from openclear.services import customer_ml_service
 
     db_session.expire_all()
     assert customer_ml_service.get_mode(db_session, tenant.id, customer.id, "check") == MlScoringMode.GLOBAL
@@ -135,7 +135,7 @@ def test_retrain_customer_model_via_web(client, db_session, tenant_factory):
     assert resp.status_code == 303
     assert "error" not in resp.headers["location"]
 
-    from pospay.services import customer_ml_service
+    from openclear.services import customer_ml_service
 
     db_session.expire_all()
     models = customer_ml_service.list_customer_models(db_session, customer.id, "check")
@@ -163,7 +163,7 @@ def test_activate_customer_model_via_web(client, db_session, tenant_factory):
     customer, customer_account = _make_customer(db_session, tenant)
     _seed_labeled_decisions(db_session, tenant, customer_account, users)
 
-    from pospay.ml.train import train_model
+    from openclear.ml.train import train_model
 
     first_result = train_model(db_session, "check", customer_id=customer.id)
     second = create_model_row(
@@ -248,8 +248,8 @@ def test_set_customer_disposition_fixed_pay(client, db_session, tenant_factory):
     assert resp.status_code == 303
     assert "error" not in resp.headers["location"]
 
-    from pospay.domain.customer_disposition_setting import DispositionMode
-    from pospay.services import auto_disposition_service
+    from openclear.domain.customer_disposition_setting import DispositionMode
+    from openclear.services import auto_disposition_service
 
     db_session.expire_all()
     assert auto_disposition_service.get_disposition_mode(db_session, tenant.id, customer.id, "check") == DispositionMode.FIXED_PAY
@@ -262,7 +262,7 @@ def test_set_customer_disposition_with_ach_return_reason(client, db_session, ten
     _login(client, tenant.slug, users["admin"].email)
     client.get(f"/ui/admin/customers/{customer.id}/ml")
 
-    from pospay.services import ach_return_reason_service, auto_disposition_service
+    from openclear.services import ach_return_reason_service, auto_disposition_service
 
     reason = ach_return_reason_service.list_ach_return_reasons(db_session, tenant.id, active_only=True)[0]
 

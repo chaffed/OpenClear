@@ -5,7 +5,7 @@ import html
 
 import pytest
 
-from pospay.web.routers.docs import ADMIN_DOC_PAGES, END_USER_DOC_PAGES
+from openclear.web.routers.docs import ADMIN_DOC_PAGES, END_USER_DOC_PAGES
 from tests.conftest import TenantFactory
 
 
@@ -45,8 +45,8 @@ def test_end_user_doc_index_lists_all_topics(client, tenant_factory):
 def test_end_user_docs_forbidden_without_permission(client, db_session, tenant_factory):
     # No default security group lacks end_user_documentation:read today, so build a
     # custom, permission-less group to exercise the gate itself.
-    from pospay.services import security_group_service, user_service
-    from pospay.services.security_group_service import SecurityGroupInput
+    from openclear.services import security_group_service, user_service
+    from openclear.services.security_group_service import SecurityGroupInput
 
     tenant, _account, _users = tenant_factory.make(slug="docs-end-user-forbidden")
     bare_group = security_group_service.create_security_group(

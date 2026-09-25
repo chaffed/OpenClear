@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.web.pagination import paginate
+from openclear.web.pagination import paginate
 
 
 def _paginate(total: int, *, page: int, page_size: int = 10):

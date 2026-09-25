@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.domain.notification import NotificationType
-from pospay.services import notification_service
+from openclear.domain.notification import NotificationType
+from openclear.services import notification_service
 from tests.conftest import TenantFactory
 
 

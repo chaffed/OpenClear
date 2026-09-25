@@ -1,0 +1,254 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Chaffed
+
+import uuid
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from sqlalchemy.orm import Session
+
+from openclear.auth.webauthn_service import (
+    WebauthnError,
+    begin_registration,
+    complete_registration,
+    delete_credential,
+    list_credentials,
+)
+from openclear.db.session import get_db
+from openclear.db.tenancy import TenantContext
+from openclear.domain.notification import NotificationType
+from openclear.domain.user import User
+from openclear.schemas.webauthn import RegistrationVerifyRequest
+from openclear.auth.password_policy import describe
+from openclear.auth.security import create_session_tokens
+from openclear.services import audit_log_service, notification_service, session_service, user_service
+from openclear.web.deps import PASSWORD_CHANGE_PATH, get_web_context, render_template
+from openclear.web.security import set_session_cookies, verify_csrf, verify_csrf_header
+
+router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
+
+# ACCOUNT_LOCKED's email is not preference-controlled (services/notification_service.py's
+# _ALWAYS_EMAIL_TYPES) -- excluded here entirely rather than rendered as a disabled,
+# always-checked control, since there's nothing for the user to meaningfully see or do
+# with it.
+_PREFERENCE_TYPES = [
+    t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED)
+]
+
+_NOTIFICATION_TYPE_LABELS = {
+    NotificationType.EXCEPTION_CREATED: "New exception ready for review",
+    NotificationType.RECOMMENDATION_AWAITING_APPROVAL: "A recommendation is awaiting your approval",
+    NotificationType.ACCOUNT_UNLOCKED: "Your account was unlocked",
+    NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
+}
+
+
+@router.get("")
+def security_settings(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+) -> HTMLResponse:
+    credentials = list_credentials(db, ctx.tenant_id, ctx.user_id)
+    return render_template(request, "security/webauthn.html", ctx=ctx, credentials=credentials)
+
+
+def _render_password_form(
+    request: Request, db: Session, ctx: TenantContext, *, error: str | None = None, required: bool = False
+) -> HTMLResponse:
+    policy = user_service.password_policy_for_user(db, ctx.user_id)
+    return render_template(
+        request,
+        "security/password.html",
+        ctx=ctx,
+        error=error,
+        required=required or ctx.must_change_password,
+        policy_hint=describe(policy) if policy else None,
+        status_code=400 if error else 200,
+    )
+
+
+@router.get("/password")
+def change_password_form(
+    request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)
+) -> HTMLResponse:
+    return _render_password_form(request, db, ctx)
+
+
+@router.post("/password")
+def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    if new_password != confirm_password:
+        return _render_password_form(request, db, ctx, error="The new passwords don't match.")
+    try:
+        user_service.change_own_password(
+            db, ctx.tenant_id, ctx.user_id, current_password=current_password, new_password=new_password
+        )
+    except user_service.PasswordChangeError as exc:
+        db.commit()  # persist a wrong-current-password strike toward the lockout
+        return _render_password_form(request, db, ctx, error=str(exc))
+    audit_log_service.record_action(
+        db,
+        ctx.tenant_id,
+        actor_user_id=ctx.user_id,
+        channel="web",
+        action="user.password_change",
+        summary="Changed own password" + (" (required after an administrator reset)" if ctx.must_change_password else ""),
+        resource_type="user",
+        resource_id=ctx.user_id,
+    )
+    db.commit()
+    destination = "/ui/" if ctx.must_change_password else PASSWORD_CHANGE_PATH
+    response = RedirectResponse(f"{destination}?flash=" + quote("Your password has been changed."), status_code=303)
+    # change_own_password signed out every session (token_version bumped), this one
+    # included — re-issue tokens for it so the user stays on the page they're on.
+    _reissue_current_session(response, ctx, db.get(User, ctx.user_id))
+    return response
+
+
+@router.post("/sign-out-others")
+def sign_out_other_sessions(
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Ends every other session this person has (other devices, other browsers), keeping
+    this one — the same "sign out everywhere, then re-issue this session" sequence as a
+    password change."""
+    user = db.get(User, ctx.user_id)
+    session_service.revoke_all_sessions(db, user)
+    audit_log_service.record_action(
+        db,
+        ctx.tenant_id,
+        actor_user_id=ctx.user_id,
+        channel="web",
+        action="user.sign_out_other_sessions",
+        summary="Signed out of all other sessions",
+        resource_type="user",
+        resource_id=ctx.user_id,
+    )
+    db.commit()
+    response = RedirectResponse("/ui/security?flash=" + quote("You've been signed out on all other devices."), status_code=303)
+    _reissue_current_session(response, ctx, user)
+    return response
+
+
+def _reissue_current_session(response: Response, ctx: TenantContext, user: User) -> None:
+    """After a sign-out-everywhere (token_version bump) the current session's tokens are
+    dead too; this re-issues them — same session id and maximum length — so the person
+    who asked stays signed in."""
+    set_session_cookies(
+        response,
+        create_session_tokens(
+            user_id=ctx.user_id,
+            tenant_id=ctx.tenant_id,
+            security_group_id=ctx.security_group_id,
+            customer_id=ctx.customer_id,
+            token_version=user.token_version,
+            access_token_expire_minutes=ctx.access_token_expire_minutes,
+            refresh_token_expire_minutes=ctx.refresh_token_expire_minutes,
+            session_id=ctx.session_id,
+            session_expires_at=ctx.session_expires_at,
+        ),
+    )
+
+
+@router.get("/notifications")
+def notification_settings(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+) -> HTMLResponse:
+    user = db.get(User, ctx.user_id)
+    preferences = notification_service.get_preferences(db, ctx.user_id)
+    rows = [
+        {
+            "type": t,
+            "label": _NOTIFICATION_TYPE_LABELS[t],
+            "email_enabled": preferences[t].email_enabled if t in preferences else True,
+            "sms_enabled": preferences[t].sms_enabled if t in preferences else False,
+        }
+        for t in _PREFERENCE_TYPES
+    ]
+    return render_template(request, "security/notifications.html", ctx=ctx, phone=user.phone, rows=rows)
+
+
+@router.post("/notifications/phone")
+def update_phone(
+    request: Request,
+    phone: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    user = db.get(User, ctx.user_id)
+    notification_service.set_phone(db, user, phone.strip() or None)
+    db.commit()
+    return RedirectResponse("/ui/security/notifications", status_code=303)
+
+
+@router.post("/notifications")
+async def update_notification_preferences(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    form = await request.form()
+    for notification_type in _PREFERENCE_TYPES:
+        notification_service.set_preference(
+            db, ctx.user_id, notification_type,
+            email_enabled=f"email_{notification_type.value}" in form,
+            sms_enabled=f"sms_{notification_type.value}" in form,
+        )
+    db.commit()
+    return RedirectResponse("/ui/security/notifications", status_code=303)
+
+
+@router.post("/webauthn/register/options")
+def register_options(
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf_header),
+) -> Response:
+    user = db.get(User, ctx.user_id)
+    options_json = begin_registration(db, user, ctx.tenant_id)
+    db.commit()
+    return Response(content=options_json, media_type="application/json")
+
+
+@router.post("/webauthn/register/verify")
+def register_verify(
+    payload: RegistrationVerifyRequest,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf_header),
+) -> JSONResponse:
+    user = db.get(User, ctx.user_id)
+    try:
+        credential = complete_registration(db, user, ctx.tenant_id, payload.credential, nickname=payload.nickname)
+    except WebauthnError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    db.commit()
+    return JSONResponse({"id": str(credential.id), "nickname": credential.nickname})
+
+
+@router.post("/webauthn/{credential_id}/delete")
+def delete_credential_route(
+    credential_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    deleted = delete_credential(db, ctx.tenant_id, ctx.user_id, credential_id)
+    db.commit()
+    flash = "Security key removed." if deleted else "Security key not found."
+    return RedirectResponse(f"/ui/security?flash={quote(flash)}", status_code=303)

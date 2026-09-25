@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Regenerates src/pospay/static/icons/sprite.svg from Google's Material Symbols
+"""Regenerates src/openclear/static/icons/sprite.svg from Google's Material Symbols
 (Outlined) icon set.
 
 Fetches each icon's single-path SVG from the official material-design-icons repo (raw,
@@ -24,7 +24,7 @@ import urllib.request
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SPRITE_PATH = PROJECT_ROOT / "src" / "pospay" / "static" / "icons" / "sprite.svg"
+SPRITE_PATH = PROJECT_ROOT / "src" / "openclear" / "static" / "icons" / "sprite.svg"
 
 ICON_URL = "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/{name}/materialsymbolsoutlined/{name}_24px.svg"
 

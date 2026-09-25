@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.networks.check.bulk_import import ingest_paid_item_tabular_rows
-from pospay.repositories.paid_item_repo import PaidItemRepository
+from openclear.networks.check.bulk_import import ingest_paid_item_tabular_rows
+from openclear.repositories.paid_item_repo import PaidItemRepository
 
 
 def test_creates_paid_items_from_rows(db_session, tenant_factory):
@@ -43,7 +43,7 @@ def test_bad_account_number_isolated(db_session, tenant_factory):
 
 
 def test_auto_create_accounts_creates_missing_account(db_session, tenant_factory):
-    from pospay.services import account_service
+    from openclear.services import account_service
 
     tenant, _account, _users = tenant_factory.make(slug="bulk-check-tabular-auto-create")
     rows = [

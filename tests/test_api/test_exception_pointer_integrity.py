@@ -10,8 +10,8 @@ mitigation actually holds for every exception created through the real ingestion
 from datetime import date
 from decimal import Decimal
 
-from pospay.networks.registry import get_adapter
-from pospay.repositories.exception_repo import ExceptionRepository
+from openclear.networks.registry import get_adapter
+from openclear.repositories.exception_repo import ExceptionRepository
 from tests.conftest import login_headers
 
 

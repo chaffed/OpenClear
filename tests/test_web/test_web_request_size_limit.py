@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 
 
 def test_request_over_max_body_size_is_rejected(client, monkeypatch):

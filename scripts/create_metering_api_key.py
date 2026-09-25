@@ -37,10 +37,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    os.environ.setdefault("POSPAY_ENVIRONMENT", "production")
+    os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "production")
 
-    from pospay.db.session import get_session_factory
-    from pospay.services import platform_api_key_service
+    from openclear.db.session import get_session_factory
+    from openclear.services import platform_api_key_service
 
     session = get_session_factory()()
     try:

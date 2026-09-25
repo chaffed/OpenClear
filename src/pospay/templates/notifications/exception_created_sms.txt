@@ -1,1 +1,0 @@
-PosPay: New {{ network_code }} exception ready for review ({{ exception_types }}).

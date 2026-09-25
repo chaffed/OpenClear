@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-from pospay.config import get_settings
+from openclear.config import get_settings
 
 
 def test_global_rate_limit_blocks_after_the_configured_count(client, monkeypatch):

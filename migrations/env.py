@@ -6,12 +6,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from pospay.config import get_settings
-from pospay.db.base import Base
+from openclear.config import get_settings
+from openclear.db.base import Base
 
-# pospay.domain's __init__ imports every model module, fully populating Base.metadata
+# openclear.domain's __init__ imports every model module, fully populating Base.metadata
 # for autogenerate — see its docstring for why this must be centralized in one place.
-import pospay.domain  # noqa: F401
+import openclear.domain  # noqa: F401
 
 config = context.config
 
@@ -19,8 +19,8 @@ if config.config_file_name is not None:
     # disable_existing_loggers=False: fileConfig()'s own default (True) silently sets
     # .disabled = True on every Python logger that already exists at this point and
     # isn't explicitly named in alembic.ini's [loggers] section -- e.g. any
-    # pospay.* module logger created by an import that happened to run before this
-    # migration did (confirmed directly: pospay.ocr.factory's logger goes from
+    # openclear.* module logger created by an import that happened to run before this
+    # migration did (confirmed directly: openclear.ocr.factory's logger goes from
     # enabled to permanently disabled for the rest of the process). That's a
     # standard, well-documented fileConfig() gotcha, not something alembic.ini's own
     # [loggers] section is meant to enumerate every application logger to avoid.

@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.services.doc_pdf_service import weasyprint_usable
+from openclear.services.doc_pdf_service import weasyprint_usable
 from tests.conftest import TenantFactory
 from tests.test_web.test_docs import _login
 
@@ -24,8 +24,8 @@ def test_end_user_pdf_downloads_for_permitted_user(client, tenant_factory):
 
 
 def test_end_user_pdf_forbidden_without_permission(client, db_session, tenant_factory):
-    from pospay.services import security_group_service, user_service
-    from pospay.services.security_group_service import SecurityGroupInput
+    from openclear.services import security_group_service, user_service
+    from openclear.services.security_group_service import SecurityGroupInput
 
     tenant, _account, _users = tenant_factory.make(slug="docs-pdf-end-user-forbidden")
     bare_group = security_group_service.create_security_group(

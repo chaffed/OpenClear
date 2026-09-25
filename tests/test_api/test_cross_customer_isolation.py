@@ -8,7 +8,7 @@ part of the customers feature: every repository call site touching a customer-sc
 table (account, issued_item, stop_payment, paid_item, ach_authorization_rule,
 ach_transaction, exception_item, check_image) must pass ctx.customer_id, or this leaks."""
 
-from pospay.services import account_service, customer_service, security_group_service, user_service
+from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
 
 
@@ -226,7 +226,7 @@ def test_check_images_not_visible_across_customers(client, db_session, tenant_fa
     repositories/check_image_repo.py (now a CustomerScopedRepository) and
     check_image.customer_id (denormalized from the resolved account/paid item, same as
     every other customer-scoped table)."""
-    from pospay.networks.check.ocr_processing import create_check_image
+    from openclear.networks.check.ocr_processing import create_check_image
 
     tenant, _users, customer_a, _customer_b, _account_a, _account_b, user_a, user_b = _two_customers(db_session, tenant_factory)
     image_a = create_check_image(

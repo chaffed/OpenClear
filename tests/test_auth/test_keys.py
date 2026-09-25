@@ -5,7 +5,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 
-from pospay.auth.keys import KeyLoadError, load_private_key, load_public_key
+from openclear.auth.keys import KeyLoadError, load_private_key, load_public_key
 
 
 def test_load_private_and_public_key_round_trip():

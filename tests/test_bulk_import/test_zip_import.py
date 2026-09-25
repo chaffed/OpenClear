@@ -6,7 +6,7 @@ import zipfile
 
 import pytest
 
-from pospay.bulk_import.zip_import import ZipImportError, find_image, parse_zip_manifest
+from openclear.bulk_import.zip_import import ZipImportError, find_image, parse_zip_manifest
 
 
 def _make_zip(entries: dict[str, bytes]) -> bytes:
@@ -61,7 +61,7 @@ def test_find_image_returns_none_when_absent():
 
 
 def test_oversized_declared_uncompressed_size_is_rejected_before_reading_entries(monkeypatch):
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     monkeypatch.setattr(get_settings(), "max_zip_uncompressed_bytes", 10)  # smaller than the content below
     content = _make_zip(
@@ -75,7 +75,7 @@ def test_oversized_declared_uncompressed_size_is_rejected_before_reading_entries
 
 
 def test_uncompressed_size_within_the_cap_still_parses(monkeypatch):
-    from pospay.config import get_settings
+    from openclear.config import get_settings
 
     monkeypatch.setattr(get_settings(), "max_zip_uncompressed_bytes", 10_000)
     content = _make_zip({"manifest.csv": "account_number,check_number\n1001,5001\n".encode()})

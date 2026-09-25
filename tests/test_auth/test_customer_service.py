@@ -3,7 +3,7 @@
 
 import pytest
 
-from pospay.services import customer_service, tenant_service
+from openclear.services import customer_service, tenant_service
 
 
 def test_create_customer(db_session, tenant_factory):
