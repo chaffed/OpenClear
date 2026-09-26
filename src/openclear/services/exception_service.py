@@ -40,7 +40,7 @@ def list_exceptions(
     stmt = _query(session, tenant_id, network_code=network_code, statuses=statuses or ((status,) if status else None),
                   customer_id=customer_id)
     if order_by is not None:
-        stmt = stmt.order_by(order_by)
+        stmt = stmt.order_by(*order_by) if isinstance(order_by, (list, tuple)) else stmt.order_by(order_by)
     if offset is not None:
         stmt = stmt.offset(offset)
     if limit is not None:

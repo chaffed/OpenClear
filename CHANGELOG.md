@@ -36,6 +36,18 @@ without changes:**
 - **Tests:** the suite runs against Postgres in CI (`OPENCLEAR_TEST_DATABASE_URL`), and the
   CI failures on Linux / Python 3.11 are fixed.
 - **Tools:** `scripts/perf/` has a volume generator and a timing script.
+- **API list endpoints are paged** (S2): `limit` (default 500, at most 1,000) and
+  `offset`, oldest first, with `X-Total-Count` and a `Link: rel="next"` header (see
+  API.md). **Behavior change:** clients that read more than 500 rows from one call must
+  now follow `Link`.
+- **Faster hot paths** (S2): new indexes for the duplicate-paid check, stop-payment
+  matching, the exceptions queue, the disposition sweep, the ACH frequency check and
+  notification dispatch. The ACH frequency check counts in SQL. The queue pages load
+  source items in one query per network, and customer exports filter decisions in SQL.
+  On a large existing Postgres database, run the upgrade in a quiet window: building the
+  indexes blocks writes to those tables while it runs.
+- **Over-long text** is now a form message (or a `400` from the API) instead of an error
+  page on Postgres and SQL Server.
 
 ## 1.5.0 — 2026-09-23
 

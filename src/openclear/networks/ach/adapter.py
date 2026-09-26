@@ -57,6 +57,12 @@ class AchAdapter:
     def load_source_item(self, session: Session, source_item_id: uuid.UUID) -> AchTransaction | None:
         return session.get(AchTransaction, source_item_id)
 
+    def load_source_items(self, session: Session, source_item_ids: list[uuid.UUID]) -> dict[uuid.UUID, AchTransaction]:
+        if not source_item_ids:
+            return {}
+        rows = session.execute(select(AchTransaction).where(AchTransaction.id.in_(source_item_ids))).scalars()
+        return {row.id: row for row in rows}
+
     @staticmethod
     def _snapshot(auth: AchAuthorizationRule) -> AuthorizationSnapshot:
         return AuthorizationSnapshot(

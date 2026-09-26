@@ -3,13 +3,14 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.pagination import Page, page_params, set_page_headers
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.paid_item import PaidItemSource
+from openclear.domain.paid_item import PaidItem, PaidItemSource
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item, ingest_paid_items_bulk
 from openclear.repositories.paid_item_repo import PaidItemRepository
 from openclear.schemas.common import BulkRowResultOut, BulkSubmitResponse
@@ -88,11 +89,16 @@ def create_paid_items_bulk(
 
 @router.get("", response_model=list[PaidItemRead])
 def list_paid_items(
+    request: Request,
+    response: Response,
     account_id: uuid.UUID | None = None,
+    page: Page = Depends(page_params),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("paid_item:read")),
 ) -> list[PaidItemRead]:
-    items = PaidItemRepository(db, ctx.tenant_id, ctx.customer_id).list(account_id=account_id)
+    repo = PaidItemRepository(db, ctx.tenant_id, ctx.customer_id)
+    items = repo.list(account_id=account_id, order_by=(PaidItem.created_at, PaidItem.id), limit=page.limit, offset=page.offset)
+    set_page_headers(request, response, page, repo.count(account_id=account_id))
     return [PaidItemRead.model_validate(i) for i in items]
 
 

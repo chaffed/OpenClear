@@ -101,6 +101,16 @@ def _names_for_page(db: Session, ctx: TenantContext, items: list[ExceptionItem],
     return accounts, customers
 
 
+def _load_sources(db: Session, items: list[ExceptionItem]) -> dict[uuid.UUID, Any]:
+    """Each exception's source item (paid item, ACH transaction...), keyed by exception id:
+    one query per network for the whole page, not one per row."""
+    by_network: dict[str, list[uuid.UUID]] = {}
+    for item in items:
+        by_network.setdefault(item.network_code, []).append(item.source_item_id)
+    loaded = {code: get_adapter(code).load_source_items(db, ids) for code, ids in by_network.items()}
+    return {item.id: loaded[item.network_code].get(item.source_item_id) for item in items}
+
+
 @router.get("")
 def list_exceptions(
     request: Request,
@@ -130,7 +140,7 @@ def list_exceptions(
         ),
     )
     # Per-row enrichment only ever runs over the current page's rows.
-    sources = {item.id: get_adapter(item.network_code).load_source_item(db, item.source_item_id) for item in page_obj.items}
+    sources = _load_sources(db, page_obj.items)
     accounts, customers = _names_for_page(db, ctx, page_obj.items, sources)
     rows = []
     for item in page_obj.items:
@@ -190,10 +200,10 @@ def list_approvals(
         u.id: u.email for u in db.execute(select(User).where(User.id.in_(recommender_ids))).scalars()
     } if recommender_ids else {}
 
+    sources = _load_sources(db, page_obj.items)
     rows = []
     for item in page_obj.items:
-        adapter = get_adapter(item.network_code)
-        source_item = adapter.load_source_item(db, item.source_item_id)
+        source_item = sources[item.id]
         rows.append(
             {
                 "exception": item,

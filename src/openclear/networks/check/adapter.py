@@ -61,6 +61,12 @@ class CheckAdapter:
     def load_source_item(self, session: Session, source_item_id: uuid.UUID) -> PaidItem | None:
         return session.get(PaidItem, source_item_id)
 
+    def load_source_items(self, session: Session, source_item_ids: list[uuid.UUID]) -> dict[uuid.UUID, PaidItem]:
+        if not source_item_ids:
+            return {}
+        rows = session.execute(select(PaidItem).where(PaidItem.id.in_(source_item_ids))).scalars()
+        return {row.id: row for row in rows}
+
     @staticmethod
     def _snapshot(issued_item: IssuedItem | None) -> IssuedItemSnapshot | None:
         if issued_item is None:

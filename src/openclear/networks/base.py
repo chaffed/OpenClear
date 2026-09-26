@@ -49,3 +49,7 @@ class NetworkAdapter(Protocol):
         """Resolve exception_item.source_item_id back to this network's transaction row.
         This is the only sanctioned way to dereference that pointer (no DB FK backs it)."""
         ...
+
+    def load_source_items(self, session: Session, source_item_ids: list[uuid.UUID]) -> dict[uuid.UUID, Any]:
+        """load_source_item for a whole page at once: one query, keyed by id."""
+        ...

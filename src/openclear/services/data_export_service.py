@@ -18,6 +18,8 @@ from openclear.db.tenancy import bind_session_to_tenant
 from openclear.config import get_settings
 from openclear.domain.customer import Customer
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
+from openclear.domain.decision import Decision
+from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.tenant import Tenant
 from openclear.repositories.ach_authorization_repo import AchAuthorizationRepository
 from openclear.repositories.ach_transaction_repo import AchTransactionRepository
@@ -82,11 +84,14 @@ def _check_image_rows(session: Session, tenant_id: uuid.UUID, customer_id: uuid.
 
 
 def _decision_rows(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list:
-    decisions = DecisionRepository(session, tenant_id).list()
+    repo = DecisionRepository(session, tenant_id)
     if customer_id is None:
-        return decisions
-    exception_ids = {e.id for e in ExceptionRepository(session, tenant_id, customer_id).list()}
-    return [d for d in decisions if d.exception_item_id in exception_ids]
+        return repo.list()
+    # One query: a customer's decisions are those on its own exceptions.
+    stmt = repo.query().join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id).where(
+        ExceptionItem.customer_id == customer_id
+    )
+    return list(session.execute(stmt).scalars().all())
 
 
 def _users_dicts(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list[dict]:

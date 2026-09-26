@@ -3,13 +3,14 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.pagination import Page, page_params, set_page_headers
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.issued_item import IssuedItemStatus
+from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
 from openclear.repositories.issued_item_repo import IssuedItemRepository
 from openclear.schemas.common import BulkRowResultOut, BulkSubmitResponse
 from openclear.schemas.issued_item import IssuedItemCreate, IssuedItemRead, IssuedItemVoidRequest
@@ -88,14 +89,20 @@ def create_issued_items_bulk(
 
 @router.get("", response_model=list[IssuedItemRead])
 def list_issued_items(
+    request: Request,
+    response: Response,
     status_filter: IssuedItemStatus | None = None,
     account_id: uuid.UUID | None = None,
+    page: Page = Depends(page_params),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("issued_item:read")),
 ) -> list[IssuedItemRead]:
     items = issued_item_service.list_issued_items(
-        db, ctx.tenant_id, status=status_filter, account_id=account_id, customer_id=ctx.customer_id
+        db, ctx.tenant_id, status=status_filter, account_id=account_id, customer_id=ctx.customer_id,
+        order_by=(IssuedItem.created_at, IssuedItem.id), limit=page.limit, offset=page.offset,
     )
+    total = IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id).count(status=status_filter, account_id=account_id)
+    set_page_headers(request, response, page, total)
     return [IssuedItemRead.model_validate(i) for i in items]
 
 

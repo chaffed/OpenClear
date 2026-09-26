@@ -80,6 +80,26 @@ normal access token:
 
 `WebauthnCredentialRead`: `id`, `nickname`, `aaguid`, `created_at`, `last_used_at`.
 
+## Paging list endpoints
+
+`GET /exceptions`, `/paid-items`, `/issued-items`, `/stop-payments`, `/ach-transactions`
+and `/ach-authorizations` return one page of rows, oldest first:
+
+| query parameter | default | notes |
+|---|---|---|
+| `limit` | 500 | rows per page, at most 1,000 (more is a `422`) |
+| `offset` | 0 | rows to skip |
+
+The body is still a plain JSON list. Two response headers describe the rest:
+
+- `X-Total-Count`: how many rows match your filters in total.
+- `Link: <...>; rel="next"`: the URL of the next page, with your filters kept. It's absent
+  on the last page.
+
+To read everything, follow `Link` until it's gone. **Changed in the release after 1.5.0:**
+these endpoints used to return every row in one response. A client that expects that
+still works for up to 500 rows; beyond that it must follow `Link`.
+
 ## Permissions
 
 Every endpoint below is gated on one permission key from this catalog, checked against
