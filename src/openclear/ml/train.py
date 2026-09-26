@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -31,14 +31,20 @@ class RetrainCooldownActive(Exception):
     closing off repeated on-demand retraining as a self-service compute DoS."""
 
 
-def _seconds_since(occurred_at: datetime) -> float:
-    # SQLite drops tzinfo on reload (same caveat audit_log_service.py::_normalize_datetime
-    # documents) — a naive value here is always already-UTC by construction.
+def _seconds_since(session: Session, occurred_at: datetime) -> float:
+    """Elapsed time measured on the database's own clock: `occurred_at` is a
+    server_default now(), so comparing it with this process's clock would shift the
+    cooldown by however far the two clocks disagree (and a VM's clock can drift by
+    seconds or more). SQLite drops tzinfo on reload (same caveat as
+    audit_log_service.py::_normalize_datetime); every value here is UTC by construction."""
+    database_now = session.execute(select(func.now())).scalar_one()
+    if isinstance(database_now, str):  # SQLite without type processing
+        database_now = datetime.fromisoformat(database_now)
+    if database_now.tzinfo is None:
+        database_now = database_now.replace(tzinfo=timezone.utc)
     if occurred_at.tzinfo is None:
         occurred_at = occurred_at.replace(tzinfo=timezone.utc)
-    # occurred_at can come from the database server's clock (server_default now()), which
-    # may run slightly ahead of this one; never report negative elapsed time.
-    return max(0.0, (datetime.now(timezone.utc) - occurred_at).total_seconds())
+    return max(0.0, (database_now - occurred_at).total_seconds())
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +207,7 @@ def train_model(
     else:
         slot_models = slot_models.where(MlModel.customer_id.is_(None), MlModel.tenant_id == slot_tenant_id)
     latest = session.execute(slot_models.order_by(MlModel.created_at.desc()).limit(1)).first()
-    if latest is not None and _seconds_since(latest[0]) < cooldown_seconds:
+    if latest is not None and _seconds_since(session, latest[0]) < cooldown_seconds:
         raise RetrainCooldownActive(
             f"network_code={network_code!r} ({scope}) was retrained less than "
             f"{cooldown_seconds}s ago — wait before retraining again."

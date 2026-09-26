@@ -273,3 +273,28 @@ def test_retrain_job_continues_and_records_failure_after_unexpected_error(db_ses
     # the global failure didn't abort the rest of retrain_job().
     customer_active = get_active_model_row(db_session, "check", customer_id)
     assert customer_active is not None
+
+
+def test_retrain_cooldown_ignores_the_app_servers_clock(db_session, tenant_factory, monkeypatch):
+    """The cooldown is measured on the database's clock, so an app server whose clock runs
+    far ahead (here, a day) can't make an immediate retrain look old enough."""
+    from datetime import datetime as real_datetime, timedelta
+
+    from openclear.ml import train
+    from openclear.ml.train import RetrainCooldownActive, train_model
+
+    tenant, account, users = tenant_factory.make(slug="ml-cooldown-skew", require_dual_control=False)
+    for i in range(12):
+        exception = _make_exception(db_session, tenant, account, users, f"94{i:02d}", "100.00", "999.00" if i % 2 == 0 else "888.00")
+        _decide(db_session, tenant, users, exception, DecisionOutcome.RETURN if i % 2 == 0 else DecisionOutcome.PAY)
+    train_model(db_session, "check")
+    db_session.commit()
+
+    class _ClockADayAhead(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return real_datetime.now(tz) + timedelta(days=1)
+
+    monkeypatch.setattr(train, "datetime", _ClockADayAhead)
+    with pytest.raises(RetrainCooldownActive):
+        train_model(db_session, "check")
