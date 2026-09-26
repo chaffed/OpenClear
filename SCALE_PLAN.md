@@ -149,7 +149,7 @@ Timestamps could also tie, making the order ambiguous.
 
 ## Phase S1a — Postgres row-level security, end to end
 
-**Status: COMPLETE (2026-09-24, branch `scale-s1a`).** Added 2026-09-23 from S0's findings.
+**Status: COMPLETE (2026-09-24, branch `scale-s1a`, merged to `main` locally).** Full suites: SQLite 1,148 passed, 12 skipped; Postgres 1,159 passed, 1 skipped. Added 2026-09-23 from S0's findings.
 
 S0 made web and API requests work under enforced RLS. The code that works across banks
 still broke, and now doesn't:
