@@ -181,32 +181,43 @@ still broke, and now doesn't:
 
 ## Phase S2 — Indexes and query fixes
 
-**Status: NOT STARTED.** Confirm each item with S0's `EXPLAIN ANALYZE` before and after.
+**Status: COMPLETE, pending full test runs (2026-09-25, branch `scale-s2`, on top of the
+OpenClear rename).**
 
-- [ ] Indexes:
-      - `paid_item (tenant_id, account_id, check_number)`, for the duplicate-paid check
-        on every presented check (today only `account_id` is indexed, so it scans the
-        account's whole paid history);
-      - the columns `stop_payment` matching uses;
-      - `exception_item (tenant_id, status, created_at)`, for the queue, counts and
-        dashboard, and `(status, decision_deadline)` for the expired-disposition sweep;
-      - `ach_transaction` on the columns the frequency-limit count filters on;
-      - `notification (status, created_at)`, for dispatch.
-- [ ] Customer data exports load every decision at the bank and then filter in Python
-      (`services/data_export_service.py:84`). Join in SQL instead.
-- [ ] The exceptions queue loads each row's source item separately. Fetch them in one
-      query per network (`get_many`).
-- [ ] Combine the dashboard's separate counts into a few grouped queries.
-- [ ] **API list endpoints aren't paginated.** `GET /api/v1/exceptions` (and, to check,
-      paid items, issued items and ACH) return every row at the bank in one response. Add
-      `limit`/`cursor` parameters with a maximum page size. This changes the API, so
-      document it in API.md.
-- [ ] **Over-long text becomes a 500 on Postgres and SQL Server** (found in S0). Nothing
-      checks string lengths, and SQLite doesn't enforce them, so it never showed. Add a
-      length check in the form and service layer from the column sizes, plus a fallback
-      handler that turns a database `DataError` into a normal form error.
-- [ ] Per-request lookups (revoked sessions, membership, security group): measure only.
-      Cache them only if S0 shows they matter.
+- [x] Indexes (migration `b2e4f6a8c0d3`, also declared on the models):
+      - `paid_item (tenant_id, account_id, check_number)`;
+      - `stop_payment (tenant_id, account_id, check_number)`;
+      - `exception_item (tenant_id, status, created_at)` and `(status, decision_deadline)`;
+      - `ach_transaction (tenant_id, account_id, originator_id, effective_date)`;
+      - `ach_authorization_rule (tenant_id, account_id, originator_id)`;
+      - `notification (status, created_at)`.
+      On a large existing Postgres database, run the upgrade in a quiet window: plain
+      `CREATE INDEX` blocks writes to those tables while it runs.
+- [x] The ACH frequency-limit check counts in SQL. It used to fetch every matching row
+      and count them in Python.
+- [x] Customer data exports filter decisions with a join, not in Python.
+- [x] The exceptions and approvals queues load each page's source items with one query
+      per network (`NetworkAdapter.load_source_items`), not one per row.
+- [x] **API list endpoints are paged:** `limit` (default 500, maximum 1,000) and `offset`,
+      oldest first (`created_at`, then `id`), with `X-Total-Count` and
+      `Link: rel="next"` (`api/v1/pagination.py`; documented in API.md). This is a
+      behavior change for clients that read more than 500 rows in one call.
+- [x] **Over-long text:** a `DataError` is a form message (`web/form_errors.py`) or, as a
+      backstop, a 400 page or JSON response. Tests are in `tests/test_postgres/`, since
+      SQLite doesn't enforce lengths.
+- Not changed, because the S0 baseline showed no need: the dashboard's counts (18 ms),
+  and the per-request session and permission lookups.
+
+After (same data plus 2,000 ingested checks; `EXPLAIN ANALYZE`):
+
+| Query | Before | After |
+|---|---|---|
+| Duplicate-paid check (every presented check) | 1.04 ms, bitmap scan of the account's history | **0.07 ms**, index scan |
+| Expired-disposition sweep | 0.97 ms, sequential scan | **0.02 ms**, index scan |
+| `GET /api/v1/exceptions` | 42 ms, all 2,951 rows (1 MB) | 24 ms, one page of 500 (0.2 MB) |
+
+Page, ingestion and training timings were re-run while three full test suites were also
+running, so they aren't comparable. Re-measure on an idle machine.
 
 ## Phase S3 — A durable job queue and a worker process
 
@@ -323,3 +334,4 @@ recommendations unless you say otherwise.
   Phase S1a added; S2 and S3 extended.
 - 2026-09-24 S1 complete (audit chain safe under concurrency).
 - 2026-09-24 S1a complete (Postgres RLS end to end).
+- 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`); S2 done on top of it, pending full test runs.
