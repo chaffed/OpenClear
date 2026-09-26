@@ -81,7 +81,7 @@ def _load_labeled_decisions(
             Decision.features_json.is_not(None),
             ExceptionItem.retracted_at.is_(None),
         )
-        .order_by(Decision.decided_at)
+        .order_by(Decision.decided_at, Decision.id)  # id breaks ties, so the split is reproducible
     )
     if customer_id is not None:
         stmt = stmt.where(ExceptionItem.customer_id == customer_id)

@@ -7,12 +7,12 @@ GLOBAL/CUSTOMER overrides — see ml/train.py, ml/registry.py, ml/predict.py."""
 
 import time
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from openclear.db.tenancy import TenantContext
 from openclear.domain.customer_ml_setting import MlScoringMode
-from openclear.domain.decision import DecisionOutcome
+from openclear.domain.decision import Decision, DecisionOutcome
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
 from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import account_service, customer_service, decision_service, issued_item_service
@@ -84,6 +84,9 @@ def _decide(db_session, tenant, users, exception, outcome: DecisionOutcome):
 
 
 def _seed_decisions(db_session, tenant, account, users, count: int, prefix: str):
+    # One second apart, like real decisions: SQLite stores whole seconds, and decisions
+    # that tie would make training's "most recent" holdout depend on tie order.
+    start = datetime.now(timezone.utc) - timedelta(hours=1)
     for i in range(count):
         exception = _make_exception(
             db_session, tenant, account, users, f"{prefix}{i:02d}", "100.00", "999.00" if i % 2 == 0 else "888.00"
@@ -91,6 +94,9 @@ def _seed_decisions(db_session, tenant, account, users, count: int, prefix: str)
         outcome = DecisionOutcome.RETURN if i % 2 == 0 else DecisionOutcome.PAY
         result = _decide(db_session, tenant, users, exception, outcome)
         assert result.error is None
+        decision = db_session.query(Decision).filter(Decision.exception_item_id == exception.id).one()
+        decision.decided_at = start + timedelta(seconds=i)
+        db_session.commit()
 
 
 def test_exception_denormalizes_customer_id_from_source_item(db_session, tenant_factory):
