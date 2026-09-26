@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -47,7 +47,11 @@ class AchTransaction(Base):
     populates it)."""
 
     __tablename__ = "ach_transaction"
-    __table_args__ = (UniqueConstraint("tenant_id", "trace_number", name="uq_ach_transaction_tenant_trace"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "trace_number", name="uq_ach_transaction_tenant_trace"),
+        # The ACH frequency-limit count (networks/ach/adapter.py) runs for every debit.
+        Index("ix_ach_transaction_tenant_account_originator_date", "tenant_id", "account_id", "originator_id", "effective_date"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

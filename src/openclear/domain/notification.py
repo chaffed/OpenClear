@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -49,6 +49,7 @@ class Notification(Base):
     audit-adjacent tables)."""
 
     __tablename__ = "notification"
+    __table_args__ = (Index("ix_notification_status_created", "status", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     # Nullable: ACCOUNT_LOCKED/ACCOUNT_UNLOCKED are about the User identity itself, not

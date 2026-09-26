@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError
 from fastapi.staticfiles import StaticFiles
 
 from openclear.api.v1.router import api_router
@@ -196,6 +196,27 @@ def create_app() -> FastAPI:
             status_code_display=409,
             message="That conflicts with a record that already exists (for example, a duplicate name or number). "
             "Go back, change it, and try again.",
+            show_back_link=True,
+        )
+
+    @app.exception_handler(DataError)
+    def _handle_data_error(request: Request, exc: DataError):
+        # Backstop for a value the database rejects: too long for its column, or out of
+        # range. Postgres and SQL Server enforce column sizes; SQLite doesn't, so this
+        # never shows up in local development. A 400 rather than a 500: the input was
+        # wrong, not the server. get_db's cleanup rolls the failed transaction back.
+        logger.info("Rejected value on %s %s: %s", request.method, request.url.path, exc.orig)
+        if request.url.path.startswith("/api/"):
+            return JSONResponse(
+                {"detail": "A value is too long or not valid for its field"}, status_code=status.HTTP_400_BAD_REQUEST
+            )
+        return render_template(
+            request,
+            "error.html",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code_display=400,
+            message="One of the values you entered is too long or isn't valid for its field. "
+            "Go back, shorten or correct it, and try again.",
             show_back_link=True,
         )
 

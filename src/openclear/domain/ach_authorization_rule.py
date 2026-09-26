@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Integer, JSON, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -31,6 +31,7 @@ class AchAuthorizationRule(Base):
     wins — see networks/ach/rules.py."""
 
     __tablename__ = "ach_authorization_rule"
+    __table_args__ = (Index("ix_ach_authorization_rule_tenant_account_originator", "tenant_id", "account_id", "originator_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

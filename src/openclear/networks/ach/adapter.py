@@ -5,7 +5,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from openclear.domain.account import Account, AchDebitBlockMode
@@ -85,7 +85,7 @@ class AchAdapter:
     @staticmethod
     def _count_prior_settled_debits(session: Session, txn: AchTransaction) -> int:
         window_start = txn.effective_date - timedelta(days=_FREQUENCY_WINDOW_DAYS)
-        stmt = select(AchTransaction.id).where(
+        stmt = select(func.count()).select_from(AchTransaction).where(
             AchTransaction.tenant_id == txn.tenant_id,
             AchTransaction.account_id == txn.account_id,
             AchTransaction.originator_id == txn.originator_id,
@@ -95,4 +95,4 @@ class AchAdapter:
             AchTransaction.effective_date < txn.effective_date,
             AchTransaction.id != txn.id,
         )
-        return len(session.execute(stmt).all())
+        return session.execute(stmt).scalar_one()

@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -20,6 +20,7 @@ class StopPaymentStatus(str, enum.Enum):
 
 class StopPayment(Base):
     __tablename__ = "stop_payment"
+    __table_args__ = (Index("ix_stop_payment_tenant_account_check", "tenant_id", "account_id", "check_number"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

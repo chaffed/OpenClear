@@ -56,7 +56,8 @@ class TenantScopedRepository(Generic[ModelT]):
     ) -> list[ModelT]:
         stmt = self._filtered_query(**equality_filters)
         if order_by is not None:
-            stmt = stmt.order_by(order_by)
+            # One column, or several (e.g. created_at then id, for a stable page order).
+            stmt = stmt.order_by(*order_by) if isinstance(order_by, (list, tuple)) else stmt.order_by(order_by)
         if offset is not None:
             stmt = stmt.offset(offset)
         if limit is not None:

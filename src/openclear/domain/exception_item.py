@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -40,6 +40,12 @@ class ExceptionItem(Base):
     for why: a typed FK column per network doesn't scale past a couple of networks."""
 
     __tablename__ = "exception_item"
+    __table_args__ = (
+        # The work queue, its counts and the dashboard filter a bank's items by status and
+        # sort by age; the expired-disposition sweep looks across banks by status and deadline.
+        Index("ix_exception_item_tenant_status_created", "tenant_id", "status", "created_at"),
+        Index("ix_exception_item_status_deadline", "status", "decision_deadline"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

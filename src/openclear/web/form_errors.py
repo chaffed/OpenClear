@@ -11,7 +11,7 @@ the rest."""
 
 import logging
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,9 @@ def friendly_error(exc: Exception, *, action: str, duplicate: str | None = None)
     anything else is logged and replaced with a generic message."""
     if isinstance(exc, IntegrityError):
         return duplicate or f"{action}: something with the same details already exists."
+    if isinstance(exc, DataError):
+        # Postgres and SQL Server enforce column sizes and types (SQLite doesn't).
+        return f"{action}: one of the values is too long or not valid for its field."
     if isinstance(exc, ValueError):
         return f"{action}: {exc}"
     logger.exception("%s", action)
