@@ -218,8 +218,20 @@ After (same data plus 2,000 ingested checks; `EXPLAIN ANALYZE`):
 | Expired-disposition sweep | 0.97 ms, sequential scan | **0.02 ms**, index scan |
 | `GET /api/v1/exceptions` | 42 ms, all 2,951 rows (1 MB) | 24 ms, one page of 500 (0.2 MB) |
 
-Page, ingestion and training timings were re-run while three full test suites were also
-running, so they aren't comparable. Re-measure on an idle machine.
+Re-measured on an idle machine (2026-09-26, same data plus the checks ingested by earlier
+runs):
+
+| What | S0 baseline | After S2 |
+|---|---|---|
+| Exceptions queue (needs attention) | 26 ms | 11 ms |
+| Paid items page 1 / page 200 | 22 / 28 ms | 24 / 32 ms (unchanged) |
+| Retrain the shared model | 0.96 s | 0.97 s (unchanged) |
+| Bulk load, 2,000 presented checks | 14.3 s (140 rows/s) | 8.8 s (226 rows/s) |
+| 50,000-row file, projected | ≈ 6.0 min | ≈ 3.7 min |
+
+The bulk-load gain comes from the duplicate-paid, stop-payment and ACH frequency indexes.
+It's still well short of the D1 target (50,000 rows in under 5 minutes *with headroom*),
+because each row still does its own queries and commit. That's S4.
 
 ## Phase S3 — A durable job queue and a worker process
 
