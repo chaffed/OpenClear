@@ -181,8 +181,10 @@ still broke, and now doesn't:
 
 ## Phase S2 — Indexes and query fixes
 
-**Status: COMPLETE, pending full test runs (2026-09-25, branch `scale-s2`, on top of the
-OpenClear rename).**
+**Status: COMPLETE (2026-09-26, branch `scale-s2`, merged to `main` locally).** Full suites:
+SQLite 1,160 passed, 14 skipped; Postgres 1,173 passed, 1 skipped; Linux / Python 3.11 1,159
+passed plus one flaky ML test, fixed (ties in decision time now break by id) and then
+passing in 6 of 6 runs.
 
 - [x] Indexes (migration `b2e4f6a8c0d3`, also declared on the models):
       - `paid_item (tenant_id, account_id, check_number)`;
@@ -334,4 +336,5 @@ recommendations unless you say otherwise.
   Phase S1a added; S2 and S3 extended.
 - 2026-09-24 S1 complete (audit chain safe under concurrency).
 - 2026-09-24 S1a complete (Postgres RLS end to end).
-- 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`); S2 done on top of it, pending full test runs.
+- 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`, merged).
+- 2026-09-26 S2 complete. Also fixed: the retrain cooldown now uses the database clock, and the training holdout split is reproducible.
