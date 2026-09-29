@@ -235,8 +235,17 @@ because each row still does its own queries and commit. That's S4.
 
 ## Phase S3 — A durable job queue and a worker process
 
-**Status: COMPLETE, pending full test runs (2026-09-28, branch `scale-s3`).** Decision D2:
+**Status: COMPLETE (2026-09-28, branch `scale-s3`, merged to `main` locally).** Decision D2:
 a job table in the existing database (no Redis/Celery).
+
+Full suites: SQLite 1,174 passed, 15 skipped; Postgres 1,188 passed, 1 skipped; Linux / Python
+3.11 1,173 passed plus one flaky test, fixed. The in-process thread test had shared the
+suite's single in-memory SQLite connection with a worker thread; it now uses its own
+file-based database, and passed 8 of 8 on Linux under load. Checked in the running app,
+not just in tests:
+- **in_process (default):** an API upload returned at once with OCR `pending`, and the
+  worker thread completed it 0.2 s later, with the payee and amount read correctly;
+- **external:** OCR stayed `pending` until `openclear-worker --once` ran the job.
 
 - [x] A `job` table (migration `c4f6a8b0d2e5`): kind, bank, JSON payload, dedupe key,
       status, attempts/max, `run_after`, `locked_by`, heartbeat, last error, timestamps.
@@ -371,4 +380,4 @@ recommendations unless you say otherwise.
 - 2026-09-24 S1a complete (Postgres RLS end to end).
 - 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`, merged).
 - 2026-09-26 S2 complete. Also fixed: the retrain cooldown now uses the database clock, and the training holdout split is reproducible.
-- 2026-09-28 S3 done (job queue and worker; streaming exports), pending full test runs. X9.37 field verification deferred until a bank implements.
+- 2026-09-28 S3 complete (job queue and worker; streaming exports). X9.37 field verification deferred until a bank implements.

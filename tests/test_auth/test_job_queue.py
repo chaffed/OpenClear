@@ -156,22 +156,38 @@ def test_an_unknown_kind_is_recorded_as_a_failure(db_session, monkeypatch):
     assert "No handler registered" in row.last_error
 
 
-def test_the_in_process_worker_thread_picks_up_queued_work(db_session, monkeypatch):
+def test_the_in_process_worker_thread_picks_up_queued_work(tmp_path, monkeypatch):
+    """Uses its own file-based SQLite database: the suite's in-memory database is one
+    connection shared by every session, which a worker thread and this test's polling
+    must not use at the same moment (a real deployment never shares a connection)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from openclear.db.base import Base
+
     monkeypatch.setattr(get_settings(), "worker_mode", "in_process")
     monkeypatch.setattr(get_settings(), "worker_poll_seconds", 30.0)  # so only the wake-up can start it quickly
     monkeypatch.setattr(get_settings(), "job_stale_after_seconds", 3600)  # no heartbeat write during the test
-    engine = db_session.get_bind()
+    engine = create_engine(f"sqlite:///{tmp_path / 'jobs.db'}", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+
+    def status(job_id):
+        with Session(bind=engine) as session:
+            return session.get(Job, job_id).status
+
     jobs.start_in_process_worker(engine)
     try:
-        job = jobs.enqueue(db_session, "test.record", payload={"n": 4})
-        db_session.commit()
+        with Session(bind=engine) as session:
+            job_id = jobs.enqueue(session, "test.record", payload={"n": 4}).id
+            session.commit()
         jobs.jobs_queued(engine)
         deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and _job(db_session, job.id).status != JobStatus.SUCCEEDED:
+        while time.monotonic() < deadline and status(job_id) != JobStatus.SUCCEEDED:
             time.sleep(0.05)
     finally:
         jobs.stop_in_process_worker()
+        engine.dispose()
 
-    assert _job(db_session, job.id).status == JobStatus.SUCCEEDED
+    assert status(job_id) == JobStatus.SUCCEEDED
     assert _ran == [(4, None)]
     assert not any(t.name == "openclear-worker" for t in threading.enumerate())
