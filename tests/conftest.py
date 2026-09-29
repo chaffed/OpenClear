@@ -10,6 +10,9 @@ import os
 # "development" (not a separate "test" value — config.Settings.environment only
 # distinguishes production from everything else).
 os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
+# Background jobs run right after whatever queued them (workers/jobs.py), so a test sees
+# a job's effect as soon as its request returns.
+os.environ.setdefault("OPENCLEAR_WORKER_MODE", "inline")
 
 import uuid
 from collections.abc import Generator

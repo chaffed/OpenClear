@@ -8,7 +8,6 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
@@ -18,7 +17,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.domain.check_image import CheckImage, OcrStatus
 from openclear.networks.check.bulk_import import ingest_check_image_zip_rows, ingest_x937_items
-from openclear.networks.check.ocr_processing import create_check_image, process_check_image_ocr
+from openclear.networks.check.ocr_processing import create_check_image, queue_ocr
 from openclear.ocr.storage import read_image
 from openclear.repositories.check_image_repo import CheckImageRepository
 from openclear.repositories.paid_item_repo import PaidItemRepository
@@ -26,19 +25,11 @@ from openclear.services import audit_log_service, bulk_upload_file_service, bulk
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.security import verify_csrf
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/ui/check-images", tags=["web-check-images"])
 
 
-def _run_ocr_in_background(engine: Engine, check_image_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
-    # Same pattern as api/v1/check_images.py: a fresh Session bound to the request's
-    # engine (not the global session factory), so this respects test overrides and
-    # Postgres RLS's tenant-scoped session variable — see that file for the full rationale.
-    session = Session(bind=engine)
-    try:
-        process_check_image_ocr(session, check_image_id, tenant_id=tenant_id)
-    finally:
-        session.close()
 
 
 @router.get("")
@@ -97,9 +88,9 @@ def upload_check_image(
         resource_type="check_image",
         resource_id=check_image.id,
     )
+    queue_ocr(db, ctx.tenant_id, check_image.id)
     db.commit()
-
-    background_tasks.add_task(_run_ocr_in_background, db.get_bind(), check_image.id, ctx.tenant_id)
+    jobs_queued(db.get_bind(), background_tasks)
     return RedirectResponse(f"/ui/check-images/{check_image.id}?flash=Uploaded.+OCR+is+processing.", status_code=303)
 
 
@@ -207,7 +198,7 @@ async def bulk_upload_check_images(
         # link this bulk flow always creates between the two.
         check_image = CheckImageRepository(db, ctx.tenant_id, ctx.customer_id).list(paid_item_id=r.created_id)
         if check_image:
-            background_tasks.add_task(_run_ocr_in_background, db.get_bind(), check_image[0].id, ctx.tenant_id)
+            queue_ocr(db, ctx.tenant_id, check_image[0].id)
             bulk_upload_reversal_service.track_created_record(
                 db, ctx.tenant_id, upload_record.id, resource_type="check_image", resource_id=check_image[0].id, row_label=r.row_label
             )
@@ -215,6 +206,7 @@ async def bulk_upload_check_images(
         db, upload_record, succeeded_count=sum(r.success for r in results), failed_count=sum(not r.success for r in results)
     )
     db.commit()
+    jobs_queued(db.get_bind(), background_tasks)
     return render_template(
         request,
         "bulk_result.html",
@@ -261,8 +253,9 @@ def reprocess_check_image(
         resource_type="check_image",
         resource_id=image.id,
     )
+    queue_ocr(db, ctx.tenant_id, image.id)
     db.commit()
-    background_tasks.add_task(_run_ocr_in_background, db.get_bind(), image.id, ctx.tenant_id)
+    jobs_queued(db.get_bind(), background_tasks)
     return RedirectResponse(f"/ui/check-images/{check_image_id}?flash=Reprocessing.", status_code=303)
 
 

@@ -310,24 +310,26 @@ def scan_and_import_tenant(session: Session, tenant: Tenant, *, customer_id: uui
     return results
 
 
-def scan_and_import_all_tenants(session: Session) -> list[ImportedFileResult]:
-    """The in-app scheduler / CLI entry point -- iterates every tenant's own subtree.
-    One tenant's failure (a missing/unreadable directory, an unexpected exception)
-    never stops the rest of the scan, same isolation principle as
-    workers/tasks.py::_train_and_log."""
-    settings = get_settings()
-    dropbox_root = Path(settings.auto_import_dropbox_dir)
+def tenants_with_a_dropbox(session: Session) -> list[Tenant]:
+    """Every bank to scan: all of them, once the dropbox root exists. Logs any directory
+    under the root that isn't a known bank's slug (it's left alone)."""
+    dropbox_root = Path(get_settings().auto_import_dropbox_dir)
     if not dropbox_root.is_dir():
         return []
-
-    tenants = session.execute(select(Tenant)).scalars().all()
+    tenants = list(session.execute(select(Tenant)).scalars().all())
     known_slugs = {t.slug for t in tenants}
     for entry in dropbox_root.iterdir():
         if entry.is_dir() and entry.name not in known_slugs:
             logger.warning("Unrecognized tenant slug directory %s in %s -- leaving as-is", entry.name, dropbox_root)
+    return tenants
 
+
+def scan_and_import_all_tenants(session: Session) -> list[ImportedFileResult]:
+    """The CLI entry point (scripts/import_dropbox.py) -- scans every bank directly, one
+    after another. (The scheduler queues one job per bank instead: see
+    workers/tasks.py::dropbox_import_job.) One tenant's failure never stops the rest."""
     results: list[ImportedFileResult] = []
-    for tenant in tenants:
+    for tenant in tenants_with_a_dropbox(session):
         try:
             results += scan_and_import_tenant(session, tenant)
         except Exception:

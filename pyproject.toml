@@ -33,6 +33,11 @@ dependencies = [
   "nh3>=0.2",
 ]
 
+[project.scripts]
+# Runs background jobs in its own process (config worker_mode="external"); see
+# src/openclear/workers/run.py.
+openclear-worker = "openclear.workers.run:main"
+
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.1"]
 mssql = ["pyodbc>=5.1"]

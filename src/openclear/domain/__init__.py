@@ -23,6 +23,7 @@ from openclear.domain import (  # noqa: F401
     decision,
     exception_item,
     issued_item,
+    job,
     ml_model,
     notification,
     paid_item,

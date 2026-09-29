@@ -4,34 +4,22 @@
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.check_image import OcrStatus
-from openclear.networks.check.ocr_processing import create_check_image, process_check_image_ocr
+from openclear.networks.check.ocr_processing import create_check_image, queue_ocr
 from openclear.repositories.check_image_repo import CheckImageRepository
 from openclear.repositories.paid_item_repo import PaidItemRepository
 from openclear.schemas.check_image import CheckImageRead
 from openclear.services import audit_log_service
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/check-images", tags=["check-images"])
 
 
-def _run_ocr_in_background(engine: Engine, check_image_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
-    # Opens its own Session (not the request's, which is closed by the time this runs)
-    # bound to the same engine the request used — bind is threaded through explicitly
-    # rather than via the global get_session_factory() so this respects test overrides
-    # of get_db, instead of silently writing to whatever DATABASE_URL is globally cached.
-    # tenant_id is passed to process_check_image_ocr so it can set Postgres RLS's session
-    # variable itself (and re-set it after its internal commit — see that function).
-    session = Session(bind=engine)
-    try:
-        process_check_image_ocr(session, check_image_id, tenant_id=tenant_id)
-    finally:
-        session.close()
 
 
 @router.post("", response_model=CheckImageRead, status_code=status.HTTP_201_CREATED)
@@ -69,9 +57,9 @@ def upload_check_image(
         resource_type="check_image",
         resource_id=check_image.id,
     )
+    queue_ocr(db, ctx.tenant_id, check_image.id)
     db.commit()
-
-    background_tasks.add_task(_run_ocr_in_background, db.get_bind(), check_image.id, ctx.tenant_id)
+    jobs_queued(db.get_bind(), background_tasks)
     return CheckImageRead.model_validate(check_image)
 
 
@@ -109,7 +97,7 @@ def reprocess_check_image(
         resource_type="check_image",
         resource_id=check_image.id,
     )
+    queue_ocr(db, ctx.tenant_id, check_image.id)
     db.commit()
-
-    background_tasks.add_task(_run_ocr_in_background, db.get_bind(), check_image.id, ctx.tenant_id)
+    jobs_queued(db.get_bind(), background_tasks)
     return CheckImageRead.model_validate(check_image)

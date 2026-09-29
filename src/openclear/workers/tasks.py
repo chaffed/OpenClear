@@ -22,7 +22,8 @@ from openclear.networks.registry import registered_codes
 from openclear.notifications.email.factory import get_email_provider
 from openclear.notifications.sms.factory import get_sms_provider
 from openclear.services import auto_disposition_service, demo_tenant_service, tenant_ml_service
-from openclear.services.dropbox_import_service import scan_and_import_all_tenants
+from openclear.services.dropbox_import_service import tenants_with_a_dropbox
+from openclear.workers import job_handlers, jobs
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def retrain_job() -> None:
                 if bank_id is None and _bank_left_since_shared_trained(session, network_code):
                     # A bank switched to bank-only since the shared model was trained: its
                     # data is still inside that model until it's retrained without it.
-                    _train_and_log(
+                    _queue_retrain(
                         session, network_code, label="shared (a bank left)",
                         force_activate_reason=(
                             "Activated without the usual comparison: a bank switched to a bank-only model, "
@@ -155,29 +156,65 @@ def retrain_job() -> None:
                         label, network_code, new_decisions, settings.ml_min_new_decisions_for_retrain,
                     )
                     continue
-                _train_and_log(session, network_code, tenant_id=bank_id, label=label)
+                _queue_retrain(session, network_code, tenant_id=bank_id, label=label)
 
             for customer_id, customer_total in _customers_with_labeled_decisions(session, network_code).items():
                 customer_already_trained_on = _most_recently_trained_count(session, network_code, customer_id)
                 customer_new_decisions = customer_total - customer_already_trained_on
                 if customer_new_decisions < settings.ml_min_new_decisions_for_retrain:
                     continue
-                _train_and_log(session, network_code, customer_id=customer_id, label=f"customer_id={customer_id}")
+                _queue_retrain(session, network_code, customer_id=customer_id, label=f"customer_id={customer_id}")
+        session.commit()
+        jobs.jobs_queued(session.get_bind())
     finally:
         session.close()
 
 
+def _queue_retrain(
+    session: Session,
+    network_code: str,
+    *,
+    tenant_id: uuid.UUID | None = None,
+    customer_id: uuid.UUID | None = None,
+    label: str,
+    force_activate_reason: str | None = None,
+) -> None:
+    """One job per model slot, so slots train in parallel on however many workers there
+    are. The job is bound to the slot's bank (a customer model's bank is found from its
+    exceptions), so RLS applies while it trains; the shared model has no bank."""
+    job_bank = tenant_id
+    if customer_id is not None:
+        job_bank = session.execute(
+            select(ExceptionItem.tenant_id).where(ExceptionItem.customer_id == customer_id).limit(1)
+        ).scalar_one_or_none()
+    slot = f"customer:{customer_id}" if customer_id else f"bank:{tenant_id}" if tenant_id else "shared"
+    jobs.enqueue(
+        session,
+        job_handlers.RETRAIN_MODEL_SLOT,
+        tenant_id=job_bank,
+        payload={
+            "network_code": network_code,
+            "tenant_id": str(tenant_id) if tenant_id else None,
+            "customer_id": str(customer_id) if customer_id else None,
+            "label": label,
+            "force_activate_reason": force_activate_reason,
+        },
+        dedupe_key=f"retrain:{network_code}:{slot}",
+    )
+
+
 def dropbox_import_job() -> None:
     """The in-app scheduler's entry point for the auto-import dropbox (see
-    services/dropbox_import_service.py) -- one session, one full scan of every tenant's
-    own subtree, same call scripts/import_dropbox.py and the scheduler itself both make."""
+    services/dropbox_import_service.py): queues one scan per bank, so banks are scanned
+    in parallel across workers and one bank's large drop doesn't hold up the rest. A bank
+    whose previous scan hasn't run yet isn't queued twice. (scripts/import_dropbox.py
+    still scans every bank directly.)"""
     session = get_session_factory()()
     try:
-        results = scan_and_import_all_tenants(session)
-        imported = sum(r.outcome == "imported" for r in results)
-        failed = sum(r.outcome == "failed" for r in results)
-        duplicates = sum(r.outcome == "duplicate" for r in results)
-        logger.info("Dropbox import scan: %d imported, %d failed, %d duplicates skipped", imported, failed, duplicates)
+        for tenant in tenants_with_a_dropbox(session):
+            jobs.enqueue(session, job_handlers.SCAN_BANK_DROPBOX, tenant_id=tenant.id, dedupe_key=f"dropbox:{tenant.id}")
+        session.commit()
+        jobs.jobs_queued(session.get_bind())
     finally:
         session.close()
 

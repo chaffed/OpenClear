@@ -119,3 +119,15 @@ def _reevaluate_paid_item_after_ocr(session: Session, paid_item_id: uuid.UUID) -
             existing_exception.exception_types = ",".join(sorted(merged_types))
 
     session.commit()
+
+
+def queue_ocr(session: Session, tenant_id: uuid.UUID, check_image_id: uuid.UUID) -> None:
+    """Queues OCR for an image as a background job (workers/jobs.py). It runs once the
+    caller commits; call workers.jobs.jobs_queued afterwards to start it promptly."""
+    from openclear.workers import jobs
+    from openclear.workers.job_handlers import OCR_CHECK_IMAGE
+
+    jobs.enqueue(
+        session, OCR_CHECK_IMAGE, tenant_id=tenant_id, payload={"check_image_id": str(check_image_id)},
+        dedupe_key=f"ocr:{check_image_id}",
+    )

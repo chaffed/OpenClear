@@ -64,7 +64,22 @@ async def _lifespan(app: FastAPI):
         finally:
             session.close()
 
+    # Background jobs (workers/jobs.py): with worker_mode "in_process" (the default) this
+    # process runs one worker thread; with "external", separate `openclear-worker`
+    # processes do; "inline" is the test suite.
+    worker_started = False
+    if settings.worker_mode == "in_process":
+        from openclear.db.session import get_engine
+        from openclear.workers.jobs import start_in_process_worker
+
+        start_in_process_worker(get_engine())
+        worker_started = True
+
     yield
+    if worker_started:
+        from openclear.workers.jobs import stop_in_process_worker
+
+        stop_in_process_worker()
     if scheduler is not None:
         stop_scheduler()
 

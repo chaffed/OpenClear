@@ -15,6 +15,8 @@ from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
 from openclear.services import audit_log_service, customer_service, data_export_service, data_export_storage
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.workers import jobs
+from openclear.workers.job_handlers import RUN_DATA_EXPORT
 
 router = APIRouter(tags=["web-data-export"])
 
@@ -49,8 +51,9 @@ def _start_job(
         resource_type="data_export_job",
         resource_id=job.id,
     )
+    jobs.enqueue(db, RUN_DATA_EXPORT, tenant_id=ctx.tenant_id, payload={"export_job_id": str(job.id)})
     db.commit()
-    background_tasks.add_task(data_export_service.run_export_job, db.get_bind(), job.id, ctx.tenant_id)
+    jobs.jobs_queued(db.get_bind(), background_tasks)
     return job
 
 

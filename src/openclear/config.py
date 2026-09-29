@@ -246,6 +246,18 @@ class Settings(BaseSettings):
     # has passed with no human decision, per a per-customer CustomerDispositionSetting.
     enable_disposition_scheduler: bool = False  # opt-in: off by default, same reasoning as enable_ml_scheduler
     disposition_sweep_interval_seconds: int = 300
+
+    # Background jobs (workers/jobs.py): OCR, data exports, dropbox scans, retraining.
+    # "in_process" runs a worker thread inside the web process, so a single-process
+    # install (the launcher, the Fly demo) needs nothing extra. "external" runs no worker
+    # in the web process: start `openclear-worker` separately and scale it on its own.
+    # "inline" runs each job right after whatever queued it (the test suite).
+    worker_mode: Literal["in_process", "external", "inline"] = "in_process"
+    worker_poll_seconds: float = 2.0
+    job_max_attempts: int = 5
+    # A running job whose worker hasn't sent a heartbeat for this long is presumed dead
+    # (its process crashed or was killed) and is queued again.
+    job_stale_after_seconds: int = 300
     # Fallback for CustomerDispositionSetting.response_window_hours when a customer's own
     # setting leaves it unset — same nullable-override-falls-back-to-global-default shape
     # as data_export_timeout_seconds above.
