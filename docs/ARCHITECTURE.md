@@ -315,7 +315,7 @@ and it's why the provider is swappable. AWS Textract and Azure Document Intellig
 (`textract_provider.py`, `azure_di_provider.py`) are **stubs**, and startup refuses to run
 with them configured.
 
-OCR runs as a background task after an image upload
+OCR runs as a background job after an image upload
 (`networks/check/ocr_processing.py`). A failure or timeout marks the image as failed, but
 never blocks the paid item. Only the payee rule uses OCR output.
 
@@ -382,7 +382,8 @@ token.
 
 A bank admin can export all of the bank's data; a customer admin can export their own
 customer's data (`services/data_export_service.py`). Both produce a ZIP of JSON files
-and images, built by a background task.
+and images, built by a background job that streams each table to disk in batches (so
+there's no size limit, only a time limit).
 
 | Included | Bank-wide export | Customer export |
 |----------|:---:|:---:|
@@ -404,8 +405,16 @@ Two kinds of background work:
   expired-disposition sweep, and the demo tenant reset. On Postgres each run takes a
   per-job advisory lock (`workers/leader_lock.py`), so with several instances only one
   runs each tick. The jobs are plain functions, so an external cron can call them instead.
-- **Request-triggered tasks** (FastAPI `BackgroundTasks`): OCR after an image upload, and
-  data exports. They run in the process that took the request.
+- **Background jobs** (`workers/jobs.py`, handlers in `workers/job_handlers.py`): OCR after
+  an image upload, data exports, each bank's dropbox scan and each model slot's retrain.
+  A job is a row in the `job` table, committed in the same transaction as whatever queued
+  it. Workers claim due jobs with a conditional update (and `SKIP LOCKED` on Postgres), run
+  the handler with a session bound to the job's bank (so RLS applies), send heartbeats, and
+  retry failures with back-off; a job whose heartbeats stop is queued again. Workers run as
+  a thread in each web process (`worker_mode=in_process`, the default) or as separate
+  `openclear-worker` processes (`external`). The scheduler's retrain and dropbox jobs now
+  just queue one job per model slot or bank. The sweep, notification sending and the demo
+  reset are quick, and still run directly.
 
 State that's per process: the rate limiter (`web/rate_limit.py`) and the OIDC discovery
 and key caches. Files (images, exports, uploads, model artifacts) are on local disk

@@ -235,30 +235,51 @@ because each row still does its own queries and commit. That's S4.
 
 ## Phase S3 — A durable job queue and a worker process
 
-**Status: NOT STARTED.** Decision D2.
+**Status: COMPLETE, pending full test runs (2026-09-28, branch `scale-s3`).** Decision D2:
+a job table in the existing database (no Redis/Celery).
 
-**The problem:**
-- OCR (CPU-heavy) and data exports run as FastAPI `BackgroundTasks` inside the web
-  process, so they compete with page requests. A restart loses them, and an export can be
-  left marked "running" for good.
-- Scheduled jobs do every bank's work in one pass on one instance.
-
-- [ ] A `job` table: type, tenant, payload, status, attempts, `run_after`, `locked_by`,
-      heartbeat and error. Jobs are claimed with `SELECT … FOR UPDATE SKIP LOCKED` on
-      Postgres, and there's a single worker on SQLite.
-- [ ] A worker entry point, `python -m openclear.workers.run`, runs as its own process or
-      container. For a one-machine install (the launcher, the Fly demo) the web process
-      can run an in-process worker thread instead, so small setups stay one process.
-- [ ] Retries with backoff. A job whose heartbeat stops (its worker died) is picked up
-      again. Failed jobs stay visible to the operator.
-- [ ] Move OCR and data exports onto the queue. Exports must **stream** each entity to
-      the archive in batches, rather than building it in memory, and drop the 50,000-row
-      cap. S0 found that a bank with 100,000 issued checks can't export at all, and that
-      raising the cap costs about 600 MB of memory per 100,000 checks.
-- [ ] Scheduled jobs *enqueue* work instead of doing it: one dropbox scan per bank, and
-      one retrain per model slot. That spreads the work across workers.
-- [ ] Docs: README deployment sections, and a note in docs/ARCHITECTURE.md
-      "Background work".
+- [x] A `job` table (migration `c4f6a8b0d2e5`): kind, bank, JSON payload, dedupe key,
+      status, attempts/max, `run_after`, `locked_by`, heartbeat, last error, timestamps.
+      No RLS on it (workers see every bank's jobs), but handlers run with their session
+      bound to the job's bank.
+- [x] The queue (`workers/jobs.py`):
+      - `enqueue` joins the caller's transaction, so a job never runs against rolled-back
+        data, and a dedupe key skips duplicates that are still waiting;
+      - claiming is a conditional update, plus `SKIP LOCKED` on Postgres and SQL Server;
+      - a heartbeat thread runs during each job;
+      - failures retry with exponential back-off (30 s doubling, 1 h cap, jittered) up to
+        `job_max_attempts` (5), then stay `failed` with the error;
+      - a job whose heartbeat is older than `job_stale_after_seconds` (300) is queued again.
+- [x] Worker modes (`worker_mode`):
+      - `in_process` (default): a worker thread in each web process, started from the
+        app's lifespan, so the launcher, the Docker image and the Fly demo need nothing new;
+      - `external`: the `openclear-worker` command (`workers/run.py`; `--once` for cron),
+        which stops cleanly on SIGTERM;
+      - `inline`: the test suite.
+- [x] **Moved onto the queue:**
+      - OCR, for web and API uploads, bulk ZIP uploads and reprocessing;
+      - data exports. Exports now **stream** each table into the ZIP in batches of 1,000,
+        output byte-identical to before. **The 50,000-row cap is gone**, and the default
+        time limit went from 5 minutes to an hour.
+- [x] **Scheduled jobs queue per-unit work:** `dropbox_import_job` queues one scan per
+      bank, and `retrain_job` one retrain per model slot (bound to the slot's bank), both
+      deduplicated. The sweep, notification sending and the demo reset are quick and still
+      run directly.
+- [x] **Operator visibility:** `/api/v1/platform/jobs` (`summary`, a paged list filtered by
+      status and kind, and `retry` for a failed job) with a new `operations` platform-key
+      scope.
+- [x] Tests:
+      - `tests/test_auth/test_job_queue.py` covers success, binding to the bank, dedupe,
+        not-yet-due jobs, back-off then giving up, stale recovery with and without attempts
+        left, exclusive claims, unknown kinds, and the in-process thread;
+      - `tests/test_postgres/test_job_queue_concurrency.py` runs 4 workers × 40 jobs, each
+        exactly once;
+      - the platform jobs API, including scope checks;
+      - export streaming across batches;
+      - the existing OCR, export, dropbox, retrain and RLS tests, which now go through the
+        queue.
+- [x] Docs: README "Background jobs" and "Running more than one instance", API.md,
+      ARCHITECTURE.md, CHANGELOG.
 
 ## Phase S4 — Bulk uploads as background jobs, batched
 
@@ -350,3 +371,4 @@ recommendations unless you say otherwise.
 - 2026-09-24 S1a complete (Postgres RLS end to end).
 - 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`, merged).
 - 2026-09-26 S2 complete. Also fixed: the retrain cooldown now uses the database clock, and the training holdout split is reproducible.
+- 2026-09-28 S3 done (job queue and worker; streaming exports), pending full test runs. X9.37 field verification deferred until a bank implements.

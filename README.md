@@ -39,6 +39,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [Postgres](#postgres)
 - [MSSQL](#mssql)
 - [Running more than one instance](#running-more-than-one-instance)
+- [Background jobs](#background-jobs)
 - [Upgrade and downgrade support](#upgrade-and-downgrade-support)
 - [Web UI](#web-ui)
 - [Architecture at a glance](#architecture-at-a-glance)
@@ -907,13 +908,43 @@ By default, run **one** app process. `scripts/launcher.py`, the Docker image and
   `ml_artifact_dir` / `auto_import_dropbox_dir` paths in `config.py`, and only their paths
   go in the database. Every instance must see the same files, so point all of those at one
   shared volume. Otherwise an image uploaded through one instance, or a model trained on it,
-  is missing on the others. Data exports and OCR run as in-process background tasks on the
-  instance that took the request; if that instance restarts mid-job, the job doesn't resume.
+  is missing on the others.
+- **Background jobs** (OCR, data exports, dropbox scans, retraining) are rows in the
+  database's `job` table, claimed by workers, so any instance's worker can run any job,
+  and a job whose worker dies is picked up again. By default each web process runs one
+  worker thread (`OPENCLEAR_WORKER_MODE=in_process`). To size workers separately from web
+  traffic, set `OPENCLEAR_WORKER_MODE=external` on the web processes and run
+  `openclear-worker` as its own process or container (as many as you need; on Postgres they
+  claim jobs with `SKIP LOCKED`, so they never run the same job twice).
 
 Everything else a request depends on (sessions, CSRF, WebAuthn challenges, the demo tenant's
 idle-reset clock) lives in the database or in signed cookies, so a request can land on any
 instance. Only the OIDC discovery and signing-key caches are per process, and each instance
 simply fills its own.
+
+## Background jobs
+
+Slow or CPU-heavy work (OCR on an uploaded image, building a data export, a bank's dropbox
+scan, retraining a model) runs as a background job (`workers/jobs.py`), not inside the web
+request. A job is a row in the `job` table: it's committed with whatever queued it, claimed
+by a worker, retried with back-off if it fails (up to `OPENCLEAR_JOB_MAX_ATTEMPTS`, default
+5), and queued again if its worker stops sending heartbeats for
+`OPENCLEAR_JOB_STALE_AFTER_SECONDS` (default 300), e.g. after a crash or redeploy.
+
+Where jobs run is `OPENCLEAR_WORKER_MODE`:
+
+| Mode | What runs jobs | Use it for |
+|---|---|---|
+| `in_process` (default) | a worker thread inside each web process | a single process: the launcher, the Docker image, the Fly demo. Nothing extra to run. |
+| `external` | `openclear-worker` processes you start separately | sizing background work independently of web traffic, on Postgres |
+| `inline` | whatever queued the job, right away | the test suite |
+
+`openclear-worker --once` runs every job that's due and exits (for cron). A job that has
+used all its attempts stays `failed`, with its error, until the platform operator retries it
+through `/api/v1/platform/jobs` (API.md).
+
+Exports stream to disk in batches, so a bank of any size can export. The only bound is the
+time limit, `OPENCLEAR_DATA_EXPORT_TIMEOUT_SECONDS` (default an hour; a bank can set its own).
 
 ## Upgrade and downgrade support
 

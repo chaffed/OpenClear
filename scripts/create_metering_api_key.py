@@ -32,7 +32,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("name", help="A human label identifying who/what this key is for (e.g. 'Acme Billing Integration')")
     parser.add_argument(
-        "--scope", action="append", choices=["usage", "shared_model"], dest="scopes",
+        "--scope", action="append", choices=["usage", "shared_model", "operations"], dest="scopes",
         help="What the key may do; repeat for more than one (default: usage)",
     )
     args = parser.parse_args()

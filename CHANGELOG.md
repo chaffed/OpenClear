@@ -46,6 +46,16 @@ without changes:**
   source items in one query per network, and customer exports filter decisions in SQL.
   On a large existing Postgres database, run the upgrade in a quiet window: building the
   indexes blocks writes to those tables while it runs.
+- **Background jobs** (S3): OCR, data exports, dropbox scans and retraining are jobs in
+  a durable queue (the `job` table) instead of work done inside the web request. They're
+  retried with back-off, and picked up again if a worker dies. By default each web process
+  runs a worker thread, so nothing changes for single-process installs. To size workers
+  separately, set `OPENCLEAR_WORKER_MODE=external` and run `openclear-worker`. The platform
+  operator can see and retry failed jobs at `/api/v1/platform/jobs`, with a platform key
+  carrying the new `operations` scope.
+- **Exports have no row limit** (S3): they stream to disk in batches. The
+  `data_export_max_rows_per_entity` setting is gone, and the default time limit is now an
+  hour instead of 5 minutes.
 - **Over-long text** is now a form message (or a `400` from the API) instead of an error
   page on Postgres and SQL Server.
 

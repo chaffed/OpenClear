@@ -212,7 +212,7 @@ The one multipart/file endpoint in the API.
 
 `CheckImageRead`: `id`, `paid_item_id`, `ocr_status` (`pending` / `completed` /
 `failed`), `ocr_extracted_amount`, `ocr_extracted_payee`, `ocr_confidence`,
-`ocr_provider`, `created_at`, `processed_at`. OCR runs as a background task after the
+`ocr_provider`, `created_at`, `processed_at`. OCR runs as a background job after the
 request returns — poll `GET /{check_image_id}` until `ocr_status` is no longer `pending`.
 
 ### ACH authorizations — `/api/v1/ach/authorizations`
@@ -333,6 +333,23 @@ and a `shared_model` key can't read usage.
 When an organization switches to a bank-only model, the next scheduled retrain rebuilds the
 shared model without its data and activates the result even if it scores lower, because
 removing that bank's data comes first.
+
+### Platform — background jobs — `/api/v1/platform/jobs`
+
+For the platform operator: a platform API key with the `operations` scope, as `X-Api-Key`
+(`python scripts/create_metering_api_key.py "Operations" --scope operations`).
+
+| method | path | purpose |
+|---|---|---|
+| GET | `/summary` | count of jobs by status: `{"queued": 3, "running": 1, "succeeded": 120, "failed": 0}` |
+| GET | `` (`?status_filter=failed&kind=...`) | jobs, newest first, paged (see [Paging](#paging-list-endpoints)) → `JobRead` list |
+| POST | `/{job_id}/retry` | queue a `failed` job again with a fresh set of attempts; `409` for any other status |
+
+`JobRead`: `id`, `kind` (`check_image.ocr`, `data_export.run`, `dropbox.scan_bank`,
+`ml.retrain_slot`), `tenant_id`, `status` (`queued` / `running` / `succeeded` / `failed`),
+`attempts`, `max_attempts`, `run_after`, `created_at`, `started_at`, `finished_at`,
+`last_error`. A job reaches `failed` only after `max_attempts` tries; watch
+`/summary` (or `?status_filter=failed`) and retry once the cause is fixed.
 
 ### Users — `/api/v1/users`
 
