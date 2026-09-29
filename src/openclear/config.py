@@ -181,13 +181,11 @@ class Settings(BaseSettings):
     check_stale_date_default_days: int = 180
     payee_match_fuzzy_threshold: float = 85.0
 
-    # Bounds a single data-export archive (services/data_export_service.py) — a technical
-    # ceiling on how much any one entity can dump into an archive, not a per-tenant
-    # policy value like the timeout below, so it's global-only (no Tenant override).
-    data_export_max_rows_per_entity: int = 50_000
-    # Per-tenant override on Tenant.data_export_timeout_seconds (None there means "use
-    # this"), same nullable-override shape as jwt_access/refresh_token_expire_minutes.
-    data_export_timeout_seconds: int = 300
+    # How long a data export (services/data_export_service.py) may run before it fails.
+    # Exports run as background jobs and stream to disk, so there's no row limit; this
+    # is the only bound. Tenant.data_export_timeout_seconds overrides it per bank (None
+    # there means "use this"). Was 300 while exports ran inside the web process.
+    data_export_timeout_seconds: int = 3600
 
     ml_min_new_decisions_for_retrain: int = 20
     # Minimum time between two retrains of the same (network_code, customer_id) pair —

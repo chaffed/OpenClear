@@ -9,6 +9,7 @@ import zipfile
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+from collections.abc import Iterator
 from typing import Any
 
 from sqlalchemy.engine import Engine
@@ -48,14 +49,27 @@ _SECRET_COLUMNS = {"hashed_password", "client_secret_encrypted"}
 class ExportTimedOut(Exception):
     """Raised by _build_archive when the export's time budget (config.py's
     data_export_timeout_seconds, or a tenant's own override) is exhausted before every
-    entity/file has been written — caught by run_export_job's existing broad except,
-    same as ExportRowLimitExceeded below."""
+    entity/file has been written — caught by run_export_job's broad except."""
 
 
-class ExportRowLimitExceeded(Exception):
-    """Raised by _build_archive when a single entity has more rows than
-    config.Settings.data_export_max_rows_per_entity — a technical ceiling on archive
-    size/build cost, not a per-tenant policy value, so there's no override for it."""
+# Rows read per database round trip. Each batch is written to the archive and released
+# before the next is read, so memory stays flat however many rows a bank has.
+_BATCH_SIZE = 1000
+
+
+def _iter_objects(session: Session, stmt) -> Iterator[Any]:
+    """Every row of `stmt`, fetched in batches and dropped from the session once
+    written, instead of one list of the whole table."""
+    result = session.execute(stmt.execution_options(yield_per=_BATCH_SIZE))
+    for batch in result.scalars().partitions():
+        yield from batch
+        for obj in batch:
+            session.expunge(obj)
+
+
+def _stream(session: Session, stmt) -> Iterator[dict[str, Any]]:
+    for obj in _iter_objects(session, stmt):
+        yield _row_to_dict(obj)
 
 
 def _row_to_dict(row: Any) -> dict[str, Any]:
@@ -79,19 +93,18 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
     return result
 
 
-def _check_image_rows(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list:
-    return CheckImageRepository(session, tenant_id, customer_id).list()
+def _check_image_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None):
+    return CheckImageRepository(session, tenant_id, customer_id).query()
 
 
-def _decision_rows(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list:
+def _decision_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None):
     repo = DecisionRepository(session, tenant_id)
     if customer_id is None:
-        return repo.list()
-    # One query: a customer's decisions are those on its own exceptions.
-    stmt = repo.query().join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id).where(
+        return repo.query()
+    # A customer's decisions are those on its own exceptions.
+    return repo.query().join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id).where(
         ExceptionItem.customer_id == customer_id
     )
-    return list(session.execute(stmt).scalars().all())
 
 
 def _users_dicts(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list[dict]:
@@ -129,15 +142,15 @@ def _sso_group_mapping_dicts(session: Session, tenant_id: uuid.UUID, customer_id
 
 # Included in both tenant-wide and customer-scoped exports.
 _SCOPED_EXPORTERS: list[tuple[str, Any]] = [
-    ("accounts", lambda s, t, c: [_row_to_dict(r) for r in AccountRepository(s, t, c).list()]),
-    ("issued_items", lambda s, t, c: [_row_to_dict(r) for r in IssuedItemRepository(s, t, c).list()]),
-    ("stop_payments", lambda s, t, c: [_row_to_dict(r) for r in StopPaymentRepository(s, t, c).list()]),
-    ("paid_items", lambda s, t, c: [_row_to_dict(r) for r in PaidItemRepository(s, t, c).list()]),
-    ("ach_authorizations", lambda s, t, c: [_row_to_dict(r) for r in AchAuthorizationRepository(s, t, c).list()]),
-    ("ach_transactions", lambda s, t, c: [_row_to_dict(r) for r in AchTransactionRepository(s, t, c).list()]),
-    ("exceptions", lambda s, t, c: [_row_to_dict(r) for r in ExceptionRepository(s, t, c).list()]),
-    ("decisions", lambda s, t, c: [_row_to_dict(r) for r in _decision_rows(s, t, c)]),
-    ("check_images", lambda s, t, c: [_row_to_dict(r) for r in _check_image_rows(s, t, c)]),
+    ("accounts", lambda s, t, c: _stream(s, AccountRepository(s, t, c).query())),
+    ("issued_items", lambda s, t, c: _stream(s, IssuedItemRepository(s, t, c).query())),
+    ("stop_payments", lambda s, t, c: _stream(s, StopPaymentRepository(s, t, c).query())),
+    ("paid_items", lambda s, t, c: _stream(s, PaidItemRepository(s, t, c).query())),
+    ("ach_authorizations", lambda s, t, c: _stream(s, AchAuthorizationRepository(s, t, c).query())),
+    ("ach_transactions", lambda s, t, c: _stream(s, AchTransactionRepository(s, t, c).query())),
+    ("exceptions", lambda s, t, c: _stream(s, ExceptionRepository(s, t, c).query())),
+    ("decisions", lambda s, t, c: _stream(s, _decision_query(s, t, c))),
+    ("check_images", lambda s, t, c: _stream(s, _check_image_query(s, t, c))),
     ("users", _users_dicts),
     ("sso_connections", lambda s, t, c: [_row_to_dict(r) for r in SsoConnectionRepository(s, t).list(customer_id=c)]),
     ("sso_group_mappings", _sso_group_mapping_dicts),
@@ -147,9 +160,9 @@ _SCOPED_EXPORTERS: list[tuple[str, Any]] = [
 # a customer-scoped export (not cleanly attributable to one customer, or would leak the
 # tenant's own configuration/action history to a single customer's admin).
 _TENANT_WIDE_ONLY_EXPORTERS: list[tuple[str, Any]] = [
-    ("customers", lambda s, t, c: [_row_to_dict(r) for r in CustomerRepository(s, t).list()]),
-    ("bulk_upload_files", lambda s, t, c: [_row_to_dict(r) for r in BulkUploadFileRepository(s, t).list()]),
-    ("audit_log", lambda s, t, c: [_row_to_dict(r) for r in AuditLogRepository(s, t).list()]),
+    ("customers", lambda s, t, c: _stream(s, CustomerRepository(s, t).query())),
+    ("bulk_upload_files", lambda s, t, c: _stream(s, BulkUploadFileRepository(s, t).query())),
+    ("audit_log", lambda s, t, c: _stream(s, AuditLogRepository(s, t).query())),
 ]
 
 
@@ -177,6 +190,21 @@ def _add_file_if_exists(zf: zipfile.ZipFile, source_path: str | None, archive_na
         zf.write(path, archive_name)
 
 
+def _write_json_array(zf: zipfile.ZipFile, name: str, rows, deadline: float, timeout_seconds: int) -> None:
+    """A JSON array written row by row: the same result json.dumps(list, indent=2) gives,
+    without ever holding the list."""
+    with zf.open(name, "w", force_zip64=True) as out:
+        out.write(b"[")
+        wrote_any = False
+        for index, row in enumerate(rows):
+            if index % _BATCH_SIZE == 0 and time.monotonic() > deadline:
+                raise ExportTimedOut(f"Export exceeded its {timeout_seconds}s time limit while writing {name!r}.")
+            out.write(b",\n  " if wrote_any else b"\n  ")
+            out.write(json.dumps(row, indent=2).replace("\n", "\n  ").encode())
+            wrote_any = True
+        out.write(b"\n]" if wrote_any else b"]")
+
+
 def _build_archive(
     session: Session,
     tenant_id: uuid.UUID,
@@ -184,18 +212,11 @@ def _build_archive(
     destination: Path,
     *,
     timeout_seconds: int,
-    max_rows_per_entity: int,
 ) -> None:
-    """Checks the time budget (`timeout_seconds`, resolved by run_export_job from the
-    tenant's own override or config.py's global default) before starting each named
-    entity's export and before each individual file copy — a cooperative check between
-    units of work, not a preemptive per-row streaming rewrite of every repository. A
-    single entity whose own query is itself slow isn't interrupted mid-flight; this
-    bounds how much NEW work starts once the budget is spent, and (via
-    `max_rows_per_entity`) how large any one entity's own JSON blob can grow before it's
-    written — proportional to this being a Low/Low-Medium finding, same "sum sizes before
-    reading" spirit as bulk_import/zip_import.py's zip-bomb guard rather than a full
-    pagination rewrite."""
+    """Writes each entity as a JSON array streamed into the archive in batches, so the
+    whole table is never in memory (there's no row limit). The time budget
+    (`timeout_seconds`, the bank's own override or config.py's default) is checked
+    between batches and before each file copy."""
     exporters = list(_SCOPED_EXPORTERS)
     if customer_id is None:
         exporters += _TENANT_WIDE_ONLY_EXPORTERS
@@ -206,14 +227,9 @@ def _build_archive(
         for name, fn in exporters:
             if time.monotonic() > deadline:
                 raise ExportTimedOut(f"Export exceeded its {timeout_seconds}s time limit before reaching {name!r}.")
-            rows = fn(session, tenant_id, customer_id)
-            if len(rows) > max_rows_per_entity:
-                raise ExportRowLimitExceeded(
-                    f"{name!r} has {len(rows)} rows, exceeding the {max_rows_per_entity}-row export limit."
-                )
-            zf.writestr(f"data/{name}.json", json.dumps(rows, indent=2))
+            _write_json_array(zf, f"data/{name}.json", fn(session, tenant_id, customer_id), deadline, timeout_seconds)
 
-        for check_image in _check_image_rows(session, tenant_id, customer_id):
+        for check_image in _iter_objects(session, _check_image_query(session, tenant_id, customer_id)):
             if time.monotonic() > deadline:
                 raise ExportTimedOut(f"Export exceeded its {timeout_seconds}s time limit while copying check images.")
             if check_image.front_image_path:
@@ -222,7 +238,7 @@ def _build_archive(
                 _add_file_if_exists(zf, check_image.back_image_path, f"files/check_images/{Path(check_image.back_image_path).name}")
 
         if customer_id is None:
-            for upload in BulkUploadFileRepository(session, tenant_id).list():
+            for upload in _iter_objects(session, BulkUploadFileRepository(session, tenant_id).query()):
                 if time.monotonic() > deadline:
                     raise ExportTimedOut(f"Export exceeded its {timeout_seconds}s time limit while copying bulk upload files.")
                 _add_file_if_exists(zf, upload.storage_path, f"files/bulk_uploads/{Path(upload.storage_path).name}")
@@ -239,12 +255,11 @@ def _build_archive(
 
 
 def run_export_job(engine: Engine, job_id: uuid.UUID, tenant_id: uuid.UUID) -> None:
-    """Runs from a FastAPI BackgroundTask (see web/routers/data_export.py) — opens its
-    own Session bound to the request's engine, same pattern as
-    networks/check/ocr_processing.py's own background-task entry point, since the
-    request's own session is closed by the time this runs. Never lets an exception escape
-    unhandled: any failure marks the job FAILED with a message, rather than silently
-    leaving it stuck at RUNNING forever."""
+    """Runs as a background job (workers/job_handlers.py, queued by
+    web/routers/data_export.py) and opens its own Session on the given engine. Never lets
+    an exception escape: any failure marks the export FAILED with a message. If the
+    worker itself dies mid-export, the job is picked up again and this runs from the
+    start, overwriting the partial archive."""
     session = Session(bind=engine)
     try:
         _apply_rls_tenant(session, tenant_id)
@@ -262,8 +277,7 @@ def run_export_job(engine: Engine, job_id: uuid.UUID, tenant_id: uuid.UUID) -> N
         destination = data_export_storage.export_archive_path(tenant_id, job_id)
         try:
             _build_archive(
-                session, tenant_id, job.customer_id, destination,
-                timeout_seconds=timeout_seconds, max_rows_per_entity=settings.data_export_max_rows_per_entity,
+                session, tenant_id, job.customer_id, destination, timeout_seconds=timeout_seconds,
             )
         except Exception as exc:  # noqa: BLE001 — must never crash the background task
             job.status = DataExportJobStatus.FAILED

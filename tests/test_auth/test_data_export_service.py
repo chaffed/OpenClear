@@ -287,20 +287,28 @@ def test_no_exporter_ever_emits_a_secret_column(db_session, tenant_factory):
             assert not leaked, f"{name} leaked secret column(s): {leaked}"
 
 
-def test_export_fails_when_an_entity_exceeds_the_row_limit(db_session, tenant_factory):
-    tenant, account, users = tenant_factory.make(slug="export-row-limit")
-    issued_item_service.create_issued_item(
-        db_session, tenant.id,
-        issued_item_service.IssuedItemInput(account_id=account.id, check_number="1", amount=Decimal("10.00"), payee_name="X", issue_date=date(2026, 1, 1)),
-        submitted_by_user_id=users["preparer"].id,
-    )
-    db_session.commit()
+def test_export_streams_every_row_across_batches(db_session, tenant_factory, monkeypatch):
+    """Rows are read and written in batches (there's no row limit): a table bigger than
+    one batch still comes out whole, as one JSON array."""
+    import json
+    import zipfile
 
-    with pytest.raises(data_export_service.ExportRowLimitExceeded):
-        data_export_service._build_archive(
-            db_session, tenant.id, None, data_export_service.data_export_storage.export_archive_path(tenant.id, uuid.uuid4()),
-            timeout_seconds=60, max_rows_per_entity=0,
+    monkeypatch.setattr(data_export_service, "_BATCH_SIZE", 2)
+    tenant, account, users = tenant_factory.make(slug="export-batches")
+    for n in range(5):
+        issued_item_service.create_issued_item(
+            db_session, tenant.id,
+            issued_item_service.IssuedItemInput(account_id=account.id, check_number=f"B{n}", amount=Decimal("10.00"), payee_name="X", issue_date=date(2026, 1, 1)),
+            submitted_by_user_id=users["preparer"].id,
         )
+    db_session.commit()
+    destination = data_export_service.data_export_storage.export_archive_path(tenant.id, uuid.uuid4())
+
+    data_export_service._build_archive(db_session, tenant.id, None, destination, timeout_seconds=60)
+
+    with zipfile.ZipFile(destination) as archive:
+        rows = json.loads(archive.read("data/issued_items.json"))
+    assert sorted(r["check_number"] for r in rows) == ["B0", "B1", "B2", "B3", "B4"]
 
 
 def test_export_fails_when_the_time_budget_is_exhausted(db_session, tenant_factory):
@@ -315,28 +323,25 @@ def test_export_fails_when_the_time_budget_is_exhausted(db_session, tenant_facto
     with pytest.raises(data_export_service.ExportTimedOut):
         data_export_service._build_archive(
             db_session, tenant.id, None, data_export_service.data_export_storage.export_archive_path(tenant.id, uuid.uuid4()),
-            timeout_seconds=-1, max_rows_per_entity=get_settings().data_export_max_rows_per_entity,
+            timeout_seconds=-1,
         )
 
 
-def test_run_export_job_fails_gracefully_when_row_limit_exceeded(db_session, tenant_factory, monkeypatch):
-    tenant, account, users = tenant_factory.make(slug="export-row-limit-job")
-    issued_item_service.create_issued_item(
-        db_session, tenant.id,
-        issued_item_service.IssuedItemInput(account_id=account.id, check_number="1", amount=Decimal("10.00"), payee_name="X", issue_date=date(2026, 1, 1)),
-        submitted_by_user_id=users["preparer"].id,
-    )
-    db_session.commit()
+def test_run_export_job_fails_gracefully_when_the_archive_cant_be_built(db_session, tenant_factory, monkeypatch):
+    tenant, _account, users = tenant_factory.make(slug="export-build-fails")
     job = data_export_service.request_export(db_session, tenant.id, users["admin"].id)
     db_session.commit()
 
-    monkeypatch.setattr(get_settings(), "data_export_max_rows_per_entity", 0)
+    def broken_build(*args, **kwargs):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(data_export_service, "_build_archive", broken_build)
     _run_job_sync(db_session, job)
 
     db_session.expire_all()
     job = db_session.get(type(job), job.id)
     assert job.status == DataExportJobStatus.FAILED
-    assert "row" in job.error_message.lower()
+    assert "disk full" in job.error_message
 
 
 def test_run_export_job_uses_tenants_own_timeout_override(db_session, tenant_factory, monkeypatch):
