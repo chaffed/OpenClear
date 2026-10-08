@@ -1,6 +1,32 @@
 # Changelog
 
-## Unreleased
+## 1.7.0 — 2026-10-09
+
+A scale release: OpenClear can now import large files, train on large histories and run as
+several instances, and it reads X9.37 cash letters and NACHA files as banks actually send
+them.
+
+### Upgrading from 1.6.0
+
+- Run `alembic upgrade head` (the Docker image does this on startup). New:
+  - `bulk_upload_file` status and progress columns;
+  - the `bulk_upload_row_result` table;
+  - the `audit_log_checkpoint` table.
+- **API clients:** a `/bulk` call with more than 1,000 items now answers `202` with an
+  upload to poll (`/api/v1/bulk-uploads/{id}`) instead of importing inside the request.
+- **ML training** uses the last 365 days of decisions by default
+  (`OPENCLEAR_ML_TRAINING_WINDOW_DAYS`; 0 for all history).
+- **Nothing else changes until you turn it on:**
+  - object storage (`OPENCLEAR_STORAGE_BACKEND=s3`);
+  - shared rate limits (`OPENCLEAR_RATE_LIMIT_BACKEND=redis`);
+  - housekeeping (`OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER=true`; once on, export
+    archives expire after 30 days);
+  - audit archiving (`OPENCLEAR_AUDIT_ARCHIVE_AFTER_DAYS`).
+- New optional extras: `pip install 'openclear[s3]'`, `'openclear[redis]'`.
+- Downgrading to 1.6.0 is supported (`alembic downgrade f7c9e1a3b5d6`); back up first.
+  The bulk upload progress and row results are dropped. **If you turned on audit
+  archiving, don't downgrade:** 1.6.0 doesn't know about archive checkpoints, so its
+  "Verify chain" would report the archived entries as missing.
 
 ### Security and small fixes
 
