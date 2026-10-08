@@ -157,3 +157,20 @@ def test_creating_a_new_bank_works_as_the_restricted_role(app_session_factory, r
 
     _web_login(rls_client, slug, "admin@rls-new-bank.example.com")
     assert rls_client.get("/ui/", follow_redirects=False).status_code == 200
+
+
+def test_billing_statements_see_only_this_banks_activity(rls_client, db_session, tenant_factory):
+    from tests.conftest import login_headers
+    from tests.test_api.test_billing import PERIOD_PARAM, _bank_with_activity
+
+    tenant, users, *_ = _bank_with_activity(db_session, tenant_factory, "rls-billing-a")
+    _bank_with_activity(db_session, tenant_factory, "rls-billing-b")  # same customer numbers, another bank
+
+    headers = login_headers(rls_client, tenant.slug, users["admin"].email)
+    resp = rls_client.get(f"/api/v1/billing/statements?period={PERIOD_PARAM}", headers=headers)
+
+    assert resp.status_code == 200, resp.text
+    by_customer = {s["customer_number"]: s for s in resp.json()}
+    assert set(by_customer) == {"A-1", "H-1", None}
+    item_line = next(line for line in by_customer["A-1"]["lines"] if line["fee_code"] == "PP-ITEM")
+    assert item_line["volume"] == 5  # not doubled by the other bank's identical activity

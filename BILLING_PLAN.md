@@ -134,8 +134,8 @@ SCALE_PLAN.md: each phase gets a branch, a progress log, and full test runs befo
 
 | Phase | What | Status |
 |---|---|---|
-| B1 | Data model, metric catalog, pricing engine, customer and bank billing terms, live preview, API and CSV report | in progress |
-| B2 | Finalize/replace snapshots, analysis feed (CSV + camt.086), hard-charge postings, PDF statement, audit log | |
+| B1 | Data model, metric catalog, pricing engine, customer and bank billing terms, live preview, API and CSV report | done |
+| B2 | Finalize/replace snapshots, analysis feed (CSV + camt.086), hard-charge postings, PDF statement, audit log | in progress |
 | B3 | Web UI: fee schedule, customer billing terms, billing reports, customer self-view | |
 | B4 | Platform-to-bank billing (`billing` scope), docs (README, API.md, admin docs) | |
 
@@ -157,3 +157,18 @@ SCALE_PLAN.md: each phase gets a branch, a progress log, and full test runs befo
   maintenance): https://www.iso20022.org/sites/default/files/2020-12/ISO20022_MDRPart2_BankServicesBilling_2020_2021_v1_ForSEGReview.pdf
 - Account analysis and earnings credits: https://www.financialprofessionals.org/training-resources/resources/articles/Details/an-introduction-to-account-analysis-statements ·
   https://southstatecorrespondent.com/banker-to-banker/treasury-cash-management/how-to-use-account-analysis-effectively-part-1/
+- 2026-10-08 B1 done:
+  - **Model:** `billing_fee_item`, `customer_billing_terms` and `customer_fee_override`, plus
+    the bank's billing defaults on `tenant` (migration `d5a7c9e1f3b4`, with RLS; existing
+    Admin groups get `billing:read` and `billing:manage`);
+  - **Metrics:** a catalog of 24 (`services/billing/metrics.py`);
+  - **Pricing** (`pricing.py`): unit price, step tiers, minimum, negotiated price,
+    discount, waived and exempt, all labelled with camt.086 charge-method and
+    payment-method codes;
+  - **Statements** (`statements.py`): one per customer plus the bank-wide one, with volumes
+    per account;
+  - **API** (`/api/v1/billing`): metrics, fee items (plus a starter schedule), bank
+    settings, customer terms with overrides, statement preview, and `report.csv`.
+  - **Tests:** 12 on SQLite, plus the Postgres run and an RLS test (only this bank's
+    activity is counted).
+
