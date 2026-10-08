@@ -15,6 +15,7 @@ to 2 minor versions back, and never across a major version boundary.
 VERSION_HISTORY: dict[str, str] = {
     "1.0.0": "b2c3d4e5f6a7",  # head as of this policy's introduction
     "1.5.0": "c3e8f1a5d9b2",
+    "1.6.0": "f7c9e1a3b5d6",
 }
 
 

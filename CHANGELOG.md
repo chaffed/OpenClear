@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.6.0 — 2026-10-08
+
+PosPay is now **OpenClear**. This release adds billing (account analysis and hard charge,
+with camt.086 export), a durable background job queue, paged API lists, and Postgres
+fixes for running at scale.
+
+### Upgrading from 1.5.0
+
+- Run `alembic upgrade head` (the Docker image does this on startup). On a large Postgres
+  database, run it in a quiet window: the new indexes block writes to their tables while
+  they build.
+- **API clients:** list endpoints now return at most 500 rows per call (1,000 with
+  `limit`). Follow the `Link` header to read the rest.
+- Your `POSPAY_*` settings keep working; see the rename notes below.
+- Downgrading to 1.5.0 is supported (`alembic downgrade c3e8f1a5d9b2`).
 
 ### Renamed: PosPay is now OpenClear
 

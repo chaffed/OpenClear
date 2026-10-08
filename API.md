@@ -96,7 +96,7 @@ The body is still a plain JSON list. Two response headers describe the rest:
 - `Link: <...>; rel="next"`: the URL of the next page, with your filters kept. It's absent
   on the last page.
 
-To read everything, follow `Link` until it's gone. **Changed in the release after 1.5.0:**
+To read everything, follow `Link` until it's gone. **Changed in 1.6.0:**
 these endpoints used to return every row in one response. A client that expects that
 still works for up to 500 rows; beyond that it must follow `Link`.
 
