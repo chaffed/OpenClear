@@ -13,6 +13,7 @@ from openclear.domain import (  # noqa: F401
     ach_return_reason,
     ach_transaction,
     audit_log_entry,
+    billing,
     bulk_upload_created_record,
     bulk_upload_file,
     check_image,

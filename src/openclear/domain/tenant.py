@@ -9,6 +9,7 @@ from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
+from openclear.domain.billing import BillingMethod
 
 
 class MlModelSource(str, enum.Enum):
@@ -120,3 +121,17 @@ class Tenant(Base):
     # are enforced in Python, not the column type.
     login_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     banner_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Billing (domain/billing.py, BILLING_PLAN.md). How customers with no billing terms of
+    # their own are billed, and how the bank's own accounts (not assigned to a customer)
+    # and bank-wide services (e.g. SMS) are billed. bank_billing_account_id is validated in
+    # code, not by a foreign key (account already references tenant).
+    customer_default_billing_method: Mapped[BillingMethod] = mapped_column(
+        Enum(BillingMethod, name="customer_default_billing_method", native_enum=False, length=20),
+        nullable=False, default=BillingMethod.ANALYSIS,
+    )
+    bank_billing_method: Mapped[BillingMethod] = mapped_column(
+        Enum(BillingMethod, name="bank_billing_method", native_enum=False, length=20),
+        nullable=False, default=BillingMethod.EXEMPT,
+    )
+    bank_billing_account_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)

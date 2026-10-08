@@ -50,6 +50,10 @@ PERMISSION_CATALOG: dict[str, str] = {
     # customer's own scoped users. This is the first genuinely customer-self-service
     # permission in the catalog -- see web/routers/customer_banner.py.
     "customer_banner:manage": "Manage this customer's own banner message",
+    # Billing (BILLING_PLAN.md). billing:read is also meant for a customer's own scoped
+    # users, who see only their own customer's statement; billing:manage is bank-only.
+    "billing:read": "View billing statements and reports",
+    "billing:manage": "Manage the fee schedule and customer billing terms, and finalize statements",
 }
 
 # Masked out of TenantContext.permissions whenever the active membership is
@@ -62,7 +66,7 @@ PERMISSION_CATALOG: dict[str, str] = {
 CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
     {
         "user:manage", "security_group:manage", "tenant:manage", "customer:manage", "admin:manage", "audit_log:read",
-        "ach_return_reason:manage", "wsud:read",
+        "ach_return_reason:manage", "wsud:read", "billing:manage",
     }
 )
 
@@ -89,7 +93,7 @@ _ALL = [key for key in PERMISSION_CATALOG if key not in _NOT_ADMIN_DEFAULT]
 # the Bank Administrator documentation are all more sensitive/admin-facing than any single
 # resource's own data, and default to Admin-only, same posture as the *:manage
 # permissions. A tenant can still grant any of them to a custom group.
-_ADMIN_ONLY_READS = ("audit_log:read", "wsud:read", "admin_documentation:read")
+_ADMIN_ONLY_READS = ("audit_log:read", "wsud:read", "admin_documentation:read", "billing:read")
 _READS = [key for key in _ALL if key.endswith(":read") and key not in _ADMIN_ONLY_READS]
 
 # Default groups seeded into every new tenant (provisioning_service.py, tests'
