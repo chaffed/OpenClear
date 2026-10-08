@@ -10,7 +10,7 @@ kind that can clear those rules cleanly (see networks/check/rules.py, networks/a
 docstrings), so waiting for a real rule violation would defeat the point. Does reuse
 build_features() unchanged, so a backfilled feature vector is computed identically to a
 live-reviewed one, and never calls score_exception()/notification_service (this never
-enters anyone's live queue — see ml/train.py::_load_labeled_decisions, which picks these
+enters anyone's live queue — see ml/train.py::_labeled_decisions, which picks these
 rows up through the same query as a live decision, no separate training path needed)."""
 
 import uuid
@@ -249,7 +249,7 @@ def retract_fraud_example(
 ) -> ExceptionItem | None:
     """One-way soft retraction — mirrors BulkUploadFile.backed_out_at's own "nothing
     supports undoing the undo" design. Only ever allowed on a TRAINING_BACKFILL exception:
-    a real live decision is never retractable (see ml/train.py::_load_labeled_decisions,
+    a real live decision is never retractable (see ml/train.py::_labeled_decisions,
     which excludes retracted rows from training)."""
     exception_item = ExceptionRepository(session, tenant_id, ctx.customer_id).get(exception_id)
     if exception_item is None:

@@ -18,7 +18,7 @@ from openclear.domain.ml_model import MlModelStatus
 from openclear.domain.tenant import MlModelSource
 from openclear.ml.predict import _resolve_scoring_source
 from openclear.ml.registry import activate_model, create_model_row, get_active_model_row
-from openclear.ml.train import _load_labeled_decisions, train_model
+from openclear.ml.train import count_labeled_decisions, train_model
 from openclear.services import customer_ml_service
 from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception, _seed_decisions
 
@@ -96,19 +96,19 @@ def test_fraud_examples_reach_the_shared_model_only_once_approved(db_session, te
     tenant, account, users = _bank(tenant_factory, db_session, "shr-fex", decisions=10)
     example = _submit_fraud_example(db_session, tenant, account, users, "7001")
 
-    assert len(_load_labeled_decisions(db_session, "check")) == 10
+    assert count_labeled_decisions(db_session, "check") == 10
 
     example.shared_training_approved_at = datetime.now(timezone.utc)
     db_session.commit()
-    assert len(_load_labeled_decisions(db_session, "check")) == 11
+    assert count_labeled_decisions(db_session, "check") == 11
 
 
 def test_a_bank_only_banks_fraud_examples_train_its_own_model_without_approval(db_session, tenant_factory):
     tenant, account, users = _bank(tenant_factory, db_session, "prv-fex", MlModelSource.PRIVATE, decisions=10)
     _submit_fraud_example(db_session, tenant, account, users, "7002")
 
-    assert len(_load_labeled_decisions(db_session, "check", tenant_id=tenant.id)) == 11
-    assert len(_load_labeled_decisions(db_session, "check")) == 0
+    assert count_labeled_decisions(db_session, "check", tenant_id=tenant.id) == 11
+    assert count_labeled_decisions(db_session, "check") == 0
 
 
 def test_tenant_id_is_no_longer_a_model_feature(db_session, tenant_factory):

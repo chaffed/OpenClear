@@ -292,41 +292,80 @@ not just in tests:
 
 ## Phase S4 — Bulk uploads as background jobs, batched
 
-**Status: NOT STARTED.** Needs S3. Decision D4.
+**Status: COMPLETE (2026-10-08, branch `scale-s4`, merged to `main` locally).** Decisions D4
+(1,000-row API cap) and D5 (one summary notification per upload).
 
-**The problem:** every row runs about 6–8 queries, a commit, ML scoring and a
-notification, all inside the upload request. Files are also read fully into memory.
+Full suites: SQLite 1,215 passed, 15 skipped; Postgres 1,230 passed; Linux / Python 3.11
+1,210 passed, 20 skipped.
 
-- [ ] An upload stores the file (already done: `bulk_upload_storage_dir`), creates the
-      `bulk_upload_file` record with a status and progress counts, and enqueues a job. The
-      page shows progress and the per-row results when they're done. The file is parsed
-      and control totals are checked first (a bad file is still rejected whole).
-- [ ] Batch the matching: for each chunk of about 1,000 rows, load the issued items,
-      stops and existing paid items for the chunk's accounts in a few queries, not per
-      row. Commit per chunk, with a savepoint per row, so one bad row still fails on its
-      own.
-- [ ] Score each chunk's new exceptions in one model call. Send notifications as one
-      summary per upload rather than one per item (decision D5).
-- [ ] Read CSV and NACHA files as a stream. For X9.37, stream records and write each
-      image to storage as it's read, rather than holding the whole file in memory.
-- [ ] The API bulk endpoints (`/api/v1/paid-items/bulk`, ACH, issued items) stay
-      synchronous up to a row cap. Larger requests get a job id to poll.
-- [ ] Check the dropbox import follows the same path.
-- [ ] Tests: results identical to today for the existing fixtures; a 50,000-row timing
-      recorded against S0's baseline.
+- [x] An upload stores the file, records it with a status and progress counts
+      (migration `a8c0e2f4b6d9`), checks it parses (a bad file is still rejected whole, on
+      the form), and queues a `bulk_upload.import` job (`services/bulk_import_service.py`).
+      The upload's page (`/ui/bulk-uploads/<id>`) shows progress and refreshes itself, then
+      the result: failed rows with reasons, and a CSV of every row
+      (`bulk_upload_row_result`). Covers accounts, issued items, presented checks, ACH
+      (delimited and NACHA) and check images (zip and X9.37). Users and fraud-training
+      labels stay in the request: they're small and need an answer on the spot.
+- [x] Chunks of `bulk_import_chunk_rows` (1,000): each row in a savepoint, one commit per
+      chunk together with its row results, audit entries, back-out records and
+      `processed_rows`, so a retried job resumes without importing a row twice. **Found
+      while testing:** on SQLite a savepoint opened before any write commits on release,
+      so each row was committing alone; each chunk now opens with a write.
+- [x] Audit entries are chained a chunk at a time (`audit_log_service.record_actions`:
+      one lock and one read of the latest entry per chunk). Notifications: one summary
+      per reviewer per upload, counted per customer.
+- [~] **Batched matching** (pre-loading issued items, stops and paid history per chunk):
+      **not done.** Measured below, the D1 target is met without it; the matching rules
+      stay row by row and unchanged. Revisit if a real bank's volumes need it. Scoring
+      stays per exception (models are cached).
+- [x] Files aren't read into memory: uploads stream to disk, hashed and signed as written
+      (`sign_digest`); X9.37 is read through an mmap with images sliced per check; zip
+      images are read as each row needs them. Delimited and NACHA files are parsed whole
+      (a 50,000-row CSV is a few MB).
+- [x] The API `/bulk` endpoints stay synchronous up to 1,000 items; more answers `202`
+      with an upload to poll (`/api/v1/bulk-uploads/{id}` and `/results`).
+- [x] The dropbox import goes through the same job.
+- [x] Tests: `tests/test_bulk_import/test_bulk_import_service.py` (chunks, an isolated bad
+      row, resume after a crash without duplicates, failure on the last attempt, a job the
+      queue gave up on, rejection, the summary notification, streamed signatures, lazy
+      zip and X9.37 images, the API's 202 and status endpoints, the progress page); the
+      existing bulk tests pass unchanged apart from following the redirect.
+- **Also fixed:** the upload page failed for presented-check and fraud-training uploads
+  (their kinds were missing from its permission map); a missing ML model file made every
+  exception row fail (now unscored, as a failed integrity check already was).
+
+**Timing** (perf database, perf-bank-0, Postgres in Colima; the laptop was busy, with
+Google Drive syncing, so runs varied up to 3×; best of three alternating runs, 1,000 rows,
+half raising exceptions):
+
+| Path | Rows/s | 50,000 rows |
+|---|---|---|
+| Before (in the request, a commit per row) | 103 | ≈ 8 min |
+| S4 background import | 243 | ≈ 3.4 min |
+
+Storing, signing and checking a 2,000-row file in the request takes about 50 ms.
 
 ## Phase S5 — ML training at scale
 
-**Status: NOT STARTED.** Needs S3. Decision D3.
+**Status: COMPLETE (2026-10-08, branch `scale-s5`).** Decision D3 (365 days, configurable).
 
-- [ ] A training window, `ml_training_window_days` (recommended default 365), plus a row
-      cap. Load only the columns training needs (`features_json`, outcome, date) and
-      stream them, instead of whole `Decision` objects.
-- [ ] One job per model slot, via the queue. `retrain_job` only decides which slots need
-      retraining.
-- [ ] Put a size limit (LRU) on each process's loaded-model cache: one model per
-      customer adds up.
-- [ ] Record training time and row counts in `metrics_json`, so growth is visible.
+- [x] A training window, `ml_training_window_days` (365; 0 for all history), and a row
+      cap, `ml_training_max_rows` (250,000, the newest). Known-fraud training examples are
+      kept whatever their age. Training reads only `features_json` and the outcome, in
+      batches of 5,000, instead of whole `Decision` objects.
+- [x] One job per model slot via the queue (done in S3). `retrain_job` now counts with SQL
+      instead of loading every decision, and compares against the eligible count the last
+      run recorded, so a capped slot isn't retrained every night.
+- [x] The loaded-model cache is an LRU of `ml_model_cache_size` (256) per process.
+- [x] `metrics_json["training"]`: rows used, eligible, capped, window, cap, load and total
+      seconds.
+- [x] Tests: `tests/test_ml/test_training_at_scale.py` (window with the fraud-example
+      exception, the cap keeping the newest rows, a capped run not looking due again, LRU
+      eviction and refresh).
+
+Measured on the perf database (13,375 shared-model decisions): loading the training data
+peaks at 14 MB of Python memory, against 41 MB loading `Decision` objects as before, and
+is a little faster (0.31 s against 0.45 s).
 
 ## Phase S6 — Shared storage and shared limits for several instances
 
@@ -381,3 +420,5 @@ recommendations unless you say otherwise.
 - 2026-09-25 Renamed the project to OpenClear (branch `rename-openclear`, merged).
 - 2026-09-26 S2 complete. Also fixed: the retrain cooldown now uses the database clock, and the training holdout split is reproducible.
 - 2026-09-28 S3 complete (job queue and worker; streaming exports). X9.37 field verification deferred until a bank implements.
+- 2026-10-08 Billing (BILLING_PLAN.md) and release 1.6.0, pushed. S4 complete (bulk imports in the background).
+- 2026-10-08 S5 complete (training window, row cap, leaner loading, model cache limit).

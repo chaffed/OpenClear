@@ -67,7 +67,7 @@ def admin_home(
         # A live count of THIS bank's labeled decisions per network (its own contribution
         # to whichever model it uses), separate from trained_from_decision_count on each
         # MlModel row, which is frozen as of that model's training run. Same eligibility
-        # filter as ml/train.py::_load_labeled_decisions (features present, not retracted).
+        # filter as ml/train.py::_labeled_decisions (features present, not retracted).
         for network_code in registered_codes():
             base_stmt = (
                 select(ExceptionItem.source, func.count(Decision.id))

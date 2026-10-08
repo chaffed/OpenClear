@@ -27,6 +27,20 @@
 - **Upgrading:** run `alembic upgrade head` (new columns on `bulk_upload_file`, new table
   `bulk_upload_row_result`).
 
+### Scalability (SCALE_PLAN.md S5): ML training at scale
+
+- **Training reads a window:** the last 365 days of decisions
+  (`OPENCLEAR_ML_TRAINING_WINDOW_DAYS`, 0 for all history), at most the newest 250,000
+  (`OPENCLEAR_ML_TRAINING_MAX_ROWS`). Known-fraud training examples are always included.
+  **Behavior change:** decisions older than a year no longer train new models.
+- **Less memory:** training reads only the two columns it needs, in batches. Loading
+  13,000 decisions now peaks at 14 MB instead of 41 MB.
+- **Each model records how it was trained** in `metrics_json["training"]`: rows used, rows
+  eligible, whether it was capped, and how long loading and training took.
+- **The nightly retrain counts in SQL** instead of loading every decision to count them.
+- **Loaded models are capped per process** (`OPENCLEAR_ML_MODEL_CACHE_SIZE`, 256, least
+  recently used dropped first).
+
 ## 1.6.0 — 2026-10-08
 
 PosPay is now **OpenClear**. This release adds billing (account analysis and hard charge,

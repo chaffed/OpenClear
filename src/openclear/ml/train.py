@@ -3,7 +3,8 @@
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -62,10 +63,9 @@ def _scope_label(tenant_id: uuid.UUID | None, customer_id: uuid.UUID | None) -> 
     return "the shared model"
 
 
-def _load_labeled_decisions(
-    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
-) -> list[Decision]:
-    """The training data for one model slot (see ml/registry.py), oldest first:
+def _labeled_decisions(stmt, network_code: str, customer_id: uuid.UUID | None, tenant_id: uuid.UUID | None):
+    """Adds to `stmt` (a select over Decision) the rules for one model slot's training
+    data (see ml/registry.py):
 
     - a customer's model: that customer's decisions;
     - a bank-only model: every decision at that bank, fraud-training examples included;
@@ -73,29 +73,71 @@ def _load_labeled_decisions(
       a bank-only model never contributes — and, from those banks, fraud-training examples
       only once the platform operator has approved them (shared_training_approved_at), so
       one bank can't quietly skew scoring for every other bank."""
-    stmt = (
-        select(Decision)
-        .join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id)
-        .where(
-            ExceptionItem.network_code == network_code,
-            Decision.features_json.is_not(None),
-            ExceptionItem.retracted_at.is_(None),
-        )
-        .order_by(Decision.decided_at, Decision.id)  # id breaks ties, so the split is reproducible
+    stmt = stmt.join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id).where(
+        ExceptionItem.network_code == network_code,
+        Decision.features_json.is_not(None),
+        ExceptionItem.retracted_at.is_(None),
     )
     if customer_id is not None:
-        stmt = stmt.where(ExceptionItem.customer_id == customer_id)
-    elif tenant_id is not None:
-        stmt = stmt.where(ExceptionItem.tenant_id == tenant_id)
-    else:
-        stmt = stmt.join(Tenant, Tenant.id == ExceptionItem.tenant_id).where(
-            Tenant.ml_model_source == MlModelSource.SHARED,
-            or_(
-                ExceptionItem.source != ExceptionItemSource.TRAINING_BACKFILL,
-                ExceptionItem.shared_training_approved_at.is_not(None),
-            ),
-        )
-    return list(session.execute(stmt).scalars().all())
+        return stmt.where(ExceptionItem.customer_id == customer_id)
+    if tenant_id is not None:
+        return stmt.where(ExceptionItem.tenant_id == tenant_id)
+    return stmt.join(Tenant, Tenant.id == ExceptionItem.tenant_id).where(
+        Tenant.ml_model_source == MlModelSource.SHARED,
+        or_(
+            ExceptionItem.source != ExceptionItemSource.TRAINING_BACKFILL,
+            ExceptionItem.shared_training_approved_at.is_not(None),
+        ),
+    )
+
+
+def count_labeled_decisions(
+    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
+) -> int:
+    """Every decision the slot could learn from, before the training window and row cap:
+    what the scheduled retrain compares against the last run's count to see how many are
+    new (workers/tasks.py)."""
+    stmt = _labeled_decisions(select(func.count(Decision.id)), network_code, customer_id, tenant_id)
+    return session.execute(stmt).scalar_one()
+
+
+@dataclass(frozen=True, slots=True)
+class TrainingData:
+    features: list[dict]
+    labels: list[int]
+    eligible: int  # count_labeled_decisions at the time
+    window_days: int
+    max_rows: int
+
+    @property
+    def capped(self) -> bool:
+        return len(self.labels) < self.eligible
+
+
+def _load_training_data(
+    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
+) -> TrainingData:
+    """The slot's training rows, oldest first (the holdout is the newest fifth): only the
+    two columns training needs, read in batches rather than as Decision objects, from
+    the last ml_training_window_days, capped at the newest ml_training_max_rows."""
+    settings = get_settings()
+    window_days, max_rows = settings.ml_training_window_days, settings.ml_training_max_rows
+    stmt = _labeled_decisions(select(Decision.features_json, Decision.outcome), network_code, customer_id, tenant_id)
+    if window_days > 0:
+        cutoff = session.execute(select(func.now())).scalar_one() - timedelta(days=window_days)
+        stmt = stmt.where(or_(Decision.decided_at >= cutoff, ExceptionItem.source == ExceptionItemSource.TRAINING_BACKFILL))
+    # Newest first so the cap keeps the most recent rows; id breaks ties so the split is
+    # reproducible. Reversed below.
+    stmt = stmt.order_by(Decision.decided_at.desc(), Decision.id.desc()).limit(max_rows)
+    features, labels = [], []
+    for features_json, outcome in session.execute(stmt.execution_options(yield_per=5000)):
+        features.append(features_json)
+        labels.append(1 if outcome == DecisionOutcome.PAY else 0)
+    features.reverse()
+    labels.reverse()
+    return TrainingData(
+        features, labels, count_labeled_decisions(session, network_code, customer_id, tenant_id=tenant_id), window_days, max_rows
+    )
 
 
 def _safe_metrics(y_true: list[int], y_pred_proba, y_pred: list[int]) -> dict[str, float]:
@@ -213,18 +255,18 @@ def train_model(
             f"{cooldown_seconds}s ago — wait before retraining again."
         )
 
-    decisions = _load_labeled_decisions(session, network_code, customer_id, tenant_id=slot_tenant_id)
-    if len(decisions) < MIN_DECISIONS_TO_TRAIN:
+    started = time.perf_counter()
+    data = _load_training_data(session, network_code, customer_id, tenant_id=slot_tenant_id)
+    X, y = data.features, data.labels
+    if len(y) < MIN_DECISIONS_TO_TRAIN:
         raise InsufficientTrainingData(
-            f"Only {len(decisions)} labeled decisions for network_code={network_code!r} ({scope}), "
+            f"Only {len(y)} labeled decisions for network_code={network_code!r} ({scope}), "
             f"need at least {MIN_DECISIONS_TO_TRAIN}."
         )
+    loaded_seconds = time.perf_counter() - started
 
-    X = [d.features_json for d in decisions]
-    y = [1 if d.outcome == DecisionOutcome.PAY else 0 for d in decisions]
-
-    split_index = max(1, int(len(decisions) * (1 - _HOLDOUT_FRACTION)))
-    split_index = min(split_index, len(decisions) - 1)  # always leave >=1 holdout row
+    split_index = max(1, int(len(y) * (1 - _HOLDOUT_FRACTION)))
+    split_index = min(split_index, len(y) - 1)  # always leave >=1 holdout row
     X_train, X_holdout = X[:split_index], X[split_index:]
     y_train, y_holdout = y[:split_index], y[split_index:]
 
@@ -241,11 +283,11 @@ def train_model(
             challenger_metrics=metrics,
             X_holdout=X_holdout,
             y_holdout=y_holdout,
-            decision_count=len(decisions),
+            decision_count=len(y),
             is_bank_model=customer_id is None and slot_tenant_id is not None,
         )
 
-    existing_count = len(session.execute(slot_models).all())
+    existing_count = session.execute(select(func.count()).select_from(slot_models.subquery())).scalar_one()
     version = f"v{existing_count + 1}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
     if customer_id is not None:
         artifact_key = f"{network_code}_{customer_id}_{version}"
@@ -264,8 +306,22 @@ def train_model(
         algorithm="logistic_regression",
         artifact_path=artifact_path,
         artifact_sha256=artifact_sha256,
-        trained_from_decision_count=len(decisions),
-        metrics_json={**metrics, "evaluation": evaluation},
+        trained_from_decision_count=len(y),
+        metrics_json={
+            **metrics,
+            "evaluation": evaluation,
+            # So growth is visible (SCALE_PLAN.md S5), and so the scheduled retrain can
+            # count new decisions against everything eligible, not just the rows used.
+            "training": {
+                "rows": len(y),
+                "eligible_decisions": data.eligible,
+                "capped": data.capped,
+                "window_days": data.window_days,
+                "max_rows": data.max_rows,
+                "load_seconds": round(loaded_seconds, 3),
+                "seconds": round(time.perf_counter() - started, 3),
+            },
+        },
         status=MlModelStatus.TRAINING,
     )
 

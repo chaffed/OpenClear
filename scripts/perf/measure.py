@@ -136,9 +136,17 @@ def _retrain(session) -> None:
 
     print("ML", flush=True)
     get_settings().ml_retrain_cooldown_seconds = 0
+    import tracemalloc
+
+    tracemalloc.start()
     seconds, result = _timed(lambda: train_model(session, "check"))
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
     session.commit()
-    _record("ML", "Retrain the shared check model", seconds, f"({result.model_row.trained_from_decision_count:,} decisions)")
+    training = result.model_row.metrics_json.get("training", {})
+    _record("ML", "Retrain the shared check model", seconds,
+            f"({result.model_row.trained_from_decision_count:,} decisions; loading {training.get('load_seconds', '?')} s; "
+            f"peak Python memory {peak / 1e6:,.0f} MB)")
 
 
 def _export(session, tenant, admin_id) -> None:

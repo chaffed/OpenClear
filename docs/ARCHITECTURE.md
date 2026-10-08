@@ -291,8 +291,14 @@ Which model scores an exception (`ml/predict.py::_resolve_scoring_source`):
 
 ### Training and promotion
 
-`workers/tasks.py::retrain_job` walks every slot that has enough new labelled decisions
-and calls `ml/train.py::train_model`. Training holds out the most recent decisions. The
+`workers/tasks.py::retrain_job` queues a retrain job for every slot that has enough new
+labelled decisions (counted with SQL `COUNT`s, against the number of eligible decisions
+the slot's last run recorded), and the job calls `ml/train.py::train_model`. Training
+reads only the two columns it needs (`features_json`, outcome), in batches, from the last
+`ml_training_window_days` (365) and at most the newest `ml_training_max_rows` (250,000);
+known-fraud training examples are kept whatever their age. Each run records its row
+counts, whether it was capped, and how long it took in `metrics_json["training"]`.
+Training holds out the most recent decisions. The
 new model (challenger) and the active one (champion) are scored on the **same** holdout,
 and the challenger is promoted only if it does at least as well
 (`_promotion_decision`). A bank's first model trained on its own data must also have seen
@@ -302,8 +308,10 @@ sample. There's a per-slot cooldown so on-demand retraining can't be used to bur
 Artifacts are joblib (pickle) files under `ml_artifact_dir` (`ml/registry.py::ArtifactStore`).
 The database holds each file's path and its SHA-256 (`ml_model.artifact_sha256`), and a
 file is unpickled only if it still matches, because unpickling a swapped file would run
-code. A model that fails the check simply doesn't score, and the failure is logged. `ml/predict.py` caches loaded models per slot and reloads
-automatically when the slot's active model id changes.
+code. A model that fails the check simply doesn't score, and the failure is logged. `ml/predict.py` caches loaded models per slot (least recently used dropped
+past `ml_model_cache_size`, 256) and reloads automatically when the slot's active model
+id changes. A model file that's missing or unreadable is treated the same way: no score,
+logged.
 
 ## OCR
 

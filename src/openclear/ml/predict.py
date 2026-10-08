@@ -3,9 +3,11 @@
 
 import logging
 import uuid
+from collections import OrderedDict
 
 from sqlalchemy.orm import Session
 
+from openclear.config import get_settings
 from openclear.domain.customer_ml_setting import MlScoringMode
 from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.ml_model import MlModel
@@ -20,8 +22,9 @@ logger = logging.getLogger(__name__)
 # In-process cache: model slot (network_code, tenant_id, customer_id) -> (active_model_id,
 # loaded_model). Invalidated automatically whenever the DB's active model id for that
 # slot changes (e.g. after a retrain promotes a new version) — no explicit cache-bust
-# call needed elsewhere.
-_MODEL_CACHE: dict[tuple[str, uuid.UUID | None, uuid.UUID | None], tuple[uuid.UUID, ScoringModel]] = {}
+# call needed elsewhere. Least recently used first, and trimmed to ml_model_cache_size:
+# with a model per customer, keeping every one ever used would grow without bound.
+_MODEL_CACHE: OrderedDict[tuple[str, uuid.UUID | None, uuid.UUID | None], tuple[uuid.UUID, ScoringModel]] = OrderedDict()
 
 
 def _bank_level_model(session: Session, tenant_id: uuid.UUID, network_code: str) -> MlModel | None:
@@ -69,6 +72,7 @@ def _load_model(session: Session, tenant_id: uuid.UUID, network_code: str, custo
     cache_key = (network_code, model_row.tenant_id, model_row.customer_id)
     cached = _MODEL_CACHE.get(cache_key)
     if cached is not None and cached[0] == model_row.id:
+        _MODEL_CACHE.move_to_end(cache_key)
         return cached[1], model_row.version
 
     try:
@@ -84,6 +88,9 @@ def _load_model(session: Session, tenant_id: uuid.UUID, network_code: str, custo
         logger.exception("Not scoring with ml_model %s: its artifact can't be read", model_row.id)
         return None
     _MODEL_CACHE[cache_key] = (model_row.id, model)
+    _MODEL_CACHE.move_to_end(cache_key)
+    while len(_MODEL_CACHE) > max(1, get_settings().ml_model_cache_size):
+        _MODEL_CACHE.popitem(last=False)
     return model, model_row.version
 
 

@@ -17,7 +17,7 @@ from openclear.domain.ml_model import MlModelStatus
 from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus
 from openclear.domain.tenant import MlModelSource, Tenant
 from openclear.ml.registry import create_model_row, get_active_model_row, list_slot_models
-from openclear.ml.train import InsufficientTrainingData, RetrainCooldownActive, _load_labeled_decisions, train_model
+from openclear.ml.train import InsufficientTrainingData, RetrainCooldownActive, count_labeled_decisions, train_model
 from openclear.networks.registry import registered_codes
 from openclear.notifications.email.factory import get_email_provider
 from openclear.notifications.sms.factory import get_sms_provider
@@ -29,19 +29,25 @@ logger = logging.getLogger(__name__)
 
 
 def _count_labeled_decisions(session: Session, network_code: str, *, tenant_id: uuid.UUID | None = None) -> int:
-    """How many decisions the shared model (tenant_id None) or one bank-only model would
-    train on — the exact same rules as training itself (ml/train.py::
-    _load_labeled_decisions), so e.g. a bank-only bank's decisions never trigger a
-    shared-model retrain."""
-    return len(_load_labeled_decisions(session, network_code, tenant_id=tenant_id))
+    """How many decisions the shared model (tenant_id None) or one bank-only model could
+    learn from — the exact same rules as training itself (ml/train.py::
+    count_labeled_decisions), so e.g. a bank-only bank's decisions never trigger a
+    shared-model retrain. A COUNT, not the rows."""
+    return count_labeled_decisions(session, network_code, tenant_id=tenant_id)
 
 
 def _most_recently_trained_count(
     session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
 ) -> int:
+    """How many eligible decisions the slot's last run saw. Since S5 a run may use fewer
+    rows than that (the training window and row cap), so this is the count it recorded in
+    metrics_json["training"], falling back to the rows used for models trained before."""
     models = [m for m in list_slot_models(session, network_code, tenant_id=tenant_id, customer_id=customer_id)
               if m.status != MlModelStatus.FAILED]
-    return models[0].trained_from_decision_count if models else 0
+    if not models:
+        return 0
+    training = (models[0].metrics_json or {}).get("training") or {}
+    return training.get("eligible_decisions", models[0].trained_from_decision_count)
 
 
 def _customers_with_labeled_decisions(session: Session, network_code: str) -> dict[uuid.UUID, int]:

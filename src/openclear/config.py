@@ -201,6 +201,15 @@ class Settings(BaseSettings):
     # compute DoS (ml/train.py::train_model). The nightly scheduled job is already gated
     # by ml_min_new_decisions_for_retrain and won't normally trip this too.
     ml_retrain_cooldown_seconds: int = 60
+    # What one training run reads (SCALE_PLAN.md S5): decisions from the last
+    # ml_training_window_days (0 = all history), and at most ml_training_max_rows of the
+    # most recent of those. Known-fraud training examples are always included, however
+    # old: they're few, and curated on purpose.
+    ml_training_window_days: int = 365
+    ml_training_max_rows: int = 250_000
+    # Loaded models each process keeps in memory (one per model slot that has scored
+    # something): the least recently used is dropped past this.
+    ml_model_cache_size: int = 256
     # Fraud-scoring model choice per bank (services/tenant_ml_service.py, FIX_PLAN.md
     # Phase 5). A newly created bank must stay on the shared model this many days before it
     # may switch to a bank-only model (banks that predate the setting aren't locked).
