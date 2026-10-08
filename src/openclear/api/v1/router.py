@@ -16,6 +16,7 @@ from openclear.api.v1.issued_items import router as issued_items_router
 from openclear.api.v1.paid_items import router as paid_items_router
 from openclear.api.v1.platform_usage import router as platform_usage_router
 from openclear.api.v1.billing import router as billing_router
+from openclear.api.v1.platform_billing import router as platform_billing_router
 from openclear.api.v1.platform_jobs import router as platform_jobs_router
 from openclear.api.v1.platform_ml import router as platform_ml_router
 from openclear.api.v1.stop_payments import router as stop_payments_router
@@ -41,3 +42,4 @@ api_router.include_router(platform_usage_router)
 api_router.include_router(platform_ml_router)
 api_router.include_router(platform_jobs_router)
 api_router.include_router(billing_router)
+api_router.include_router(platform_billing_router)

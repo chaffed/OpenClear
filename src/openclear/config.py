@@ -191,6 +191,9 @@ class Settings(BaseSettings):
     # declares (services/billing/exports.py). Match it to what the receiving analysis
     # system or corporate client expects, and validate against its XSD.
     billing_camt086_version: str = "camt.086.001.04"
+    # Who the platform operator's invoices to banks come from (the camt.086 sender).
+    platform_operator_name: str = "OpenClear platform operator"
+    platform_operator_id: str = "OPENCLEAR-PLATFORM"
 
     ml_min_new_decisions_for_retrain: int = 20
     # Minimum time between two retrains of the same (network_code, customer_id) pair —

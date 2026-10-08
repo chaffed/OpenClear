@@ -26,7 +26,8 @@ def _hash_key(raw_key: str) -> str:
 #   usage        — the usage-metering API (api/v1/platform_usage.py)
 #   shared_model — operating the shared fraud-scoring model (api/v1/platform_ml.py)
 #   operations   — watching and retrying background jobs (api/v1/platform_jobs.py)
-SCOPES = ("usage", "shared_model", "operations")
+#   billing      — the operator's fee schedule and invoices to banks (api/v1/platform_billing.py)
+SCOPES = ("usage", "shared_model", "operations", "billing")
 
 
 def generate_and_create(session: Session, name: str, scopes: tuple[str, ...] = ("usage",)) -> tuple[PlatformApiKey, str]:

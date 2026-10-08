@@ -156,3 +156,28 @@ class BillingStatementLineRecord(Base):
     payment_method: Mapped[str] = mapped_column(String(4), nullable=False)
     tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
     accounts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class PlatformFeeItem(Base):
+    """A fee in the platform operator's schedule, for billing banks (BILLING_PLAN.md B4).
+    Same shape as FeeItem, but owned by the operator, not a bank: no tenant_id, and no
+    row-level security. Only a platform API key with the "billing" scope reaches it."""
+
+    __tablename__ = "platform_fee_item"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    code: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    metric: Mapped[str] = mapped_column(String(60), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False, default=Decimal("0"))
+    tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    minimum_charge: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    afp_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    bank_service_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=func.now())

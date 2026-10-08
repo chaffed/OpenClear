@@ -61,12 +61,15 @@ def _validate_tiers(tiers) -> list[dict] | None:
     return cleaned
 
 
-def _apply_fee_fields(item: FeeItem, fields: dict) -> None:
+def _apply_fee_fields(item, fields: dict, *, metrics=None) -> None:
+    """Validates and sets fee fields on a FeeItem (or a PlatformFeeItem, which allows the
+    platform-only metrics too)."""
+    metrics = metrics if metrics is not None else METRICS
     for name, value in fields.items():
         if name not in _FEE_FIELDS:
             continue
         if name == "metric":
-            if value not in METRICS:
+            if value not in metrics:
                 raise ValueError(f"Unknown metric {value!r}.")
         elif name == "unit_price":
             value = _decimal(value, "Unit price", places=4) or Decimal("0")
