@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/brand/openclear-banner.svg" alt="OpenClear" width="500"></p>
+
 # OpenClear
 
 *Formerly PosPay. Existing installs keep working after the rename: see

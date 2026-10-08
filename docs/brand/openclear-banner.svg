@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient for modern fintech feel -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B132B" />
+      <stop offset="100%" stop-color="#1C2541" />
+    </linearGradient>
+
+    <!-- Shield / Core Element Gradient (Trust & Security) -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4361EE" />
+      <stop offset="100%" stop-color="#3A0CA3" />
+    </linearGradient>
+
+    <!-- Checkmark / Verification Gradient (Positive Pay verification) -->
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4CC9F0" />
+      <stop offset="100%" stop-color="#4ADE80" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter for Depth -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Optional dark container (remove if you need a transparent background) -->
+  <rect width="500" height="140" rx="16" fill="url(#bgGrad)" />
+
+  <g transform="translate(10, 0)">
+    <!-- LOGO MARK: Shield intersecting with a modern Bank Vault / Check structure -->
+    <g transform="translate(15, 20)" filter="url(#dropShadow)">
+      <!-- Outer Shield / Vault Frame -->
+      <path d="M 50 10 
+               C 75 10, 90 20, 90 45 
+               C 90 75, 70 92, 50 100 
+               C 30 92, 10 75, 10 45 
+               C 10 20, 25 10, 50 10 Z" 
+            fill="url(#shieldGrad)" 
+            stroke="#4CC9F0" 
+            stroke-width="2" 
+            stroke-opacity="0.6"
+            filter="url(#dropShadow)" />
+
+      <!-- Inner Bank Pillar / Ledger lines representing data rails (Checks, ACH, RTP) -->
+      <rect x="30" y="35" width="8" height="35" rx="3" fill="#ffffff" fill-opacity="0.2" />
+      <rect x="46" y="30" width="8" height="40" rx="3" fill="#ffffff" fill-opacity="0.35" />
+      <rect x="62" y="35" width="8" height="35" rx="3" fill="#ffffff" fill-opacity="0.2" />
+
+      <!-- Precision Positive Pay Checkmark Overlays -->
+      <path d="M 32 55 L 45 68 L 72 38" 
+            fill="none" 
+            stroke="url(#checkGrad)" 
+            stroke-width="7" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            filter="url(#dropShadow)" />
+    </g>
+
+    <!-- TYPOGRAPHY -->
+    <g transform="translate(130, 88)">
+      <!-- Open -->
+      <text x="0" y="0" 
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+            font-size="46" 
+            font-weight="700" 
+            fill="#FFFFFF" 
+            letter-spacing="-0.5">Open</text>
+      
+      <!-- Clear -->
+      <text x="105" y="0" 
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+            font-size="46" 
+            font-weight="300" 
+            fill="#4CC9F0" 
+            letter-spacing="-0.5">Clear</text>
+
+      <!-- Subtitle: Positive Pay Platform -->
+      <text x="2" y="24" 
+            font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+            font-size="12" 
+            font-weight="600" 
+            fill="#8D99AE" 
+            letter-spacing="3.5">POSITIVE PAY PLATFORM</text>
+    </g>
+  </g>
+</svg>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Log in — {{ branding.name if branding else "OpenClear" }}{% endblock %}
+{% block favicon %}{% if branding and branding.has_favicon %}<link rel="icon" href="/ui/branding/{{ branding.slug }}/favicon">{% else %}<link rel="icon" type="image/svg+xml" href="/static/img/openclear-badge.svg">{% endif %}{% endblock %}
 {% block head_extra %}
-{% if branding and branding.has_favicon %}<link rel="icon" href="/ui/branding/{{ branding.slug }}/favicon">{% endif %}
 {% if branding and branding.accent_color %}<style>:root{ --accent: {{ branding.accent_color }}; }</style>{% endif %}
 {% endblock %}
 {% block content %}
