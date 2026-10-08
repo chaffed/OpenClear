@@ -9,7 +9,8 @@ ml_artifacts/
 *.egg-info/
 data/
 .openclear-run/
-.pospay-run/  # the launcher's data folder before the rename; it moves it on first run
+# the launcher's data folder before the rename; it moves it on first run
+.pospay-run/
 # scripts/generate_keys.py's default output dir for real signing keys — never commit
 # these. dev_keys/ (the checked-in, deliberately public test key pair) is NOT ignored.
 /keys/
