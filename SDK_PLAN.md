@@ -112,8 +112,9 @@ then client libraries, an embeddable experience and a core integration kit on to
      origins the bank allowlists.
    - **`@openclear/embed`:** a small JS library that mounts the frame, sizes it, and
      passes events (an exception decided, a session ending) to the host page.
-   - **Reference plugins:** for Banno (a plugin card), Alkami (an SDK provider) and Q2 (an
-     SDK extension).
+   - **Reference integration:** Mifos Mobile (open source) on the Fineract sandbox first;
+     Banno (a plugin card), Alkami (an SDK provider) and Q2 (an SDK extension) when a bank
+     asks for one.
 4. **Core integration kit (P3):**
    - reference adapters (presented items in, decisions out, account sync) with
      configurable file layouts, starting with Apache Fineract;
@@ -178,21 +179,25 @@ then client libraries, an embeddable experience and a core integration kit on to
 | X5 | First SDK languages | **Python and TypeScript**, then .NET | .NET first (cores), Java |
 | X6 | Generated or hand-written | **Generated models and calls from OpenAPI, with a thin hand-written layer** | Fully hand-written (drifts from the API) |
 | X7 | Embedding | **Embed mode with a per-bank origin allowlist, plus sign-on handoff**; recommend the bank host OpenClear on a subdomain of its digital banking domain (avoids third-party cookie problems) | No embedding: native screens only, through the API |
-| X8 | First OBP reference | **Banno** (public plugin docs and a positive pay API to align with), then Alkami | Q2 first (Python SDK, but positive pay is already native there) |
+| X8 | First OBP reference | **Decided 2026-10-09: only an open source online banking provider.** That's **Mifos Mobile** (openMF/mifos-mobile, MPL-2.0, active), the customer app for Apache Fineract, so it pairs with the Fineract sandbox core. Commercial OBPs (Banno, Alkami, Q2) follow when a bank asks | Banno first (public plugin docs) |
 | X9 | Decision delivery to cores | **Both: a pull feed with acknowledgement, and scheduled files to an outbox** | Files only; API only |
 
-## Open questions for you
+## Answered
 
-- Do you have a first bank, core or OBP in mind? That decides X8 and which file layouts
-  P3 builds first.
-- Should sandbox access (P4) be free and self-service, or part of a paid onboarding
-  engagement (business plan)?
+- First integration: only an open source online banking provider, so Mifos Mobile on the
+  Fineract sandbox (X8). File layouts in P3 start with Fineract's.
+- Sandbox access (P4) is **free and self-service**, like everything else (2026-10-09).
+- Extending OpenClear without merging: a plugin framework, planned in PLUGIN_PLAN.md
+  (PL1 alongside P0). Closed-source vendors integrate out of process through P0's
+  webhooks and API; in-process plugins are AGPL.
 
 ## Progress log
 
 (Newest last.)
 - 2026-10-09 Research done; plan written.
 - 2026-10-09 Apache Fineract (sandbox core, first adapter) and Moov (file formats) adopted.
+- 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
+  free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
   Moov's reference implementations already used to fix the X9.37 and NACHA parsers
   (branch `x937-standard`).
 
@@ -212,5 +217,6 @@ then client libraries, an embeddable experience and a core integration kit on to
 - Standard Webhooks: https://www.standardwebhooks.com/ · https://www.svix.com/resources/glossary/webhook-signature/
 - Apache Fineract: https://github.com/apache/fineract · https://hub.docker.com/r/apache/fineract ·
   https://intelligrow.co/blog/mifos-and-apache-fineract-explained/
+- Mifos Mobile (MPL-2.0): https://github.com/openMF/mifos-mobile · Mifos X web app: https://github.com/openMF/web-app
 - Moov ACH and Image Cash Letter: https://github.com/moov-io/ach · https://github.com/moov-io/imagecashletter ·
   https://www.redhat.com/en/blog/moov-to-digital-banking-on-openshift
