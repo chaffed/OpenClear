@@ -19,7 +19,7 @@
   </div>
   <form method="get" action="/ui/billing/statement" class="toolbar">
     <input type="hidden" name="customer" value="{{ customer_param }}">
-    <a href="/ui/billing/statement?period={{ previous_period }}&customer={{ customer_param }}" class="button secondary" aria-label="Previous month">{{ icon("arrow_back") }}</a>
+    <a href="/ui/billing/statement?period={{ previous_period }}&customer={{ customer_param }}" class="button secondary">{{ icon("arrow_back") }}Previous month</a>
     <label>Month <input type="month" name="period" value="{{ period }}" data-auto-submit></label>
     <a href="/ui/billing/statement?period={{ next_period }}&customer={{ customer_param }}" class="button secondary">Next month</a>
   </form>

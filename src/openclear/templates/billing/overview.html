@@ -26,7 +26,7 @@
   </div>
 
   <form method="get" action="/ui/billing" class="toolbar">
-    <a href="/ui/billing?period={{ previous_period }}" class="button secondary" aria-label="Previous month">{{ icon("arrow_back") }}</a>
+    <a href="/ui/billing?period={{ previous_period }}" class="button secondary">{{ icon("arrow_back") }}Previous month</a>
     <label>Month <input type="month" name="period" value="{{ period }}" data-auto-submit></label>
     <a href="/ui/billing?period={{ next_period }}" class="button secondary">Next month</a>
     {% if versions %}

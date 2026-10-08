@@ -3,7 +3,7 @@
 *Formerly PosPay. Existing installs keep working after the rename: see
 [CHANGELOG.md](CHANGELOG.md).*
 
-[![Tests](https://github.com/chaffed/PosPay/actions/workflows/tests.yml/badge.svg)](https://github.com/chaffed/PosPay/actions/workflows/tests.yml)
+[![Tests](https://github.com/chaffed/OpenClear/actions/workflows/tests.yml/badge.svg)](https://github.com/chaffed/OpenClear/actions/workflows/tests.yml)
 
 Multi-tenant positive pay platform (checks + ACH today, extensible to other payment
 networks — see `networks/`) with pluggable OCR and an ML-assisted exception review
@@ -108,17 +108,31 @@ This was built using Claude Code. I am not a developer/programmer. I do have 20 
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+**Billing**
+![Billing](docs/screenshots/billing.png)
+
+</td>
+<td width="50%">
+
+**A customer's billing statement**
+![Billing statement](docs/screenshots/billing_statement.png)
+
+</td>
+</tr>
 </table>
 
 <details>
-<summary>More screens (accounts, customers, security groups, stop payments, check-image bulk upload, audit log, login)</summary>
+<summary>More screens (accounts, customers, security groups, stop payments, check-image bulk upload, audit log, fee schedule, login)</summary>
 
 | | |
 |---|---|
 | ![Accounts](docs/screenshots/accounts.png) Accounts | ![Customers](docs/screenshots/customers.png) Customers |
 | ![Security groups](docs/screenshots/security_groups.png) Security groups | ![Stop payments](docs/screenshots/stop_payments.png) Stop payments |
 | ![Check image bulk upload](docs/screenshots/check_images_bulk.png) Check-image bulk upload | ![Audit log](docs/screenshots/audit_log.png) Audit log |
-| ![Login](docs/screenshots/login.png) Login | |
+| ![Fee schedule](docs/screenshots/billing_fees.png) Fee schedule | ![Login](docs/screenshots/login.png) Login |
 
 </details>
 

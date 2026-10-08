@@ -99,10 +99,36 @@ def _seed_demo_data() -> None:
         # definition, not two that can drift apart. This script's own tenant here is a
         # throwaway in a scratch DB, so it's fine that is_demo is never set on it.
         demo_tenant_service.seed_demo_content(session, identity.tenant, identity.admin_user, password=ADMIN_PASSWORD)
+        _seed_billing(session, identity.tenant.id)
 
         print("Demo data seeded.")
     finally:
         session.close()
+
+
+# Example prices for the billing screenshots; the starter schedule itself is priced at zero.
+BILLING_PRICES = {
+    "PP-MAINT": "35.00", "PP-ACCT": "15.00", "ACHPP-ACCT": "12.00", "PP-USER": "2.00", "PP-ISSUE": "0.03",
+    "PP-ISSFILE": "1.50", "PP-ITEM": "0.08", "PP-EXCPT": "1.25", "PP-RETURN": "2.50", "PP-PAYEE": "0.10",
+    "STOP-PAY": "15.00", "ACHPP-ITEM": "0.06", "ACHPP-EXCPT": "1.25", "ACHPP-RETURN": "2.50", "ACHPP-RULE": "1.00",
+}
+
+
+def _seed_billing(session, tenant_id) -> None:
+    """A priced fee schedule, with the seeded customer on hard charge at a 10% discount
+    (the bank's default stays account analysis), for the Billing screenshots."""
+    from sqlalchemy import select
+
+    from openclear.domain.billing import BillingMethod
+    from openclear.domain.customer import Customer
+    from openclear.services.billing import terms as billing_terms
+
+    for fee in billing_terms.add_starter_schedule(session, tenant_id):
+        billing_terms.update_fee_item(session, tenant_id, fee.id, unit_price=BILLING_PRICES.get(fee.code, "0"))
+    customer = session.execute(select(Customer).where(Customer.tenant_id == tenant_id)).scalars().first()
+    if customer is not None:
+        billing_terms.set_customer_terms(session, tenant_id, customer.id, billing_method=BillingMethod.HARD_CHARGE, discount_percent="10")
+    session.commit()
 
 
 def _wait_for_server(deadline_seconds: float = 30) -> None:
@@ -139,7 +165,11 @@ PAGES: list[Page] = [
     Page("settings", "/ui/settings"),
     Page("admin_ml_models", "/ui/admin"),
     Page("audit_log", "/ui/audit-log"),
+    Page("billing_fees", "/ui/billing/fees"),
 ]
+
+# The seeded activity is dated today, so bill the current month.
+BILLING_PERIOD = time.strftime("%Y-%m")
 
 
 def _run_capture_pass(browser, theme: str) -> None:
@@ -193,6 +223,19 @@ def _run_capture_pass(browser, theme: str) -> None:
         page.screenshot(path=str(SCREENSHOT_DIR / f"exception_detail{suffix}.png"), full_page=True)
     else:
         print("  No exceptions found to open — skipping exception_detail screenshot")
+
+    # Billing: the month's overview, then the seeded customer's statement from it.
+    print(f"Capturing billing ({theme})...")
+    page.goto(f"{BASE_URL}/ui/billing?period={BILLING_PERIOD}")
+    page.wait_for_load_state("networkidle")
+    page.screenshot(path=str(SCREENSHOT_DIR / f"billing{suffix}.png"), full_page=True)
+    statement_link = page.query_selector('table a[href*="/ui/billing/statement"]:not([href*="customer=bank"])')
+    if statement_link is not None:
+        statement_link.click()
+        page.wait_for_load_state("networkidle")
+        page.screenshot(path=str(SCREENSHOT_DIR / f"billing_statement{suffix}.png"), full_page=True)
+    else:
+        print("  No customer statement found — skipping billing_statement screenshot")
 
     context.close()
 
