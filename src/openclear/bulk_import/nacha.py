@@ -1,20 +1,30 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Lenient NACHA (ACH file format) parser.
+"""NACHA (ACH file format) parser.
 
 Extracts only what's needed to create ach_transaction rows: batch header fields
 (company id/name, SEC code, effective date) and entry detail fields (DFI account
-number, amount, individual id, transaction code, trace number). Batch control (type 8)
-and file control (type 9) records ARE now validated (entry/addenda count, entry hash,
-total debit/credit dollar amounts) against what was actually parsed — see
-_validate_batch_control/_validate_file_control below — but file header (record type 1)
-and addenda (type 7) records are still not validated; a genuinely malformed file can
-still partially "parse" past those. A file with no file control record at all only
-skips file-level validation — batch-level validation still applies to every batch
-control record present.
+number, amount, individual id, transaction code, trace number).
 
-Field positions below are 1-indexed per the NACHA spec, standard 94-character records.
+Checked against Moov's open source implementation and its sample files
+(moov-io/ach, Apache-2.0; see tests/fixtures/moov-ach/):
+- records are 94 characters, one per line, or run together with no line breaks
+  (split every 94);
+- the lines of 9s that pad a file to a multiple of ten are skipped;
+- batch control (type 8) and file control (type 9) records are validated against what
+  was parsed: entry/addenda count (entries plus addenda records), entry hash, and total
+  debit and credit amounts. A transaction code's second digit says which: 0-4 credit,
+  5-9 debit, across checking (2x), savings (3x), general ledger (4x) and loan (5x);
+- IAT (international) entries carry the account number at positions 40-74;
+- a blank or zero effective date (returns, notifications of change) falls back to the
+  file creation date.
+
+ADV (automated accounting advice) files have a different layout and are rejected. A file
+with no file control record only skips file-level validation; batch-level validation
+still applies to every batch control record present.
+
+Field positions below are 1-indexed per the NACHA spec.
 """
 
 from dataclasses import dataclass
@@ -44,8 +54,8 @@ class NachaEntry:
 # savings (3x) accounts each have credit/prenote-credit/zero-dollar-credit and the debit
 # equivalents; prenotes and zero-dollar entries still move real money in our model, so
 # they're mapped the same as their non-prenote counterpart rather than treated specially.
-_CREDIT_CODES = {"22", "23", "24", "32", "33", "34"}
-_DEBIT_CODES = {"27", "28", "29", "37", "38", "39"}
+_RECORD_LEN = 94
+_ACCOUNT_KINDS = "2345"  # checking, savings, general ledger, loan
 
 _ENTRY_HASH_MODULUS = 10**10  # NACHA entry hash is the low-order 10 digits of the sum
 
@@ -60,18 +70,23 @@ class _RunningTotals:
     def add_entry(self, *, receiving_dfi_id: str, transaction_code: str, amount_cents: int) -> None:
         self.entry_count += 1
         self.entry_hash_sum += int(receiving_dfi_id or "0")
-        if transaction_code in _DEBIT_CODES:
+        if _is_debit(transaction_code):
             self.total_debit_cents += amount_cents
-        elif transaction_code in _CREDIT_CODES:
+        else:
             self.total_credit_cents += amount_cents
+
+    def add_addenda(self) -> None:
+        self.entry_count += 1
+
+
+def _is_debit(transaction_code: str) -> bool:
+    return transaction_code[1:2] in "56789"
 
 
 def transaction_type_for_code(transaction_code: str) -> str:
-    if transaction_code in _CREDIT_CODES:
-        return "credit"
-    if transaction_code in _DEBIT_CODES:
-        return "debit"
-    raise NachaParseError(f"Unrecognized or unsupported transaction code {transaction_code!r}")
+    if len(transaction_code) != 2 or not transaction_code.isdigit() or transaction_code[0] not in _ACCOUNT_KINDS:
+        raise NachaParseError(f"Unrecognized or unsupported transaction code {transaction_code!r}")
+    return "debit" if _is_debit(transaction_code) else "credit"
 
 
 def _parse_declared_int(raw: str, *, field_name: str, line_number: int) -> int:
@@ -122,6 +137,19 @@ def _validate_file_control(line: str, totals: _RunningTotals, *, line_number: in
     _compare(field_name="total credit amount", declared=declared_credit, actual=totals.total_credit_cents, line_number=line_number, scope="file")
 
 
+def _lines(text: str) -> list[str]:
+    """The file's records. A file written without line breaks is split every 94
+    characters; a line that's several records run together is split the same way."""
+    lines = []
+    for raw in text.splitlines():
+        line = raw.rstrip("\r\n")
+        if len(line) > _RECORD_LEN and len(line) % _RECORD_LEN == 0:
+            lines.extend(line[i : i + _RECORD_LEN] for i in range(0, len(line), _RECORD_LEN))
+        else:
+            lines.append(line)
+    return lines
+
+
 def parse_nacha_file(content: bytes) -> list[NachaEntry]:
     try:
         text = content.decode("ascii")
@@ -132,24 +160,49 @@ def parse_nacha_file(content: bytes) -> list[NachaEntry]:
     current_batch: dict | None = None
     batch_totals = _RunningTotals()
     file_totals = _RunningTotals()
+    file_date: date | None = None
 
-    for line_number, raw_line in enumerate(text.splitlines(), start=1):
-        line = raw_line.rstrip("\n\r")
+    for line_number, raw_line in enumerate(_lines(text), start=1):
+        line = raw_line
         if not line.strip():
             continue
-        if len(line) < 94:
-            line = line.ljust(94)  # tolerate short/unpadded trailing records
+        if set(line.strip()) == {"9"}:
+            continue  # block padding after the file control record
+        if len(line) < _RECORD_LEN:
+            line = line.ljust(_RECORD_LEN)  # tolerate short/unpadded trailing records
 
         record_type = line[0]
 
-        if record_type == "5":  # Batch Header
+        if record_type == "1":  # File Header: only the creation date, as a fallback
+            try:
+                file_date = _parse_yymmdd(line[23:29].strip(), line_number)
+            except NachaParseError:
+                file_date = None
+
+        elif record_type == "5":  # Batch Header
+            sec_code = line[50:53].strip()
+            if sec_code == "ADV":
+                raise NachaParseError(
+                    f"Line {line_number}: ADV (automated accounting advice) batches have a different layout and aren't supported"
+                )
+            raw_effective = line[69:75].strip()
+            if raw_effective in ("", "000000") and file_date is not None:
+                effective_date = file_date  # returns and notifications of change may leave it blank
+            else:
+                effective_date = _parse_yymmdd(raw_effective, line_number)
+            company_id = line[40:50].strip()
             current_batch = {
-                "company_name": line[4:20].strip(),
-                "company_id": line[40:50].strip(),
-                "sec_code": line[50:53].strip(),
-                "effective_date": _parse_yymmdd(line[69:75].strip(), line_number),
+                # An IAT batch header has no company name (it's in the addenda records).
+                "company_name": (line[4:20].strip() if sec_code != "IAT" else "") or company_id,
+                "company_id": company_id,
+                "sec_code": sec_code,
+                "effective_date": effective_date,
             }
             batch_totals = _RunningTotals()
+
+        elif record_type == "7":  # Addenda: counted in the entry/addenda counts
+            batch_totals.add_addenda()
+            file_totals.add_addenda()
 
         elif record_type == "6":  # Entry Detail
             if current_batch is None:
@@ -157,9 +210,13 @@ def parse_nacha_file(content: bytes) -> list[NachaEntry]:
 
             transaction_code = line[1:3]
             receiving_dfi_id = line[3:11].strip()  # only used for the batch/file entry-hash check below
-            dfi_account_number = line[12:29].strip()
+            if current_batch["sec_code"] == "IAT":
+                dfi_account_number = line[39:74].strip()  # IAT entries: positions 40-74
+                individual_id = None
+            else:
+                dfi_account_number = line[12:29].strip()
+                individual_id = line[39:54].strip() or None
             amount_cents = line[29:39].strip()
-            individual_id = line[39:54].strip() or None
             trace_number = line[79:94].strip()
 
             if not dfi_account_number:

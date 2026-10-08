@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -245,3 +247,37 @@ def test_file_control_mismatch_raises(field, override):
     lines = [_batch_header(), _entry_detail(transaction_code="27"), _batch_control(entries), _file_control(entries, **override)]
     with pytest.raises(NachaParseError, match=field):
         parse_nacha_file("\n".join(lines).encode("ascii"))
+
+
+# --- Moov's reference files (tests/fixtures/moov-ach/) ------------------------------------
+
+
+MOOV = Path(__file__).resolve().parent.parent / "fixtures" / "moov-ach"
+_MOOV_EXPECTED = json.loads((MOOV / "expected.json").read_text())
+
+
+@pytest.mark.parametrize("name", sorted(_MOOV_EXPECTED))
+def test_moov_samples_read_as_moov_reads_them(name):
+    entries = parse_nacha_file((MOOV / name).read_bytes())
+    expected = _MOOV_EXPECTED[name]
+    assert len(entries) == len(expected)
+    for entry, want in zip(entries, expected):
+        assert entry.dfi_account_number == want["account"]
+        assert entry.amount == Decimal(want["cents"]) / 100
+        assert entry.transaction_code == want["transaction_code"]
+        assert entry.trace_number.lstrip("0") == want["trace"].lstrip("0")
+        assert (entry.sec_code, entry.company_id) == (want["sec"], want["company_id"])
+        if want["company_name"] is not None:
+            assert entry.company_name == want["company_name"]
+        if want["individual_id"] is not None:
+            assert (entry.individual_id or "") == want["individual_id"]
+
+
+def test_moov_adv_file_is_rejected():
+    with pytest.raises(NachaParseError, match="ADV"):
+        parse_nacha_file((MOOV / "adv.ach").read_bytes())
+
+
+@pytest.mark.parametrize(("code", "expected"), [("47", "debit"), ("42", "credit"), ("55", "debit"), ("52", "credit"), ("26", "debit"), ("21", "credit")])
+def test_general_ledger_loan_and_return_codes(code, expected):
+    assert transaction_type_for_code(code) == expected

@@ -46,18 +46,18 @@
   </form>
 
   <h2>X9.37 cash letter file</h2>
-  <p>Upload a standard image cash letter file (the common ASCII, line-delimited
-    "variable format" variant, with embedded TIFF or JPEG images). Account number and
-    check number are read from each check's On-Us and Auxiliary On-Us MICR fields — a
-    common real-world convention, not a guarantee for every bank's own MICR layout; if a
-    file's checks don't resolve correctly this way, use the ZIP+CSV format above instead,
-    which lets you specify account and check numbers explicitly. The file's bundle,
-    cash-letter and file control totals (item count and dollar amount) are checked: if any
-    of them doesn't match the checks in the file, nothing is imported.</p>
+  <p>Upload a standard X9.37 image cash letter, as your processor sends it (EBCDIC or
+    ASCII, with TIFF or JPEG images). The account number is read from each check's On-Us
+    MICR field and the check number from its Auxiliary On-Us field (or from On-Us after the
+    on-us symbol, for personal checks). That's the usual layout, but not every bank's; if
+    a file's checks don't resolve this way, use the ZIP+CSV format above, which lets you
+    give account and check numbers explicitly. The file's bundle, cash-letter and file
+    control totals (item count and dollar amount) are checked: if any doesn't match the
+    checks in the file, nothing is imported. Return cash letters aren't accepted.</p>
   <form method="post" action="/ui/check-images/bulk" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="format" value="x937">
-    <label>File <input type="file" name="upload_file" accept=".x937,.937,.txt" required></label>
+    <label>File <input type="file" name="upload_file" accept=".x937,.937,.x9,.icl,.dat,.txt" required></label>
     <button type="submit">{{ icon("upload") }}Upload X9.37 file</button>
   </form>
 </div>

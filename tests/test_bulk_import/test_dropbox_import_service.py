@@ -327,35 +327,11 @@ def test_nacha_dispatch(db_session, tenant_factory, monkeypatch, tmp_path):
 
 
 def test_x937_dispatch(db_session, tenant_factory, monkeypatch, tmp_path):
-    from tests.test_bulk_import.test_x937 import (
-        _bundle_control,
-        _bundle_header,
-        _cash_letter_control,
-        _cash_letter_header,
-        _check_detail,
-        _file_control,
-        _file_header,
-        _image_view_data,
-        _image_view_detail,
-    )
+    from tests.x937_builder import single
 
     root = _configure_dropbox(monkeypatch, tmp_path)
     tenant, account, _users = tenant_factory.make(slug="dropbox-x937")
-    front = _tiny_tiff()
-
-    content = b"".join(
-        [
-            _file_header(),
-            _cash_letter_header("20260115"),
-            _bundle_header(),
-            _check_detail(routing="12345678", on_us=account.account_number, aux_on_us="5001", amount_cents=15000),
-            _image_view_detail(),
-            _image_view_data(front),
-            _bundle_control(items=1, amount_cents=15000),
-            _cash_letter_control(items=1, amount_cents=15000),
-            _file_control(items=1, amount_cents=15000),
-        ]
-    )
+    content = single(f"{account.account_number}/", "5001", 15000, [_tiny_tiff()])
     _drop(root, tenant.slug, "checks/x937", "cashletter.x937", content)
 
     results = dropbox_import_service.scan_and_import_tenant(db_session, tenant)

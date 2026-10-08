@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Fixes: X9.37 and NACHA files as banks actually send them
+
+Checked against Moov's open source X9 and ACH implementations (Apache-2.0) and their
+sample files, which are now test fixtures:
+- **X9.37 couldn't read a standard cash letter.** It now reads length-prefixed records
+  (the standard) in EBCDIC or ASCII, as well as line-separated files. Fixed field
+  positions:
+  - the cash letter business date;
+  - the 16-digit file total;
+  - the Image View Data layout.
+- **X9.37 account and check numbers:** the account number is taken from On-Us before the
+  `/` symbol, without MICR dashes. The check number comes from Auxiliary On-Us or, failing
+  that, after the symbol.
+- **X9.37 return cash letters** are now rejected clearly instead of being skipped.
+- **NACHA rejected most valid files.** It now:
+  - skips the 9s filler lines;
+  - counts addenda records in entry/addenda counts;
+  - reads files without line breaks;
+  - classifies general-ledger and loan transaction codes;
+  - reads IAT account numbers;
+  - falls back to the file date when the effective date is blank.
+
+  ADV files are refused with a clear message.
+
 ### Scalability (SCALE_PLAN.md S4): bulk files import in the background
 
 - **Uploads no longer import inside the web request.** Accounts, issued items, presented

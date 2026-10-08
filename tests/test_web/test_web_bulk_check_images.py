@@ -6,21 +6,9 @@ import zipfile
 
 from PIL import Image
 
-from openclear.bulk_import.x937 import (
-    _T10_BUSINESS_DATE,
-    _T25_AMOUNT,
-    _T25_AUX_ON_US,
-    _T25_ON_US,
-    _T25_ROUTING_NUMBER,
-    _T70_ITEMS_COUNT,
-    _T70_TOTAL_AMOUNT,
-    _T90_ITEMS_COUNT,
-    _T90_TOTAL_AMOUNT,
-    _T99_ITEMS_COUNT,
-    _T99_TOTAL_AMOUNT,
-)
 from openclear.repositories.check_image_repo import CheckImageRepository
 from openclear.services import account_service, customer_service, security_group_service, user_service
+from tests import x937_builder
 from tests.conftest import TenantFactory
 
 
@@ -56,60 +44,9 @@ def _single_page_jpeg() -> bytes:
     return buffer.getvalue()
 
 
-def _fixed_record(record_type: str, fields, length: int = 80) -> bytes:
-    # (slice, value) pairs: slices aren't hashable before Python 3.12 (3.11 is supported).
-    buf = bytearray(b" " * length)
-    buf[0:2] = record_type.encode("ascii")
-    for field_slice, value in fields:
-        encoded = value.encode("ascii")
-        buf[field_slice] = encoded.ljust(field_slice.stop - field_slice.start)[: field_slice.stop - field_slice.start]
-    return bytes(buf)
-
-
 def _synthetic_x937_file(*, account_number: str, check_number: str, amount_cents: int, image_bytes: bytes) -> bytes:
-    image_header = bytearray(b" " * 116)
-    image_header[0:2] = b"52"
-    length_field = str(len(image_bytes)).zfill(10).encode("ascii")
-    image_record = bytes(image_header) + length_field + image_bytes
-
-    return b"".join(
-        [
-            _fixed_record("01", {}),
-            _fixed_record("10", [(_T10_BUSINESS_DATE, "20260115")]),
-            _fixed_record(
-                "25",
-                [
-                    (_T25_ROUTING_NUMBER, "12345678"),
-                    (_T25_ON_US, account_number),
-                    (_T25_AUX_ON_US, check_number),
-                    (_T25_AMOUNT, str(amount_cents).zfill(10)),
-                ],
-            ),
-            _fixed_record("50", {}, length=200),
-            image_record,
-            _fixed_record(
-                "70",
-                [
-                    (_T70_ITEMS_COUNT, str(1).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start)),
-                    (_T70_TOTAL_AMOUNT, str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start)),
-                ],
-            ),
-            _fixed_record(
-                "90",
-                [
-                    (_T90_ITEMS_COUNT, str(1).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start)),
-                    (_T90_TOTAL_AMOUNT, str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start)),
-                ],
-            ),
-            _fixed_record(
-                "99",
-                [
-                    (_T99_ITEMS_COUNT, str(1).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start)),
-                    (_T99_TOTAL_AMOUNT, str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start)),
-                ],
-            ),
-        ]
-    )
+    """A standard (length-prefixed, ASCII) cash letter with one check (tests/x937_builder.py)."""
+    return x937_builder.single(f"{account_number}/", check_number, amount_cents, [image_bytes])
 
 
 def test_bulk_upload_form_requires_both_permissions(client, tenant_factory):

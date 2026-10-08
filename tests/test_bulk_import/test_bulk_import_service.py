@@ -180,20 +180,12 @@ def test_lazy_zip_images_match_eager_ones():
 
 
 def test_lazy_x937_images_match_eager_ones():
-    from tests.test_bulk_import import test_x937 as x
+    from tests.x937_builder import Check, build
 
-    def check(on_us, aux, cents, *images):
-        parts = [x._check_detail(routing="12345678", on_us=on_us, aux_on_us=aux, amount_cents=cents)]
-        for image in images:
-            parts += [x._image_view_detail(), x._image_view_data(image)]
-        return b"".join(parts)
-
-    content = b"".join([
-        x._file_header(), x._cash_letter_header(), x._bundle_header(),
-        check("1001", "5001", 15000, b"front-1", b"back-1"), check("1001", "5002", 2500, b"front-2"), check("1001", "5003", 100),
-        x._bundle_control(items=3, amount_cents=17600), x._cash_letter_control(items=3, amount_cents=17600),
-        x._file_control(items=3, amount_cents=17600),
-    ])
+    content = build([[[
+        Check("1001/", "5001", 15000, images=[b"front-1", b"back-1"]), Check("1001/", "5002", 2500, images=[b"front-2"]),
+        Check("1001/", "5003", 100),
+    ]]])
     eager = parse_x937_file(content)
     lazy = parse_x937_file(content, lazy_images=True)
     assert [i.check_number for i in eager] == [i.check_number for i in lazy]

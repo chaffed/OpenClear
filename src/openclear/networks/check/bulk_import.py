@@ -226,10 +226,18 @@ def ingest_x937_item(
     if not item.check_number:
         raise RowFieldError("Auxiliary On-Us field is blank -- could not determine a check number for this item")
     front_bytes, back_bytes = item_images(item, content)
+    # The MICR dashes and spaces are dropped from the account number; a bank that stores
+    # its account numbers with the dashes in still matches on the number as printed.
+    account_number = item.account_number
+    as_printed = item.on_us.partition("/")[0].replace(" ", "")
+    if as_printed != account_number and account_service.get_account_by_number(
+        session, tenant_id, account_number, customer_id=scoped_customer_id
+    ) is None:
+        account_number = as_printed
     return _create_paid_item_and_images(
         session,
         tenant_id,
-        account_number=item.account_number,
+        account_number=account_number,
         check_number=item.check_number,
         amount=item.amount,
         presented_date=item.presented_date,

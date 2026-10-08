@@ -1,53 +1,53 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Lenient parser for X9.37 ("DSTU X9.37" / Check 21) image cash letter files.
+"""Parser for X9.37 ("DSTU X9.37" / Check 21) image cash letter files.
 
-Supports the common ASCII, line-delimited "variable format" convention: every record's
-own length is fixed (or, for Image View Data, computed from a length field within the
-record itself), and each record may optionally be followed by a CR and/or LF separator,
-which is tolerated but not required — this parser advances by each record's own known
-length regardless, and only skips over CR/LF bytes if present immediately afterward.
+**Framing.** Three are read, detected from the first bytes:
+- the standard: each record preceded by a 4-byte big-endian record length (what banks,
+  processors and the Federal Reserve exchange);
+- records followed by CR and/or LF;
+- records simply concatenated.
 
-Extracts only what OpenClear needs to create a paid_item + check_image per check: from each
-Check Detail Record (Type 25), the Payor Bank Routing Number, the On-Us field (->
-account_number) and Auxiliary On-Us field (-> check_number) — the common real-world MICR
-layout, where the check's own serial number sits in Auxiliary On-Us and the payor's
-account number in On-Us. This is a convention, not a standard-mandated split (X9.37
-doesn't define a universal way to divide account number from check number within a bank's
-own on-us MICR data), so a cash letter whose issuing bank uses a different layout won't
-resolve correctly here — the ZIP+CSV bulk path is the explicit-column fallback for that
-case. Front/back images are taken positionally from the Image View Detail (Type 50) /
-Image View Data (Type 52) record pairs following each Check Detail Record: the first pair
-is the front, the second the back (X9.37 doesn't mark a side indicator OpenClear relies on;
-side is inferred from order, matching the standard duplex-scan convention).
+In the last two, every record except Image View Data (Type 52) is 80 bytes, and a Type
+52's length is computed from its own length fields.
 
-Deliberately NOT supported, matching this app's existing NACHA parser's "lenient,
-documented subset" philosophy (bulk_import/nacha.py): the alternate fixed-length
-undelimited binary X9.37 variant, EBCDIC-encoded files, return/adjustment cash letters,
-and credit reconcilement records.
+**Encoding.** EBCDIC (code page 037, the usual one for X9 files) or ASCII, detected from
+the first record's type. Image data is binary either way and is never decoded.
 
-Control totals ARE validated against what was actually parsed, at every level: Bundle
-Control (Type 70) against the checks since the preceding Bundle Header (Type 20), Cash
-Letter Control (Type 90) against the cash letter, and File Control (Type 99) against the
-whole file — item count and total dollar amount each. A mismatch means the file was
-truncated, altered, or assembled wrongly, so the whole file is rejected rather than
-loading a partial or inconsistent set of checks. Header records (types 01, 20) are
-otherwise only read far enough to skip over them, apart from the Cash Letter Header
-(Type 10), whose Business Date is read so bulk-loaded items carry a real presented_date
-instead of always defaulting to today.
+**Field positions** follow DSTU X9.37-2003 and were checked byte for byte against Moov's
+open source implementation and its sample files (moov-io/imagecashletter, Apache-2.0;
+see tests/fixtures/moov/). Not real bank files, but the reference most US X9 tooling
+agrees with.
 
-The control-record field positions follow the commonly published X9.37 (DSTU X9.37-2003)
-layouts, but this repo has no real bank-produced cash-letter file to verify byte-for-byte
-against (the test suite builds synthetic files from these same constants). X9.37 layouts
-vary more across real-world implementations than NACHA's rigid 94-character format: if a
-real file from your processor is rejected on a control-total mismatch that looks wrong,
-check these positions first.
+**What's extracted.** OpenClear reads only what it needs to create a paid_item and a
+check_image per check. From each Check Detail Record (Type 25) it takes:
+- the Payor Bank Routing Number;
+- the item amount;
+- the On-Us field, split at the MICR on-us symbol (`/`): the account number is the part
+  before it, without spaces or dashes;
+- the check number, from the Auxiliary On-Us field (where business checks carry the
+  serial), or failing that the part of On-Us after the `/` (where personal checks do).
+  Banks lay out on-us data differently, so a file that doesn't follow this convention
+  won't resolve; the ZIP+CSV upload is the explicit-column fallback.
+
+Images come from the Image View Detail (Type 50) and Image View Data (Type 52) pairs after
+each Check Detail Record: the first pair is the front, the second the back (the duplex
+scan convention).
+
+**Validation.** Control totals are checked at every level: Bundle Control (Type 70)
+against its bundle, Cash Letter Control (Type 90) against the cash letter, and File
+Control (Type 99) against the whole file, item count and total amount each. A mismatch,
+an unknown record type, or a truncated record rejects the whole file.
+
+**Not supported:** return and adjustment cash letters, and credit reconcilement records
+beyond skipping the Credit record (Type 61).
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 
 class X937ParseError(Exception):
@@ -58,8 +58,8 @@ class X937ParseError(Exception):
 class X937CheckItem:
     item_number: int  # 1-based position among check detail records in this file, for error messages
     routing_number: str
-    account_number: str  # from the On-Us field -- may be blank if the source file leaves it unencoded
-    check_number: str  # from the Auxiliary On-Us field -- may be blank, same caveat
+    account_number: str  # from the On-Us field, before the on-us symbol; may be blank
+    check_number: str  # Auxiliary On-Us, or the On-Us part after the symbol; may be blank
     amount: Decimal
     presented_date: date  # from the enclosing Cash Letter Header's Business Date, or today if unparseable
     front_image_bytes: bytes  # empty if no Image View Data record followed this check's detail record
@@ -68,6 +68,7 @@ class X937CheckItem:
     # offsets of each image in the file, read later with item_images().
     front_image_span: tuple[int, int] | None = None
     back_image_span: tuple[int, int] | None = None
+    on_us: str = ""  # the raw On-Us field, for reference
 
 
 def item_images(item: X937CheckItem, content=None) -> tuple[bytes, bytes | None]:
@@ -80,54 +81,45 @@ def item_images(item: X937CheckItem, content=None) -> tuple[bytes, bytes | None]
     return front, back
 
 
-_STANDARD_RECORD_LEN = 80  # every record type below except 50/52 is fixed-length at 80 bytes
+_STANDARD_RECORD_LEN = 80  # every record type except 52 (Image View Data)
 
-# Type 25 - Check Detail Record (80 bytes). Byte positions (0-indexed slices) follow the
-# record's commonly published field layout; OpenClear only needs a handful of its fields.
-_T25_AUX_ON_US = slice(2, 17)  # Auxiliary On-Us (15) -> check_number, by convention (see module docstring)
-_T25_ROUTING_NUMBER = slice(18, 26)  # Payor Bank Routing Number (8)
-_T25_ON_US = slice(27, 47)  # On-Us (20) -> account_number, by convention
-_T25_AMOUNT = slice(47, 57)  # Item Amount (10 digits, unsigned, implied 2 decimal places)
+# Type 10 - Cash Letter Header: Cash Letter Business Date (8, positions 23-30, YYYYMMDD).
+_T10_BUSINESS_DATE = slice(22, 30)
 
-# Type 10 - Cash Letter Header Record (80 bytes). Only the Business Date is read; every
-# other field (destination/origin routing, creation date/time, ...) is skipped.
-_T10_BUSINESS_DATE = slice(21, 29)  # Cash Letter Business Date (8, YYYYMMDD)
+# Type 25 - Check Detail.
+_T25_AUX_ON_US = slice(2, 17)  # Auxiliary On-Us (15, positions 3-17)
+_T25_ROUTING_NUMBER = slice(18, 26)  # Payor Bank Routing Number (8, positions 19-26)
+_T25_ON_US = slice(27, 47)  # On-Us (20, positions 28-47)
+_T25_AMOUNT = slice(47, 57)  # Item Amount (10, positions 48-57, implied 2 decimals)
 
-# Type 50 - Image View Detail Record: fixed length. Not parsed for field content --
-# nothing in it is needed for OpenClear's data model, only its length matters so the scanner
-# can advance to the following Image View Data (Type 52) record.
-_T50_LEN = 200
+# Type 52 - Image View Data: fixed fields up to the clipping coordinates (101 bytes),
+# then three length-prefixed variable fields: Image Reference Key (4-digit length),
+# Digital Signature (5-digit length), Image Data (7-digit length).
+_T52_FIXED_LEN = 101
+_T52_LENGTH_FIELDS = ((4, "image reference key"), (5, "digital signature"), (7, "image data"))
 
-# Type 52 - Image View Data Record: a header of unparsed fields (institution/sequence/
-# security/view-descriptor data OpenClear doesn't need) followed by a 10-digit "Length of
-# Image Data" field, then that many raw image bytes. Some processors append their own
-# trailer fields (e.g. a digital signature) after the image data, which this parser does
-# not expect -- if present, the extra bytes are simply not part of what's returned as
-# image data, and image decoding downstream (bulk_import/images.py) will surface a clean,
-# isolated error for that one item rather than misreading the rest of the file, since the
-# declared length -- not a guess -- is what determines exactly how many bytes are image.
-_T52_HEADER_BEFORE_LENGTH_FIELD = 116
-_T52_LENGTH_FIELD_LEN = 10
-_T52_HEADER_LEN = _T52_HEADER_BEFORE_LENGTH_FIELD + _T52_LENGTH_FIELD_LEN
-
-# Type 90 - Cash Letter Control Record (80 bytes). Only Items Count and Total Amount are
-# read; everything else (bundle count, imaged items count, ...) is skipped. See the
-# module docstring for the "own best-effort convention, not verified against a real
-# file" caveat.
-_T90_ITEMS_COUNT = slice(8, 16)
-_T90_TOTAL_AMOUNT = slice(16, 30)
-
-# Type 99 - File Control Record (80 bytes). Same two fields, file-wide instead of
-# per-cash-letter.
-_T99_ITEMS_COUNT = slice(16, 24)
-_T99_TOTAL_AMOUNT = slice(24, 39)
-
-# Type 70 - Bundle Control Record (80 bytes): Items Within Bundle Count (4, positions 3-6)
-# and Bundle Total Amount (12, positions 7-18, implied 2 decimal places).
+# Type 70 - Bundle Control: Items Within Bundle Count (4, positions 3-6), Bundle Total
+# Amount (12, positions 7-18).
 _T70_ITEMS_COUNT = slice(2, 6)
 _T70_TOTAL_AMOUNT = slice(6, 18)
 
-_SKIP_RECORD_TYPES = {"01", "26", "27", "28", "31", "32", "33", "34"}
+# Type 90 - Cash Letter Control: Items Within Cash Letter Count (8, positions 9-16), Cash
+# Letter Total Amount (14, positions 17-30).
+_T90_ITEMS_COUNT = slice(8, 16)
+_T90_TOTAL_AMOUNT = slice(16, 30)
+
+# Type 99 - File Control: Total Item Count (8, positions 17-24), File Total Amount (16,
+# positions 25-40).
+_T99_ITEMS_COUNT = slice(16, 24)
+_T99_TOTAL_AMOUNT = slice(24, 40)
+
+# Read past without using: file header, image view detail and analysis, the addendum
+# records, credit, and the routing number summary.
+_SKIP_RECORD_TYPES = {"01", "26", "27", "28", "50", "54", "61", "62", "68", "85"}
+# Return records: a return cash letter, which isn't what this import is for.
+_RETURN_RECORD_TYPES = {"31", "32", "33", "34", "35"}
+
+_ON_US_SYMBOL = "/"
 
 
 def _parse_business_date(raw: str) -> date:
@@ -137,189 +129,189 @@ def _parse_business_date(raw: str) -> date:
         return date.today()
 
 
-def _skip_separators(content: bytes, cursor: int) -> int:
+def _declared(text: str, field: slice, *, field_name: str, offset: int) -> int:
+    raw = text[field].strip()
+    try:
+        return int(raw or "0")
+    except ValueError:
+        raise X937ParseError(f"Control record at byte {offset} has a non-numeric {field_name} field: {raw!r}") from None
+
+
+def _check_totals(text: str, items_field: slice, amount_field: slice, *, items: int, cents: int, offset: int, scope: str) -> None:
+    for field, field_name, actual in ((items_field, "items count", items), (amount_field, "total amount", cents)):
+        declared = _declared(text, field, field_name=field_name, offset=offset)
+        if declared != actual:
+            raise X937ParseError(
+                f"{scope} Control Record at byte {offset}: declared {field_name} {declared} doesn't match the {actual} "
+                f"actually found in the {scope.lower()}"
+            )
+
+
+def split_on_us(on_us: str, aux_on_us: str) -> tuple[str, str]:
+    """(account number, check number) from the MICR On-Us and Auxiliary On-Us fields."""
+    account_part, _, serial_part = on_us.partition(_ON_US_SYMBOL)
+    account = account_part.replace(" ", "").replace("-", "")
+    check = aux_on_us.strip() or serial_part.replace(" ", "").replace("-", "")
+    return account, check
+
+
+# --- Reading records ---------------------------------------------------------------------
+
+
+def _detect(content) -> tuple[bool, str]:
+    """(length-prefixed?, text encoding) from the first bytes."""
+    head = bytes(content[:6])
+    if len(head) >= 6 and int.from_bytes(head[:4], "big") >= 2 and head[4:6] in (b"01", b"\xf0\xf1"):
+        return True, "cp037" if head[4:6] == b"\xf0\xf1" else "ascii"
+    if head[:2] in (b"01", b"\xf0\xf1"):
+        return False, "cp037" if head[:2] == b"\xf0\xf1" else "ascii"
+    raise X937ParseError("Not an X9.37 file: it doesn't start with a File Header Record (type 01)")
+
+
+def _skip_separators(content, cursor: int) -> int:
     while cursor < len(content) and content[cursor] in (0x0D, 0x0A):
         cursor += 1
     return cursor
 
 
-def _parse_declared_int(raw: bytes, *, field_name: str, cursor: int) -> int:
-    text = raw.decode("ascii", errors="replace").strip()
-    try:
-        return int(text) if text else 0
-    except ValueError:
-        raise X937ParseError(f"Control record at byte {cursor} has a non-numeric {field_name} field: {text!r}") from None
+def _image_span(content, start: int, limit: int, encoding: str) -> tuple[int, int]:
+    """For a Type 52 record starting at `start`: where its image data is. Raises
+    X937ParseError if a length field isn't numeric or runs past `limit`."""
+    cursor = start + _T52_FIXED_LEN
+    for digits, name in _T52_LENGTH_FIELDS:
+        if cursor + digits > limit:
+            raise X937ParseError(f"Truncated Image View Data Record (Type 52) at byte {start}")
+        raw = bytes(content[cursor : cursor + digits]).decode(encoding, errors="replace")
+        try:
+            length = int(raw)
+        except ValueError:
+            raise X937ParseError(
+                f"Image View Data Record (Type 52) at byte {start} has a non-numeric {name} length: {raw!r}"
+            ) from None
+        cursor += digits
+        if cursor + length > limit:
+            raise X937ParseError(
+                f"Image View Data Record (Type 52) at byte {start} declares a {name} length ({length}) "
+                "that doesn't fit in the record"
+            )
+        if name == "image data":
+            return cursor, cursor + length
+        cursor += length
+    raise AssertionError("unreachable")
 
 
-def _compare_control_total(*, field_name: str, declared: int, actual: int, cursor: int, scope: str) -> None:
-    if declared != actual:
-        raise X937ParseError(
-            f"{scope} Control record at byte {cursor}: declared {field_name} ({declared}) doesn't match "
-            f"what was actually parsed ({actual})"
-        )
+def _records(content, prefixed: bool, encoding: str) -> Iterator[tuple[int, str, str, tuple[int, int] | None]]:
+    """Yields (offset, record type, the record's text, image span or None) for each record.
+    A Type 52's text is only its fixed part: its image is never decoded or copied."""
+    size = len(content)
+    cursor = 0
+    while cursor < size:
+        if prefixed:
+            if cursor + 4 > size:
+                raise X937ParseError(f"Truncated record length at byte {cursor}")
+            length = int.from_bytes(bytes(content[cursor : cursor + 4]), "big")
+            start, end = cursor + 4, cursor + 4 + length
+            if length < 2 or end > size:
+                raise X937ParseError(f"Record at byte {cursor} declares a length ({length}) that doesn't fit in the file")
+        else:
+            if size - cursor < 2:
+                raise X937ParseError(f"Truncated record at byte {cursor} (not enough bytes for a record type)")
+            start, end = cursor, None
+        record_type = bytes(content[start : start + 2]).decode(encoding, errors="replace")
+        if record_type == "52":
+            span = _image_span(content, start, end if prefixed else size, encoding)
+            text = bytes(content[start : start + _T52_FIXED_LEN]).decode(encoding, errors="replace")
+            end = end if prefixed else span[1]
+        else:
+            if not prefixed:
+                end = start + _STANDARD_RECORD_LEN
+                if end > size:
+                    raise X937ParseError(f"Truncated record type {record_type!r} at byte {cursor}")
+            span, text = None, bytes(content[start:end]).decode(encoding, errors="replace")
+        yield cursor, record_type, text, span
+        cursor = end if prefixed else _skip_separators(content, end)
+
+
+# --- The file ------------------------------------------------------------------------------
 
 
 def parse_x937_file(content, *, lazy_images: bool = False) -> list[X937CheckItem]:
-    """Scans an X9.37 file front to back, returning one X937CheckItem per Check Detail
-    Record (Type 25) encountered, with its following image pair (if any) attached.
-    Raises X937ParseError for anything that indicates the file doesn't match the
-    supported layout (unrecognized record type, a truncated record, or a Type 52 whose
-    declared image length doesn't fit in the remaining file) -- these are treated as
-    whole-file structural problems, not a single bad check, since there's no reliable way
-    to resynchronize the scanner past a record whose type or length can't be trusted.
+    """One X937CheckItem per Check Detail Record (Type 25), with its following image pair
+    (if any) attached. Raises X937ParseError for anything that shows the file doesn't hold
+    together: an unknown record type, a truncated record, an image length that doesn't fit,
+    or a control total that doesn't match. These are whole-file problems, not a single bad
+    check, since there's no reliable way to resynchronize past them.
 
     `content` is bytes or anything that slices like it, such as an mmap of the stored
-    file. With lazy_images=True the image bytes aren't copied out: each item records
-    where its images are, so a large cash letter isn't held in memory (SCALE_PLAN.md S4)."""
+    file. With lazy_images=True the image bytes aren't copied out: each item records where
+    its images are, so a large cash letter isn't held in memory (SCALE_PLAN.md S4)."""
+    if len(content) < 2:
+        raise X937ParseError("File is too short to be an X9.37 file")
+    prefixed, encoding = _detect(content)
     items: list[X937CheckItem] = []
-    cursor = 0
-    item_number = 0
+    current: dict | None = None
+    business_date = date.today()
+    bundle = [0, 0]  # items, cents
+    letter = [0, 0]
+    whole = [0, 0]
 
-    current_routing = ""
-    current_account = ""
-    current_check_number = ""
-    current_amount: Decimal | None = None
-    current_images: list = []  # bytes, or (start, end) spans with lazy_images
-    current_business_date = date.today()
-
-    bundle_items = 0
-    bundle_amount_cents = 0
-    cash_letter_items = 0
-    cash_letter_amount_cents = 0
-    file_items = 0
-    file_amount_cents = 0
-
-    def _flush_current() -> None:
-        if current_amount is None:
+    def flush() -> None:
+        if current is None:
             return
-        items.append(
-            X937CheckItem(
-                item_number=item_number,
-                routing_number=current_routing,
-                account_number=current_account,
-                check_number=current_check_number,
-                amount=current_amount,
-                presented_date=current_business_date,
-                front_image_bytes=b"" if lazy_images else (current_images[0] if len(current_images) >= 1 else b""),
-                back_image_bytes=None if lazy_images else (current_images[1] if len(current_images) >= 2 else None),
-                front_image_span=(current_images[0] if current_images else (0, 0)) if lazy_images else None,
-                back_image_span=(current_images[1] if len(current_images) >= 2 else None) if lazy_images else None,
-            )
-        )
+        images = current.pop("images")
+        if lazy_images:
+            front_bytes, back_bytes = b"", None
+            front_span, back_span = (images[0] if images else (0, 0)), (images[1] if len(images) >= 2 else None)
+        else:
+            front_bytes = bytes(content[images[0][0] : images[0][1]]) if images else b""
+            back_bytes = bytes(content[images[1][0] : images[1][1]]) if len(images) >= 2 else None
+            front_span = back_span = None
+        items.append(X937CheckItem(
+            **current, front_image_bytes=front_bytes, back_image_bytes=back_bytes,
+            front_image_span=front_span, back_image_span=back_span,
+        ))
 
-    while cursor < len(content):
-        remaining = len(content) - cursor
-        if remaining < 2:
-            raise X937ParseError(f"Truncated record at byte {cursor} (not enough bytes for a record type)")
-        record_type = content[cursor : cursor + 2].decode("ascii", errors="replace")
-
+    for offset, record_type, text, image_span in _records(content, prefixed, encoding):
         if record_type == "25":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated Check Detail Record (Type 25) at byte {cursor}")
-            record = content[cursor : cursor + _STANDARD_RECORD_LEN]
-
-            _flush_current()
-            item_number += 1
-            current_images = []
-            current_routing = record[_T25_ROUTING_NUMBER].decode("ascii", errors="replace").strip()
-            current_account = record[_T25_ON_US].decode("ascii", errors="replace").strip()
-            current_check_number = record[_T25_AUX_ON_US].decode("ascii", errors="replace").strip()
-            amount_raw = record[_T25_AMOUNT].decode("ascii", errors="replace").strip()
+            flush()
+            amount_raw = text[_T25_AMOUNT].strip()
             try:
-                amount_cents = int(amount_raw or "0")
-                current_amount = Decimal(amount_cents) / Decimal(100)
-            except (InvalidOperation, ValueError):
-                raise X937ParseError(
-                    f"Check Detail Record #{item_number} at byte {cursor} has a non-numeric amount field: {amount_raw!r}"
-                ) from None
-            bundle_items += 1
-            bundle_amount_cents += amount_cents
-            cash_letter_items += 1
-            cash_letter_amount_cents += amount_cents
-            file_items += 1
-            file_amount_cents += amount_cents
-
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "10":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated Cash Letter Header Record (Type 10) at byte {cursor}")
-            record = content[cursor : cursor + _STANDARD_RECORD_LEN]
-            current_business_date = _parse_business_date(record[_T10_BUSINESS_DATE].decode("ascii", errors="replace").strip())
-            cash_letter_items = 0
-            cash_letter_amount_cents = 0
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "20":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated Bundle Header Record (Type 20) at byte {cursor}")
-            bundle_items = 0
-            bundle_amount_cents = 0
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "70":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated Bundle Control Record (Type 70) at byte {cursor}")
-            record = content[cursor : cursor + _STANDARD_RECORD_LEN]
-            declared_items = _parse_declared_int(record[_T70_ITEMS_COUNT], field_name="items count", cursor=cursor)
-            declared_amount = _parse_declared_int(record[_T70_TOTAL_AMOUNT], field_name="total amount", cursor=cursor)
-            _compare_control_total(field_name="items count", declared=declared_items, actual=bundle_items, cursor=cursor, scope="Bundle")
-            _compare_control_total(field_name="total amount", declared=declared_amount, actual=bundle_amount_cents, cursor=cursor, scope="Bundle")
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "90":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated Cash Letter Control Record (Type 90) at byte {cursor}")
-            record = content[cursor : cursor + _STANDARD_RECORD_LEN]
-            declared_items = _parse_declared_int(record[_T90_ITEMS_COUNT], field_name="items count", cursor=cursor)
-            declared_amount = _parse_declared_int(record[_T90_TOTAL_AMOUNT], field_name="total amount", cursor=cursor)
-            _compare_control_total(field_name="items count", declared=declared_items, actual=cash_letter_items, cursor=cursor, scope="Cash Letter")
-            _compare_control_total(field_name="total amount", declared=declared_amount, actual=cash_letter_amount_cents, cursor=cursor, scope="Cash Letter")
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "99":
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated File Control Record (Type 99) at byte {cursor}")
-            record = content[cursor : cursor + _STANDARD_RECORD_LEN]
-            declared_items = _parse_declared_int(record[_T99_ITEMS_COUNT], field_name="items count", cursor=cursor)
-            declared_amount = _parse_declared_int(record[_T99_TOTAL_AMOUNT], field_name="total amount", cursor=cursor)
-            _compare_control_total(field_name="items count", declared=declared_items, actual=file_items, cursor=cursor, scope="File")
-            _compare_control_total(field_name="total amount", declared=declared_amount, actual=file_amount_cents, cursor=cursor, scope="File")
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        elif record_type == "50":
-            if remaining < _T50_LEN:
-                raise X937ParseError(f"Truncated Image View Detail Record (Type 50) at byte {cursor}")
-            cursor = _skip_separators(content, cursor + _T50_LEN)
-
-        elif record_type == "52":
-            if remaining < _T52_HEADER_LEN:
-                raise X937ParseError(f"Truncated Image View Data Record (Type 52) header at byte {cursor}")
-            length_field = content[
-                cursor + _T52_HEADER_BEFORE_LENGTH_FIELD : cursor + _T52_HEADER_LEN
-            ].decode("ascii", errors="replace").strip()
-            try:
-                image_length = int(length_field)
+                cents = int(amount_raw or "0")
             except ValueError:
                 raise X937ParseError(
-                    f"Image View Data Record (Type 52) at byte {cursor} has a non-numeric image length field: {length_field!r}"
+                    f"Check Detail Record #{len(items) + 1} at byte {offset} has a non-numeric amount field: {amount_raw!r}"
                 ) from None
-            if image_length < 0 or cursor + _T52_HEADER_LEN + image_length > len(content):
-                raise X937ParseError(
-                    f"Image View Data Record (Type 52) at byte {cursor} declares an image length ({image_length}) "
-                    "that doesn't fit in the remaining file"
-                )
-            start = cursor + _T52_HEADER_LEN
-            current_images.append((start, start + image_length) if lazy_images else bytes(content[start : start + image_length]))
-            cursor = _skip_separators(content, cursor + _T52_HEADER_LEN + image_length)
+            on_us = text[_T25_ON_US].strip()
+            account, check = split_on_us(on_us, text[_T25_AUX_ON_US])
+            current = {
+                "item_number": len(items) + 1, "routing_number": text[_T25_ROUTING_NUMBER].strip(),
+                "account_number": account, "check_number": check, "amount": Decimal(cents) / Decimal(100),
+                "presented_date": business_date, "on_us": on_us, "images": [],
+            }
+            for totals in (bundle, letter, whole):
+                totals[0] += 1
+                totals[1] += cents
+        elif record_type == "52":
+            if current is not None:
+                current["images"].append(image_span)
+        elif record_type == "10":
+            business_date = _parse_business_date(text[_T10_BUSINESS_DATE].strip())
+            letter[:] = [0, 0]
+        elif record_type == "20":
+            bundle[:] = [0, 0]
+        elif record_type == "70":
+            _check_totals(text, _T70_ITEMS_COUNT, _T70_TOTAL_AMOUNT, items=bundle[0], cents=bundle[1], offset=offset, scope="Bundle")
+        elif record_type == "90":
+            _check_totals(text, _T90_ITEMS_COUNT, _T90_TOTAL_AMOUNT, items=letter[0], cents=letter[1], offset=offset, scope="Cash Letter")
+        elif record_type == "99":
+            _check_totals(text, _T99_ITEMS_COUNT, _T99_TOTAL_AMOUNT, items=whole[0], cents=whole[1], offset=offset, scope="File")
+        elif record_type in _RETURN_RECORD_TYPES:
+            raise X937ParseError(
+                f"Return record (type {record_type}) at byte {offset}: this is a return cash letter, which OpenClear "
+                "doesn't import. Upload forward presentment files only."
+            )
+        elif record_type not in _SKIP_RECORD_TYPES:
+            raise X937ParseError(f"Unrecognized record type {record_type!r} at byte {offset}")
 
-        elif record_type in _SKIP_RECORD_TYPES:
-            if remaining < _STANDARD_RECORD_LEN:
-                raise X937ParseError(f"Truncated record type {record_type!r} at byte {cursor}")
-            cursor = _skip_separators(content, cursor + _STANDARD_RECORD_LEN)
-
-        else:
-            raise X937ParseError(f"Unrecognized record type {record_type!r} at byte {cursor}")
-
-    _flush_current()
+    flush()
     return items

@@ -274,12 +274,15 @@ array, not a file):
   order. Delimiter is detected by counting candidates in the header line — deliberately
   not `csv.Sniffer`/pandas' generic auto-detection, which on a short sample can pick the
   most-frequent character in the text itself rather than an actual delimiter.
-- **NACHA** (`bulk_import/nacha.py`, ACH only): a standard 94-character fixed-width ACH
-  file. Extracts the batch header fields (company id/name, SEC code, effective date) and
-  entry detail fields (DFI account number, amount, individual id, transaction code, trace
-  number) needed to create transactions, and checks each batch's and the file's control
-  totals (entry count, entry hash, debit and credit totals). A file whose totals don't add
-  up is rejected whole.
+- **NACHA** (`bulk_import/nacha.py`, ACH only): a standard 94-character ACH file, with
+  or without line breaks, padding lines of 9s and all. Extracts the batch header fields
+  (company id/name, SEC code, effective date) and entry detail fields (DFI account number,
+  amount, individual id, transaction code, trace number) needed to create transactions,
+  including IAT (international) entries, and checks each batch's and the file's control
+  totals (entries plus addenda, entry hash, debit and credit totals). A file whose totals
+  don't add up is rejected whole; ADV (accounting advice) files aren't supported. Checked
+  entry by entry against Moov's open source ACH implementation on its sample files
+  (`tests/fixtures/moov-ach/`).
 
 Every row/entry carries its own account number (not a single account picked once for the
 whole file) — resolved against your existing accounts, so one file can span multiple
@@ -341,22 +344,22 @@ follow-up step.
   archive). Supported image formats: single- or 2-page TIFF, JPG, PNG
   (`bulk_import/images.py`) — a 2-page TIFF is split automatically (page 1 = front, page
   2 = back) unless `back_image_filename` is given explicitly, which always wins.
-- **X9.37 image cash letter** (`bulk_import/x937.py`): a real Check 21 cash letter file.
-  **Lenient by design**, matching this app's existing NACHA parser's philosophy: supports
-  the common ASCII, line-delimited "variable format" variant with embedded TIFF/JPEG
-  images in Image View Data (Type 52) records; does not support the alternate
-  fixed-length undelimited binary variant, EBCDIC encoding, return/adjustment cash
-  letters, or credit reconcilement records. Bundle (Type 70), cash letter (Type 90) and
-  file (Type 99) control totals are validated: a mismatched item count or dollar amount
-  rejects the whole file. The control-record field positions follow the published
-  layouts but haven't been checked against a real processor's file. A cash letter is read
-  through a memory map, with each check's images read only as that check is imported, so
-  a large file isn't held in memory; a zip's images are likewise read as each row needs
-  them. Account number and check number come from each check detail record's On-Us
-  and Auxiliary On-Us MICR fields respectively — a common real-world convention (the
-  check's own serial number in Auxiliary On-Us, the payor's account number in On-Us), not
-  a standard-mandated split, so a bank whose files use a different layout won't resolve
-  correctly here; the ZIP+CSV format above is the explicit-column fallback for that case.
+- **X9.37 image cash letter** (`bulk_import/x937.py`): a Check 21 cash letter file in
+  the standard layout (DSTU X9.37), as banks, processors and the Federal Reserve exchange
+  them: length-prefixed records in EBCDIC or ASCII, and also line-separated or
+  concatenated records. Images in Image View Data (Type 52) records stay binary. Bundle
+  (Type 70), cash letter (Type 90) and file (Type 99) control totals are validated, and a
+  mismatch rejects the whole file. Return cash letters aren't imported (a file with return
+  records is rejected with a clear message). The field positions were checked byte for
+  byte against Moov's open source X9 implementation and its sample files
+  (`tests/fixtures/moov/`), in both directions. A cash letter is read through a memory
+  map, with each check's images read only as that check is imported, so a large file
+  isn't held in memory; a zip's images are likewise read as each row needs them. The
+  account number is the On-Us field before the MICR on-us symbol (`/`), without its
+  spacing dashes (a bank that stores account numbers with the dashes still matches); the
+  check number is the Auxiliary On-Us field (business checks) or, failing that, the On-Us
+  part after the symbol (personal checks). Banks lay out on-us data differently, so the
+  ZIP+CSV format above is the explicit-column fallback.
 
 Every incoming image, regardless of source format, is decoded and re-encoded to PNG
 before storage (`bulk_import/images.py`) — this is what makes the front/back download

@@ -1,371 +1,175 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Tests for the X9.37 image cash letter parser (bulk_import/x937.py).
+"""The X9.37 image cash letter parser (bulk_import/x937.py): the standard layout in every
+framing and both encodings, control totals, and Moov's reference files
+(tests/fixtures/moov/), whose expected values are what Moov's own reader returns."""
 
-There is no real-world sample X9.37 file available in this repo to validate against, so
-these tests build synthetic fixtures using the exact byte layout the parser itself
-documents (imported directly from the module so a future offset change and its test stay
-in lockstep) — this validates the parser's internal consistency and documented
-conventions, not byte-for-byte fidelity against a real bank-produced file. See
-bulk_import/x937.py's module docstring for the documented, lenient-subset scope."""
-
+from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
-from openclear.bulk_import.x937 import (
-    _STANDARD_RECORD_LEN,
-    _T10_BUSINESS_DATE,
-    _T25_AMOUNT,
-    _T25_AUX_ON_US,
-    _T25_ON_US,
-    _T25_ROUTING_NUMBER,
-    _T50_LEN,
-    _T52_HEADER_BEFORE_LENGTH_FIELD,
-    _T52_LENGTH_FIELD_LEN,
-    _T70_ITEMS_COUNT,
-    _T70_TOTAL_AMOUNT,
-    _T90_ITEMS_COUNT,
-    _T90_TOTAL_AMOUNT,
-    _T99_ITEMS_COUNT,
-    _T99_TOTAL_AMOUNT,
-    X937ParseError,
-    parse_x937_file,
-)
+from openclear.bulk_import.x937 import X937ParseError, item_images, parse_x937_file, split_on_us
+from tests.x937_builder import FRAMINGS, Check, _record, build, single
+
+MOOV = Path(__file__).resolve().parent.parent / "fixtures" / "moov"
+FRONT, BACK = b"\xff\xd8fake-jpeg-front\r\n\x00", b"\xff\xd8fake-jpeg-back"
 
 
-def _fixed_record(record_type: str, fields, length: int = _STANDARD_RECORD_LEN) -> bytes:
-    # `fields` is (slice, value) pairs, not a dict keyed by slice: slices only became
-    # hashable in Python 3.12, and 3.11 is supported (see pyproject.toml).
-    buf = bytearray(b" " * length)
-    buf[0:2] = record_type.encode("ascii")
-    for field_slice, value in fields:
-        encoded = value.encode("ascii")
-        buf[field_slice] = encoded.ljust(field_slice.stop - field_slice.start)[: field_slice.stop - field_slice.start]
-    return bytes(buf)
+# --- Moov's reference files ------------------------------------------------------------
 
 
-def _file_header() -> bytes:
-    return _fixed_record("01", {})
+@pytest.mark.parametrize("name", ["valid-ebcdic.x937", "valid-ascii.x937"])
+def test_moovs_sample_reads_as_moov_reads_it(name):
+    data = (MOOV / name).read_bytes()
+    [item] = parse_x937_file(data)
+    # Moov v0.17.0: payorBankRoutingNumber 12200066, onUs "1211-1234-56789/", auxiliaryOnUs "",
+    # itemAmount 10000, two image views of 7,408 and 8,646 bytes, cash letter business date 2020-10-23.
+    assert (item.routing_number, item.on_us, item.amount, item.presented_date) == ("12200066", "1211-1234-56789/", Decimal("100.00"), date(2020, 10, 23))
+    assert (item.account_number, item.check_number) == ("1211123456789", "")
+    assert (len(item.front_image_bytes), len(item.back_image_bytes)) == (7408, 8646)
+    assert item.front_image_bytes[:2] == b"II"  # a little-endian TIFF, untouched by decoding
 
 
-def _cash_letter_header(business_date: str = "20260115") -> bytes:
-    return _fixed_record("10", [(_T10_BUSINESS_DATE, business_date)])
+def test_moov_ascii_and_ebcdic_agree_byte_for_byte_on_images():
+    ascii_item, = parse_x937_file((MOOV / "valid-ascii.x937").read_bytes())
+    ebcdic_item, = parse_x937_file((MOOV / "valid-ebcdic.x937").read_bytes())
+    assert ascii_item.front_image_bytes == ebcdic_item.front_image_bytes
 
 
-def _bundle_header() -> bytes:
-    return _fixed_record("20", {})
+def test_a_return_cash_letter_is_rejected():
+    with pytest.raises(X937ParseError, match="(?i)control|return"):
+        parse_x937_file((MOOV / "BNK20180905121042882-A.icl").read_bytes())
 
 
-def _check_detail(*, routing: str, on_us: str, aux_on_us: str, amount_cents: int) -> bytes:
-    return _fixed_record(
-        "25",
-        [
-            (_T25_ROUTING_NUMBER, routing),
-            (_T25_ON_US, on_us),
-            (_T25_AUX_ON_US, aux_on_us),
-            (_T25_AMOUNT, str(amount_cents).zfill(_T25_AMOUNT.stop - _T25_AMOUNT.start)),
-        ],
-    )
+# --- Framing and encoding ----------------------------------------------------------------
 
 
-def _image_view_detail() -> bytes:
-    return _fixed_record("50", {}, length=_T50_LEN)
+@pytest.mark.parametrize("encoding", ["ascii", "cp037"])
+@pytest.mark.parametrize("framing", FRAMINGS)
+def test_every_framing_and_encoding(framing, encoding):
+    data = single("1001/", "5001", 15000, [FRONT, BACK], framing=framing, encoding=encoding)
+    [item] = parse_x937_file(data)
+    assert (item.routing_number, item.account_number, item.check_number, item.amount) == ("12345678", "1001", "5001", Decimal("150.00"))
+    assert item.presented_date == date(2026, 1, 15)
+    assert (item.front_image_bytes, item.back_image_bytes) == (FRONT, BACK)  # binary, including CR/LF bytes
 
 
-def _image_view_data(image_bytes: bytes) -> bytes:
-    header = bytearray(b" " * _T52_HEADER_BEFORE_LENGTH_FIELD)
-    header[0:2] = b"52"
-    length_field = str(len(image_bytes)).zfill(_T52_LENGTH_FIELD_LEN).encode("ascii")
-    return bytes(header) + length_field + image_bytes
+@pytest.mark.parametrize("framing", FRAMINGS)
+def test_lazy_images_match(framing):
+    data = single("1001/", "5001", 100, [FRONT, BACK], framing=framing)
+    [eager], [lazy] = parse_x937_file(data), parse_x937_file(data, lazy_images=True)
+    assert lazy.front_image_bytes == b"" and item_images(lazy, data) == (FRONT, BACK) == item_images(eager)
 
 
-def _bundle_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
-    return _fixed_record(
-        "70",
-        [
-            (_T70_ITEMS_COUNT, str(items).zfill(_T70_ITEMS_COUNT.stop - _T70_ITEMS_COUNT.start)),
-            (_T70_TOTAL_AMOUNT, str(amount_cents).zfill(_T70_TOTAL_AMOUNT.stop - _T70_TOTAL_AMOUNT.start)),
-        ],
-    )
+def test_not_an_x937_file():
+    with pytest.raises(X937ParseError, match="File Header"):
+        parse_x937_file(b"account_number,check_number\n1,2\n")
 
 
-def _cash_letter_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
-    return _fixed_record(
-        "90",
-        [
-            (_T90_ITEMS_COUNT, str(items).zfill(_T90_ITEMS_COUNT.stop - _T90_ITEMS_COUNT.start)),
-            (_T90_TOTAL_AMOUNT, str(amount_cents).zfill(_T90_TOTAL_AMOUNT.stop - _T90_TOTAL_AMOUNT.start)),
-        ],
-    )
+# --- What's extracted ---------------------------------------------------------------------
 
 
-def _file_control(*, items: int = 1, amount_cents: int = 0) -> bytes:
-    return _fixed_record(
-        "99",
-        [
-            (_T99_ITEMS_COUNT, str(items).zfill(_T99_ITEMS_COUNT.stop - _T99_ITEMS_COUNT.start)),
-            (_T99_TOTAL_AMOUNT, str(amount_cents).zfill(_T99_TOTAL_AMOUNT.stop - _T99_TOTAL_AMOUNT.start)),
-        ],
-    )
+@pytest.mark.parametrize(("on_us", "aux", "expected"), [
+    ("1001/", "5001", ("1001", "5001")),             # business check: serial in Auxiliary On-Us
+    ("1211-1234 56789/", "", ("1211123456789", "")),  # dashes and spaces are MICR spacing
+    ("7654321/1234", "", ("7654321", "1234")),        # personal check: serial after the on-us symbol
+    ("7654321", "", ("7654321", "")),                 # no symbol at all
+])
+def test_on_us_split(on_us, aux, expected):
+    assert split_on_us(on_us, aux) == expected
 
 
-def test_parses_a_single_check_with_front_and_back_images():
-    front = b"\xff\xd8fake-jpeg-front"
-    back = b"\xff\xd8fake-jpeg-back"
-    content = b"".join(
-        [
-            _file_header(),
-            _cash_letter_header("20260115"),
-            _bundle_header(),
-            _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=15000),
-            _image_view_detail(),
-            _image_view_data(front),
-            _image_view_detail(),
-            _image_view_data(back),
-            _bundle_control(items=1, amount_cents=15000),
-            _cash_letter_control(items=1, amount_cents=15000),
-            _file_control(items=1, amount_cents=15000),
-        ]
-    )
-
-    items = parse_x937_file(content)
-    assert len(items) == 1
-    item = items[0]
-    assert item.routing_number == "12345678"
-    assert item.account_number == "1001"
-    assert item.check_number == "5001"
-    assert item.amount == Decimal("150.00")
-    assert item.presented_date.isoformat() == "2026-01-15"
-    assert item.front_image_bytes == front
-    assert item.back_image_bytes == back
+def test_multiple_checks_in_one_cash_letter():
+    data = build([[[Check("1001/", "5001", 10000, images=[FRONT]), Check("1002/", "5002", 2550)]]])
+    items = parse_x937_file(data)
+    assert [(i.item_number, i.account_number, i.check_number, i.amount) for i in items] == [
+        (1, "1001", "5001", Decimal("100.00")), (2, "1002", "5002", Decimal("25.50"))]
+    assert items[0].front_image_bytes == FRONT and items[0].back_image_bytes is None
 
 
-def test_parses_multiple_checks_in_one_cash_letter():
-    content = b"".join(
-        [
-            _file_header(),
-            _cash_letter_header("20260115"),
-            _bundle_header(),
-            _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=15000),
-            _image_view_detail(),
-            _image_view_data(b"front-1"),
-            _check_detail(routing="12345678", on_us="1002", aux_on_us="5002", amount_cents=2599),
-            _image_view_detail(),
-            _image_view_data(b"front-2"),
-            _bundle_control(items=2, amount_cents=17599),
-            _cash_letter_control(items=2, amount_cents=17599),
-            _file_control(items=2, amount_cents=17599),
-        ]
-    )
-
-    items = parse_x937_file(content)
-    assert [i.check_number for i in items] == ["5001", "5002"]
-    assert items[1].amount == Decimal("25.99")
-    assert items[1].front_image_bytes == b"front-2"
-    assert items[1].back_image_bytes is None  # only one image pair -> no back
+def test_a_check_with_no_images_gets_empty_front_bytes():
+    [item] = parse_x937_file(single("1001/", "5001", 100))
+    assert item.front_image_bytes == b"" and item.back_image_bytes is None
 
 
-def test_check_with_no_image_pair_gets_empty_front_bytes():
-    content = b"".join(
-        [
-            _file_header(),
-            _cash_letter_header(),
-            _bundle_header(),
-            _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100),
-            _bundle_control(items=1, amount_cents=100),
-            _file_control(items=1, amount_cents=100),
-        ]
-    )
-    items = parse_x937_file(content)
-    assert items[0].front_image_bytes == b""
-    assert items[0].back_image_bytes is None
+def test_image_analysis_and_addendum_records_are_skipped():
+    extra = {1: [_record("26", [(2, 1, "1")]), _record("28", [(2, 2, "01")])]}
+    data = build([[[Check("1001/", "5001", 100, images=[FRONT])]]], extra_records=extra)
+    assert len(parse_x937_file(data)) == 1
 
 
-def test_tolerates_crlf_between_records():
-    content = b"\r\n".join(
-        [
-            _file_header(),
-            _cash_letter_header(),
-            _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100),
-            _image_view_detail(),
-            _image_view_data(b"front"),
-            _file_control(items=1, amount_cents=100),
-        ]
-    )
-    items = parse_x937_file(content)
-    assert len(items) == 1
-    assert items[0].front_image_bytes == b"front"
+def test_return_records_are_rejected():
+    data = build([[[Check("1001/", "5001", 100)]]], extra_records={1: [_record("31")]})
+    with pytest.raises(X937ParseError, match="return cash letter"):
+        parse_x937_file(data)
+
+
+def test_blank_business_date_falls_back_to_today():
+    [item] = parse_x937_file(single("1001/", "5001", 100, business_date="        "))
+    assert item.presented_date == date.today()
+
+
+# --- Structural problems --------------------------------------------------------------------
 
 
 def test_unrecognized_record_type_raises():
-    content = _file_header() + _fixed_record("77", {})
-    with pytest.raises(X937ParseError, match="Unrecognized record type"):
-        parse_x937_file(content)
+    data = build([[[Check("1001/", "5001", 100)]]], extra_records={1: [_record("77")]})
+    with pytest.raises(X937ParseError, match="Unrecognized record type '77'"):
+        parse_x937_file(data)
 
 
-def test_truncated_file_raises():
-    content = _file_header()[:10]
-    with pytest.raises(X937ParseError, match="Truncated"):
-        parse_x937_file(content)
+@pytest.mark.parametrize("framing", FRAMINGS)
+def test_truncated_file_raises(framing):
+    data = single("1001/", "5001", 100, [FRONT], framing=framing)
+    with pytest.raises(X937ParseError):
+        parse_x937_file(data[: len(data) - 30])
 
 
 def test_non_numeric_amount_raises():
-    record = bytearray(_check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100))
-    record[_T25_AMOUNT] = b"NOTANUMBER"
-    content = _file_header() + bytes(record) + _file_control()
+    data = build([[[Check("1001/", "5001", amount_text="12AB000000")]]])
     with pytest.raises(X937ParseError, match="non-numeric amount"):
-        parse_x937_file(content)
+        parse_x937_file(data)
 
 
-def test_image_length_exceeding_remaining_file_raises():
-    header = bytearray(b" " * _T52_HEADER_BEFORE_LENGTH_FIELD)
-    header[0:2] = b"52"
-    length_field = str(999999).zfill(_T52_LENGTH_FIELD_LEN).encode("ascii")
-    bad_image_record = bytes(header) + length_field + b"only-a-few-bytes"
-    content = (
-        _file_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _image_view_detail()
-        + bad_image_record
-    )
-    with pytest.raises(X937ParseError, match="doesn't fit in the remaining file"):
-        parse_x937_file(content)
+def test_image_length_beyond_the_record_raises():
+    data = bytearray(single("1001/", "5001", 100, [FRONT], framing="prefixed"))
+    marker = str(len(FRONT)).zfill(7).encode()
+    position = data.index(b"0000" + b"00000" + marker) + 9
+    data[position : position + 7] = b"9999999"
+    with pytest.raises(X937ParseError, match="doesn't fit"):
+        parse_x937_file(bytes(data))
 
 
-def test_blank_business_date_falls_back_to_today_without_raising():
-    content = (
-        _file_header()
-        + _cash_letter_header("        ")
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _file_control(items=1, amount_cents=100)
-    )
-    items = parse_x937_file(content)
-    assert items[0].presented_date is not None
+# --- Control totals ----------------------------------------------------------------------------
 
 
-def test_cash_letter_control_item_count_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _cash_letter_control(items=2, amount_cents=100)
-        + _file_control(items=1, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError, match="items count"):
-        parse_x937_file(content)
-
-
-def test_cash_letter_control_total_amount_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _cash_letter_control(items=1, amount_cents=999)
-        + _file_control(items=1, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError, match="total amount"):
-        parse_x937_file(content)
-
-
-def test_file_control_item_count_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _file_control(items=2, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError, match="items count"):
-        parse_x937_file(content)
-
-
-def test_file_control_total_amount_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _file_control(items=1, amount_cents=999)
-    )
-    with pytest.raises(X937ParseError, match="total amount"):
-        parse_x937_file(content)
-
-
-def test_cash_letter_totals_reset_between_cash_letters():
-    """Two cash letters in one file: each cash letter control validates only its own
-    items, but the file control validates the sum across both."""
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _cash_letter_control(items=1, amount_cents=100)
-        + _cash_letter_header()
-        + _check_detail(routing="12345678", on_us="1002", aux_on_us="5002", amount_cents=200)
-        + _cash_letter_control(items=1, amount_cents=200)
-        + _file_control(items=2, amount_cents=300)
-    )
-    items = parse_x937_file(content)
-    assert len(items) == 2
-
-
-def test_bundle_control_item_count_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _bundle_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _bundle_control(items=2, amount_cents=100)
-        + _cash_letter_control(items=1, amount_cents=100)
-        + _file_control(items=1, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError, match="Bundle Control.*items count"):
-        parse_x937_file(content)
-
-
-def test_bundle_control_total_amount_mismatch_raises():
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _bundle_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _bundle_control(items=1, amount_cents=999)
-        + _cash_letter_control(items=1, amount_cents=100)
-        + _file_control(items=1, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError, match="Bundle Control.*total amount"):
-        parse_x937_file(content)
+@pytest.mark.parametrize(("record", "scope"), [("70", "Bundle"), ("90", "Cash Letter"), ("99", "File")])
+@pytest.mark.parametrize("which", ["items", "cents"])
+def test_control_total_mismatches_raise(record, scope, which):
+    data = build([[[Check("1001/", "5001", 100)]]], declared={(record, 1): {which: 7}})
+    with pytest.raises(X937ParseError, match=f"{scope} Control Record"):
+        parse_x937_file(data)
 
 
 def test_blank_bundle_control_is_rejected():
-    """A Bundle Control with its count fields left blank can't be checked, so the file is
-    rejected rather than trusted."""
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _bundle_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _fixed_record("70", {})
-        + _file_control(items=1, amount_cents=100)
-    )
-    with pytest.raises(X937ParseError):
-        parse_x937_file(content)
+    data = build([[[Check("1001/", "5001", 100)]]], declared={("70", 1): {"items": "    ", "cents": " " * 12}})
+    with pytest.raises(X937ParseError, match="Bundle Control Record"):
+        parse_x937_file(data)
 
 
-def test_bundle_totals_reset_between_bundles():
-    """Two bundles in one cash letter: each bundle control validates only its own items,
-    the cash letter control validates the sum."""
-    content = (
-        _file_header()
-        + _cash_letter_header()
-        + _bundle_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5001", amount_cents=100)
-        + _bundle_control(items=1, amount_cents=100)
-        + _bundle_header()
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5002", amount_cents=250)
-        + _check_detail(routing="12345678", on_us="1001", aux_on_us="5003", amount_cents=50)
-        + _bundle_control(items=2, amount_cents=300)
-        + _cash_letter_control(items=3, amount_cents=400)
-        + _file_control(items=3, amount_cents=400)
-    )
-    items = parse_x937_file(content)
-    assert [i.check_number for i in items] == ["5001", "5002", "5003"]
+def test_totals_reset_between_bundles_and_cash_letters():
+    letters = [
+        [[Check("1001/", "1", 100)], [Check("1001/", "2", 200), Check("1001/", "3", 300)]],
+        [[Check("1001/", "4", 400)]],
+    ]
+    assert [i.check_number for i in parse_x937_file(build(letters))] == ["1", "2", "3", "4"]
+
+
+def test_a_large_file_total_uses_all_sixteen_digits():
+    # The File Control total is 16 digits; reading 15 would drop the last one.
+    letters = [[[Check("1001/", str(n), 99_999_999) for n in range(12)]]]
+    items = parse_x937_file(build(letters))
+    assert sum(i.amount for i in items) == Decimal("11999999.88")

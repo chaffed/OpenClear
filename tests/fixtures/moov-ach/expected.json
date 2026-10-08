@@ -1,0 +1,770 @@
+{
+ "20110805A.ach": [
+  {
+   "account": "998412345",
+   "cents": 27000,
+   "transaction_code": "27",
+   "trace": "042000010000001",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A271"
+  },
+  {
+   "account": "998412345",
+   "cents": 62000,
+   "transaction_code": "27",
+   "trace": "042000010000002",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A272"
+  },
+  {
+   "account": "998412345",
+   "cents": 209000,
+   "transaction_code": "27",
+   "trace": "042000010000003",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A273"
+  },
+  {
+   "account": "998412345",
+   "cents": 139000,
+   "transaction_code": "27",
+   "trace": "042000010000004",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A274"
+  },
+  {
+   "account": "998412345",
+   "cents": 118000,
+   "transaction_code": "27",
+   "trace": "042000010000005",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A275"
+  },
+  {
+   "account": "998412345",
+   "cents": 206000,
+   "transaction_code": "27",
+   "trace": "042000010000006",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A278"
+  },
+  {
+   "account": "998412345",
+   "cents": 206000,
+   "transaction_code": "27",
+   "trace": "042000010000007",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A279"
+  },
+  {
+   "account": "998412345",
+   "cents": 122000,
+   "transaction_code": "27",
+   "trace": "042000010000008",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A280"
+  },
+  {
+   "account": "998412345",
+   "cents": 122000,
+   "transaction_code": "27",
+   "trace": "042000010000009",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A281"
+  },
+  {
+   "account": "998412345",
+   "cents": 170000,
+   "transaction_code": "27",
+   "trace": "042000010000010",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A282"
+  },
+  {
+   "account": "998412345",
+   "cents": 170000,
+   "transaction_code": "27",
+   "trace": "042000010000011",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A283"
+  },
+  {
+   "account": "998412345",
+   "cents": 250000,
+   "transaction_code": "27",
+   "trace": "042000010000012",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A284"
+  },
+  {
+   "account": "998412345",
+   "cents": 250000,
+   "transaction_code": "27",
+   "trace": "042000010000013",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A285"
+  },
+  {
+   "account": "998412345",
+   "cents": 262000,
+   "transaction_code": "27",
+   "trace": "042000010000014",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A286"
+  },
+  {
+   "account": "998412345",
+   "cents": 262000,
+   "transaction_code": "27",
+   "trace": "042000010000015",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A287"
+  },
+  {
+   "account": "998412345",
+   "cents": 242000,
+   "transaction_code": "27",
+   "trace": "042000010000016",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A288"
+  },
+  {
+   "account": "998412345",
+   "cents": 242000,
+   "transaction_code": "27",
+   "trace": "042000010000017",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A289"
+  },
+  {
+   "account": "998412345",
+   "cents": 87000,
+   "transaction_code": "27",
+   "trace": "042000010000018",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A290"
+  },
+  {
+   "account": "998412345",
+   "cents": 150000,
+   "transaction_code": "27",
+   "trace": "042000010000019",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A291"
+  },
+  {
+   "account": "998412345",
+   "cents": 237000,
+   "transaction_code": "27",
+   "trace": "042000010000020",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A292"
+  },
+  {
+   "account": "998412345",
+   "cents": 237000,
+   "transaction_code": "27",
+   "trace": "042000010000021",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A294"
+  },
+  {
+   "account": "998412345",
+   "cents": 219000,
+   "transaction_code": "27",
+   "trace": "042000010000022",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A295"
+  },
+  {
+   "account": "998412345",
+   "cents": 255000,
+   "transaction_code": "27",
+   "trace": "042000010000023",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A296"
+  },
+  {
+   "account": "998412345",
+   "cents": 149000,
+   "transaction_code": "27",
+   "trace": "042000010000024",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A297"
+  },
+  {
+   "account": "998412345",
+   "cents": 217000,
+   "transaction_code": "27",
+   "trace": "042000010000025",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A298"
+  },
+  {
+   "account": "998412345",
+   "cents": 8,
+   "transaction_code": "22",
+   "trace": "042000010000001",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A251"
+  },
+  {
+   "account": "998412345",
+   "cents": 10,
+   "transaction_code": "22",
+   "trace": "042000010000002",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A252"
+  },
+  {
+   "account": "998412345",
+   "cents": 2,
+   "transaction_code": "22",
+   "trace": "042000010000003",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A253"
+  },
+  {
+   "account": "998412345",
+   "cents": 12,
+   "transaction_code": "22",
+   "trace": "042000010000004",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A254"
+  },
+  {
+   "account": "998412345",
+   "cents": 2,
+   "transaction_code": "22",
+   "trace": "042000010000005",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A255"
+  },
+  {
+   "account": "998412345",
+   "cents": 11,
+   "transaction_code": "22",
+   "trace": "042000010000006",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A256"
+  },
+  {
+   "account": "998412345",
+   "cents": 13,
+   "transaction_code": "22",
+   "trace": "042000010000007",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A259"
+  },
+  {
+   "account": "998412345",
+   "cents": 4,
+   "transaction_code": "22",
+   "trace": "042000010000008",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A260"
+  },
+  {
+   "account": "998412345",
+   "cents": 9,
+   "transaction_code": "22",
+   "trace": "042000010000009",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A261"
+  },
+  {
+   "account": "998412345",
+   "cents": 5,
+   "transaction_code": "22",
+   "trace": "042000010000010",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A262"
+  },
+  {
+   "account": "998412345",
+   "cents": 19,
+   "transaction_code": "22",
+   "trace": "042000010000011",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A263"
+  },
+  {
+   "account": "998412345",
+   "cents": 15,
+   "transaction_code": "22",
+   "trace": "042000010000012",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A264"
+  },
+  {
+   "account": "998412345",
+   "cents": 6,
+   "transaction_code": "22",
+   "trace": "042000010000013",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A265"
+  },
+  {
+   "account": "998412345",
+   "cents": 15,
+   "transaction_code": "22",
+   "trace": "042000010000014",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A266"
+  },
+  {
+   "account": "998412345",
+   "cents": 14,
+   "transaction_code": "22",
+   "trace": "042000010000015",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A267"
+  },
+  {
+   "account": "998412345",
+   "cents": 9,
+   "transaction_code": "22",
+   "trace": "042000010000016",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A268"
+  },
+  {
+   "account": "998412345",
+   "cents": 13,
+   "transaction_code": "22",
+   "trace": "042000010000017",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A269"
+  },
+  {
+   "account": "998412345",
+   "cents": 9,
+   "transaction_code": "22",
+   "trace": "042000010000018",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "EXAMPLE COMPANY",
+   "individual_id": "A270"
+  },
+  {
+   "account": "998412345",
+   "cents": 109000,
+   "transaction_code": "27",
+   "trace": "042000010000001",
+   "sec": "IAT",
+   "company_id": "0231380104",
+   "company_name": null,
+   "individual_id": null
+  },
+  {
+   "account": "998412345",
+   "cents": 109000,
+   "transaction_code": "27",
+   "trace": "042000010000002",
+   "sec": "IAT",
+   "company_id": "0231380104",
+   "company_name": null,
+   "individual_id": null
+  },
+  {
+   "account": "998412345",
+   "cents": 273000,
+   "transaction_code": "27",
+   "trace": "042000010000003",
+   "sec": "IAT",
+   "company_id": "0231380104",
+   "company_name": null,
+   "individual_id": null
+  },
+  {
+   "account": "998412345",
+   "cents": 18,
+   "transaction_code": "22",
+   "trace": "042000010000001",
+   "sec": "IAT",
+   "company_id": "0231380104",
+   "company_name": null,
+   "individual_id": null
+  },
+  {
+   "account": "998412345",
+   "cents": 6,
+   "transaction_code": "22",
+   "trace": "042000010000002",
+   "sec": "IAT",
+   "company_id": "0231380104",
+   "company_name": null,
+   "individual_id": null
+  }
+ ],
+ "cor-example.ach": [
+  {
+   "account": "744-5678-99",
+   "cents": 0,
+   "transaction_code": "21",
+   "trace": "121042880000001",
+   "sec": "COR",
+   "company_id": "121042882",
+   "company_name": "Your Company, in",
+   "individual_id": "location #23"
+  }
+ ],
+ "gl-debit.ach": [
+  {
+   "account": "12345678",
+   "cents": 100000000,
+   "transaction_code": "47",
+   "trace": "121042880000001",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  }
+ ],
+ "iat-debit.ach": [
+  {
+   "account": "123456789",
+   "cents": 100000,
+   "transaction_code": "27",
+   "trace": "231380100000001",
+   "sec": "IAT",
+   "company_id": "123456789",
+   "company_name": null,
+   "individual_id": null
+  }
+ ],
+ "long-line.ach": [
+  {
+   "account": "12345678",
+   "cents": 100000000,
+   "transaction_code": "27",
+   "trace": "121042880000001",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  }
+ ],
+ "ppd-debit-fixedLength.ach": [
+  {
+   "account": "12345",
+   "cents": 10500,
+   "transaction_code": "27",
+   "trace": "076401255655291",
+   "sec": "PPD",
+   "company_id": "origid",
+   "company_name": "companyname",
+   "individual_id": "c-1"
+  }
+ ],
+ "ppd-debit.ach": [
+  {
+   "account": "12345678",
+   "cents": 100000000,
+   "transaction_code": "27",
+   "trace": "121042880000001",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  }
+ ],
+ "ppd-mixedDebitCredit.ach": [
+  {
+   "account": "123456789",
+   "cents": 200000000,
+   "transaction_code": "27",
+   "trace": "121042880000001",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  },
+  {
+   "account": "987654321",
+   "cents": 100000000,
+   "transaction_code": "22",
+   "trace": "121042880000002",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  },
+  {
+   "account": "837098765",
+   "cents": 100000000,
+   "transaction_code": "22",
+   "trace": "121042880000003",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  }
+ ],
+ "rck.ach": [
+  {
+   "account": "12345",
+   "cents": 11500,
+   "transaction_code": "27",
+   "trace": "076401251660936",
+   "sec": "RCK",
+   "company_id": "origid",
+   "company_name": "companyname",
+   "individual_id": "sadf"
+  }
+ ],
+ "return-WEB.ach": [
+  {
+   "account": "123456789",
+   "cents": 12354,
+   "transaction_code": "26",
+   "trace": "091000017611242",
+   "sec": "WEB",
+   "company_id": "123456789",
+   "company_name": "CoinLion",
+   "individual_id": "MjMxNDAwMjAtOGQ"
+  },
+  {
+   "account": "867530999999",
+   "cents": 4565,
+   "transaction_code": "21",
+   "trace": "021000029461242",
+   "sec": "WEB",
+   "company_id": "123456789",
+   "company_name": "CoinLion",
+   "individual_id": "NmRjZTJmMzItMGN"
+  }
+ ],
+ "short-line.ach": [
+  {
+   "account": "12345678",
+   "cents": 100000000,
+   "transaction_code": "27",
+   "trace": "121042880000001",
+   "sec": "PPD",
+   "company_id": "121042882",
+   "company_name": "Name on Account",
+   "individual_id": ""
+  }
+ ],
+ "two-micro-deposits.ach": [
+  {
+   "account": "322580734",
+   "cents": 44,
+   "transaction_code": "32",
+   "trace": "121042886829038",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "e681e50d1cc83dc"
+  },
+  {
+   "account": "322580734",
+   "cents": 32,
+   "transaction_code": "32",
+   "trace": "121042886829039",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "e681e50d1cc83dc"
+  },
+  {
+   "account": "322580734",
+   "cents": 76,
+   "transaction_code": "27",
+   "trace": "121042886829040",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "e681e50d1cc83dc"
+  },
+  {
+   "account": "191759324",
+   "cents": 2,
+   "transaction_code": "32",
+   "trace": "121042889211556",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "34e5b6f1cf14232"
+  },
+  {
+   "account": "191759324",
+   "cents": 42,
+   "transaction_code": "32",
+   "trace": "121042889211557",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "34e5b6f1cf14232"
+  },
+  {
+   "account": "191759324",
+   "cents": 44,
+   "transaction_code": "27",
+   "trace": "121042889211558",
+   "sec": "PPD",
+   "company_id": "001",
+   "company_name": "Moov - paygate m",
+   "individual_id": "34e5b6f1cf14232"
+  }
+ ],
+ "txp-debit.ach": [
+  {
+   "account": "23401009",
+   "cents": 12345,
+   "transaction_code": "27",
+   "trace": "123456780000001",
+   "sec": "CCD",
+   "company_id": "1123456789",
+   "company_name": "ACME CORP",
+   "individual_id": "123456789"
+  }
+ ],
+ "web-debit.ach": [
+  {
+   "account": "12345678901234567",
+   "cents": 3521,
+   "transaction_code": "22",
+   "trace": "081000030000000",
+   "sec": "WEB",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##23920rjf31"
+  },
+  {
+   "account": "5654221",
+   "cents": 2300,
+   "transaction_code": "22",
+   "trace": "081000030000001",
+   "sec": "WEB",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##32b1kn1bb3"
+  },
+  {
+   "account": "5654221",
+   "cents": 2499,
+   "transaction_code": "22",
+   "trace": "081000030000002",
+   "sec": "WEB",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##765kn4"
+  },
+  {
+   "account": "5654221",
+   "cents": 1000,
+   "transaction_code": "22",
+   "trace": "081000030000003",
+   "sec": "WEB",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##3j43kj4"
+  },
+  {
+   "account": "5654221",
+   "cents": 17500,
+   "transaction_code": "22",
+   "trace": "081000030000004",
+   "sec": "WEB",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##8k765j4k32"
+  },
+  {
+   "account": "923698412584",
+   "cents": 15000,
+   "transaction_code": "27",
+   "trace": "081000030000005",
+   "sec": "PPD",
+   "company_id": "0231380104",
+   "company_name": "Your Company Inc",
+   "individual_id": "RAj##765432hj"
+  }
+ ]
+}
