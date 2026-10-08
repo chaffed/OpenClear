@@ -126,6 +126,8 @@ optional customer scope governing whose data it can see (see
 | `tenant:manage` | manage organization branding/settings |
 | `audit_log:read` | view the immutable action log |
 | `customer:manage` | manage customers |
+| `billing:read` | view billing statements and download the billing exports (a customer-scoped user sees only its own statement) |
+| `billing:manage` | manage the fee schedule, billing settings and customer billing terms, and finalize a month |
 
 A missing permission returns `403 Forbidden` with `{"detail": "Missing permission: <key>"}`.
 
@@ -312,6 +314,68 @@ below), or a **bank-only model** trained on its own decisions, which these endpo
 
 Retrain and activate are written to the organization's audit log.
 
+### Billing — `/api/v1/billing`
+
+What a bank charges its customers for positive pay. Each customer is billed either through
+**account analysis** (charges go to the bank's analysis system, which offsets them with
+earnings credits; ISO 20022 payment method `BCMP`) or as a **hard charge** (a direct debit
+to the customer's billing account; `FLAT`), or is `exempt`. The bank sets a default and can
+override it per customer. OpenClear counts volumes and prices them; it doesn't calculate
+earnings credits.
+
+A fee item charges a **metric** (`GET /metrics`) at a unit price, optionally with step
+tiers and a monthly minimum, and can carry the bank's AFP Service Code. Metrics count per
+account, per customer or bank-wide:
+
+| metric | counts | level |
+|---|---|---|
+| `customer_monthly` | customers enrolled at month end | customer |
+| `account_monthly` / `ach_account_monthly` | accounts enrolled (check / ACH positive pay) | account |
+| `user_monthly` | users with access | customer |
+| `ach_rule_monthly` | active ACH authorization rules | account |
+| `customer_model_monthly` | customer-specific fraud models | customer |
+| `issued_items` / `issue_files` | issued checks loaded / issue files received | account / customer |
+| `presented_checks` / `ach_debits` | items evaluated | account |
+| `check_exceptions` / `ach_exceptions` | exceptions raised | account |
+| `check_returns` / `ach_returns` / `items_returned` | items returned | account |
+| `items_paid_on_decision` / `auto_decisions` | exceptions decided pay / decided by the default | account |
+| `stop_payments`, `check_images`, `wsud_statements`, `files_received`, `data_exports` | as named | account / customer |
+| `sms_sent` / `email_sent` | notifications sent | bank |
+
+Bank-level metrics appear on the bank-wide statement (`customer_id: null`), which uses the
+bank's own billing method.
+
+| method | path | permission | notes |
+|---|---|---|---|
+| GET | `/metrics` | `billing:read` | the metric catalog → `MetricRead` (`code`, `label`, `unit`, `level`) |
+| GET | `/fee-items` | `billing:manage` | the fee schedule → `FeeItemRead` list |
+| POST | `/fee-items` | `billing:manage` | add a fee (`FeeItemCreate`); `422` for an unknown metric, a duplicate code, or bad tiers |
+| POST | `/fee-items/starter-schedule` | `billing:manage` | add the common positive pay fees the bank doesn't have yet, priced at zero |
+| PATCH | `/fee-items/{id}` | `billing:manage` | change a fee |
+| GET / PUT | `/settings` | `billing:manage` | `customer_default_billing_method`, `bank_billing_method`, `bank_billing_account_id` |
+| GET / PUT | `/customers/{id}/terms` | `billing:manage` | a customer's billing method, billing account, discount %, waive-all, notes and per-fee `overrides` (`unit_price` or `waived`); `is_default` when it has no terms of its own |
+| GET | `/statements` | `billing:read` | statements for `?period=2026-09` (or `start` and `end`), optional `customer_id`; live by default, the finalized version with `finalized=true` |
+| GET | `/report.csv` | `billing:read` | the billing report, one row per statement line; same filters |
+| GET | `/periods/{period}` | `billing:manage` | whether the month is finalized, and its versions |
+| POST | `/periods/{period}/finalize` | `billing:manage` | freeze the month's statements; finalizing again saves a replacement version |
+| GET | `/periods/{period}/analysis-feed.csv` | `billing:read` | analysis customers' service lines for the analysis system |
+| GET | `/periods/{period}/hard-charge-postings.csv` | `billing:read` | one debit per hard-charge customer, for the core's fee posting |
+| GET | `/periods/{period}/camt086.xml` | `billing:read` | the month as an ISO 20022 camt.086 Bank Services Billing message (optional `customer_id`) |
+
+The three exports are made from the finalized month only (`409` until it's finalized) and
+are for bank staff (`403` for a customer-scoped user). camt.086 marks the first version
+`ORGN` and later ones `RPLC`; the namespace version is `OPENCLEAR_BILLING_CAMT086_VERSION`
+(default `camt.086.001.04`). Validate it against your counterparty's schema before using it
+in production. Finalizing is written to the audit log.
+
+A statement: `period_start`, `period_end`, `customer_id`, `customer_number`,
+`customer_name`, `billing_method`, `billing_account_number`, `totals` (`list`, `discount`,
+`waived`, `net`) and `lines`. Each line: `fee_code`, `description`, `metric`, `unit`,
+`afp_code`, `bank_service_code`, `volume`, `unit_price`, `charge_method` (camt.086 `UPRC`,
+`TIR1`…, `MCHG`), `list_amount`, `discount_amount`, `net_amount`, `payment_method`
+(`BCMP`, `FLAT`, `WVED`, `FREE`), `tiers`, and `accounts` (volume per account). Amounts are
+strings.
+
 ### Platform — shared model — `/api/v1/platform`
 
 For the platform operator only, **not** a user token: send a platform API key with the
@@ -350,6 +414,25 @@ For the platform operator: a platform API key with the `operations` scope, as `X
 `attempts`, `max_attempts`, `run_after`, `created_at`, `started_at`, `finished_at`,
 `last_error`. A job reaches `failed` only after `max_attempts` tries; watch
 `/summary` (or `?status_filter=failed`) and retry once the cause is fixed.
+
+### Platform — billing banks — `/api/v1/platform/billing`
+
+For the platform operator to bill each bank: a platform API key with the `billing` scope
+(`python scripts/create_metering_api_key.py "Billing" --scope billing`). The operator keeps
+its own fee schedule, using the same metrics as the banks plus `bank_monthly` (one per
+bank). Each bank's invoice counts its whole organization (every customer and the bank's
+own activity), is always a hard charge (`FLAT`), and leaves out the public demo.
+
+| method | path | notes |
+|---|---|---|
+| GET | `/metrics` | the metric catalog, with `bank_monthly` |
+| GET / POST | `/fee-items` | the operator's fee schedule (same fields as a bank's) |
+| PATCH | `/fee-items/{id}` | change a fee |
+| GET | `/invoices` | each bank's invoice for `?period=2026-09` (or `start` and `end`), optional `tenant_id`; the statement shape above, with `bank_slug` and `bank_name` in place of `customer_number` and `customer_name` |
+| GET | `/invoices.csv` | the same as a report |
+| GET | `/invoices/camt086.xml` | `?period=` (optional `tenant_id`) as camt.086, sent by `OPENCLEAR_PLATFORM_OPERATOR_NAME` / `_ID` |
+
+Invoices are calculated live. There's no finalized platform invoice yet.
 
 ### Users — `/api/v1/users`
 

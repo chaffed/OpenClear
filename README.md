@@ -31,6 +31,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [Customers: segregating a tenant's own business clients](#customers-segregating-a-tenants-own-business-clients)
 - [Per-tenant branding](#per-tenant-branding)
 - [Immutable action log](#immutable-action-log)
+- [Billing](#billing)
 - [Authentication](#authentication)
 - [Signing keys](#signing-keys)
 - [Reverse proxy / WAF deployment](#reverse-proxy--waf-deployment)
@@ -557,6 +558,32 @@ right after the mutating service call succeeds and before that request's `db.com
 so the audit entry and the business change commit together atomically, and every route
 already has the actor/tenant/channel it needs without any shared service function having
 to take on a new required parameter.
+
+## Billing
+
+OpenClear produces what a bank charges its customers for positive pay (Billing in the
+Organization menu, `/api/v1/billing` in API.md). The bank builds a fee schedule from a
+catalog of metrics: per customer, per user, per account, per issued item or file, per item
+evaluated, per exception, per item returned, per stop payment, per image, per notification
+and more, each with a unit price, optional step tiers, a monthly minimum and its own AFP
+Service Code. "Add starter fees" fills in the usual positive pay services at zero.
+
+Each customer is flagged **account analysis** (charges go to the bank's analysis system,
+which offsets them with earnings credits), **hard charge** (debited from its billing
+account) or **exempt**, with a bank-wide default. Per customer the bank can also set a
+discount, a negotiated price or a waiver for any fee. Tiers and minimums apply across all
+the customer's accounts.
+
+Statements are calculated live for any period. Finalizing a month freezes them; finalizing
+again saves a replacement version. From the finalized month the bank downloads the billing
+report (CSV), an analysis feed (CSV), a hard-charge posting file for the core (CSV), and an
+ISO 20022 **camt.086** Bank Services Billing message, the standard successor to the X12 822
+account analysis file. A customer's user with `billing:read` sees that customer's own
+statement and PDF. OpenClear doesn't calculate earnings credits or post debits itself.
+
+The platform operator can bill each bank too, from its own fee schedule (including a
+per-bank monthly fee), through `/api/v1/platform/billing` with a `billing`-scoped platform
+key. BILLING_PLAN.md has the research and the decisions.
 
 ## Authentication
 

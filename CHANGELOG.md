@@ -59,6 +59,26 @@ without changes:**
 - **Over-long text** is now a form message (or a `400` from the API) instead of an error
   page on Postgres and SQL Server.
 
+### New: billing (BILLING_PLAN.md)
+
+- **A bank can bill its customers for positive pay.** The fee schedule draws on 24
+  metrics: per customer, user, account, issued item or file, item evaluated, exception,
+  item returned, stop payment, image, notification and more. Each fee has a unit price,
+  optional step tiers, a monthly minimum and the bank's AFP Service Code. It's under
+  Billing in the Organization menu and at `/api/v1/billing`.
+- **Each customer is on account analysis, hard charge or exempt**, with a bank-wide
+  default. The bank can also give a customer a discount, a negotiated price or a waiver
+  on any fee.
+- **Statements:** live for any period, with volumes per account, plus a PDF. Finalizing a
+  month freezes it, and a replacement version can follow.
+- **Exports** from a finalized month: the billing report (CSV), an analysis feed (CSV), a
+  hard-charge posting file for the core (CSV), and ISO 20022 camt.086.
+- **Customer users** with `billing:read` see their own statement.
+- **Platform billing:** the platform operator can invoice each bank at
+  `/api/v1/platform/billing`, with a platform key carrying the new `billing` scope.
+- **Upgrading:** run `alembic upgrade head`. Existing Admin security groups get
+  `billing:read` and `billing:manage`. Nothing is charged until a bank adds fees.
+
 ## 1.5.0 — 2026-09-23
 
 A security, reliability and usability release. It fixes every finding from the September

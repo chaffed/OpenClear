@@ -135,28 +135,14 @@ SCALE_PLAN.md: each phase gets a branch, a progress log, and full test runs befo
 | Phase | What | Status |
 |---|---|---|
 | B1 | Data model, metric catalog, pricing engine, customer and bank billing terms, live preview, API and CSV report | done |
-| B2 | Finalize/replace snapshots, analysis feed (CSV + camt.086), hard-charge postings, PDF statement, audit log | in progress |
-| B3 | Web UI: fee schedule, customer billing terms, billing reports, customer self-view | |
-| B4 | Platform-to-bank billing (`billing` scope), docs (README, API.md, admin docs) | |
+| B2 | Finalize/replace snapshots, analysis feed (CSV + camt.086), hard-charge postings, PDF statement, audit log | done |
+| B3 | Web UI: fee schedule, customer billing terms, billing reports, customer self-view | done |
+| B4 | Platform-to-bank billing (`billing` scope), docs (README, API.md, admin docs) | done |
 
 ## Progress log
 
 (Newest last.)
 - 2026-10-08 Research done; plan written; B1 started on branch `billing`.
-
-## Sources
-
-- AFP Service Codes: https://www.financialprofessionals.org/training-resources/resources/afp-service-codes ·
-  https://www.financialprofessionals.org/docs/default-source/default-document-library/pub/decoding-the-new-afp-service-codes.pdf
-- Published fee schedules showing positive pay AFP codes: https://deerparktx.gov/DocumentCenter/View/6662 ·
-  https://treasurer.state.md.us/wp-content/uploads/2024/02/td-bank-fees.pdf ·
-  https://www.huntington.com/-/media/pdf/commercial/tm/receivables-management/hnb-service-code-descriptions-fis-lockbox.pdf
-- camt.086, TWIST BSB and X12 822: https://www.theglobaltreasurer.com/2013/02/21/the-822-the-twist-bsb-and-the-iso-bsb-whats-it-all-about/ ·
-  https://www.financialprofessionals.org/docs/default-source/default-document-library/sp/81.pdf
-- ISO 20022 Bank Services Billing message definition report (camt.086.001.04, 2020–21
-  maintenance): https://www.iso20022.org/sites/default/files/2020-12/ISO20022_MDRPart2_BankServicesBilling_2020_2021_v1_ForSEGReview.pdf
-- Account analysis and earnings credits: https://www.financialprofessionals.org/training-resources/resources/articles/Details/an-introduction-to-account-analysis-statements ·
-  https://southstatecorrespondent.com/banker-to-banker/treasury-cash-management/how-to-use-account-analysis-effectively-part-1/
 - 2026-10-08 B1 done:
   - **Model:** `billing_fee_item`, `customer_billing_terms` and `customer_fee_override`, plus
     the bank's billing defaults on `tenant` (migration `d5a7c9e1f3b4`, with RLS; existing
@@ -171,4 +157,34 @@ SCALE_PLAN.md: each phase gets a branch, a progress log, and full test runs befo
     settings, customer terms with overrides, statement preview, and `report.csv`.
   - **Tests:** 12 on SQLite, plus the Postgres run and an RLS test (only this bank's
     activity is counted).
+- 2026-10-08 B2 done: `billing_statement` and `billing_statement_line` (migration
+  `e6b8d0f2a4c5`, RLS); finalize and replace (`finalize.py`, versions `ORGN` then `RPLC`);
+  the analysis feed, hard-charge postings and camt.086 (`exports.py`), which read only
+  finalized rows; audit-logged. Finalized statements are listed in a fixed order on every
+  database (customers by number, the bank-wide one last).
+- 2026-10-08 B3 done: the web UI (overview with finalize and downloads, statement page and
+  PDF, fee schedule with tiers, bank settings, customer billing terms on the customer page),
+  nav links, a customer's own statement view, the admin and end-user docs pages, and the
+  data dictionary. 6 web tests.
+- 2026-10-08 B4 done: `platform_fee_item` (migration `f7c9e1a3b5d6`, no RLS, operator only),
+  `services/billing/platform.py` (`bank_monthly` plus every bank metric; each bank invoiced
+  for its whole organization, always `FLAT`, the demo excluded), `/api/v1/platform/billing`
+  behind the new `billing` platform-key scope, with CSV and camt.086. README, API.md,
+  ARCHITECTURE.md and CHANGELOG updated. 3 tests; the billing tests pass on SQLite and
+  Postgres.
+- **Deferred:** finalized platform invoices (they're live only for now), a NACHA debit file
+  for hard charges (B-D7), and earnings-credit calculation (B-D1).
 
+## Sources
+
+- AFP Service Codes: https://www.financialprofessionals.org/training-resources/resources/afp-service-codes ·
+  https://www.financialprofessionals.org/docs/default-source/default-document-library/pub/decoding-the-new-afp-service-codes.pdf
+- Published fee schedules showing positive pay AFP codes: https://deerparktx.gov/DocumentCenter/View/6662 ·
+  https://treasurer.state.md.us/wp-content/uploads/2024/02/td-bank-fees.pdf ·
+  https://www.huntington.com/-/media/pdf/commercial/tm/receivables-management/hnb-service-code-descriptions-fis-lockbox.pdf
+- camt.086, TWIST BSB and X12 822: https://www.theglobaltreasurer.com/2013/02/21/the-822-the-twist-bsb-and-the-iso-bsb-whats-it-all-about/ ·
+  https://www.financialprofessionals.org/docs/default-source/default-document-library/sp/81.pdf
+- ISO 20022 Bank Services Billing message definition report (camt.086.001.04, 2020–21
+  maintenance): https://www.iso20022.org/sites/default/files/2020-12/ISO20022_MDRPart2_BankServicesBilling_2020_2021_v1_ForSEGReview.pdf
+- Account analysis and earnings credits: https://www.financialprofessionals.org/training-resources/resources/articles/Details/an-introduction-to-account-analysis-statements ·
+  https://southstatecorrespondent.com/banker-to-banker/treasury-cash-management/how-to-use-account-analysis-effectively-part-1/

@@ -22,6 +22,7 @@ or `docs/`.
 - [Authentication and sessions](#authentication-and-sessions)
 - [Web UI vs. JSON API](#web-ui-vs-json-api)
 - [Data exports](#data-exports)
+- [Billing](#billing)
 - [Background work and multiple instances](#background-work-and-multiple-instances)
 - [Known gaps](#known-gaps)
 
@@ -395,6 +396,27 @@ The last row is bank-wide only: those rows either can't be attributed to one cus
 would reveal the bank's own configuration and activity to a customer's admin. Password
 hashes and other secrets are never exported, and a final filter (`_SECRET_COLUMNS`) strips
 them even if a future change adds them by mistake.
+
+## Billing
+
+`services/billing/` turns activity into charges (BILLING_PLAN.md):
+
+- `metrics.py` counts each metric for a period, grouped by account, customer or bank.
+  Monthly metrics are a census of what's active at the end of the period; activity
+  metrics count rows created in it. Training backfill isn't counted.
+- `pricing.py` prices one fee for one customer: unit price or step tiers, then the
+  minimum, a negotiated price, the discount and waivers. Each line carries its camt.086
+  charge method and payment method (`BCMP` for analysis, `FLAT` for hard charge).
+- `statements.py` builds one statement per customer plus the bank-wide one, live.
+  `finalize.py` copies them into `billing_statement` / `billing_statement_line` as a
+  numbered version; the exports (`exports.py`: analysis feed, postings, camt.086) read
+  only those frozen rows, so a later fee change can't alter what was sent.
+- `platform.py` prices each bank's whole organization against the operator's
+  `platform_fee_item` schedule, binding the session to each bank in turn so RLS still
+  applies. That table has no `tenant_id` and no RLS; only a `billing`-scoped platform key
+  reaches it.
+
+Billing tables carry `tenant_id` and the same RLS policy as everything else.
 
 ## Background work and multiple instances
 
