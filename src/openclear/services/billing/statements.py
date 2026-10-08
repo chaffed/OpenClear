@@ -48,6 +48,18 @@ class Statement:
     billing_account_id: uuid.UUID | None
     billing_account_number: str | None
     lines: list[StatementLine] = field(default_factory=list)
+    # Set on a finalized statement (services/billing/finalize.py); None on a live preview.
+    record_id: uuid.UUID | None = None
+    version: int | None = None
+    finalized_at: object | None = None
+
+    @property
+    def status(self) -> str:
+        """camt.086 statement status: ORGN (first finalized version) or RPLC (a later
+        one replacing it); DRAFT for a live, unsaved calculation."""
+        if self.version is None:
+            return "DRAFT"
+        return "ORGN" if self.version == 1 else "RPLC"
 
     @property
     def list_total(self) -> Decimal:

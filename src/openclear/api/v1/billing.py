@@ -10,6 +10,7 @@ billing terms."""
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
@@ -32,6 +33,8 @@ from openclear.services import audit_log_service
 from openclear.services.billing import terms as billing_terms
 from openclear.services.billing.metrics import METRICS
 from openclear.services.billing.reports import statement_to_dict, statements_to_csv
+from openclear.services.billing.exports import analysis_feed_csv, camt086_xml, postings_csv
+from openclear.services.billing.finalize import finalize_period, finalized_versions, load_finalized
 from openclear.services.billing.statements import build_statements
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -190,14 +193,25 @@ def set_customer_terms(
 # --- Statements and the report ----------------------------------------------------------
 
 
-def _statements(db: Session, ctx: TenantContext, period: str | None, start: date | None, end: date | None, customer_id: uuid.UUID | None):
+def _period(period: str | None, start: date | None = None, end: date | None = None):
     try:
-        billing_period = billing_terms.parse_period(period, start, end)
+        return billing_terms.parse_period(period, start, end)
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+
+
+def _statements(
+    db: Session, ctx: TenantContext, period: str | None, start: date | None, end: date | None,
+    customer_id: uuid.UUID | None, finalized: bool = False,
+):
+    billing_period = _period(period, start, end)
     if ctx.customer_id is not None:
         # A customer's own users see only their own statement.
+        if finalized:
+            return load_finalized(db, ctx.tenant_id, billing_period, customer_id=ctx.customer_id, only_customer=True)
         return build_statements(db, ctx.tenant_id, billing_period, customer_id=ctx.customer_id, include_bank=False)
+    if finalized:
+        return load_finalized(db, ctx.tenant_id, billing_period, customer_id=customer_id)
     return build_statements(db, ctx.tenant_id, billing_period, customer_id=customer_id)
 
 
@@ -207,12 +221,14 @@ def list_statements(
     start: date | None = None,
     end: date | None = None,
     customer_id: uuid.UUID | None = None,
+    finalized: bool = False,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("billing:read")),
 ) -> list[dict]:
-    """Statements for a period (`period=2026-09`, or `start` and `end` dates), calculated
-    live: one per customer with charges, plus the bank-wide one."""
-    return [statement_to_dict(s) for s in _statements(db, ctx, period, start, end, customer_id)]
+    """Statements for a period (`period=2026-09`, or `start` and `end` dates): calculated
+    live by default, or the period's finalized version with `finalized=true`. One per
+    customer with charges, plus the bank-wide one."""
+    return [statement_to_dict(s) for s in _statements(db, ctx, period, start, end, customer_id, finalized)]
 
 
 @router.get("/report.csv")
@@ -221,14 +237,94 @@ def billing_report_csv(
     start: date | None = None,
     end: date | None = None,
     customer_id: uuid.UUID | None = None,
+    finalized: bool = False,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("billing:read")),
 ) -> Response:
     """The billing report: one row per statement line."""
-    statements = _statements(db, ctx, period, start, end, customer_id)
+    statements = _statements(db, ctx, period, start, end, customer_id, finalized)
     label = period or f"{start}_{end}"
     return Response(
         statements_to_csv(statements),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="billing-report-{label}.csv"'},
     )
+
+
+# --- Finalizing a period, and the exports ---------------------------------------------------
+
+
+@router.get("/periods/{period}")
+def period_status(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:manage"))) -> dict:
+    """Whether a month has been finalized, and every version it was finalized as."""
+    billing_period = _period(period)
+    current = load_finalized(db, ctx.tenant_id, billing_period)
+    return {
+        "period": period,
+        "finalized": bool(current),
+        "versions": finalized_versions(db, ctx.tenant_id, billing_period),
+        "statements": len(current),
+        "net_total": str(sum((s.net_total for s in current), Decimal("0.00"))),
+    }
+
+
+@router.post("/periods/{period}/finalize")
+def finalize(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:manage"))) -> dict:
+    """Saves the month's statements as a frozen record (a replacement version if it was
+    finalized before). The exports below are produced from it."""
+    billing_period = _period(period)
+    statements = finalize_period(db, ctx.tenant_id, billing_period, finalized_by_user_id=ctx.user_id)
+    version = statements[0].version if statements else None
+    total = sum((s.net_total for s in statements), Decimal("0.00"))
+    _audit(db, ctx, "billing.period.finalize", f"Finalized billing for {period} (version {version}, {len(statements)} statements, {total} due)", "tenant", ctx.tenant_id)
+    db.commit()
+    return {"period": period, "version": version, "statements": len(statements), "net_total": str(total)}
+
+
+def _finalized_for_export(db: Session, ctx: TenantContext, period: str):
+    if ctx.customer_id is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Billing exports are for bank staff")
+    billing_period = _period(period)
+    statements = load_finalized(db, ctx.tenant_id, billing_period)
+    if not statements:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Finalize {period} before exporting it")
+    return statements
+
+
+def _download(content, media_type: str, filename: str) -> Response:
+    return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/periods/{period}/analysis-feed.csv")
+def analysis_feed(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:read"))) -> Response:
+    """Account analysis customers' service lines, for the bank's analysis system."""
+    return _download(analysis_feed_csv(_finalized_for_export(db, ctx, period)), "text/csv", f"analysis-feed-{period}.csv")
+
+
+@router.get("/periods/{period}/hard-charge-postings.csv")
+def hard_charge_postings(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:read"))) -> Response:
+    """One debit per hard-charge customer with something due, for the core's fee posting."""
+    return _download(postings_csv(_finalized_for_export(db, ctx, period)), "text/csv", f"hard-charge-postings-{period}.csv")
+
+
+@router.get("/periods/{period}/camt086.xml")
+def camt086(
+    period: str,
+    customer_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_permission("billing:read")),
+) -> Response:
+    """The period's statements as an ISO 20022 camt.086 Bank Services Billing message."""
+    from openclear.config import get_settings
+    from openclear.domain.tenant import Tenant
+
+    statements = _finalized_for_export(db, ctx, period)
+    if customer_id is not None:
+        statements = [s for s in statements if s.customer_id == customer_id]
+    tenant = db.get(Tenant, ctx.tenant_id)
+    xml = camt086_xml(
+        statements, bank_name=tenant.name, bank_id=tenant.slug, report_id=f"{tenant.slug}-{period}-v{statements[0].version if statements else 0}",
+        version=get_settings().billing_camt086_version,
+    )
+    return _download(xml, "application/xml", f"camt086-{period}.xml")
+

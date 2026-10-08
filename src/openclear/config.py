@@ -187,6 +187,11 @@ class Settings(BaseSettings):
     # there means "use this"). Was 300 while exports ran inside the web process.
     data_export_timeout_seconds: int = 3600
 
+    # The camt.086 (ISO 20022 Bank Services Billing) message version the billing export
+    # declares (services/billing/exports.py). Match it to what the receiving analysis
+    # system or corporate client expects, and validate against its XSD.
+    billing_camt086_version: str = "camt.086.001.04"
+
     ml_min_new_decisions_for_retrain: int = 20
     # Minimum time between two retrains of the same (network_code, customer_id) pair —
     # closes off repeatedly hammering the on-demand retrain endpoint into a self-service

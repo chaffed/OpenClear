@@ -96,3 +96,63 @@ class CustomerFeeOverride(Base):
     fee_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("billing_fee_item.id", ondelete="CASCADE"), nullable=False)
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     waived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class BillingStatementRecord(Base):
+    """A finalized statement: the frozen record of what one customer (or the bank-wide
+    statement, `customer_id` None) was billed for a period, copied from the live
+    calculation so later changes to fees or terms can't alter it (BILLING_PLAN.md B2).
+
+    Finalizing a period again saves a new version and marks the previous one superseded;
+    camt.086 reports the first version as ORGN and later ones as RPLC."""
+
+    __tablename__ = "billing_statement"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("customer.id"), nullable=True, index=True)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    customer_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    billing_method: Mapped[BillingMethod] = mapped_column(
+        Enum(BillingMethod, name="billing_method", native_enum=False, length=20), nullable=False
+    )
+    billing_account_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    billing_account_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    list_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    discount_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    waived_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    net_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    finalized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finalized_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+
+
+class BillingStatementLineRecord(Base):
+    """One line of a finalized statement, with everything needed to reproduce it."""
+
+    __tablename__ = "billing_statement_line"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    statement_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("billing_statement.id", ondelete="CASCADE"), nullable=False, index=True)
+    line_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    fee_item_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    fee_code: Mapped[str] = mapped_column(String(40), nullable=False)
+    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    metric: Mapped[str] = mapped_column(String(60), nullable=False)
+    unit: Mapped[str] = mapped_column(String(10), nullable=False)
+    afp_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    bank_service_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    taxable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    volume: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    charge_method: Mapped[str] = mapped_column(String(4), nullable=False)
+    list_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(4), nullable=False)
+    tiers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    accounts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
