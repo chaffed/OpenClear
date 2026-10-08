@@ -36,6 +36,33 @@ How the OBPs take third parties (research, 2026-10-09):
 So an SDK alone isn't enough. OpenClear needs a few platform features first (Phase P0),
 then client libraries, an embeddable experience and a core integration kit on top.
 
+## Open source building blocks (decided 2026-10-09)
+
+- **[Apache Fineract](https://github.com/apache/fineract)** (Apache-2.0), the open source
+  core banking platform behind Mifos X: customers, savings and current accounts,
+  transactions and accounting over REST, with external business events on Kafka or
+  ActiveMQ. Docker Compose files ship with it (Postgres or MariaDB).
+  - **The sandbox core (P4):** each sandbox bank gets its customers and accounts from a
+    Fineract instance, so a vendor can test end to end without a Fiserv or Jack Henry
+    contract.
+  - **The first core adapter (P3):**
+    - sync Fineract customers and accounts into OpenClear by external id (REST, then
+      events);
+    - turn presented items (from CheckSim) into Fineract withdrawals;
+    - post pay decisions back, and leave returns unposted or reverse them.
+  - It's the reference for what an adapter does, not proof against a production US core:
+    Fineract's users are mostly in microfinance, and it doesn't clear checks or ACH.
+- **[Moov](https://github.com/moov-io)** (Apache-2.0): ACH and Image Cash Letter (X9)
+  libraries and servers.
+  - **Already used (2026-10-09):** to check OpenClear's NACHA and X9.37 parsers against a
+    reference. That found and fixed real gaps: standard cash letters weren't readable, and
+    most valid ACH files were rejected. Their sample files are now test fixtures.
+  - **Next:**
+    - generate realistic presentment files for the sandbox (X9 from CheckSim images,
+      NACHA debits);
+    - write the decision and return files a core takes back (P3);
+    - validate a vendor's files in the conformance suite (P4).
+
 ## What we'll build
 
 1. **Platform foundations (P0, in OpenClear itself):**
@@ -89,14 +116,15 @@ then client libraries, an embeddable experience and a core integration kit on to
      SDK extension).
 4. **Core integration kit (P3):**
    - reference adapters (presented items in, decisions out, account sync) with
-     configurable file layouts;
+     configurable file layouts, starting with Apache Fineract;
+   - decision and return files written with Moov's ACH and X9 libraries;
    - the .NET SDK;
    - a command-line tool (`openclear push`, `openclear decisions pull`,
      `openclear webhooks tail`).
 5. **Sandbox and certification (P4):**
-   - a self-service sandbox bank per vendor;
+   - a self-service sandbox bank per vendor, backed by an Apache Fineract core;
    - synthetic data from [CheckSim](../CheckSim) (synthetic checks with a ground-truth
-     manifest) and the volume seeder;
+     manifest) and the volume seeder, packaged as real X9.37 and NACHA files with Moov;
    - a conformance test suite an integration must pass;
    - a docs site with guides per integrator.
 
@@ -107,8 +135,8 @@ then client libraries, an embeddable experience and a core integration kit on to
 | P0 | API clients (OAuth client credentials), acting for a customer user, idempotency keys, decision feed and decision files, webhooks, external-id upserts, OpenAPI publishing and breaking-change check | L | Every SDK and integration depends on these |
 | P1 | Python and TypeScript SDKs (generated plus a thin layer), webhook verification, examples, published from their own repos | M | The two languages the first OBPs use (Q2's SDK is Python; Banno plugins are web apps) |
 | P2 | Sign-on handoff for customer users, embed mode with an origin allowlist, `@openclear/embed`, reference plugins for Banno, Alkami and Q2 | L | Lets a bank offer OpenClear inside its digital banking without the OBP rebuilding screens |
-| P3 | Core integration kit: decision files and outbox, presented-item and account-sync adapters, .NET SDK, CLI | M–L | Cores and middleware are mostly .NET and file-driven |
-| P4 | Sandbox per vendor, CheckSim-driven test data, conformance suite, docs site, certification checklist | M | Turns integrations into a repeatable product (and a consulting deliverable) |
+| P3 | Core integration kit: decision files and outbox (Moov), presented-item and account-sync adapters (Apache Fineract first), .NET SDK, CLI | M–L | Cores and middleware are mostly .NET and file-driven |
+| P4 | Sandbox per vendor on an Apache Fineract core, CheckSim and Moov test files, conformance suite, docs site, certification checklist | M | Turns integrations into a repeatable product (and a consulting deliverable) |
 
 ### P0 detail (the first branch)
 
@@ -164,6 +192,9 @@ then client libraries, an embeddable experience and a core integration kit on to
 
 (Newest last.)
 - 2026-10-09 Research done; plan written.
+- 2026-10-09 Apache Fineract (sandbox core, first adapter) and Moov (file formats) adopted.
+  Moov's reference implementations already used to fix the X9.37 and NACHA parsers
+  (branch `x937-standard`).
 
 ## Sources
 
@@ -179,3 +210,7 @@ then client libraries, an embeddable experience and a core integration kit on to
 - Jack Henry jXchange and the Vendor Integration Program: https://supergood.ai/docs/jack-henry-silverlake-api ·
   https://www.businesswire.com/news/home/20231011142292/en
 - Standard Webhooks: https://www.standardwebhooks.com/ · https://www.svix.com/resources/glossary/webhook-signature/
+- Apache Fineract: https://github.com/apache/fineract · https://hub.docker.com/r/apache/fineract ·
+  https://intelligrow.co/blog/mifos-and-apache-fineract-explained/
+- Moov ACH and Image Cash Letter: https://github.com/moov-io/ach · https://github.com/moov-io/imagecashletter ·
+  https://www.redhat.com/en/blog/moov-to-digital-banking-on-openshift
