@@ -153,6 +153,7 @@ class Settings(BaseSettings):
     tenant_asset_storage_dir: str = "./data/tenant_assets"
     bulk_upload_storage_dir: str = "./data/bulk_uploads"
     data_export_storage_dir: str = "./data/exports"
+    audit_archive_storage_dir: str = "./data/audit_archives"
     # Where new files are written (storage.py): "local" (the directories above) or "s3",
     # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
     # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.
@@ -285,6 +286,24 @@ class Settings(BaseSettings):
     # has passed with no human decision, per a per-customer CustomerDispositionSetting.
     enable_disposition_scheduler: bool = False  # opt-in: off by default, same reasoning as enable_ml_scheduler
     disposition_sweep_interval_seconds: int = 300
+    # Housekeeping (services/housekeeping_service.py, SCALE_PLAN.md S7): clears out
+    # operational rows that otherwise grow with every request. Runs daily at
+    # housekeeping_cron_hour when enabled (or call workers.tasks.housekeeping_job from
+    # cron). Each period is in days; 0 keeps those rows forever. A bank's business records
+    # (checks, ACH, exceptions, decisions) and its audit log are never touched here.
+    enable_housekeeping_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
+    housekeeping_cron_hour: int = 3
+    retention_finished_jobs_days: int = 30
+    retention_notifications_days: int = 180
+    retention_bulk_row_results_days: int = 365
+    # Data export archives hold a full copy of a bank's (or customer's) data, so they
+    # don't stay downloadable forever: the file is deleted and the export marked expired.
+    retention_data_exports_days: int = 30
+    # Audit log entries older than this many days are moved, verified, into a signed
+    # archive file per run (services/audit_archive_service.py). Nothing is deleted
+    # without being archived first, and the chain still verifies end to end. 0 (the
+    # default) keeps every entry in the table.
+    audit_archive_after_days: int = 0
 
     # Background jobs (workers/jobs.py): OCR, data exports, dropbox scans, retraining.
     # "in_process" runs a worker thread inside the web process, so a single-process

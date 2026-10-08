@@ -253,8 +253,15 @@ def verify_chain(session: Session, tenant_id: uuid.UUID) -> ChainVerificationRes
     """Walks every entry for this tenant in the order the chain was built and recomputes
     each hash from scratch — proof nothing has been edited, deleted, or reordered since
     it was written, not just that the stored values are internally consistent. Reads in
-    batches, so memory stays flat however long the log is."""
-    prev_hash: str | None = None
+    batches, so memory stays flat however long the log is.
+
+    Entries moved to archive files (services/audit_archive_service.py) aren't walked
+    here: the first entry left must chain onto the latest checkpoint's hash, and
+    audit_archive_service.verify_archives checks the archives themselves."""
+    from openclear.services.audit_archive_service import latest_checkpoint
+
+    checkpoint = latest_checkpoint(session, tenant_id)
+    prev_hash: str | None = checkpoint.through_entry_hash if checkpoint else None
     index = 0
     for index, entry in enumerate(AuditLogRepository(session, tenant_id).iter_in_chain_order()):
         if entry.prev_entry_hash != prev_hash:
@@ -276,4 +283,5 @@ def verify_chain(session: Session, tenant_id: uuid.UUID) -> ChainVerificationRes
 
         prev_hash = entry.entry_hash
 
-    return ChainVerificationResult(valid=True, checked_count=index + 1 if prev_hash else 0, broken_at_entry_id=None)
+    walked = prev_hash is not None and prev_hash != (checkpoint.through_entry_hash if checkpoint else None)
+    return ChainVerificationResult(valid=True, checked_count=index + 1 if walked else 0, broken_at_entry_id=None)

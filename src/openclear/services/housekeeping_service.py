@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Chaffed
+
+"""Clears out operational rows that grow with every request (SCALE_PLAN.md S7): finished
+background jobs, sent notifications, bulk-upload row results, and old data export
+archives. Each kind has a retention period in config.py (retention_*_days; 0 keeps it
+forever). A bank's business records are never deleted here: how long to keep those is
+the bank's own compliance decision (see SCALE_PLAN.md S7). Audit entries are only ever
+moved, verified, into signed archive files, and only when audit_archive_after_days is set
+(services/audit_archive_service.py).
+
+Deletes run in batches, each committed on its own, so a large backlog doesn't hold one
+long transaction. Runs across every bank, so it needs the database owner's view (no bank
+bound); workers.tasks.housekeeping_job calls it."""
+
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
+
+from openclear import storage
+from openclear.config import get_settings
+from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadRowResult
+from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
+from openclear.domain.job import Job, JobStatus
+from openclear.domain.notification import Notification, NotificationStatus
+
+logger = logging.getLogger(__name__)
+
+_BATCH = 5000
+
+
+@dataclass
+class HousekeepingResult:
+    deleted: dict[str, int] = field(default_factory=dict)
+
+
+def _cutoff(session: Session, days: int) -> datetime | None:
+    if days <= 0:
+        return None
+    return session.execute(select(func.now())).scalar_one() - timedelta(days=days)
+
+
+def _delete_in_batches(session: Session, model, *conditions) -> int:
+    total = 0
+    while True:
+        ids = session.execute(select(model.id).where(*conditions).limit(_BATCH)).scalars().all()
+        if not ids:
+            return total
+        session.execute(delete(model).where(model.id.in_(ids)))
+        session.commit()
+        total += len(ids)
+
+
+def run(session: Session) -> HousekeepingResult:
+    settings = get_settings()
+    result = HousekeepingResult()
+
+    if cutoff := _cutoff(session, settings.retention_finished_jobs_days):
+        result.deleted["jobs"] = _delete_in_batches(
+            session, Job, Job.status.in_([JobStatus.SUCCEEDED, JobStatus.FAILED]), Job.finished_at < cutoff
+        )
+
+    if cutoff := _cutoff(session, settings.retention_notifications_days):
+        result.deleted["notifications"] = _delete_in_batches(
+            session, Notification, Notification.status != NotificationStatus.PENDING, Notification.created_at < cutoff
+        )
+
+    if cutoff := _cutoff(session, settings.retention_bulk_row_results_days):
+        # The upload record itself, its file and what it created are kept: only the
+        # per-row outcomes go (the upload keeps its counts).
+        old_uploads = select(BulkUploadFile.id).where(BulkUploadFile.completed_at < cutoff)
+        result.deleted["bulk_row_results"] = _delete_in_batches(
+            session, BulkUploadRowResult, BulkUploadRowResult.bulk_upload_file_id.in_(old_uploads)
+        )
+
+    if cutoff := _cutoff(session, settings.retention_data_exports_days):
+        expired = 0
+        for job in session.execute(
+            select(DataExportJob).where(DataExportJob.status == DataExportJobStatus.COMPLETED, DataExportJob.completed_at < cutoff)
+        ).scalars().all():
+            if job.archive_path:
+                try:
+                    storage.delete(job.archive_path)
+                except Exception:  # noqa: BLE001 -- keep going; the next run tries again
+                    logger.exception("Couldn't delete expired export archive %s", job.archive_path)
+                    continue
+            job.status, job.archive_path = DataExportJobStatus.EXPIRED, None
+            session.commit()
+            expired += 1
+        result.deleted["data_export_archives"] = expired
+
+    if settings.audit_archive_after_days > 0:
+        from openclear.services import audit_archive_service
+
+        archived = audit_archive_service.archive_all_banks(session, settings.audit_archive_after_days)
+        result.deleted["audit_entries_archived"] = sum(archived.values())
+
+    logger.info("Housekeeping: %s", ", ".join(f"{count} {name}" for name, count in result.deleted.items()) or "nothing to do")
+    return result

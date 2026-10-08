@@ -323,7 +323,7 @@ def _purge_tenant_files(session: Session, tenant_id: uuid.UUID) -> None:
     joblib, no tenant_id anywhere in the path or as a column on MlModel itself
     (domain/ml_model.py) -- so each artifact has to be found via its owning Customer and
     unlinked individually."""
-    for area in ("check_images", "bulk_uploads", "tenant_assets", "data_exports"):
+    for area in ("check_images", "bulk_uploads", "tenant_assets", "data_exports", "audit_archives"):
         storage.delete_tenant(area, tenant_id)
 
     artifact_paths = session.execute(

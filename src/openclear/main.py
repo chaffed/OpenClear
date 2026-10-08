@@ -40,6 +40,7 @@ async def _lifespan(app: FastAPI):
         or settings.auto_import_enabled
         or settings.notifications_enabled
         or settings.enable_disposition_scheduler
+        or settings.enable_housekeeping_scheduler
         or (settings.demo_tenant_enabled and settings.demo_tenant_reset_interval_minutes > 0)
     ):
         from openclear.workers.scheduler import start_scheduler, stop_scheduler

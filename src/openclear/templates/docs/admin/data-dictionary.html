@@ -846,7 +846,7 @@ erDiagram
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
 <tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>Null = full-tenant export.</td></tr>
 <tr><td>requested_by_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td></td></tr>
-<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>pending / running / completed / failed.</td></tr>
+<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>pending / running / completed / failed / expired (the archive was deleted after retention_data_exports_days).</td></tr>
 <tr><td>archive_path / size_bytes</td><td>String(1000) / Integer</td><td>yes</td><td></td><td></td></tr>
 <tr><td>error_message</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
 <tr><td>requested_at / completed_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
@@ -868,6 +868,7 @@ credential is scoped to one tenant" — a cross-tenant key for the usage-meterin
 erDiagram
     tenant ||--o{ audit_log_entry : logs
     user ||--o{ audit_log_entry : acts
+    tenant ||--o{ audit_log_checkpoint : archives
     tenant ||--o{ wizard_step_ack : tracks
     customer ||--o{ wizard_step_ack : scopes
     user ||--o{ wizard_step_ack : acknowledges
@@ -879,6 +880,10 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
         uuid actor_user_id FK
+    }
+    audit_log_checkpoint {
+        uuid id PK
+        uuid tenant_id FK
     }
     platform_api_key { uuid id PK }
     wizard_step_ack {
@@ -906,6 +911,25 @@ erDiagram
 <tr><td>prev_entry_hash</td><td>String(200)</td><td>yes</td><td></td><td>Null only for the very first entry in the chain.</td></tr>
 <tr><td>entry_hash</td><td>String(200)</td><td>no</td><td></td><td>Covers this entry's own fields plus prev_entry_hash — the hash chain "Verify chain" recomputes from scratch.</td></tr>
 <tr><td>sequence</td><td>BigInteger</td><td>no</td><td>UK (with tenant_id)</td><td>The entry's position in the organization's chain (1, 2, 3…). Unique, so two simultaneous writers can't both chain onto the same entry.</td></tr>
+</tbody>
+</table>
+
+<h3>audit_log_checkpoint</h3>
+<p>A run of the oldest audit entries moved into a signed archive file (only when the
+platform sets <code>audit_archive_after_days</code>). The first entry left in
+audit_log_entry chains onto <code>through_entry_hash</code>.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>first_sequence / through_sequence</td><td>BigInteger</td><td>no</td><td>UK (through, with tenant_id)</td><td>The range of entries archived.</td></tr>
+<tr><td>through_entry_hash</td><td>String(200)</td><td>no</td><td></td><td>The last archived entry's hash: where the live chain carries on from.</td></tr>
+<tr><td>entry_count</td><td>BigInteger</td><td>no</td><td></td><td></td></tr>
+<tr><td>archive_ref</td><td>String(1000)</td><td>no</td><td></td><td>The gzipped JSON Lines file (a local path or s3://...).</td></tr>
+<tr><td>archive_sha256 / archive_signature</td><td>String</td><td>no</td><td></td><td>The file's fingerprint and its ECDSA signature (file-signing key), checked by "Verify".</td></tr>
+<tr><td>oldest_occurred_at / newest_occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
 </tbody>
 </table>
 

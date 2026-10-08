@@ -17,6 +17,7 @@ outside party.</p>
   own data export option to scope the export to just that customer's records.</li>
 </ul>
 
-<p>Export jobs run asynchronously and the resulting file is retained for a limited time
-(configurable in Settings) before it expires and must be regenerated.</p>
+<p>Export jobs run in the background. Because an archive is a full copy of your data, it's
+kept for a limited time (30 days unless your platform operator has set otherwise) and then
+deleted; the export shows as expired, and you can start a new one.</p>
 {% endblock %}

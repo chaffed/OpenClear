@@ -47,6 +47,8 @@
         <td>
           {% if job.status.value == 'completed' %}
           <a href="/ui/settings/data-export/{{ job.id }}/download">Download</a>
+          {% elif job.status.value == 'expired' %}
+          <span class="text-muted">Removed after {{ retention_days }} days</span>
           {% elif job.status.value == 'failed' %}
           <span class="flash flash-error" title="{{ job.error_message }}">Failed</span>
           {% endif %}

@@ -16,6 +16,9 @@ class DataExportJobStatus(str, enum.Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    # Completed, then its archive was deleted by housekeeping after
+    # retention_data_exports_days (services/housekeeping_service.py).
+    EXPIRED = "expired"
 
 
 class DataExportJob(Base):

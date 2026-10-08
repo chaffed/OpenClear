@@ -353,3 +353,15 @@ def notification_dispatch_job() -> None:
             logger.info("Notification dispatch: %d sent, %d retrying, %d permanently failed", sent, retrying, failed)
     finally:
         session.close()
+
+
+def housekeeping_job() -> None:
+    """Daily clean-up of operational rows (services/housekeeping_service.py): finished
+    jobs, sent notifications, old bulk-upload row results and expired export archives."""
+    from openclear.services import housekeeping_service
+
+    session = get_session_factory()()
+    try:
+        housekeeping_service.run(session)
+    finally:
+        session.close()

@@ -481,6 +481,25 @@ Shared between instances (SCALE_PLAN.md S6):
 Still per process: the OIDC discovery and key caches, and the loaded-model cache. See
 README, "Running more than one instance".
 
+## Data growth
+
+- **Housekeeping** (`services/housekeeping_service.py`, daily): finished jobs,
+  notifications, bulk-upload row results and expired export archives, each after its own
+  `retention_*_days`, deleted in batches of 5,000 with a commit each. Business records are
+  never touched.
+- **Audit archiving** (`services/audit_archive_service.py`, opt-in): under the bank's
+  audit lock, the oldest entries are verified (signature, and the link from the previous
+  checkpoint), written to a gzipped JSON Lines file, stored, fingerprinted and signed;
+  an `audit_log_checkpoint` records the range and last hash, and the entries are deleted
+  in the same transaction. `verify_chain` starts from the latest checkpoint;
+  `verify_archives` re-checks every file and that consecutive checkpoints link. The
+  newest entry is never archived, so appending never needs the checkpoint.
+- **Query budgets** (`tests/test_auth/test_query_budget.py`): statements per bulk-import
+  row, and list pages that must not query per row, so a scale regression fails CI.
+- **Partitioning** isn't used. S0 showed pages and queries fast at 500,000 checks with
+  S2's indexes; revisit (monthly partitions of `paid_item`, `ach_transaction`,
+  `audit_log_entry`) when a real bank's volumes say so.
+
 ## Known gaps
 
 - **Historical check features** (issuer exception rate, amount z-score against the

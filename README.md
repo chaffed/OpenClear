@@ -1031,6 +1031,30 @@ through `/api/v1/platform/jobs` (API.md).
 Exports stream to disk in batches, so a bank of any size can export. The only bound is the
 time limit, `OPENCLEAR_DATA_EXPORT_TIMEOUT_SECONDS` (default an hour; a bank can set its own).
 
+### Housekeeping and data growth
+
+Some tables grow with every request without being anyone's record. A daily housekeeping
+run (`services/housekeeping_service.py`; turn it on with
+`OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER=true`, or call `workers.tasks.housekeeping_job`
+from cron) clears them out:
+
+| What | Kept for | Setting (days; 0 keeps them forever) |
+|---|---|---|
+| Finished background jobs | 30 days | `OPENCLEAR_RETENTION_FINISHED_JOBS_DAYS` |
+| Sent (or failed) notifications | 180 days | `OPENCLEAR_RETENTION_NOTIFICATIONS_DAYS` |
+| Bulk-upload row results (the upload, its file and counts stay) | 365 days | `OPENCLEAR_RETENTION_BULK_ROW_RESULTS_DAYS` |
+| Data export archives (a full copy of a bank's data) | 30 days, then marked expired | `OPENCLEAR_RETENTION_DATA_EXPORTS_DAYS` |
+
+It never deletes a bank's business records (presented checks, ACH, exceptions,
+decisions, issued items): how long to keep those is each bank's compliance decision.
+
+**The audit log** can be archived instead (`OPENCLEAR_AUDIT_ARCHIVE_AFTER_DAYS`, off by
+default; `services/audit_archive_service.py`). Entries older than that are verified, then
+moved into a signed, gzipped JSON Lines file in storage, and a checkpoint records where
+the live chain carries on. A broken chain is never archived. Nothing is lost: the audit
+log page lists each archive for download, and "Verify" checks the archives too. The
+newest entry always stays in the table.
+
 ## Upgrade and downgrade support
 
 - **Upgrading is always supported**, from any prior version straight to the latest —

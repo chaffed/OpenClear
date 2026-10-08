@@ -13,6 +13,7 @@ from openclear.workers.leader_lock import run_exclusively
 from openclear.workers.tasks import (
     demo_reset_job,
     dropbox_import_job,
+    housekeeping_job,
     notification_dispatch_job,
     retrain_job,
     sweep_expired_dispositions_job,
@@ -36,6 +37,8 @@ def start_scheduler() -> BackgroundScheduler:
         _add_job(_scheduler, "notification_dispatch_job", notification_dispatch_job, IntervalTrigger(seconds=settings.notification_dispatch_interval_seconds))
     if settings.enable_disposition_scheduler:
         _add_job(_scheduler, "sweep_expired_dispositions_job", sweep_expired_dispositions_job, IntervalTrigger(seconds=settings.disposition_sweep_interval_seconds))
+    if settings.enable_housekeeping_scheduler:
+        _add_job(_scheduler, "housekeeping_job", housekeeping_job, CronTrigger(hour=settings.housekeeping_cron_hour, minute=30))
     if demo_reset_enabled(settings):
         _add_job(_scheduler, "demo_reset_job", demo_reset_job, IntervalTrigger(minutes=settings.demo_tenant_reset_interval_minutes))
     _scheduler.start()

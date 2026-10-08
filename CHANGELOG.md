@@ -27,6 +27,20 @@
 - **Upgrading:** run `alembic upgrade head` (new columns on `bulk_upload_file`, new table
   `bulk_upload_row_result`).
 
+### Scalability (SCALE_PLAN.md S7): data growth
+
+- **Housekeeping:** with `OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER=true`, a daily run
+  deletes finished background jobs (after 30 days), sent notifications (180), bulk-upload
+  row results (365) and data export archives (30, then the export shows as expired). Each
+  period is a setting; 0 keeps them forever. A bank's business records are never touched.
+  **Behavior change** once enabled: export archives are no longer downloadable forever.
+- **Audit log archiving** (opt-in, `OPENCLEAR_AUDIT_ARCHIVE_AFTER_DAYS`): older entries
+  are verified and moved into signed archive files. The audit log page lists and verifies
+  them, and they can be downloaded; full data exports include them.
+- **CI checks query counts:** bulk imports must stay under 20 statements per row, and list
+  pages mustn't make a query per row.
+- **Upgrading:** run `alembic upgrade head` (new table `audit_log_checkpoint`).
+
 ### Scalability (SCALE_PLAN.md S6): several instances without a shared disk
 
 - **Object storage:** set `OPENCLEAR_STORAGE_BACKEND=s3` and `OPENCLEAR_S3_BUCKET` (plus

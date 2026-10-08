@@ -43,6 +43,7 @@ AREAS = {
     "bulk_uploads": "bulk_upload_storage_dir",
     "data_exports": "data_export_storage_dir",
     "ml_artifacts": "ml_artifact_dir",
+    "audit_archives": "audit_archive_storage_dir",
 }
 
 

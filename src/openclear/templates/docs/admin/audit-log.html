@@ -14,6 +14,11 @@ OpenClear, across both the web UI and the API — who did what, and when.</p>
   in order, most recent first.</li>
   <li><strong>Verify integrity</strong> — the "Verify" action checks the log's hash chain
   end to end, confirming no entry has been altered or removed since it was written.</li>
+  <li><strong>Archived entries</strong> — your platform operator can have older entries
+  moved out of the live log into signed archive files, so it stays fast as it grows.
+  Nothing is lost: each archive is listed under "Archived entries" with a download link
+  (one entry per line, with everything needed to check its signature), "Verify" checks
+  the archives too, and the live log carries on from the last archived entry.</li>
 </ul>
 
 <p>This is a bank-wide view (not available in a customer-scoped session) and, like other

@@ -400,15 +400,35 @@ and D7 (pluggable limiter, per process by default, Redis optional).
 
 ## Phase S7 — Data growth
 
-**Status: NOT STARTED.** Only as far as S0's numbers justify.
+**Status: COMPLETE (2026-10-09, branch `scale-s7`).** Only as far as S0's numbers justify.
 
-- [ ] A retention policy per table (paid items, ACH transactions, notifications, audit
-      log), as settings. The audit log is never deleted; old entries can be archived with
-      a verified checkpoint.
-- [ ] If S0 shows it's needed: monthly Postgres partitioning of `paid_item`,
-      `ach_transaction` and `audit_log_entry`.
-- [ ] A scale test in CI, kept small enough to run on every push, that fails on a large
-      regression in the S0 timings.
+- [x] **Retention, as settings** (`services/housekeeping_service.py`, a daily job behind
+      `enable_housekeeping_scheduler`): finished jobs (30 days), sent notifications (180),
+      bulk-upload row results (365), data export archives (30, then marked `expired`; an
+      archive is a full copy of a bank's data). Batches of 5,000, a commit each; 0 keeps
+      forever.
+- [x] **The audit log is never deleted; old entries can be archived with a verified
+      checkpoint** (`services/audit_archive_service.py`, `audit_archive_after_days`, off by
+      default; migration `b9d1f3a5c7e8`, `audit_log_checkpoint` with RLS). Verified before
+      archiving (a broken chain is refused), gzipped JSON Lines, fingerprinted and signed,
+      deleted in the same transaction as the checkpoint; the newest entry always stays.
+      `verify_chain` starts from the checkpoint; `verify_archives` checks the files and
+      the links between them. The audit log page lists, verifies and serves the archives;
+      data exports include them; the demo reset removes them.
+- [~] **A bank's business records** (checks, ACH, exceptions, decisions, issued items):
+      **no purge.** How long to keep them (often 7 years) is each bank's compliance
+      decision, and they feed duplicate detection, billing history and training. Revisit
+      with a bank's retention policy in hand, as a per-bank setting.
+- [~] **Partitioning:** **not needed yet.** S0 measured pages at 9–32 ms and the busiest
+      queries at 0.3–1 ms with 500,000 checks once S2's indexes were in. Revisit when a real
+      bank's volumes approach tens of millions of rows per table.
+- [x] **A scale check in CI** (`tests/test_auth/test_query_budget.py`): counts SQL
+      statements, which is deterministic where timings on shared CI runners aren't. A bulk
+      import must stay under 20 statements per row (16 today) and list pages (exceptions,
+      paid items, dashboard, the API lists) must not grow with the rows shown. It runs on
+      SQLite and Postgres in the existing CI jobs.
+- [x] Tests: `test_housekeeping.py`, `test_audit_archive.py` (round trip, second archive
+      linking, tampered archive, broken chain refused, housekeeping wiring, the web page).
 
 ---
 
@@ -440,3 +460,4 @@ recommendations unless you say otherwise.
 - 2026-10-08 Billing (BILLING_PLAN.md) and release 1.6.0, pushed. S4 complete (bulk imports in the background).
 - 2026-10-08 S5 complete (training window, row cap, leaner loading, model cache limit).
 - 2026-10-09 S6 complete (object storage, shared rate limits, pool settings).
+- 2026-10-09 S7 complete (housekeeping, audit archiving, query budgets in CI). The plan is done.

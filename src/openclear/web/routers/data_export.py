@@ -13,6 +13,7 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
 from openclear import storage
+from openclear.config import get_settings
 from openclear.services import audit_log_service, customer_service, data_export_service
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
@@ -97,7 +98,7 @@ def list_bank_exports(
 ) -> HTMLResponse:
     _require_bank_wide_session(ctx)
     jobs = _list_jobs(db, ctx.tenant_id, None)
-    return render_template(request, "settings/data_export.html", ctx=ctx, jobs=jobs)
+    return render_template(request, "settings/data_export.html", ctx=ctx, jobs=jobs, retention_days=get_settings().retention_data_exports_days)
 
 
 @router.post("/ui/settings/data-export/start")
@@ -150,7 +151,9 @@ def list_customer_exports(
 ) -> HTMLResponse:
     customer = _get_customer_or_404(db, ctx, customer_id)
     jobs = _list_jobs(db, ctx.tenant_id, customer_id)
-    return render_template(request, "customers/data_export.html", ctx=ctx, customer=customer, jobs=jobs)
+    return render_template(
+        request, "customers/data_export.html", ctx=ctx, customer=customer, jobs=jobs, retention_days=get_settings().retention_data_exports_days
+    )
 
 
 @router.post("/ui/customers/{customer_id}/data-export/start")

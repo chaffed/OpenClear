@@ -250,6 +250,11 @@ def _build_archive(
                     raise ExportTimedOut(f"Export exceeded its {timeout_seconds}s time limit while copying bulk upload files.")
                 _add_file_if_exists(zf, upload.storage_path, f"files/bulk_uploads/{Path(upload.storage_path).name}")
 
+            from openclear.services.audit_archive_service import list_checkpoints
+
+            for checkpoint in list_checkpoints(session, tenant_id):  # audit entries moved to archive files
+                _add_file_if_exists(zf, checkpoint.archive_ref, f"files/audit_archives/{Path(checkpoint.archive_ref).name}")
+
             tenant = session.get(Tenant, tenant_id)
             zf.writestr("data/tenant.json", json.dumps(_row_to_dict(tenant), indent=2))
             if tenant.logo_path:

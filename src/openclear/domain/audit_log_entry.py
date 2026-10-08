@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -54,3 +54,27 @@ class AuditLogEntry(Base):
     # DER signature, which can run up to ~144 hex chars.
     prev_entry_hash: Mapped[str | None] = mapped_column(String(200), nullable=True)
     entry_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
+class AuditLogCheckpoint(Base):
+    """A run of a bank's oldest audit entries, moved out of the table into a signed archive
+    file (services/audit_archive_service.py, SCALE_PLAN.md S7) so the table stops growing
+    forever without losing anything. The chain still verifies: the first entry left in the
+    table chains onto `through_entry_hash`, the archive's last entry, and the archive file
+    is fingerprinted and signed so it can be checked on its own later."""
+
+    __tablename__ = "audit_log_checkpoint"
+    __table_args__ = (UniqueConstraint("tenant_id", "through_sequence", name="uq_audit_log_checkpoint_tenant_through"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    first_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    through_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    through_entry_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    entry_count: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    archive_ref: Mapped[str] = mapped_column(String(1000), nullable=False)
+    archive_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    archive_signature: Mapped[str] = mapped_column(String(200), nullable=False)
+    oldest_occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    newest_occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -11,6 +11,9 @@
   breaks the chain from that point forward.</p>
 <p>"Verify chain" recomputes every hash from scratch right now — proof nothing has
   been tampered with since, not a cached flag.</p>
+<p>If your platform archives older entries, they're moved into signed files listed
+  under "Archived entries", which you can download. Verifying checks those files too,
+  and that the entries here carry on from the last one archived.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -24,6 +27,13 @@
     <span class="badge badge-ok">chain verified — {{ verification.checked_count }} entries, no tampering detected</span>
     {% else %}
     <span class="badge badge-danger">CHAIN BROKEN after {{ verification.checked_count }} entries — tampering or deletion detected</span>
+    {% endif %}
+    {% if archive_check %}
+    {% if archive_check.valid %}
+    <span class="badge badge-ok">{{ archive_check.checked_archives }} archive{{ "s" if archive_check.checked_archives != 1 else "" }} verified — {{ "{:,}".format(archive_check.checked_entries) }} entries</span>
+    {% else %}
+    <span class="badge badge-danger">ARCHIVE PROBLEM — {{ archive_check.problem }}</span>
+    {% endif %}
     {% endif %}
   </p>
   {% endif %}
@@ -47,4 +57,23 @@
   <p>No actions recorded yet.</p>
   {% endif %}
 </div>
+{% if checkpoints %}
+<div class="card">
+  <h2>Archived entries</h2>
+  <table>
+    <thead><tr><th>Entries</th><th>From</th><th>To</th><th>Count</th><th></th></tr></thead>
+    <tbody>
+      {% for c in checkpoints %}
+      <tr>
+        <td>{{ c.first_sequence }}–{{ c.through_sequence }}</td>
+        <td>{{ c.oldest_occurred_at.strftime("%Y-%m-%d") }}</td>
+        <td>{{ c.newest_occurred_at.strftime("%Y-%m-%d") }}</td>
+        <td>{{ "{:,}".format(c.entry_count) }}</td>
+        <td><a href="/ui/audit-log/archives/{{ c.id }}">{{ icon("download") }}Download</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 {% endblock %}
