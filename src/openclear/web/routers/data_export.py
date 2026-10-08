@@ -5,14 +5,15 @@ import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
-from openclear.services import audit_log_service, customer_service, data_export_service, data_export_storage
+from openclear import storage
+from openclear.services import audit_log_service, customer_service, data_export_service
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
 from openclear.workers import jobs
@@ -58,7 +59,6 @@ def _start_job(
 
 
 def _download_response(db: Session, ctx: TenantContext, job: DataExportJob) -> Response:
-    data = data_export_storage.read_export_archive(job.archive_path)
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -71,8 +71,8 @@ def _download_response(db: Session, ctx: TenantContext, job: DataExportJob) -> R
     )
     db.commit()
     filename = f"openclear-export-{job.id}.zip"
-    return Response(
-        content=data,
+    return StreamingResponse(
+        storage.iter_chunks(job.archive_path),
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename=\"export\"; filename*=UTF-8''{quote(filename)}"},
     )

@@ -18,6 +18,19 @@ def _connect_args(database_url: str) -> dict:
     return {}
 
 
+def _pool_args(settings: Settings) -> dict:
+    """Connection pool sizing (SCALE_PLAN.md S6). SQLite uses its own pool, which takes none
+    of these."""
+    if settings.database_url.startswith("sqlite"):
+        return {}
+    return {
+        "pool_size": settings.db_pool_size,
+        "max_overflow": settings.db_max_overflow,
+        "pool_timeout": settings.db_pool_timeout_seconds,
+        "pool_recycle": settings.db_pool_recycle_seconds,
+    }
+
+
 def create_db_engine(settings: Settings | None = None) -> Engine:
     settings = settings or get_settings()
     return create_engine(
@@ -25,6 +38,7 @@ def create_db_engine(settings: Settings | None = None) -> Engine:
         connect_args=_connect_args(settings.database_url),
         pool_pre_ping=True,
         future=True,
+        **_pool_args(settings),
     )
 
 

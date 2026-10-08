@@ -27,6 +27,7 @@ import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -37,6 +38,7 @@ from openclear.bulk_import.nacha import NachaParseError, parse_nacha_file
 from openclear.bulk_import.tabular import TabularParseError, parse_tabular_file
 from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
 from openclear.bulk_import.zip_import import ZipImportError, parse_zip_manifest
+from openclear import storage
 from openclear.config import get_settings
 from openclear.domain.bulk_upload_file import (
     BulkUploadFile,
@@ -98,7 +100,7 @@ class RowContext:
 
 @dataclass(frozen=True, slots=True)
 class ImportSpec:
-    load: Callable[[str, str], LoadedFile]  # (stored path, original filename)
+    load: Callable[[str, str], LoadedFile]  # (stored file's reference, original filename)
     ingest: Callable[[RowContext, SourceRow, LoadedFile], uuid.UUID]
     resource_type: str
     audit_action: str
@@ -109,9 +111,17 @@ class ImportSpec:
 # --- Loading a stored file ----------------------------------------------------------------
 
 
-def _read(path: str) -> bytes:
-    with open(path, "rb") as handle:
-        return handle.read()
+def _read(ref: str) -> bytes:
+    return storage.read(ref)
+
+
+def _local_file(ref: str, loaded_closers: list) -> Path:
+    """A real file for the stored upload (downloaded first if it's in object storage),
+    kept until the LoadedFile is closed."""
+    context = storage.local_path(ref)
+    path = context.__enter__()
+    loaded_closers.append(lambda: context.__exit__(None, None, None))
+    return path
 
 
 def _load_tabular(path: str, filename: str) -> LoadedFile:
@@ -136,38 +146,44 @@ def _load_nacha(path: str, filename: str) -> LoadedFile:
     return LoadedFile([SourceRow(nacha_entry_label(entry), entry) for entry in entries])
 
 
-def _load_x937(path: str, filename: str) -> LoadedFile:
+def _load_x937(ref: str, filename: str) -> LoadedFile:
     from openclear.networks.check.bulk_import import x937_item_label
 
-    handle = open(path, "rb")  # noqa: SIM115 -- closed by LoadedFile.close
+    closers: list = []
     try:
+        handle = open(_local_file(ref, closers), "rb")  # noqa: SIM115 -- closed by LoadedFile.close
+        closers.append(handle.close)
         content = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) if handle.seek(0, 2) else b""
+        if isinstance(content, mmap.mmap):
+            closers.append(content.close)
         items = parse_x937_file(content, lazy_images=True)
     except X937ParseError as exc:
-        handle.close()
+        LoadedFile([], _closers=closers).close()
         raise BulkFileRejected(str(exc)) from None
     except Exception:
-        handle.close()
+        LoadedFile([], _closers=closers).close()
         raise
-    loaded = LoadedFile([SourceRow(x937_item_label(item), item) for item in items], content=content)
-    if isinstance(content, mmap.mmap):
-        loaded._closers.append(content.close)
-    loaded._closers.append(handle.close)
+    loaded = LoadedFile([SourceRow(x937_item_label(item), item) for item in items], content=content, _closers=closers)
     if not items:
         loaded.close()
         raise BulkFileRejected("That file has no check detail records.")
     return loaded
 
 
-def _load_zip(path: str, filename: str) -> LoadedFile:
+def _load_zip(ref: str, filename: str) -> LoadedFile:
+    closers: list = []
     try:
-        rows, images = parse_zip_manifest(path, lazy_images=True)
+        rows, images = parse_zip_manifest(str(_local_file(ref, closers)), lazy_images=True)
     except ZipImportError as exc:
+        LoadedFile([], _closers=closers).close()
         raise BulkFileRejected(str(exc)) from None
+    except Exception:
+        LoadedFile([], _closers=closers).close()
+        raise
     archive = getattr(images, "_archive", None)
-    loaded = LoadedFile([SourceRow(f"row {index + 2}", row) for index, row in enumerate(rows)], images=images)
     if archive is not None:
-        loaded._closers.append(archive.close)
+        closers.append(archive.close)
+    loaded = LoadedFile([SourceRow(f"row {index + 2}", row) for index, row in enumerate(rows)], images=images, _closers=closers)
     if not rows:
         loaded.close()
         raise BulkFileRejected("That manifest has no data rows.")

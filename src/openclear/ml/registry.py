@@ -6,14 +6,13 @@ import hmac
 import io
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import joblib
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from openclear.config import get_settings
+from openclear import storage
 from openclear.domain.ml_model import MlModel, MlModelStatus
 from openclear.ml.model import ScoringModel
 
@@ -28,9 +27,8 @@ def _sha256(data: bytes) -> str:
 
 
 class ArtifactStore:
-    """Local filesystem by default. Swapping to S3/Blob storage for multi-instance
-    enterprise deployments later is a config change here, not a rewrite of train.py/
-    predict.py — same pattern as ocr/storage.py.
+    """Model files, wherever storage.py keeps them (local disk, or object storage shared by
+    every instance).
 
     Artifacts are joblib (pickle) files, so loading one can run arbitrary code. Every
     file's SHA-256 is recorded on its ml_model row when it's written, and load_model()
@@ -39,25 +37,20 @@ class ArtifactStore:
     (or a shared volume) but not the database can no longer get code run. Hashing and
     unpickling use the same in-memory bytes, so the file can't be swapped in between."""
 
-    def __init__(self, base_dir: str | None = None) -> None:
-        self.base_dir = Path(base_dir or get_settings().ml_artifact_dir)
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-
     def save(self, model: ScoringModel, key: str) -> tuple[str, str]:
-        """Writes the model and returns (path, sha256 of exactly the bytes written)."""
+        """Writes the model (storage.py) and returns (reference, sha256 of exactly the
+        bytes written)."""
         buffer = io.BytesIO()
         joblib.dump(model, buffer)
         data = buffer.getvalue()
-        path = self.base_dir / f"{key}.joblib"
-        path.write_bytes(data)
-        return str(path), _sha256(data)
+        return storage.put("ml_artifacts", f"{key}.joblib", data), _sha256(data)
 
     def _verified_bytes(self, path: str, expected_sha256: str | None) -> bytes:
         if not expected_sha256:
             raise ArtifactIntegrityError(
                 f"No fingerprint is recorded for model file {path}, so it won't be loaded. Retrain the model to replace it."
             )
-        data = Path(path).read_bytes()
+        data = storage.read(path)
         if not hmac.compare_digest(_sha256(data), expected_sha256):
             raise ArtifactIntegrityError(f"Model file {path} has changed since it was saved, so it won't be loaded.")
         return data
@@ -65,10 +58,11 @@ class ArtifactStore:
     def load_model(self, row: MlModel) -> ScoringModel:
         return joblib.load(io.BytesIO(self._verified_bytes(row.artifact_path, row.artifact_sha256)))
 
-    def copy_model(self, row: MlModel, destination: Path) -> str:
-        """Copies a verified artifact to `destination` and returns its sha256 (unchanged)."""
-        destination.write_bytes(self._verified_bytes(row.artifact_path, row.artifact_sha256))
-        return row.artifact_sha256
+    def copy_model(self, row: MlModel, key: str) -> tuple[str, str]:
+        """Copies a verified artifact to a new key and returns (reference, sha256), the
+        sha256 unchanged."""
+        data = self._verified_bytes(row.artifact_path, row.artifact_sha256)
+        return storage.put("ml_artifacts", f"{key}.joblib", data), row.artifact_sha256
 
 
 def _slot_filter(stmt, *, tenant_id: uuid.UUID | None, customer_id: uuid.UUID | None):

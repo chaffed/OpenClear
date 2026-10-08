@@ -22,7 +22,7 @@ from openclear.web.deps import (
     WebPasswordChangeRequired,
     render_template,
 )
-from openclear.web.rate_limit import limiter
+from openclear.web import rate_limit
 from openclear.web.router import web_router
 from openclear.web.security_headers import apply_security_headers, new_csp_nonce
 
@@ -126,7 +126,7 @@ def create_app() -> FastAPI:
         # of their own on top via web.rate_limit.rate_limit(), tracked as a separate
         # bucket under the same client key.
         client_ip = get_client_ip(request) or "unknown"
-        if not limiter.allow(client_ip, "global", limit=get_settings().rate_limit_per_minute, window_seconds=60.0):
+        if not rate_limit.allow(client_ip, "global", limit=get_settings().rate_limit_per_minute, window_seconds=60.0):
             return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS)
         return await call_next(request)
 

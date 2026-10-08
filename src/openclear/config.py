@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     environment: Literal["development", "production"] = "production"
 
     database_url: str = Field(default_factory=_default_database_url)
+    # Connections per process (db/session.py; ignored for SQLite). Each web process and
+    # each openclear-worker opens up to db_pool_size + db_max_overflow, so the database
+    # must allow at least that times the number of processes: see README, "Running more
+    # than one instance".
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_timeout_seconds: int = 30
+    db_pool_recycle_seconds: int = 1800
 
     # JWT signing (auth/security.py) — ECDSA P-256 key pair, not a shared secret, so it
     # can't be "guessed" the way a hardcoded string could be. Generate your own with
@@ -145,6 +153,17 @@ class Settings(BaseSettings):
     tenant_asset_storage_dir: str = "./data/tenant_assets"
     bulk_upload_storage_dir: str = "./data/bulk_uploads"
     data_export_storage_dir: str = "./data/exports"
+    # Where new files are written (storage.py): "local" (the directories above) or "s3",
+    # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
+    # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.
+    # With the key settings empty, boto3 finds credentials itself (environment, role).
+    storage_backend: Literal["local", "s3"] = "local"
+    s3_bucket: str = ""
+    s3_prefix: str = ""
+    s3_endpoint_url: str = ""
+    s3_region: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
 
     # Resource-exhaustion guards (main.py's request middleware, bulk_import/zip_import.py).
     max_request_body_bytes: int = 50 * 1024 * 1024
@@ -171,6 +190,11 @@ class Settings(BaseSettings):
     # CSRF, no other permission check) and CPU-costly per call.
     rate_limit_per_minute: int = 120
     markdown_preview_rate_limit_per_minute: int = 30
+    # "memory" counts per process (above). "redis" shares the counts between every
+    # instance (pip install 'openclear[redis]'); if Redis can't be reached, requests are
+    # allowed and the error logged, so an outage of the limiter isn't an outage of the app.
+    rate_limit_backend: Literal["memory", "redis"] = "memory"
+    rate_limit_redis_url: str = ""
 
     # Security response headers (web/security_headers.py) — only Strict-Transport-Security
     # needs a setting of its own; everything else there is a fixed, non-configurable policy.
@@ -383,6 +407,11 @@ def assert_production_safe(settings: Settings) -> None:
             "OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT / OPENCLEAR_WSUD_ATTESTATION_TEXT before "
             "relying on this for a real e-signature."
         )
+
+    if settings.storage_backend == "s3" and not settings.s3_bucket:
+        raise RuntimeError("Refusing to start: OPENCLEAR_STORAGE_BACKEND is s3 but OPENCLEAR_S3_BUCKET isn't set.")
+    if settings.rate_limit_backend == "redis" and not settings.rate_limit_redis_url:
+        raise RuntimeError("Refusing to start: OPENCLEAR_RATE_LIMIT_BACKEND is redis but OPENCLEAR_RATE_LIMIT_REDIS_URL isn't set.")
 
     if settings.oidc_allow_private_hosts:
         raise RuntimeError(

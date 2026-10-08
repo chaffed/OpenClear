@@ -347,7 +347,7 @@ Storing, signing and checking a 2,000-row file in the request takes about 50 ms.
 
 ## Phase S5 — ML training at scale
 
-**Status: COMPLETE (2026-10-08, branch `scale-s5`).** Decision D3 (365 days, configurable).
+**Status: COMPLETE (2026-10-08, branch `scale-s5`), not yet merged:** SQLite 1,219 passed and Linux 1,214 passed; the Postgres suite needs a clean rerun (see S6). Decision D3 (365 days, configurable).
 
 - [x] A training window, `ml_training_window_days` (365; 0 for all history), and a row
       cap, `ml_training_max_rows` (250,000, the newest). Known-fraud training examples are
@@ -369,7 +369,20 @@ is a little faster (0.31 s against 0.45 s).
 
 ## Phase S6 — Shared storage and shared limits for several instances
 
-**Status: NOT STARTED.** Decisions D6 and D7.
+**Status: IN PROGRESS (branch `scale-s6`, work-in-progress commit).** Decisions D6 and D7.
+
+Paused 2026-10-08. Done so far: `storage.py` (local and S3-compatible backends; reads go
+by the stored reference, so local files stay readable after switching), every file read
+and write routed through it (check images, logos, bulk uploads, exports, ML artifacts,
+demo reset), streamed downloads, `scripts/move_files_to_object_storage.py`, the Redis rate
+limiter (fails open), pool settings, startup checks, `s3`/`redis` extras, and
+`tests/test_auth/test_shared_storage_and_limits.py` (moto S3, fakeredis, an optional real
+Redis via OPENCLEAR_TEST_REDIS_URL — passed against redis:7). The storage-related tests
+passed (711).
+**Still to do:** README ("Running more than one instance", storage and rate-limit
+settings, PgBouncer note), API/ARCHITECTURE/CHANGELOG, then full suites. Also rerun the
+S5 Postgres suite on its own: the last run showed one failure, most likely because an S6
+test run used the same test database at the same time.
 
 - [ ] A storage backend interface (local disk, or S3-compatible object storage) for check
       images, logos, bulk uploads, exports and ML artifacts. Models keep their SHA-256 check.

@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""A small in-memory, per-process sliding-window rate limiter -- hand-rolled rather than
-a new dependency, since a distributed/Redis-backed limiter isn't needed for the one
-deployment model this repo documents: scripts/launcher.py runs a single uvicorn process
-with no workers=N, so per-process in-memory counters are the correct fit here, not a
-shortcut. (A future multi-worker production launch would give each worker its own
-counters, multiplying the effective limit by worker count -- a deployment-time
-consideration, not something this module can fix on its own.)
+"""Sliding-window rate limiting, counted per process (the default) or shared between
+every instance through Redis (`rate_limit_backend = "redis"`; SCALE_PLAN.md S6).
+
+Per process suits a single uvicorn process, which is what scripts/launcher.py, the Docker
+image and the demo run. With several processes or instances each keeps its own counters,
+so the effective limit is `rate_limit_per_minute` times their number; the Redis backend
+counts once for all of them. Either way, a proxy or WAF in front (README, "Reverse proxy /
+WAF deployment") is the first line of defense; this is the safety net behind it.
 
 Used two ways: main.py's global middleware applies one generous default limit to every
 request, and individual routes (see markdown_preview.py) can layer a stricter,
@@ -21,8 +22,11 @@ one-off visitor's IP, which would otherwise never get revisited and so never get
 per-key trim to run again.
 """
 
+import logging
 import time
+import uuid
 from collections import deque
+from functools import lru_cache
 from threading import Lock
 
 from fastapi import HTTPException, Request, status
@@ -83,6 +87,63 @@ class RateLimiter:
 # dependency -- each bucket name is tracked independently, but all under the same lock.
 limiter = RateLimiter()
 
+logger = logging.getLogger(__name__)
+
+# Trim, check and record in one atomic step, with Redis's own clock so every instance
+# agrees on the time. KEYS[1] is the (client, bucket) key; ARGV is limit, window in ms,
+# and a unique member for this hit.
+_SLIDING_WINDOW = """
+local now = redis.call('TIME')
+local now_ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local window_ms = tonumber(ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now_ms - window_ms)
+if redis.call('ZCARD', KEYS[1]) < tonumber(ARGV[1]) then
+  redis.call('ZADD', KEYS[1], now_ms, ARGV[3])
+  redis.call('PEXPIRE', KEYS[1], window_ms)
+  return 1
+end
+return 0
+"""
+
+
+class RedisRateLimiter:
+    """The same sliding window, kept in Redis so every instance shares it. Fails open: if
+    Redis can't be reached the hit is allowed and the error logged (rate-limited to one
+    log line a minute), so a Redis outage doesn't take the app down with it."""
+
+    _KEY_PREFIX = "openclear:ratelimit:"
+
+    def __init__(self, client) -> None:
+        self._client = client
+        self._script = client.register_script(_SLIDING_WINDOW)
+        self._last_error_logged = 0.0
+
+    def allow(self, key: str, bucket: str, *, limit: int, window_seconds: float) -> bool:
+        try:
+            return bool(self._script(
+                keys=[f"{self._KEY_PREFIX}{bucket}:{key}"], args=[limit, int(window_seconds * 1000), uuid.uuid4().hex]
+            ))
+        except Exception:  # noqa: BLE001 -- any Redis failure: allow, and say so
+            if time.monotonic() - self._last_error_logged > 60:
+                self._last_error_logged = time.monotonic()
+                logger.exception("Rate limiting is off: Redis at rate_limit_redis_url can't be reached")
+            return True
+
+
+@lru_cache(maxsize=2)
+def _redis_limiter(url: str) -> RedisRateLimiter:
+    import redis
+
+    return RedisRateLimiter(redis.Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5))
+
+
+def allow(key: str, bucket: str, *, limit: int, window_seconds: float) -> bool:
+    """One hit for (key, bucket), against whichever backend is configured."""
+    settings = get_settings()
+    if settings.rate_limit_backend == "redis":
+        return _redis_limiter(settings.rate_limit_redis_url).allow(key, bucket, limit=limit, window_seconds=window_seconds)
+    return limiter.allow(key, bucket, limit=limit, window_seconds=window_seconds)
+
 
 def rate_limit(bucket: str, *, limit_setting: str, window_seconds: float = 60.0):
     """FastAPI dependency factory for a stricter, per-route limit on top of the global
@@ -94,7 +155,7 @@ def rate_limit(bucket: str, *, limit_setting: str, window_seconds: float = 60.0)
     def _check(request: Request) -> None:
         limit = getattr(get_settings(), limit_setting)
         client_ip = get_client_ip(request) or "unknown"
-        if not limiter.allow(client_ip, bucket, limit=limit, window_seconds=window_seconds):
+        if not allow(client_ip, bucket, limit=limit, window_seconds=window_seconds):
             raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests -- please slow down.")
 
     return _check

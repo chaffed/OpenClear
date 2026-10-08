@@ -7,10 +7,10 @@ import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
-from openclear.bulk_import.file_storage import read_uploaded_file
+from openclear import storage
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
@@ -135,13 +135,12 @@ def bulk_upload_download(
     upload_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)
 ) -> Response:
     record = _get_authorized_record(db, ctx, upload_id)
-    data = read_uploaded_file(record.storage_path)
     encoded_name = quote(record.original_filename)
     # Always a generic binary download, never the Content-Type the uploader's browser
     # declared: that value is attacker-controlled, and echoing e.g. text/javascript back
     # from this origin would let a <script src> elsewhere on the site load it.
-    return Response(
-        content=data,
+    return StreamingResponse(
+        storage.iter_chunks(record.storage_path),
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename=\"upload\"; filename*=UTF-8''{encoded_name}"},
     )

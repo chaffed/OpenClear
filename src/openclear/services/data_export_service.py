@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import contextlib
 import enum
 import json
+import shutil
 import time
 import uuid
 import zipfile
@@ -15,6 +17,7 @@ from typing import Any
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from openclear import storage
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.config import get_settings
 from openclear.domain.customer import Customer
@@ -185,6 +188,10 @@ def _apply_rls_tenant(session: Session, tenant_id: uuid.UUID) -> None:
 def _add_file_if_exists(zf: zipfile.ZipFile, source_path: str | None, archive_name: str) -> None:
     if not source_path:
         return
+    if storage.is_object_ref(source_path):
+        with contextlib.suppress(Exception), storage.open_ref(source_path) as source, zf.open(archive_name, "w", force_zip64=True) as out:
+            shutil.copyfileobj(source, out, 1024 * 1024)
+        return
     path = Path(source_path)
     if path.exists():
         zf.write(path, archive_name)
@@ -274,21 +281,23 @@ def run_export_job(engine: Engine, job_id: uuid.UUID, tenant_id: uuid.UUID) -> N
         tenant = session.get(Tenant, tenant_id)
         timeout_seconds = (tenant.data_export_timeout_seconds if tenant else None) or settings.data_export_timeout_seconds
 
-        destination = data_export_storage.export_archive_path(tenant_id, job_id)
+        destination = data_export_storage.build_path(job_id)
         try:
             _build_archive(
                 session, tenant_id, job.customer_id, destination, timeout_seconds=timeout_seconds,
             )
         except Exception as exc:  # noqa: BLE001 — must never crash the background task
+            destination.unlink(missing_ok=True)
             job.status = DataExportJobStatus.FAILED
             job.error_message = str(exc)[:1000]
             job.completed_at = datetime.now(timezone.utc)
             session.commit()
             return
 
+        size_bytes = destination.stat().st_size
         job.status = DataExportJobStatus.COMPLETED
-        job.archive_path = str(destination)
-        job.size_bytes = destination.stat().st_size
+        job.archive_path = data_export_storage.store_archive(tenant_id, job_id, destination)
+        job.size_bytes = size_bytes
         job.completed_at = datetime.now(timezone.utc)
         session.commit()
     finally:

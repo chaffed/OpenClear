@@ -24,15 +24,14 @@ Safety notes baked into the design, not incidental:
 """
 
 import logging
-import shutil
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from pathlib import Path
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from openclear import storage
 from openclear.config import get_settings
 from openclear.db.base import Base
 from openclear.db.tenancy import TenantContext, bind_session_to_tenant
@@ -324,9 +323,8 @@ def _purge_tenant_files(session: Session, tenant_id: uuid.UUID) -> None:
     joblib, no tenant_id anywhere in the path or as a column on MlModel itself
     (domain/ml_model.py) -- so each artifact has to be found via its owning Customer and
     unlinked individually."""
-    settings = get_settings()
-    for base_dir in (settings.check_image_storage_dir, settings.bulk_upload_storage_dir, settings.tenant_asset_storage_dir):
-        shutil.rmtree(Path(base_dir) / str(tenant_id), ignore_errors=True)
+    for area in ("check_images", "bulk_uploads", "tenant_assets", "data_exports"):
+        storage.delete_tenant(area, tenant_id)
 
     artifact_paths = session.execute(
         select(MlModel.artifact_path).where(
@@ -334,7 +332,7 @@ def _purge_tenant_files(session: Session, tenant_id: uuid.UUID) -> None:
         )
     ).scalars().all()
     for artifact_path in artifact_paths:
-        Path(artifact_path).unlink(missing_ok=True)
+        storage.delete(artifact_path)
 
 
 def _wipe_tenant_children(session: Session, tenant_id: uuid.UUID) -> None:

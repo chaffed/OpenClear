@@ -302,7 +302,7 @@ def test_export_streams_every_row_across_batches(db_session, tenant_factory, mon
             submitted_by_user_id=users["preparer"].id,
         )
     db_session.commit()
-    destination = data_export_service.data_export_storage.export_archive_path(tenant.id, uuid.uuid4())
+    destination = data_export_service.data_export_storage.build_path(uuid.uuid4())
 
     data_export_service._build_archive(db_session, tenant.id, None, destination, timeout_seconds=60)
 
@@ -322,7 +322,7 @@ def test_export_fails_when_the_time_budget_is_exhausted(db_session, tenant_facto
 
     with pytest.raises(data_export_service.ExportTimedOut):
         data_export_service._build_archive(
-            db_session, tenant.id, None, data_export_service.data_export_storage.export_archive_path(tenant.id, uuid.uuid4()),
+            db_session, tenant.id, None, data_export_service.data_export_storage.build_path(uuid.uuid4()),
             timeout_seconds=-1,
         )
 

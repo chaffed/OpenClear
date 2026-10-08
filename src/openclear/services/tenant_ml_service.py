@@ -62,11 +62,11 @@ def _seed_bank_model(session: Session, tenant: Tenant, shared: MlModel) -> MlMod
     """Copies one network's active shared model into the bank's slot: the artifact file
     too, not just a pointer to it, so later clean-up of shared-model files can't break the
     bank's scoring."""
-    store = ArtifactStore()
     version = f"seed-from-shared-{shared.version}"[:64]
-    destination = store.base_dir / f"{shared.network_code}_bank_{tenant.id}_{uuid.uuid4().hex[:8]}_{version}.joblib"
     # Verified copy: a tampered shared file must not be re-fingerprinted as the bank's own.
-    artifact_sha256 = store.copy_model(shared, destination)
+    artifact_path, artifact_sha256 = ArtifactStore().copy_model(
+        shared, f"{shared.network_code}_bank_{tenant.id}_{uuid.uuid4().hex[:8]}_{version}"
+    )
     shared_metrics = {k: v for k, v in (shared.metrics_json or {}).items() if not isinstance(v, dict)}
     row = create_model_row(
         session,
@@ -74,7 +74,7 @@ def _seed_bank_model(session: Session, tenant: Tenant, shared: MlModel) -> MlMod
         tenant_id=tenant.id,
         version=version,
         algorithm=shared.algorithm,
-        artifact_path=str(destination),
+        artifact_path=artifact_path,
         artifact_sha256=artifact_sha256,
         trained_from_decision_count=shared.trained_from_decision_count,
         metrics_json={
