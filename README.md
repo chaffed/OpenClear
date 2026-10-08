@@ -721,12 +721,11 @@ still-at-their-checked-in-default conditions, unrelated to signing keys:
 
 Every request gets a per-IP rate limit (`config.py::rate_limit_per_minute`, 120/minute by
 default; `POST /ui/markdown-preview` has a stricter one of its own on top,
-`markdown_preview_rate_limit_per_minute`, 30/minute by default) — in-memory and
-per-process (`web/rate_limit.py`), matching `scripts/launcher.py`'s single uvicorn
-process with no `workers=N`. A future multi-worker production launch would give each
-worker its own counters, multiplying the effective limit by worker count — worth knowing
-before assuming a configured limit is the actual limit under that kind of deployment (see
-"Running more than one instance" below).
+`markdown_preview_rate_limit_per_minute`, 30/minute by default; `web/rate_limit.py`).
+By default the counts are kept in memory in each process, which suits a single process
+(the launcher, the Docker image). With several processes, each keeps its own count, which
+multiplies the effective limit, unless you share the count through Redis
+(`OPENCLEAR_RATE_LIMIT_BACKEND=redis`; see "Running more than one instance" below).
 
 That per-IP limiting (and the signer IP recorded on a Written Statement of Unauthorized
 Debit attestation, `web/routers/wsud.py`) both resolve "the caller's IP" via
@@ -958,17 +957,43 @@ By default, run **one** app process. `scripts/launcher.py`, the Docker image and
   lock with the connection. On SQLite and SQL Server there is no such lock: every instance
   runs every job, so those deployments must stay a single process. (You can also enable the
   scheduler flags on just one instance and leave them off on the rest.)
-- **Rate limits are per process** (`web/rate_limit.py`, see "Reverse proxy / WAF
-  deployment" above). With N processes, a client can make up to N times the configured
-  limit. Divide `OPENCLEAR_RATE_LIMIT_PER_MINUTE` by N, or enforce the real limit at your proxy
-  or WAF. A shared limiter (for example, Redis) isn't built in.
+- **Rate limits** (`web/rate_limit.py`, see "Reverse proxy / WAF deployment" above) are
+  counted per process by default, so with N processes a client can make up to N times the
+  configured limit. To share one count, run Redis and set
+  `OPENCLEAR_RATE_LIMIT_BACKEND=redis` and `OPENCLEAR_RATE_LIMIT_REDIS_URL=redis://...`
+  (`pip install 'openclear[redis]'`). If Redis can't be reached, requests are allowed and
+  the error is logged, so a Redis outage doesn't take the app down. Either way, enforce the
+  real limit at your proxy or WAF too.
+- **Files** (check images, bank logos, bulk-upload originals, data export archives and
+  trained ML models) go wherever `OPENCLEAR_STORAGE_BACKEND` says (`storage.py`):
+  - `local` (the default): the `*_storage_dir` and `ml_artifact_dir` directories in
+    `config.py`. Every instance must see the same files, so point them at one shared
+    volume.
+  - `s3`: an S3-compatible bucket shared by every instance, with no shared disk needed
+    (`pip install 'openclear[s3]'`). Set `OPENCLEAR_S3_BUCKET`, and optionally
+    `OPENCLEAR_S3_PREFIX`, `OPENCLEAR_S3_REGION`, `OPENCLEAR_S3_ENDPOINT_URL` (for MinIO,
+    Cloudflare R2 and other providers) and `OPENCLEAR_S3_ACCESS_KEY_ID` /
+    `OPENCLEAR_S3_SECRET_ACCESS_KEY` (leave them empty to use boto3's own credentials:
+    the environment, or an instance role). Give the credentials read, write, list and
+    delete on that bucket (or prefix) only.
 
-- **Files are on local disk.** Check images, tenant logos, bulk-upload originals, data
-  export archives and trained ML models are written under the `*_storage_dir` /
-  `ml_artifact_dir` / `auto_import_dropbox_dir` paths in `config.py`, and only their paths
-  go in the database. Every instance must see the same files, so point all of those at one
-  shared volume. Otherwise an image uploaded through one instance, or a model trained on it,
-  is missing on the others.
+  The database stores a reference to each file: a local path, or `s3://bucket/key`.
+  Reads go by the reference, so switching to `s3` doesn't break files already on disk.
+  To move them, run `python scripts/move_files_to_object_storage.py --dry-run`, then
+  without `--dry-run`, then with `--delete-local` once you've checked. It's safe to run
+  again. The dropbox inbox (`auto_import_dropbox_dir`) is still a directory: put it on the
+  instance that runs the dropbox scan, or on a shared volume.
+- **Database connections:** each web process and each `openclear-worker` keeps a pool of
+  up to `OPENCLEAR_DB_POOL_SIZE` (5) plus `OPENCLEAR_DB_MAX_OVERFLOW` (10) connections.
+  Postgres must allow at least that many times the number of processes, plus headroom for
+  migrations and admin tools. For many processes, put PgBouncer in front in **transaction**
+  pooling mode for the web processes and workers. Row-level security works through it,
+  because the bank is re-applied with `set_config(..., true)` at the start of every
+  transaction, and the audit log's lock is transaction-scoped. The one exception is the
+  scheduler's leader lock (`workers/leader_lock.py`), which holds a session-level
+  advisory lock for the length of a job. Give whichever instances run scheduled jobs a
+  direct connection to Postgres, or session pooling. `OPENCLEAR_DB_POOL_RECYCLE_SECONDS`
+  (1800) and `OPENCLEAR_DB_POOL_TIMEOUT_SECONDS` (30) are there too.
 - **Background jobs** (OCR, data exports, dropbox scans, retraining) are rows in the
   database's `job` table, claimed by workers, so any instance's worker can run any job,
   and a job whose worker dies is picked up again. By default each web process runs one

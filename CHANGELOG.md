@@ -27,6 +27,25 @@
 - **Upgrading:** run `alembic upgrade head` (new columns on `bulk_upload_file`, new table
   `bulk_upload_row_result`).
 
+### Scalability (SCALE_PLAN.md S6): several instances without a shared disk
+
+- **Object storage:** set `OPENCLEAR_STORAGE_BACKEND=s3` and `OPENCLEAR_S3_BUCKET` (plus
+  `OPENCLEAR_S3_ENDPOINT_URL` for MinIO, R2 and others) to keep check images, logos, bulk
+  uploads, exports and ML models in an S3-compatible bucket. Install with
+  `pip install 'openclear[s3]'`. Files already on disk stay readable;
+  `scripts/move_files_to_object_storage.py` moves them over.
+- **Shared rate limits:** `OPENCLEAR_RATE_LIMIT_BACKEND=redis` and
+  `OPENCLEAR_RATE_LIMIT_REDIS_URL` count requests once across every instance. Install
+  with `pip install 'openclear[redis]'`. If Redis is down, requests are allowed and the
+  error is logged.
+- **Connection pools:** `OPENCLEAR_DB_POOL_SIZE` (5), `OPENCLEAR_DB_MAX_OVERFLOW` (10),
+  `OPENCLEAR_DB_POOL_TIMEOUT_SECONDS` and `OPENCLEAR_DB_POOL_RECYCLE_SECONDS`. The README
+  covers sizing and PgBouncer.
+- **Downloads stream:** large export archives and upload originals are no longer read
+  into memory to send them.
+- **Startup checks:** a production start refuses `s3` without a bucket, or `redis`
+  without a URL.
+
 ### Scalability (SCALE_PLAN.md S5): ML training at scale
 
 - **Training reads a window:** the last 365 days of decisions

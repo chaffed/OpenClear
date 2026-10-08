@@ -464,10 +464,22 @@ Two kinds of background work:
   just queue one job per model slot or bank. The sweep, notification sending and the demo
   reset are quick, and still run directly.
 
-State that's per process: the rate limiter (`web/rate_limit.py`) and the OIDC discovery
-and key caches. Files (images, exports, uploads, model artifacts) are on local disk
-under paths from `config.py`. See README, "Running more than one instance", for what that
-means for deployment.
+Shared between instances (SCALE_PLAN.md S6):
+
+- **Files** go through `storage.py`: local directories by default, or an S3-compatible
+  bucket (`storage_backend = "s3"`). The database stores a reference (a path, or
+  `s3://bucket/key`) and reads dispatch on it, so switching backends doesn't strand older
+  files; `scripts/move_files_to_object_storage.py` moves them. Downloads stream, and code
+  that needs a real file (an mmap of a cash letter, a zip opened by path) asks for a local
+  copy (`storage.local_path`). Exports are built in a temporary file and then stored. ML
+  artifacts keep their SHA-256 check whatever the backend.
+- **Rate limits** are per process by default, or a Redis sliding window
+  (`RedisRateLimiter`: one Lua script trims, checks and records atomically using Redis's
+  clock). It fails open, logging, if Redis is unreachable.
+- **Connection pools** are sized by `db_pool_size` / `db_max_overflow`.
+
+Still per process: the OIDC discovery and key caches, and the loaded-model cache. See
+README, "Running more than one instance".
 
 ## Known gaps
 

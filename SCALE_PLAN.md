@@ -369,30 +369,34 @@ is a little faster (0.31 s against 0.45 s).
 
 ## Phase S6 — Shared storage and shared limits for several instances
 
-**Status: IN PROGRESS (branch `scale-s6`, work-in-progress commit).** Decisions D6 and D7.
+**Status: COMPLETE (2026-10-09, branch `scale-s6`).** Decisions D6 (S3-compatible first)
+and D7 (pluggable limiter, per process by default, Redis optional).
 
-Paused 2026-10-08. Done so far: `storage.py` (local and S3-compatible backends; reads go
-by the stored reference, so local files stay readable after switching), every file read
-and write routed through it (check images, logos, bulk uploads, exports, ML artifacts,
-demo reset), streamed downloads, `scripts/move_files_to_object_storage.py`, the Redis rate
-limiter (fails open), pool settings, startup checks, `s3`/`redis` extras, and
-`tests/test_auth/test_shared_storage_and_limits.py` (moto S3, fakeredis, an optional real
-Redis via OPENCLEAR_TEST_REDIS_URL — passed against redis:7). The storage-related tests
-passed (711).
-**Still to do:** README ("Running more than one instance", storage and rate-limit
-settings, PgBouncer note), API/ARCHITECTURE/CHANGELOG, then full suites. Also rerun the
-S5 Postgres suite on its own: the last run showed one failure, most likely because an S6
-test run used the same test database at the same time.
-
-- [ ] A storage backend interface (local disk, or S3-compatible object storage) for check
-      images, logos, bulk uploads, exports and ML artifacts. Models keep their SHA-256 check.
-      Existing paths keep working, and there's a migration script to move files.
-- [ ] A pluggable rate limiter backend: per process (today) or shared. Keep the proxy/WAF
-      advice in the README.
-- [ ] Connection pool settings in config (`pool_size`, `max_overflow`), with sizing advice
-      for N instances plus workers. There are none today, so each process gets
-      SQLAlchemy's default of 5 connections plus 10 overflow. Add a note on PgBouncer.
-- [ ] Update README "Running more than one instance" to say what's now shared.
+- [x] `storage.py`: a local backend (the existing directories) and an S3-compatible one
+      (boto3; `s3_endpoint_url` for MinIO, R2 and others). Writes go to the configured
+      backend; reads dispatch on the stored reference (a path, or `s3://bucket/key`), so
+      files written before a switch stay readable. Every file read and write goes through
+      it: check images, logos, bulk uploads (the importer asks for a local copy where it
+      needs a real file), exports (built in a temporary file, then stored), ML artifacts
+      (SHA-256 check unchanged), the demo reset. Downloads stream.
+      `scripts/move_files_to_object_storage.py` copies existing files and rewrites the
+      references (dry run, re-runnable, `--delete-local`).
+- [x] Rate limiter: per process (unchanged) or Redis (`RedisRateLimiter`, a Lua sliding
+      window on Redis's clock). Fails open with a logged error. The proxy/WAF advice stays.
+- [x] Pool settings: `db_pool_size`, `db_max_overflow`, `db_pool_timeout_seconds`,
+      `db_pool_recycle_seconds`, with sizing advice and a PgBouncer note (transaction
+      pooling for web and workers; a direct or session-pooled connection for whatever runs
+      scheduled jobs, because the leader lock is session-level).
+- [x] Startup refuses `s3` without a bucket and `redis` without a URL in production.
+- [x] README "Running more than one instance" and the WAF section, ARCHITECTURE,
+      CHANGELOG, `.env.example`; `s3` and `redis` extras.
+- [x] Tests: `tests/test_auth/test_shared_storage_and_limits.py` (moto S3: round trips,
+      streamed puts, local copies cleaned up, per-bank delete, old local references still
+      readable, a bulk upload and a model trained through S3, the move script end to end;
+      fakeredis: counts shared across instances, separate clients and buckets, the app
+      honouring the setting; Redis down fails open; a real Redis when
+      OPENCLEAR_TEST_REDIS_URL is set, passed against redis:7; pool settings).
+- Not done: Azure Blob (D6 says later). The dropbox inbox is still a directory.
 
 ## Phase S7 — Data growth
 
@@ -435,3 +439,4 @@ recommendations unless you say otherwise.
 - 2026-09-28 S3 complete (job queue and worker; streaming exports). X9.37 field verification deferred until a bank implements.
 - 2026-10-08 Billing (BILLING_PLAN.md) and release 1.6.0, pushed. S4 complete (bulk imports in the background).
 - 2026-10-08 S5 complete (training window, row cap, leaner loading, model cache limit).
+- 2026-10-09 S6 complete (object storage, shared rate limits, pool settings).
