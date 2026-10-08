@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import csv
+import io
 import uuid
 from urllib.parse import quote
 
@@ -12,22 +14,27 @@ from openclear.bulk_import.file_storage import read_uploaded_file
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
-from openclear.services import bulk_upload_file_service, bulk_upload_reversal_service
+from openclear.services import bulk_import_service, bulk_upload_file_service, bulk_upload_reversal_service
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template
 from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/bulk-uploads", tags=["web-bulk-uploads"])
 
-# One route serves all three upload kinds, so the permission to check is looked up per
-# record rather than fixed at the dependency level — the same permission that gated the
-# original upload gates viewing/downloading it later.
-_PERMISSION_BY_KIND = {
-    BulkUploadKind.ISSUED_ITEMS: "issued_item:write",
-    BulkUploadKind.ACH_TRANSACTIONS: "ach_transaction:write",
-    BulkUploadKind.USERS: "user:manage",
-    BulkUploadKind.ACCOUNTS: "account:write",
-    BulkUploadKind.CHECK_IMAGES: "check_image:write",
+# The permission that gated the original upload gates viewing/downloading it later.
+_PERMISSION_BY_KIND = bulk_import_service.PERMISSION_BY_KIND
+
+# Where "back" goes from an upload's page: the list its rows landed in.
+_BACK_BY_KIND = {
+    BulkUploadKind.ISSUED_ITEMS: ("/ui/issued-items", "Back to issued items"),
+    BulkUploadKind.ACH_TRANSACTIONS: ("/ui/ach/transactions", "Back to ACH transactions"),
+    BulkUploadKind.USERS: ("/ui/users", "Back to users"),
+    BulkUploadKind.ACCOUNTS: ("/ui/accounts", "Back to accounts"),
+    BulkUploadKind.CHECK_IMAGES: ("/ui/check-images", "Back to check images"),
+    BulkUploadKind.PAID_ITEMS: ("/ui/paid-items", "Back to paid items"),
+    BulkUploadKind.FRAUD_TRAINING_EXAMPLES: ("/ui/ml-training/fraud-examples", "Back to fraud training data"),
 }
+
+_FAILURES_SHOWN = 500
 
 # Backing out a CHECK_IMAGES upload can create/revert paid_item and issued_item state,
 # not just check_image state (see bulk_upload_reversal_service.py) — the same
@@ -56,10 +63,38 @@ def bulk_upload_detail(
     # Recomputed live on every render — a stale "verified" flag stored at upload time
     # would defeat the entire point, which is detecting a change made SINCE then.
     verified = bulk_upload_file_service.verify_uploaded_file(db, ctx.tenant_id, upload_id, ctx.customer_id)
-    tracked_records = bulk_upload_reversal_service.list_created_records(db, ctx.tenant_id, upload_id)
+    bulk_import_service.check_job(db, record)
+    finished = bulk_import_service.is_finished(record)
+    tracked_records = bulk_upload_reversal_service.list_created_records(db, ctx.tenant_id, upload_id) if finished else []
+    failures = bulk_import_service.row_results(db, record, failures_only=True, limit=_FAILURES_SHOWN)
+    has_row_results = bool(failures) or bool(bulk_import_service.row_results(db, record, limit=1))
+    back_url, back_label = _BACK_BY_KIND.get(record.kind, (None, None))
     return render_template(
-        request, "bulk_uploads/detail.html", ctx=ctx, record=record, verified=verified, tracked_records=tracked_records
+        request, "bulk_uploads/detail.html", ctx=ctx, record=record, verified=verified, tracked_records=tracked_records,
+        finished=finished, failures=failures, has_row_results=has_row_results, back_url=back_url, back_label=back_label,
     )
+
+
+@router.get("/{upload_id}/results.csv")
+def bulk_upload_results_csv(
+    upload_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)
+) -> Response:
+    """Every row's outcome, for an upload imported in the background."""
+    record = _get_authorized_record(db, ctx, upload_id)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["row", "succeeded", "created_id", "error"])
+    for r in bulk_import_service.row_results(db, record):
+        writer.writerow([r.row_label, "yes" if r.success else "no", r.created_id or "", _csv_safe(r.error or "")])
+    return Response(
+        out.getvalue(), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="upload-{upload_id}-results.csv"'},
+    )
+
+
+def _csv_safe(value: str) -> str:
+    # An error can echo a cell from the uploaded file; don't let a spreadsheet run it.
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
 
 
 @router.post("/{upload_id}/back-out")

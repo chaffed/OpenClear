@@ -164,6 +164,26 @@ def _issued_item_input_from_row(
     )
 
 
+def create_issued_item_from_row(
+    session: Session,
+    tenant_id: uuid.UUID,
+    row: dict[str, Any],
+    *,
+    submitted_by_user_id: uuid.UUID | None,
+    auto_create_accounts: bool = False,
+    scoped_customer_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """One delimited/Excel row. The caller owns the transaction."""
+    data = _issued_item_input_from_row(
+        session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
+    )
+    item = create_issued_item(
+        session, tenant_id, data, submitted_by_user_id=submitted_by_user_id, source=IssuedItemSource.BULK_FILE,
+        scoped_customer_id=scoped_customer_id,
+    )
+    return item.id
+
+
 def create_issued_items_from_rows(
     session: Session,
     tenant_id: uuid.UUID,
@@ -185,23 +205,12 @@ def create_issued_items_from_rows(
     for index, row in enumerate(rows):
         row_label = f"row {index + 2}"  # +2: 1-based, plus the header row itself
         try:
-            data = _issued_item_input_from_row(
-                session,
-                tenant_id,
-                row,
-                auto_create_accounts=auto_create_accounts,
-                scoped_customer_id=scoped_customer_id,
-            )
-            item = create_issued_item(
-                session,
-                tenant_id,
-                data,
-                submitted_by_user_id=submitted_by_user_id,
-                source=IssuedItemSource.BULK_FILE,
-                scoped_customer_id=scoped_customer_id,
+            item_id = create_issued_item_from_row(
+                session, tenant_id, row, submitted_by_user_id=submitted_by_user_id,
+                auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id,
             )
             session.commit()
-            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=item.id))
+            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=item_id))
         except RowFieldError as exc:
             session.rollback()
             results.append(BulkFileRowResult(row_label=row_label, success=False, error=str(exc)))

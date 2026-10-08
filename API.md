@@ -473,6 +473,26 @@ and returns:
 Rows are processed independently — one bad row doesn't fail the whole batch, and
 `results[i].index` maps each result back to its position in the request array.
 
+**Large requests are imported in the background.** Up to `OPENCLEAR_BULK_API_SYNC_MAX_ROWS`
+items (1,000 by default) are imported during the call and answered as above. A larger
+array is stored and imported by a background job, and the call answers **`202 Accepted`**:
+
+```json
+{"upload_id": "...", "status": "queued", "total": 25000, "status_url": "/api/v1/bulk-uploads/..."}
+```
+
+Poll the upload until it's finished, then read the row results:
+
+| method | path | notes |
+|---|---|---|
+| GET | `/api/v1/bulk-uploads/{id}` | `status` (`queued`, `processing`, `completed`, `rejected`, `failed`), `processed_rows` of `total_rows`, `succeeded`, `failed`, `error`, `source` (`api`, `manual`, `auto_import`) |
+| GET | `/api/v1/bulk-uploads/{id}/results` | each row's `index`, `label`, `success`, created `id` and `error`, in order; paged (see [Paging](#paging-list-endpoints)); `?failures_only=true` |
+
+Both need the permission that gated the upload (`paid_item:write`, `issued_item:write`,
+`ach_transaction:write`, ...); web and dropbox uploads can be read here too. Rows already
+committed stay if an import `failed`. New exceptions from a background import send one
+summary notification per reviewer rather than one each.
+
 **This is not a file-upload API.** The `/ui/*/bulk` web routes (CSV/file upload for
 issued items, ACH transactions, paid items, *and* users) parse a file into rows and then
 call the same underlying bulk-ingestion service — but there is no equivalent

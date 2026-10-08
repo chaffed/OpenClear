@@ -4,18 +4,22 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.bulk_uploads import BulkUploadAccepted, accepted, too_many_for_sync
 from openclear.api.v1.pagination import Page, page_params, set_page_headers
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.ach_transaction import AchTransaction
+from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction, ingest_ach_transactions_bulk
 from openclear.repositories.ach_transaction_repo import AchTransactionRepository
 from openclear.schemas.ach import AchTransactionCreate, AchTransactionRead
 from openclear.schemas.common import BulkRowResultOut, BulkSubmitResponse
-from openclear.services import audit_log_service
+from openclear.services import audit_log_service, bulk_import_service
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/ach/transactions", tags=["ach-transactions"])
 
@@ -48,12 +52,21 @@ def create_ach_transaction(
     return AchTransactionRead.model_validate(txn)
 
 
-@router.post("/bulk", response_model=BulkSubmitResponse)
+@router.post("/bulk", response_model=BulkSubmitResponse, responses={202: {"model": BulkUploadAccepted}})
 def create_ach_transactions_bulk(
     payload: list[AchTransactionCreate],
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("ach_transaction:write")),
 ) -> BulkSubmitResponse:
+    """Up to `bulk_api_sync_max_rows` items (1,000 by default) are imported now and every
+    row's result returned. More than that answers `202` with an upload to poll at
+    `/api/v1/bulk-uploads/{id}` while a background job imports them."""
+    if too_many_for_sync(len(payload)):
+        record = bulk_import_service.receive_api_items(
+            db, ctx.tenant_id, kind=BulkUploadKind.ACH_TRANSACTIONS, items=payload, user_id=ctx.user_id, customer_id=ctx.customer_id
+        )
+        jobs_queued(db.get_bind())
+        return JSONResponse(accepted(record).model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED)
     submissions = [_to_submission(row) for row in payload]
     results = ingest_ach_transactions_bulk(db, ctx.tenant_id, submissions, scoped_customer_id=ctx.customer_id)
     for r in results:

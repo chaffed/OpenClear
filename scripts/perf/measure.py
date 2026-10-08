@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
 os.environ["OPENCLEAR_RATE_LIMIT_PER_MINUTE"] = "1000000"
+os.environ.setdefault("OPENCLEAR_WORKER_MODE", "external")  # this script runs the import job itself
 _scratch = Path(tempfile.mkdtemp(prefix="openclear-perf-"))
 for name in ("ML_ARTIFACT_DIR", "CHECK_IMAGE_STORAGE_DIR", "TENANT_ASSET_STORAGE_DIR", "BULK_UPLOAD_STORAGE_DIR", "DATA_EXPORT_STORAGE_DIR"):
     os.environ.setdefault(f"OPENCLEAR_{name}", str(_scratch / name.lower()))
@@ -99,6 +100,34 @@ def _ingest(session, tenant, rows: int) -> None:
     failed = sum(1 for r in results if not r.success)
     _record("Ingestion", f"{rows:,} presented checks (bulk, half raise exceptions)", seconds,
             f"({rows / seconds:,.0f} rows/s; {failed} rows failed; 50,000 would take ~{50_000 / (rows / seconds) / 60:,.1f} min)")
+
+    # The same mix as a file, imported the way an upload is since S4: stored, checked,
+    # then imported by the background job in chunks.
+    import io
+
+    from openclear.domain.bulk_upload_file import BulkUploadKind
+    from openclear.services import bulk_import_service
+
+    run = uuid.uuid4().hex[:6]
+    issue = [
+        issued_item_service.IssuedItemInput(account_id=accounts[n % len(accounts)].id, check_number=f"J{run}{n}", amount=Decimal("125.00"),
+                                            payee_name="Perf Vendor", issue_date=date.today() - timedelta(days=5))
+        for n in range(rows // 2)
+    ]
+    issued_item_service.create_issued_items_bulk(session, tenant.id, issue, submitted_by_user_id=None)
+    lines = ["account_number,check_number,presented_amount,presented_date"] + [
+        f"{accounts[n % len(accounts)].account_number},J{run}{n},125.00,{date.today().isoformat()}" for n in range(rows)
+    ]
+    data = ("\n".join(lines) + "\n").encode()
+    seconds_receive, record = _timed(lambda: bulk_import_service.receive_upload(
+        session, tenant.id, kind=BulkUploadKind.PAID_ITEMS, file_format="tabular", filename="perf.csv", content_type="text/csv",
+        uploaded_by_user_id=None, customer_id=None, stream=io.BytesIO(data),
+    ))
+    _record("Ingestion", f"{rows:,}-row file: store, sign and check (in the request)", seconds_receive)
+    seconds, _ = _timed(lambda: bulk_import_service.run_import(session, record.id))
+    session.refresh(record)
+    _record("Ingestion", f"{rows:,}-row file: background import (S4)", seconds,
+            f"({rows / seconds:,.0f} rows/s; {record.failed_count} rows failed; 50,000 would take ~{50_000 / (rows / seconds) / 60:,.1f} min)")
 
 
 def _retrain(session) -> None:

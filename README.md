@@ -262,9 +262,10 @@ times pages, ingestion, training, exports and key queries against it (see SCALE_
 
 ## Bulk file uploads
 
-Both issued items (`/ui/issued-items/bulk`) and ACH transactions
-(`/ui/ach/transactions/bulk`) accept bulk uploads, in addition to the JSON API's
-`/bulk` endpoints (which take a pre-built JSON array, not a file):
+Accounts (`/ui/accounts/bulk`), issued items (`/ui/issued-items/bulk`), presented checks
+(`/ui/paid-items/bulk`) and ACH transactions (`/ui/ach/transactions/bulk`) accept bulk
+uploads, in addition to the JSON API's `/bulk` endpoints (which take a pre-built JSON
+array, not a file):
 
 - **Delimited or Excel** (`bulk_import/tabular.py`): any comma/tab/semicolon/pipe file
   or `.xlsx`/`.xls`, header row required, column names case/spacing-insensitive, any
@@ -272,17 +273,28 @@ Both issued items (`/ui/issued-items/bulk`) and ACH transactions
   not `csv.Sniffer`/pandas' generic auto-detection, which on a short sample can pick the
   most-frequent character in the text itself rather than an actual delimiter.
 - **NACHA** (`bulk_import/nacha.py`, ACH only): a standard 94-character fixed-width ACH
-  file. **Lenient by design**: extracts batch header fields (company id/name, SEC code,
-  effective date) and entry detail fields (DFI account number, amount, individual id,
-  transaction code, trace number) needed to create transactions, but does not validate
-  file/batch control totals, entry hash, or checksums (record types 1, 7, 8, 9 are
-  otherwise ignored) — a malformed file can partially import rather than being rejected
-  outright.
+  file. Extracts the batch header fields (company id/name, SEC code, effective date) and
+  entry detail fields (DFI account number, amount, individual id, transaction code, trace
+  number) needed to create transactions, and checks each batch's and the file's control
+  totals (entry count, entry hash, debit and credit totals). A file whose totals don't add
+  up is rejected whole.
 
 Every row/entry carries its own account number (not a single account picked once for the
 whole file) — resolved against your existing accounts, so one file can span multiple
-accounts. Unmatched account numbers, and any other bad row, are reported individually in
-the results page without failing the rest of the file (one DB transaction per row).
+accounts. Unmatched account numbers, and any other bad row, are reported individually
+without failing the rest of the file.
+
+**Files are imported in the background** (`services/bulk_import_service.py`). The upload
+stores the file and checks it can be parsed; a file that can't be is rejected on the form
+with nothing imported. Otherwise a background job (see "Background jobs") imports it and
+the browser goes to the upload's page (`/ui/bulk-uploads/<id>`), which shows progress,
+refreshes itself, and then shows the result: how many rows succeeded, each row that failed
+and why, and a CSV of every row's outcome. The job commits 1,000 rows at a time
+(`OPENCLEAR_BULK_IMPORT_CHUNK_ROWS`), each row in its own savepoint, so a bad row fails on
+its own and a job that's interrupted resumes at the first row it hadn't committed. New
+exceptions from an upload send each reviewer **one** summary notification, not one per
+exception. The automatic dropbox import (`services/dropbox_import_service.py`) uses the
+same path.
 
 Both upload forms have a **"create missing accounts"** checkbox: when checked, any
 account number in the file that doesn't already exist is created automatically instead of
@@ -296,8 +308,9 @@ one file is only created once.
 (tabular and NACHA), and the user bulk upload (see below) all keep the original bytes on
 local disk (`OPENCLEAR_BULK_UPLOAD_STORAGE_DIR`, default
 `./data/bulk_uploads`, consolidated under `.openclear-run/` by the quickstart launcher) plus
-a SHA-256 fingerprint and an HMAC-SHA256 signature computed with a server-held secret
-(`OPENCLEAR_FILE_SIGNING_SECRET` — same HS256 pattern already used for JWTs). This is saved
+a SHA-256 fingerprint and an ECDSA P-256 signature made with a server-held private key
+(`OPENCLEAR_FILE_SIGNING_PRIVATE_KEY_PATH`; see "Signing keys"). The file is copied to disk
+in pieces and hashed as it's written, so a large upload is never held in memory. This is saved
 **even when the file is rejected outright** (bad format, no data rows) — a malformed
 submission is still evidence of what was actually sent, so it's recorded before parsing
 ever runs, with a link to it shown right on the error page. Every results/error page links
@@ -305,7 +318,8 @@ to a detail view (`/ui/bulk-uploads/<id>`) that re-verifies the signature agains
 read of the file **on every visit** — not a cached flag — so tampering after upload (even
 a direct edit of the file on disk) shows up as a mismatch, and the original file can be
 downloaded byte-for-byte from there. Gated by the same permission that gated the original
-upload (`issued_item:write` / `ach_transaction:write` / `user:manage`).
+upload (`account:write`, `issued_item:write`, `paid_item:write`, `ach_transaction:write`,
+`check_image:write` or `user:manage`).
 
 ## Bulk-loading check images
 
@@ -333,7 +347,10 @@ follow-up step.
   letters, or credit reconcilement records. Bundle (Type 70), cash letter (Type 90) and
   file (Type 99) control totals are validated: a mismatched item count or dollar amount
   rejects the whole file. The control-record field positions follow the published
-  layouts but haven't been checked against a real processor's file. Account number and check number come from each check detail record's On-Us
+  layouts but haven't been checked against a real processor's file. A cash letter is read
+  through a memory map, with each check's images read only as that check is imported, so
+  a large file isn't held in memory; a zip's images are likewise read as each row needs
+  them. Account number and check number come from each check detail record's On-Us
   and Auxiliary On-Us MICR fields respectively — a common real-world convention (the
   check's own serial number in Auxiliary On-Us, the payor's account number in On-Us), not
   a standard-mandated split, so a bank whose files use a different layout won't resolve

@@ -1,0 +1,1 @@
+OpenClear: {{ count }} new exception{{ "s" if count != 1 else "" }} ready for review, from {{ source_label }}.

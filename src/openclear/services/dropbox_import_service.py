@@ -51,19 +51,14 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from openclear.bulk_import.nacha import parse_nacha_file
-from openclear.bulk_import.signing import content_hash
-from openclear.bulk_import.tabular import parse_tabular_file
-from openclear.bulk_import.x937 import parse_x937_file
-from openclear.bulk_import.zip_import import parse_zip_manifest
+from openclear.bulk_import.file_storage import file_digest
 from openclear.config import get_settings
 from openclear.db.tenancy import bind_session_to_tenant
-from openclear.domain.bulk_upload_file import BulkUploadKind, BulkUploadSource
+from openclear.domain.bulk_upload_file import BulkUploadKind, BulkUploadSource, BulkUploadStatus
 from openclear.domain.customer import Customer
 from openclear.domain.tenant import Tenant
-from openclear.networks.ach.bulk_import import ingest_ach_rows, ingest_nacha_entries
-from openclear.networks.check.bulk_import import ingest_check_image_zip_rows, ingest_paid_item_tabular_rows, ingest_x937_items
-from openclear.services import bulk_upload_file_service, issued_item_service
+from openclear.services import bulk_import_service, bulk_upload_file_service
+from openclear.workers.jobs import jobs_queued
 
 logger = logging.getLogger(__name__)
 
@@ -117,47 +112,15 @@ def _bulk_upload_kind_for(kind_subpath: str) -> BulkUploadKind:
     return BulkUploadKind.CHECK_IMAGES  # checks/x937, checks/zip
 
 
-def _ingest(
-    session: Session, tenant_id: uuid.UUID, kind_subpath: str, filename: str, content: bytes, *, scoped_customer_id: uuid.UUID | None
-) -> tuple[int, int]:
-    """Parses + ingests one dropped file's bytes according to which subdirectory it
-    came from. Returns (succeeded_count, failed_count) for a file that at least parsed.
-    Raises (a format-specific ParseError, or plain ValueError for an empty file) on a
-    whole-file failure -- the caller moves the file to failed/ in that case."""
-    if kind_subpath == _ISSUED_ITEMS:
-        rows = parse_tabular_file(filename, content)
-        if not rows:
-            raise ValueError("File has no data rows")
-        results = issued_item_service.create_issued_items_from_rows(
-            session, tenant_id, rows, submitted_by_user_id=None, scoped_customer_id=scoped_customer_id
-        )
-    elif kind_subpath == _ACH_TABULAR:
-        rows = parse_tabular_file(filename, content)
-        if not rows:
-            raise ValueError("File has no data rows")
-        results = ingest_ach_rows(session, tenant_id, rows, scoped_customer_id=scoped_customer_id)
-    elif kind_subpath == _ACH_NACHA:
-        entries = parse_nacha_file(content)
-        if not entries:
-            raise ValueError("File has no entry detail records")
-        results = ingest_nacha_entries(session, tenant_id, entries, scoped_customer_id=scoped_customer_id)
-    elif kind_subpath == _CHECKS_TABULAR:
-        rows = parse_tabular_file(filename, content)
-        if not rows:
-            raise ValueError("File has no data rows")
-        results = ingest_paid_item_tabular_rows(session, tenant_id, rows, scoped_customer_id=scoped_customer_id)
-    elif kind_subpath == _CHECKS_X937:
-        items = parse_x937_file(content)
-        if not items:
-            raise ValueError("File has no check detail records")
-        results = ingest_x937_items(session, tenant_id, items, scoped_customer_id=scoped_customer_id)
-    else:  # _CHECKS_ZIP
-        rows, images = parse_zip_manifest(content)
-        if not rows:
-            raise ValueError("Manifest has no data rows")
-        results = ingest_check_image_zip_rows(session, tenant_id, rows, images, scoped_customer_id=scoped_customer_id)
-
-    return sum(r.success for r in results), sum(not r.success for r in results)
+# Which import format each inbox holds (services/bulk_import_service.SPECS).
+_FORMAT_BY_SUBPATH = {
+    _ISSUED_ITEMS: "tabular",
+    _ACH_TABULAR: "tabular",
+    _ACH_NACHA: "nacha",
+    _CHECKS_TABULAR: "tabular",
+    _CHECKS_X937: "x937",
+    _CHECKS_ZIP: "zip",
+}
 
 
 def _move(path: Path, outcome_dir_name: str) -> None:
@@ -190,8 +153,7 @@ def _process_one_file(
         _move(path, "failed")
         return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "failed", error="File too large")
 
-    data = path.read_bytes()
-    sha256_hex = content_hash(data)
+    sha256_hex = file_digest(str(path)).hex()
     if bulk_upload_file_service.find_by_content_hash(session, tenant.id, sha256_hex) is not None:
         logger.info(
             "Dropped file %s for tenant %s is a byte-for-byte duplicate of an already-imported file -- skipping, left in place",
@@ -199,33 +161,34 @@ def _process_one_file(
         )
         return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "duplicate")
 
-    upload_record = bulk_upload_file_service.record_uploaded_file(
-        session,
-        tenant.id,
-        kind=_bulk_upload_kind_for(kind_subpath),
-        filename=path.name,
-        content_type=None,
-        data=data,
-        uploaded_by_user_id=None,
-        customer_id=customer_id,
-        source=BulkUploadSource.AUTO_IMPORT,
-    )
-    session.commit()
-
-    try:
-        succeeded_count, failed_count = _ingest(session, tenant.id, kind_subpath, path.name, data, scoped_customer_id=customer_id)
-    except Exception as exc:  # noqa: BLE001 -- a malformed dropped file must never crash the scan
-        session.rollback()
-        logger.warning("Failed to import dropped file %s for tenant %s: %s", path, tenant.slug, exc)
+    # The file is stored (and signed) and checked here; its rows are imported by a
+    # background job (services/bulk_import_service.py), so a large file doesn't hold up the
+    # scan. The counts are known here only when the job has already run (inline mode);
+    # otherwise they're on the upload's page when it finishes.
+    with path.open("rb") as handle:
+        upload_record = bulk_import_service.receive_upload(
+            session,
+            tenant.id,
+            kind=_bulk_upload_kind_for(kind_subpath),
+            file_format=_FORMAT_BY_SUBPATH[kind_subpath],
+            filename=path.name,
+            content_type=None,
+            uploaded_by_user_id=None,
+            customer_id=customer_id,
+            source=BulkUploadSource.AUTO_IMPORT,
+            stream=handle,
+        )
+    if upload_record.status == BulkUploadStatus.REJECTED:
+        logger.warning("Failed to import dropped file %s for tenant %s: %s", path, tenant.slug, upload_record.error)
         _move(path, "failed")
-        return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "failed", error=str(exc))
+        return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "failed", error=upload_record.error)
 
-    bulk_upload_file_service.set_result_counts(session, upload_record, succeeded_count=succeeded_count, failed_count=failed_count)
-    session.commit()
     _move(path, "processed")
+    jobs_queued(session.get_bind())
+    session.refresh(upload_record)
     return ImportedFileResult(
         tenant.slug, customer_number, kind_subpath, path.name, "imported",
-        succeeded_count=succeeded_count, failed_count=failed_count,
+        succeeded_count=upload_record.succeeded_count, failed_count=upload_record.failed_count,
     )
 
 

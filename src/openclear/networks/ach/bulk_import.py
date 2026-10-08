@@ -93,6 +93,41 @@ def _submission_from_nacha_entry(
     )
 
 
+def ingest_ach_row(
+    session: Session,
+    tenant_id: uuid.UUID,
+    row: dict[str, Any],
+    *,
+    auto_create_accounts: bool = False,
+    scoped_customer_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """One delimited/Excel row: creates and evaluates the transaction, returning its id.
+    The caller owns the transaction (see ingest_ach_rows, and services/bulk_import_service.py)."""
+    submission = _submission_from_row(
+        session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
+    )
+    return ingest_ach_transaction(session, tenant_id, submission, scoped_customer_id=scoped_customer_id).id
+
+
+def ingest_nacha_entry(
+    session: Session,
+    tenant_id: uuid.UUID,
+    entry: NachaEntry,
+    *,
+    auto_create_accounts: bool = False,
+    scoped_customer_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """One NACHA entry, as ingest_ach_row does for a delimited row."""
+    submission = _submission_from_nacha_entry(
+        session, tenant_id, entry, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
+    )
+    return ingest_ach_transaction(session, tenant_id, submission, scoped_customer_id=scoped_customer_id).id
+
+
+def nacha_entry_label(entry: NachaEntry) -> str:
+    return f"entry at line {entry.line_number} (trace {entry.trace_number})"
+
+
 def ingest_ach_rows(
     session: Session,
     tenant_id: uuid.UUID,
@@ -109,16 +144,11 @@ def ingest_ach_rows(
     for index, row in enumerate(rows):
         row_label = f"row {index + 2}"  # +2: 1-based, plus the header row itself
         try:
-            submission = _submission_from_row(
-                session,
-                tenant_id,
-                row,
-                auto_create_accounts=auto_create_accounts,
-                scoped_customer_id=scoped_customer_id,
+            txn_id = ingest_ach_row(
+                session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
             )
-            txn = ingest_ach_transaction(session, tenant_id, submission, scoped_customer_id=scoped_customer_id)
             session.commit()
-            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=txn.id))
+            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=txn_id))
         except Exception as exc:  # noqa: BLE001 — isolate row failures in a bulk file
             session.rollback()
             results.append(BulkFileRowResult(row_label=row_label, success=False, error=str(exc)))
@@ -138,18 +168,13 @@ def ingest_nacha_entries(
     delimited/Excel file."""
     results: list[BulkFileRowResult] = []
     for entry in entries:
-        row_label = f"entry at line {entry.line_number} (trace {entry.trace_number})"
+        row_label = nacha_entry_label(entry)
         try:
-            submission = _submission_from_nacha_entry(
-                session,
-                tenant_id,
-                entry,
-                auto_create_accounts=auto_create_accounts,
-                scoped_customer_id=scoped_customer_id,
+            txn_id = ingest_nacha_entry(
+                session, tenant_id, entry, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
             )
-            txn = ingest_ach_transaction(session, tenant_id, submission, scoped_customer_id=scoped_customer_id)
             session.commit()
-            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=txn.id))
+            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=txn_id))
         except Exception as exc:  # noqa: BLE001 — isolate row failures in a bulk file
             session.rollback()
             results.append(BulkFileRowResult(row_label=row_label, success=False, error=str(exc)))

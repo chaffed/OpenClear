@@ -18,6 +18,7 @@ OCR_CHECK_IMAGE = "check_image.ocr"
 RUN_DATA_EXPORT = "data_export.run"
 SCAN_BANK_DROPBOX = "dropbox.scan_bank"
 RETRAIN_MODEL_SLOT = "ml.retrain_slot"
+IMPORT_BULK_UPLOAD = "bulk_upload.import"  # services/bulk_import_service.IMPORT_JOB_KIND
 
 
 @handler(OCR_CHECK_IMAGE)
@@ -25,6 +26,15 @@ def _ocr_check_image(session: Session, job: Job) -> None:
     from openclear.networks.check.ocr_processing import process_check_image_ocr
 
     process_check_image_ocr(session, uuid.UUID(job.payload["check_image_id"]), tenant_id=job.tenant_id)
+
+
+@handler(IMPORT_BULK_UPLOAD)
+def _import_bulk_upload(session: Session, job: Job) -> None:
+    from openclear.services import bulk_import_service
+
+    bulk_import_service.run_import(
+        session, uuid.UUID(job.payload["upload_id"]), last_attempt=job.attempts >= job.max_attempts
+    )
 
 
 @handler(RUN_DATA_EXPORT)

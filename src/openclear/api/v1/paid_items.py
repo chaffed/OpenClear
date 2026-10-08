@@ -4,18 +4,22 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.bulk_uploads import BulkUploadAccepted, accepted, too_many_for_sync
 from openclear.api.v1.pagination import Page, page_params, set_page_headers
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
+from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.domain.paid_item import PaidItem, PaidItemSource
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item, ingest_paid_items_bulk
 from openclear.repositories.paid_item_repo import PaidItemRepository
 from openclear.schemas.common import BulkRowResultOut, BulkSubmitResponse
 from openclear.schemas.paid_item import PaidItemCreate, PaidItemRead
-from openclear.services import audit_log_service
+from openclear.services import audit_log_service, bulk_import_service
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/paid-items", tags=["paid-items"])
 
@@ -56,12 +60,21 @@ def create_paid_item(
     return PaidItemRead.model_validate(item)
 
 
-@router.post("/bulk", response_model=BulkSubmitResponse)
+@router.post("/bulk", response_model=BulkSubmitResponse, responses={202: {"model": BulkUploadAccepted}})
 def create_paid_items_bulk(
     payload: list[PaidItemCreate],
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("paid_item:write")),
 ) -> BulkSubmitResponse:
+    """Up to `bulk_api_sync_max_rows` items (1,000 by default) are imported now and every
+    row's result returned. More than that answers `202` with an upload to poll at
+    `/api/v1/bulk-uploads/{id}` while a background job imports them."""
+    if too_many_for_sync(len(payload)):
+        record = bulk_import_service.receive_api_items(
+            db, ctx.tenant_id, kind=BulkUploadKind.PAID_ITEMS, items=payload, user_id=ctx.user_id, customer_id=ctx.customer_id
+        )
+        jobs_queued(db.get_bind())
+        return JSONResponse(accepted(record).model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED)
     submissions = [_to_submission(row, PaidItemSource.BULK_FILE) for row in payload]
     results = ingest_paid_items_bulk(db, ctx.tenant_id, submissions, scoped_customer_id=ctx.customer_id)
     for r in results:

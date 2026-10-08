@@ -735,7 +735,9 @@ erDiagram
 <h2 id="bulk-export">5. Bulk Uploads &amp; Data Export</h2>
 <p>Every bulk file submitted anywhere in the app is recorded once in
 <strong>bulk_upload_file</strong>, with one <strong>bulk_upload_created_record</strong>
-row per record it created — the basis for the "back this upload out" reversal feature.
+row per record it created — the basis for the "back this upload out" reversal feature —
+and, for files imported in the background, one <strong>bulk_upload_row_result</strong> per
+row with its outcome.
 <strong>data_export_job</strong> is unrelated (a full tenant/customer data archive), grouped
 here only because both are "bulk data movement" concerns.</p>
 
@@ -747,6 +749,7 @@ here only because both are "bulk data movement" concerns.</p>
 {% call diagram("bulk-export") %}
 erDiagram
     bulk_upload_file ||--o{ bulk_upload_created_record : tracks
+    bulk_upload_file ||--o{ bulk_upload_row_result : reports
     customer ||--o{ bulk_upload_file : scopes
     user ||--o{ bulk_upload_file : uploads
     customer ||--o{ data_export_job : scopes
@@ -766,6 +769,11 @@ erDiagram
         uuid bulk_upload_file_id FK
         uuid reversed_by_user_id FK
     }
+    bulk_upload_row_result {
+        uuid id PK
+        uuid tenant_id FK
+        uuid bulk_upload_file_id FK
+    }
     data_export_job {
         uuid id PK
         uuid tenant_id FK
@@ -783,12 +791,18 @@ erDiagram
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
 <tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td></td></tr>
 <tr><td>kind</td><td>String(30) enum</td><td>no</td><td></td><td>issued_items / ach_transactions / users / accounts / check_images / paid_items / fraud_training_examples.</td></tr>
-<tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>manual / auto_import.</td></tr>
+<tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>manual / auto_import / api (a JSON bulk call too large to import during the request).</td></tr>
 <tr><td>original_filename / content_type</td><td>String</td><td>varies</td><td></td><td></td></tr>
 <tr><td>storage_path</td><td>String(1000)</td><td>no</td><td></td><td>The original file is kept as submitted, for later download/audit.</td></tr>
 <tr><td>size_bytes / sha256_hex</td><td>Integer / String(64)</td><td>no</td><td></td><td></td></tr>
 <tr><td>signature_hex</td><td>String(200)</td><td>no</td><td></td><td>Server-signed; a live re-check detects tampering after upload.</td></tr>
-<tr><td>succeeded_count / failed_count</td><td>Integer</td><td>yes</td><td></td><td>Null if the file was rejected before any row was processed.</td></tr>
+<tr><td>succeeded_count / failed_count</td><td>Integer</td><td>yes</td><td></td><td>Null if the file was rejected before any row was processed. Grow as a background import commits each chunk.</td></tr>
+<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>received / queued / processing / completed / rejected (nothing imported) / failed (the import gave up; committed rows stay).</td></tr>
+<tr><td>total_rows / processed_rows</td><td>Integer</td><td>yes / no</td><td></td><td>Progress of a background import. processed_rows commits with each chunk, so a retried import resumes after it.</td></tr>
+<tr><td>options</td><td>JSON</td><td>yes</td><td></td><td>The file format and the uploader's choices (create missing accounts).</td></tr>
+<tr><td>exception_counts</td><td>JSON</td><td>yes</td><td></td><td>New exceptions per customer, for the one summary notification sent when the import finishes.</td></tr>
+<tr><td>error</td><td>Text</td><td>yes</td><td></td><td>Why the file was rejected, or why the import failed.</td></tr>
+<tr><td>started_at / completed_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
 <tr><td>uploaded_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>uploaded_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>backed_out_at / backed_out_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
@@ -806,6 +820,21 @@ erDiagram
 <tr><td>row_label</td><td>String(100)</td><td>no</td><td></td><td>Which row of the original file this came from.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>reversed_at / reversed_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → user.id</td><td>Set when this specific record was reverted by a back-out.</td></tr>
+</tbody>
+</table>
+
+<h3>bulk_upload_row_result</h3>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>bulk_upload_file_id</td><td>UUID</td><td>no</td><td>FK → bulk_upload_file.id</td><td>Unique with row_index.</td></tr>
+<tr><td>row_index</td><td>Integer</td><td>no</td><td></td><td>0-based position in the file or API request.</td></tr>
+<tr><td>row_label</td><td>String(200)</td><td>no</td><td></td><td>The row as the uploader knows it ("row 12", "entry at line 40").</td></tr>
+<tr><td>success</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
+<tr><td>created_id</td><td>UUID</td><td>yes</td><td></td><td>What the row created (an issued item, a paid item, ...).</td></tr>
+<tr><td>error / note</td><td>Text</td><td>yes</td><td></td><td>Why the row failed.</td></tr>
 </tbody>
 </table>
 

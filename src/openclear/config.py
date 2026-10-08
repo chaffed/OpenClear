@@ -264,6 +264,12 @@ class Settings(BaseSettings):
     # A running job whose worker hasn't sent a heartbeat for this long is presumed dead
     # (its process crashed or was killed) and is queued again.
     job_stale_after_seconds: int = 300
+    # Bulk files are imported by a background job (services/bulk_import_service.py), which
+    # commits this many rows at a time. A JSON API bulk call with more items than
+    # bulk_api_sync_max_rows is imported the same way and answers 202 with an upload to
+    # poll; at or under it, the call still answers with every row's result.
+    bulk_import_chunk_rows: int = 1000
+    bulk_api_sync_max_rows: int = 1000
     # Fallback for CustomerDispositionSetting.response_window_hours when a customer's own
     # setting leaves it unset — same nullable-override-falls-back-to-global-default shape
     # as data_export_timeout_seconds above.

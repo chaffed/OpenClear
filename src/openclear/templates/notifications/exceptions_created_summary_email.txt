@@ -1,0 +1,6 @@
+{{ count }} new exception{{ "s" if count != 1 else "" }} need{{ "" if count != 1 else "s" }} review, from {{ source_label }}.
+
+View the queue here: {{ queue_url }}
+
+You're receiving this because your role can recommend a decision on exceptions like
+these. You can change what you're notified about at /ui/security/notifications.

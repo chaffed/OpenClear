@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}{{ record.original_filename }} — {{ ctx.tenant_name }}{% endblock %}
+{% block head_extra %}{% if not finished %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 {% block help_title %}About this upload record{% endblock %}
 {% block help_body %}
 <p>The original file is kept exactly as submitted, signed with a server-held key —
   "signature verified" re-checks it against a fresh read of the file right now, not a
   cached flag, so any tampering after upload shows up immediately.</p>
+<p>Large files are imported in the background: this page shows the progress and
+  refreshes itself until the import is done. You can leave it and come back.</p>
 <p>Backing an upload out reverses what it created: real records (issued items,
   memberships) are voided/deactivated; accounts and ACH transactions (which have no
   such concept) are only marked as originating from a reversed upload. It's one-way,
@@ -15,6 +18,20 @@
 {% block content %}
 <div class="card">
   <h1>{{ record.original_filename }}</h1>
+  {% set status = record.status.value %}
+  {% if status in ("queued", "processing") %}
+  <p role="status"><span class="badge badge-warn">{{ "Waiting to import" if status == "queued" else "Importing" }}</span>
+    {% if record.total_rows %}{{ "{:,}".format(record.processed_rows) }} of {{ "{:,}".format(record.total_rows) }} rows done.{% endif %}
+    This page refreshes on its own.</p>
+  {% elif status == "rejected" %}
+  <p class="flash flash-error" role="alert">This file was rejected and nothing in it was imported: {{ record.error }}</p>
+  {% elif status == "failed" %}
+  <p class="flash flash-error" role="alert">The import stopped after {{ "{:,}".format(record.processed_rows) }} rows: {{ record.error }}
+    Rows before that were imported; back the upload out or upload the rest again.</p>
+  {% elif record.succeeded_count is not none %}
+  <p><span class="badge {{ 'badge-ok' if not record.failed_count else 'badge-warn' }}">
+    {{ record.succeeded_count }} of {{ record.succeeded_count + record.failed_count }} succeeded</span></p>
+  {% endif %}
   <p>
     <span class="badge {{ 'badge-ok' if verified else 'badge-danger' }}">
       {{ 'signature verified' if verified else 'SIGNATURE MISMATCH — file has changed since upload' }}
@@ -28,13 +45,30 @@
       {% if record.succeeded_count is not none %}
       <tr><th>Succeeded</th><td>{{ record.succeeded_count }}</td></tr>
       <tr><th>Failed</th><td>{{ record.failed_count }}</td></tr>
-      {% else %}
+      {% elif status == "rejected" %}
       <tr><th>Result</th><td>Rejected before any rows were processed</td></tr>
       {% endif %}
       <tr><th>SHA-256</th><td><code>{{ record.sha256_hex }}</code></td></tr>
     </tbody>
   </table>
-  <p><a href="/ui/bulk-uploads/{{ record.id }}/download" class="button">{{ icon("download") }}Download original file</a></p>
+  <p><a href="/ui/bulk-uploads/{{ record.id }}/download" class="button">{{ icon("download") }}Download original file</a>
+    {% if has_row_results %}<a href="/ui/bulk-uploads/{{ record.id }}/results.csv" class="button secondary">{{ icon("download") }}Download row results (CSV)</a>{% endif %}</p>
+
+  {% if failures %}
+  <h2>Rows that failed</h2>
+  <table>
+    <thead><tr><th>Row</th><th>Error</th></tr></thead>
+    <tbody>
+      {% for r in failures %}
+      <tr><td>{{ r.row_label }}</td><td>{{ r.error }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if record.failed_count and record.failed_count > failures | length %}
+  <p class="text-muted">Showing the first {{ failures | length }} of {{ "{:,}".format(record.failed_count) }}. The CSV has every row.</p>
+  {% endif %}
+  {% endif %}
+  {% if back_url %}<p><a href="{{ back_url }}">{{ back_label }}</a></p>{% endif %}
 
   {% if record.backed_out_at %}
   <p><span class="badge">Backed out on {{ record.backed_out_at.strftime("%Y-%m-%d %H:%M") }}</span></p>

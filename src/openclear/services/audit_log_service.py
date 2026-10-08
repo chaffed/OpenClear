@@ -137,6 +137,52 @@ def record_action(
 
 
 _MAX_ATTEMPTS = 10
+_READ_LATEST = object()  # _build_entry's default: chain onto the latest entry in the database
+
+
+@dataclass(frozen=True, slots=True)
+class PendingAction:
+    """One entry for record_actions: the same fields record_action takes."""
+
+    actor_user_id: uuid.UUID | None
+    channel: Literal["web", "api"]
+    action: str
+    summary: str
+    resource_type: str
+    resource_id: uuid.UUID | None = None
+    metadata: dict[str, Any] | None = None
+
+
+def record_actions(session: Session, tenant_id: uuid.UUID, actions: list[PendingAction]) -> list[AuditLogEntry]:
+    """record_action for many entries at once (a bulk import's chunk): the bank's lock is
+    taken and the latest entry read once, and the entries are chained in memory, instead
+    of once per entry. Same guarantees: on a lost race the whole batch is rebuilt on the
+    new latest entry and tried again."""
+    if not actions:
+        return []
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(select(func.pg_advisory_xact_lock(_chain_lock_key(tenant_id))))
+
+    for attempt in range(_MAX_ATTEMPTS):
+        prev = AuditLogRepository(session, tenant_id).latest()
+        entries = []
+        for pending in actions:
+            prev = _build_entry(
+                session, tenant_id, actor_user_id=pending.actor_user_id, channel=pending.channel, action=pending.action,
+                summary=pending.summary, resource_type=pending.resource_type, resource_id=pending.resource_id,
+                metadata=pending.metadata, prev=prev,
+            )
+            entries.append(prev)
+        try:
+            with session.begin_nested():
+                session.add_all(entries)
+                session.flush()
+            return entries
+        except IntegrityError:
+            if attempt == _MAX_ATTEMPTS - 1:
+                raise
+            time.sleep(random.uniform(0.005, 0.05) * (attempt + 1))
+    raise AssertionError("unreachable")
 
 
 def _chain_lock_key(tenant_id: uuid.UUID) -> int:
@@ -155,8 +201,12 @@ def _build_entry(
     resource_type: str,
     resource_id: uuid.UUID | None,
     metadata: dict[str, Any] | None,
+    prev: Any = _READ_LATEST,
 ) -> AuditLogEntry:
-    prev = AuditLogRepository(session, tenant_id).latest()
+    """`prev` is the entry this one chains onto (None for the first); read from the
+    database when not given."""
+    if prev is _READ_LATEST:
+        prev = AuditLogRepository(session, tenant_id).latest()
     prev_hash = prev.entry_hash if prev else None
     occurred_at = datetime.now(timezone.utc)
 

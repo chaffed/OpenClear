@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Scalability (SCALE_PLAN.md S4): bulk files import in the background
+
+- **Uploads no longer import inside the web request.** Accounts, issued items, presented
+  checks, ACH transactions and check images are stored, checked, and then imported by a
+  background job. The upload's page shows progress, then the result: rows that failed
+  and why, plus a CSV of every row. A file that can't be parsed is still rejected on the
+  form with nothing imported. The dropbox import uses the same path.
+- **Faster and safer imports:** 1,000 rows commit at a time, with each row in a savepoint,
+  and audit entries are written a chunk at a time. On the test laptop a 50,000-row file
+  now takes about 3.5 minutes instead of about 8. An interrupted import resumes where it
+  stopped without importing any row twice.
+- **One notification per upload:** reviewers get a single "N new exceptions" summary
+  instead of one email or text per exception.
+- **API:** a `/bulk` call with more than 1,000 items (`OPENCLEAR_BULK_API_SYNC_MAX_ROWS`)
+  now answers `202` with an upload to poll at `/api/v1/bulk-uploads/{id}` (and
+  `/results`). **Behavior change** for clients that send more than 1,000 items in one call.
+- **Large files aren't held in memory:** uploads stream to disk, X9.37 cash letters are
+  read through a memory map, and zip images are read as needed.
+- **Fixes:**
+  - the upload detail page failed for presented-check and fraud-training uploads;
+  - a missing or unreadable ML model file made every exception row in an upload fail. It
+    now leaves those exceptions unscored, as a failed integrity check already did.
+- **Upgrading:** run `alembic upgrade head` (new columns on `bulk_upload_file`, new table
+  `bulk_upload_row_result`).
+
 ## 1.6.0 — 2026-10-08
 
 PosPay is now **OpenClear**. This release adds billing (account analysis and hard charge,

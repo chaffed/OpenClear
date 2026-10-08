@@ -8,6 +8,7 @@ into paid_item + check_image rows)."""
 
 import io
 import zipfile
+from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -21,14 +22,35 @@ class ZipImportError(Exception):
     pass
 
 
-def parse_zip_manifest(content: bytes) -> tuple[list[dict[str, Any]], dict[str, bytes]]:
+class _LazyImages(Mapping):
+    """Images keyed like parse_zip_manifest's dict, read from the archive only when looked
+    up, so a large zip isn't held in memory (SCALE_PLAN.md S4)."""
+
+    def __init__(self, archive: zipfile.ZipFile, names: dict[str, str]) -> None:
+        self._archive, self._names = archive, names
+
+    def __getitem__(self, key: str) -> bytes:
+        return self._archive.read(self._names[key])
+
+    def __iter__(self):
+        return iter(self._names)
+
+    def __len__(self) -> int:
+        return len(self._names)
+
+
+def parse_zip_manifest(content, *, lazy_images: bool = False) -> tuple[list[dict[str, Any]], Mapping[str, bytes]]:
     """Returns `(rows, images_by_filename)`. `images_by_filename` is keyed by each zip
     entry's basename, lowercased, so a manifest's `front_image_filename`/
     `back_image_filename` columns can reference an image anywhere in the archive (nested
     folders included) without needing an exact path match. Raises ZipImportError if the
-    file isn't a valid zip, or doesn't contain exactly one top-level manifest file."""
+    file isn't a valid zip, or doesn't contain exactly one top-level manifest file.
+
+    `content` is the file's bytes, or a path to it. With lazy_images=True the images are
+    read from the archive when looked up instead of all at once; the archive (opened from
+    the path) then stays open for as long as the returned mapping is used."""
     try:
-        archive = zipfile.ZipFile(io.BytesIO(content))
+        archive = zipfile.ZipFile(io.BytesIO(content) if isinstance(content, (bytes, bytearray)) else content)
     except zipfile.BadZipFile as exc:
         raise ZipImportError(f"Not a valid zip file: {exc}") from exc
 
@@ -47,6 +69,7 @@ def parse_zip_manifest(content: bytes) -> tuple[list[dict[str, Any]], dict[str, 
 
     manifest_names = []
     images: dict[str, bytes] = {}
+    image_names: dict[str, str] = {}
     for info in archive.infolist():
         if info.is_dir():
             continue
@@ -57,6 +80,8 @@ def parse_zip_manifest(content: bytes) -> tuple[list[dict[str, Any]], dict[str, 
         lower = basename.lower()
         if lower.endswith(_MANIFEST_EXTENSIONS):
             manifest_names.append(name)
+        elif lazy_images:
+            image_names[lower] = name
         else:
             images[lower] = archive.read(name)
 
@@ -71,10 +96,10 @@ def parse_zip_manifest(content: bytes) -> tuple[list[dict[str, Any]], dict[str, 
     except TabularParseError as exc:
         raise ZipImportError(f"Could not parse manifest {manifest_name!r}: {exc}") from exc
 
-    return rows, images
+    return rows, (_LazyImages(archive, image_names) if lazy_images else images)
 
 
-def find_image(images: dict[str, bytes], filename: str) -> bytes | None:
+def find_image(images: Mapping[str, bytes], filename: str) -> bytes | None:
     """Looks up a manifest-referenced filename against the archive's images, matching by
     basename only (case-insensitive) — a manifest column can reference just a filename
     even if the actual entry lives in a subfolder of the zip."""

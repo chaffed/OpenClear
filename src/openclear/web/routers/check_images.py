@@ -10,18 +10,16 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
-from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
-from openclear.bulk_import.zip_import import ZipImportError, parse_zip_manifest
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.domain.check_image import CheckImage, OcrStatus
-from openclear.networks.check.bulk_import import ingest_check_image_zip_rows, ingest_x937_items
 from openclear.networks.check.ocr_processing import create_check_image, queue_ocr
 from openclear.ocr.storage import read_image
 from openclear.repositories.check_image_repo import CheckImageRepository
 from openclear.repositories.paid_item_repo import PaidItemRepository
-from openclear.services import audit_log_service, bulk_upload_file_service, bulk_upload_reversal_service
+from openclear.services import audit_log_service
+from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.security import verify_csrf
@@ -118,103 +116,15 @@ def bulk_upload_form(
 @router.post("/bulk")
 async def bulk_upload_check_images(
     request: Request,
-    background_tasks: BackgroundTasks,
     upload_file: UploadFile,
     format: Literal["zip", "x937"] = Form(...),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(_require_bulk_check_image_permissions),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    content = await upload_file.read()
-
-    # Recorded before parsing (and committed on its own) so a rejected/malformed file is
-    # still captured for audit purposes, not just successful uploads — see
-    # services/bulk_upload_file_service.py.
-    upload_record = bulk_upload_file_service.record_uploaded_file(
-        db,
-        ctx.tenant_id,
-        kind=BulkUploadKind.CHECK_IMAGES,
-        filename=upload_file.filename or ("upload.x937" if format == "x937" else "upload.zip"),
-        content_type=upload_file.content_type,
-        data=content,
-        uploaded_by_user_id=ctx.user_id,
-        customer_id=ctx.customer_id,
-    )
-    db.commit()
-
-    if format == "x937":
-        try:
-            items = parse_x937_file(content)
-        except X937ParseError as exc:
-            return render_template(
-                request, "check_images/bulk_upload.html", ctx=ctx, error=str(exc), status_code=422, upload_record=upload_record
-            )
-        if not items:
-            return render_template(
-                request,
-                "check_images/bulk_upload.html",
-                ctx=ctx,
-                error="That file has no check detail records.",
-                status_code=422,
-                upload_record=upload_record,
-            )
-        results = ingest_x937_items(db, ctx.tenant_id, items, scoped_customer_id=ctx.customer_id)
-    else:
-        try:
-            rows, images = parse_zip_manifest(content)
-        except ZipImportError as exc:
-            return render_template(
-                request, "check_images/bulk_upload.html", ctx=ctx, error=str(exc), status_code=422, upload_record=upload_record
-            )
-        if not rows:
-            return render_template(
-                request,
-                "check_images/bulk_upload.html",
-                ctx=ctx,
-                error="That manifest has no data rows.",
-                status_code=422,
-                upload_record=upload_record,
-            )
-        results = ingest_check_image_zip_rows(db, ctx.tenant_id, rows, images, scoped_customer_id=ctx.customer_id)
-
-    for r in results:
-        if not r.success:
-            continue
-        audit_log_service.record_action(
-            db,
-            ctx.tenant_id,
-            actor_user_id=ctx.user_id,
-            channel="web",
-            action="check_image.upload",
-            summary=f"Check image + paid item created via bulk upload ({r.row_label})",
-            resource_type="paid_item",
-            resource_id=r.created_id,
-        )
-        bulk_upload_reversal_service.track_created_record(
-            db, ctx.tenant_id, upload_record.id, resource_type="paid_item", resource_id=r.created_id, row_label=r.row_label
-        )
-        # r.created_id is the new paid_item's id (see networks/check/bulk_import.py); the
-        # check_image OCR background task needs its own id, one lookup away via the 1:1
-        # link this bulk flow always creates between the two.
-        check_image = CheckImageRepository(db, ctx.tenant_id, ctx.customer_id).list(paid_item_id=r.created_id)
-        if check_image:
-            queue_ocr(db, ctx.tenant_id, check_image[0].id)
-            bulk_upload_reversal_service.track_created_record(
-                db, ctx.tenant_id, upload_record.id, resource_type="check_image", resource_id=check_image[0].id, row_label=r.row_label
-            )
-    bulk_upload_file_service.set_result_counts(
-        db, upload_record, succeeded_count=sum(r.success for r in results), failed_count=sum(not r.success for r in results)
-    )
-    db.commit()
-    jobs_queued(db.get_bind(), background_tasks)
-    return render_template(
-        request,
-        "bulk_result.html",
-        ctx=ctx,
-        results=results,
-        upload_record=upload_record,
-        back_url="/ui/check-images",
-        back_label="Back to check images",
+    return start_import(
+        request, db, ctx, upload_file, kind=BulkUploadKind.CHECK_IMAGES, file_format=format,
+        form_template="check_images/bulk_upload.html", default_filename="upload.x937" if format == "x937" else "upload.zip",
     )
 
 

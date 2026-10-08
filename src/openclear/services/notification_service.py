@@ -12,6 +12,8 @@ locked/unlocked) -- each called right after its triggering mutation succeeds, sa
 "right after the action, before commit" convention services/audit_log_service.py's
 record_action() already established."""
 
+import contextlib
+import contextvars
 import uuid
 from typing import Any
 
@@ -106,8 +108,10 @@ def _absolute_url(path: str) -> str:
     return path
 
 
-def _render_body(notification_type: NotificationType, channel: NotificationChannel, context: dict[str, Any]) -> str:
-    template_name = f"notifications/{notification_type.value}_{channel.value}.txt"
+def _render_body(
+    notification_type: NotificationType, channel: NotificationChannel, context: dict[str, Any], template: str | None = None
+) -> str:
+    template_name = f"notifications/{template or notification_type.value}_{channel.value}.txt"
     return templates.env.get_template(template_name).render(**context)
 
 
@@ -120,7 +124,11 @@ def _queue(
     template_context: dict[str, Any],
     resource_type: str | None = None,
     resource_id: uuid.UUID | None = None,
+    template: str | None = None,
+    subject: str | None = None,
 ) -> None:
+    """`template` and `subject` override the type's own, for a variant of a type (the
+    bulk upload summary) that the same notification preference governs."""
     email_enabled, sms_enabled = _effective_preference(session, recipient.id, notification_type)
 
     if email_enabled:
@@ -131,8 +139,8 @@ def _queue(
                 notification_type=notification_type,
                 channel=NotificationChannel.EMAIL,
                 destination=recipient.email,
-                subject=_EMAIL_SUBJECTS[notification_type],
-                body=_render_body(notification_type, NotificationChannel.EMAIL, template_context),
+                subject=subject or _EMAIL_SUBJECTS[notification_type],
+                body=_render_body(notification_type, NotificationChannel.EMAIL, template_context, template),
                 resource_type=resource_type,
                 resource_id=resource_id,
             )
@@ -146,7 +154,7 @@ def _queue(
                 channel=NotificationChannel.SMS,
                 destination=recipient.phone,
                 subject=None,
-                body=_render_body(notification_type, NotificationChannel.SMS, template_context),
+                body=_render_body(notification_type, NotificationChannel.SMS, template_context, template),
                 resource_type=resource_type,
                 resource_id=resource_id,
             )
@@ -154,7 +162,49 @@ def _queue(
     session.flush()
 
 
+_summarizing_exceptions: contextvars.ContextVar[bool] = contextvars.ContextVar("summarizing_exceptions", default=False)
+
+
+@contextlib.contextmanager
+def exceptions_summarized():
+    """Inside this block notify_exception_created queues nothing: a bulk import sends one
+    summary per upload instead (notify_exceptions_created_summary; SCALE_PLAN.md D5)."""
+    token = _summarizing_exceptions.set(True)
+    try:
+        yield
+    finally:
+        _summarizing_exceptions.reset(token)
+
+
+def notify_exceptions_created_summary(
+    session: Session, tenant_id: uuid.UUID, counts_by_customer: dict[str, int], *, source_label: str
+) -> None:
+    """One EXCEPTION_CREATED notification per recipient for a whole bulk upload.
+    `counts_by_customer` maps a customer id (or "" for none) to how many new exceptions
+    it got; each recipient's count covers only the customers they can see."""
+    totals: dict[uuid.UUID, tuple[User, int]] = {}
+    for customer_key, count in counts_by_customer.items():
+        if not count:
+            continue
+        customer_id = uuid.UUID(customer_key) if customer_key else None
+        for recipient in _recipients_for_permission(session, tenant_id, "exception:recommend", customer_id=customer_id):
+            previous = totals.get(recipient.id, (recipient, 0))[1]
+            totals[recipient.id] = (recipient, previous + count)
+    for recipient, count in totals.values():
+        _queue(
+            session,
+            tenant_id=tenant_id,
+            recipient=recipient,
+            notification_type=NotificationType.EXCEPTION_CREATED,
+            template_context={"count": count, "source_label": source_label, "queue_url": _absolute_url("/ui/exceptions")},
+            template="exceptions_created_summary",
+            subject=f"{count} new exception{'s' if count != 1 else ''} ready for review",
+        )
+
+
 def notify_exception_created(session: Session, exception_item: ExceptionItem) -> None:
+    if _summarizing_exceptions.get():
+        return
     recipients = _recipients_for_permission(
         session, exception_item.tenant_id, "exception:recommend", customer_id=exception_item.customer_id
     )

@@ -155,15 +155,18 @@ def test_bulk_upload_file_source_survives_migration_and_orm_read(scratch_db):
     conn.commit()
     conn.close()
 
-    command.upgrade(_alembic_config(), "b1c2d3e4f5a6")
+    # Upgrade all the way: the ORM model below is today's, so reading through it needs
+    # every later column too (b1c2d3e4f5a6 added `source`).
+    command.upgrade(_alembic_config(), "head")
 
     from openclear.db.session import get_session_factory
-    from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadSource
+    from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadSource, BulkUploadStatus
 
     session = get_session_factory()()
     try:
         row = session.query(BulkUploadFile).one()
         assert row.source == BulkUploadSource.MANUAL
+        assert row.status == BulkUploadStatus.REJECTED  # no result counts: it never finished
     finally:
         session.close()
 

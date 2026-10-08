@@ -8,19 +8,13 @@ from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from openclear.bulk_import.tabular import TabularParseError, parse_tabular_file
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
 from openclear.repositories.issued_item_repo import IssuedItemRepository
-from openclear.services import (
-    account_service,
-    audit_log_service,
-    bulk_upload_file_service,
-    bulk_upload_reversal_service,
-    issued_item_service,
-)
+from openclear.services import account_service, audit_log_service, issued_item_service
+from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
@@ -147,76 +141,10 @@ async def bulk_upload_issued_items(
     ctx: TenantContext = Depends(require_web_permission("issued_item:write")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    content = await upload_file.read()
-
-    # Recorded before parsing (and committed on its own) so a rejected/malformed file is
-    # still captured for audit purposes, not just successful uploads — see
-    # services/bulk_upload_file_service.py.
-    upload_record = bulk_upload_file_service.record_uploaded_file(
-        db,
-        ctx.tenant_id,
-        kind=BulkUploadKind.ISSUED_ITEMS,
-        filename=upload_file.filename or "upload.csv",
-        content_type=upload_file.content_type,
-        data=content,
-        uploaded_by_user_id=ctx.user_id,
-        customer_id=ctx.customer_id,
-    )
-    db.commit()
-
-    try:
-        rows = parse_tabular_file(upload_file.filename or "upload.csv", content)
-    except TabularParseError as exc:
-        return render_template(
-            request, "issued_items/bulk_upload.html", ctx=ctx, error=str(exc), status_code=422, upload_record=upload_record
-        )
-
-    if not rows:
-        return render_template(
-            request,
-            "issued_items/bulk_upload.html",
-            ctx=ctx,
-            error="That file has no data rows.",
-            status_code=422,
-            upload_record=upload_record,
-        )
-
-    results = issued_item_service.create_issued_items_from_rows(
-        db,
-        ctx.tenant_id,
-        rows,
-        submitted_by_user_id=ctx.user_id,
-        auto_create_accounts=create_missing_accounts,
-        scoped_customer_id=ctx.customer_id,
-    )
-    for r in results:
-        if not r.success:
-            continue
-        audit_log_service.record_action(
-            db,
-            ctx.tenant_id,
-            actor_user_id=ctx.user_id,
-            channel="web",
-            action="issued_item.create",
-            summary=f"Issued item created via bulk upload ({r.row_label})",
-            resource_type="issued_item",
-            resource_id=r.created_id,
-        )
-        bulk_upload_reversal_service.track_created_record(
-            db, ctx.tenant_id, upload_record.id, resource_type="issued_item", resource_id=r.created_id, row_label=r.row_label
-        )
-    bulk_upload_file_service.set_result_counts(
-        db, upload_record, succeeded_count=sum(r.success for r in results), failed_count=sum(not r.success for r in results)
-    )
-    db.commit()
-    return render_template(
-        request,
-        "bulk_result.html",
-        ctx=ctx,
-        results=results,
-        upload_record=upload_record,
-        back_url="/ui/issued-items",
-        back_label="Back to issued items",
+    return start_import(
+        request, db, ctx, upload_file, kind=BulkUploadKind.ISSUED_ITEMS, file_format="tabular",
+        form_template="issued_items/bulk_upload.html", default_filename="upload.csv",
+        options={"create_missing_accounts": create_missing_accounts},
     )
 
 

@@ -2,7 +2,9 @@
 # Copyright (C) 2026 Chaffed
 
 import contextlib
+import hashlib
 import uuid
+from typing import BinaryIO
 from pathlib import Path
 
 from openclear.config import get_settings
@@ -26,15 +28,45 @@ def save_uploaded_file(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str
     auto-create missing parent directories, so it just failed with an unhandled
     FileNotFoundError), but that was incidental, not an explicit control, and it meant a
     file with a path-like name crashed instead of uploading cleanly."""
-    settings = get_settings()
-    safe_filename = Path(filename).name or "upload"
-    directory = Path(settings.bulk_upload_storage_dir) / str(tenant_id)
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"{upload_id}_{safe_filename}"
+    path = _upload_path(tenant_id, upload_id, filename)
     path.write_bytes(data)
     with contextlib.suppress(OSError):
         path.chmod(0o444)
     return str(path)
+
+
+_CHUNK = 1024 * 1024
+
+
+def _upload_path(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str) -> Path:
+    safe_filename = Path(filename).name or "upload"
+    directory = Path(get_settings().bulk_upload_storage_dir) / str(tenant_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / f"{upload_id}_{safe_filename}"
+
+
+def save_uploaded_stream(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str, stream: BinaryIO) -> tuple[str, int, bytes]:
+    """save_uploaded_file for a file-like object, copied in 1 MB pieces so a large upload
+    is never held in memory (SCALE_PLAN.md S4). Returns (path, size, SHA-256 digest)."""
+    path = _upload_path(tenant_id, upload_id, filename)
+    digest, size = hashlib.sha256(), 0
+    with path.open("wb") as out:
+        while chunk := stream.read(_CHUNK):
+            digest.update(chunk)
+            size += len(chunk)
+            out.write(chunk)
+    with contextlib.suppress(OSError):
+        path.chmod(0o444)
+    return str(path), size, digest.digest()
+
+
+def file_digest(path: str) -> bytes:
+    """The stored file's SHA-256, read in pieces."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while chunk := handle.read(_CHUNK):
+            digest.update(chunk)
+    return digest.digest()
 
 
 def read_uploaded_file(path: str) -> bytes:

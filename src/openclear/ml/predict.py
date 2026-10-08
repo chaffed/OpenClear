@@ -78,6 +78,11 @@ def _load_model(session: Session, tenant_id: uuid.UUID, network_code: str, custo
         # same as before any model existed, and this is logged for the operator.
         logger.exception("Not scoring with ml_model %s: its artifact failed the integrity check", model_row.id)
         return None
+    except OSError:
+        # Likewise a model file that's missing or unreadable (a volume not mounted, a
+        # restore without the artifacts): otherwise every exception row would fail to load.
+        logger.exception("Not scoring with ml_model %s: its artifact can't be read", model_row.id)
+        return None
     _MODEL_CACHE[cache_key] = (model_row.id, model)
     return model, model_row.version
 

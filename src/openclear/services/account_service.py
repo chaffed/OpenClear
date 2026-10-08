@@ -160,6 +160,13 @@ def _account_input_from_row(
     )
 
 
+def create_account_from_row(
+    session: Session, tenant_id: uuid.UUID, row: dict[str, Any], *, scoped_customer_id: uuid.UUID | None = None
+) -> uuid.UUID:
+    """One delimited/Excel row. The caller owns the transaction."""
+    return create_account(session, tenant_id, _account_input_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id)).id
+
+
 def create_accounts_from_rows(
     session: Session,
     tenant_id: uuid.UUID,
@@ -174,10 +181,9 @@ def create_accounts_from_rows(
     for index, row in enumerate(rows):
         row_label = f"row {index + 2}"  # +2: 1-based, plus the header row itself
         try:
-            data = _account_input_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id)
-            account = create_account(session, tenant_id, data)
+            account_id = create_account_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id)
             session.commit()
-            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=account.id))
+            results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=account_id))
         except RowFieldError as exc:
             session.rollback()
             results.append(BulkFileRowResult(row_label=row_label, success=False, error=str(exc)))

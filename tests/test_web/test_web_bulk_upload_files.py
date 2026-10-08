@@ -19,8 +19,11 @@ def _login(client, tenant_slug, email, password=TenantFactory.PASSWORD):
     return csrf
 
 
-def _extract_detail_link(html: str) -> str:
-    match = re.search(r'href="(/ui/bulk-uploads/[0-9a-f-]+)"', html)
+def _extract_detail_link(resp) -> str:
+    """An accepted upload redirects to its own page; a rejected one links to it from the form."""
+    if re.fullmatch(r"/ui/bulk-uploads/[0-9a-f-]+", resp.url.path):
+        return resp.url.path
+    match = re.search(r'href="(/ui/bulk-uploads/[0-9a-f-]+)"', resp.text)
     assert match is not None, "no /ui/bulk-uploads/... link found on the page"
     return match.group(1)
 
@@ -40,9 +43,9 @@ def test_issued_items_upload_is_recorded_signed_and_downloadable(client, db_sess
         files={"upload_file": ("items.csv", content, "text/csv")},
     )
     assert resp.status_code == 200
-    assert "saved and signed" in resp.text
+    assert "1 of 1 succeeded" in resp.text
 
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
     detail_resp = client.get(detail_link)
     assert detail_resp.status_code == 200
     assert "signature verified" in detail_resp.text
@@ -69,7 +72,7 @@ def test_rejected_file_is_still_recorded_and_linked(client, tenant_factory):
     assert resp.status_code == 422
     assert "saved and signed" in resp.text
 
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
     detail_resp = client.get(detail_link)
     assert detail_resp.status_code == 200
     assert "Rejected before any rows were processed" in detail_resp.text
@@ -90,7 +93,7 @@ def test_ach_bulk_upload_is_recorded(client, tenant_factory):
         files={"upload_file": ("txns.csv", content, "text/csv")},
     )
     assert resp.status_code == 200
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
 
     download_resp = client.get(f"{detail_link}/download")
     assert download_resp.content == content
@@ -108,7 +111,7 @@ def test_users_bulk_upload_is_recorded(client, tenant_factory):
         files={"upload_file": ("users.csv", content, "text/csv")},
     )
     assert resp.status_code == 200
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
 
     download_resp = client.get(f"{detail_link}/download")
     assert download_resp.content == content
@@ -127,7 +130,7 @@ def test_detail_page_shows_tampered_when_file_altered_on_disk(client, db_session
         data={"csrf_token": csrf},
         files={"upload_file": ("items.csv", content, "text/csv")},
     )
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
 
     record = BulkUploadFileRepository(db_session, tenant.id).list(kind=BulkUploadKind.ISSUED_ITEMS)[0]
     path = Path(record.storage_path)
@@ -151,7 +154,7 @@ def test_download_requires_the_upload_kind_permission(client, tenant_factory):
         data={"csrf_token": admin_csrf},
         files={"upload_file": ("items.csv", content, "text/csv")},
     )
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
 
     _login(client, tenant.slug, users["viewer"].email)
     resp = client.get(detail_link, follow_redirects=False)
@@ -196,7 +199,7 @@ def test_bulk_upload_file_not_visible_across_customers(client, db_session, tenan
     resp = client.post(
         "/ui/issued-items/bulk", data={"csrf_token": csrf_a}, files={"upload_file": ("items.csv", content, "text/csv")}
     )
-    detail_link = _extract_detail_link(resp.text)
+    detail_link = _extract_detail_link(resp)
 
     _login(client, tenant.slug, user_b.email)
     assert client.get(detail_link, follow_redirects=False).status_code == 404

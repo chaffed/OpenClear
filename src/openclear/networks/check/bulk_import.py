@@ -21,6 +21,7 @@ the first time, which isn't the case here."""
 import uuid
 from datetime import date
 from decimal import Decimal
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -28,7 +29,7 @@ from sqlalchemy.orm import Session
 from openclear.bulk_import.fields import RowFieldError, optional_str, parse_date, parse_decimal, require_str
 from openclear.bulk_import.images import UnsupportedImageError, normalize_and_split_image
 from openclear.bulk_import.results import BulkFileRowResult
-from openclear.bulk_import.x937 import X937CheckItem
+from openclear.bulk_import.x937 import X937CheckItem, item_images
 from openclear.bulk_import.zip_import import find_image
 from openclear.domain.paid_item import PaidItemSource
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
@@ -73,11 +74,11 @@ def _create_paid_item_and_images(
     return paid_item.id
 
 
-def _submission_from_zip_row(
+def ingest_check_image_zip_row(
     session: Session,
     tenant_id: uuid.UUID,
     row: dict[str, Any],
-    images: dict[str, bytes],
+    images: Mapping[str, bytes],
     *,
     scoped_customer_id: uuid.UUID | None,
 ) -> uuid.UUID:
@@ -130,7 +131,7 @@ def ingest_check_image_zip_rows(
     for index, row in enumerate(rows):
         row_label = f"row {index + 2}"  # +2: 1-based, plus the header row itself
         try:
-            paid_item_id = _submission_from_zip_row(session, tenant_id, row, images, scoped_customer_id=scoped_customer_id)
+            paid_item_id = ingest_check_image_zip_row(session, tenant_id, row, images, scoped_customer_id=scoped_customer_id)
             session.commit()
             results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=paid_item_id))
         except (RowFieldError, UnsupportedImageError) as exc:
@@ -142,7 +143,7 @@ def ingest_check_image_zip_rows(
     return results
 
 
-def _submission_from_tabular_row(
+def ingest_paid_item_tabular_row(
     session: Session,
     tenant_id: uuid.UUID,
     row: dict[str, Any],
@@ -195,7 +196,7 @@ def ingest_paid_item_tabular_rows(
     for index, row in enumerate(rows):
         row_label = f"row {index + 2}"  # +2: 1-based, plus the header row itself
         try:
-            paid_item_id = _submission_from_tabular_row(
+            paid_item_id = ingest_paid_item_tabular_row(
                 session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
             )
             session.commit()
@@ -204,6 +205,39 @@ def ingest_paid_item_tabular_rows(
             session.rollback()
             results.append(BulkFileRowResult(row_label=row_label, success=False, error=str(exc)))
     return results
+
+
+def x937_item_label(item: X937CheckItem) -> str:
+    return f"item {item.item_number} (routing {item.routing_number}, on-us {item.account_number})"
+
+
+def ingest_x937_item(
+    session: Session,
+    tenant_id: uuid.UUID,
+    item: X937CheckItem,
+    *,
+    content=None,
+    scoped_customer_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """One check from a cash letter. When the file was parsed with lazy_images=True,
+    `content` is the file (bytes or an mmap) the item's images are read from now."""
+    if not item.account_number:
+        raise RowFieldError("On-Us field is blank -- could not determine an account number for this item")
+    if not item.check_number:
+        raise RowFieldError("Auxiliary On-Us field is blank -- could not determine a check number for this item")
+    front_bytes, back_bytes = item_images(item, content)
+    return _create_paid_item_and_images(
+        session,
+        tenant_id,
+        account_number=item.account_number,
+        check_number=item.check_number,
+        amount=item.amount,
+        presented_date=item.presented_date,
+        front_bytes=front_bytes,
+        back_bytes=back_bytes,
+        image_filename=x937_item_label(item),
+        scoped_customer_id=scoped_customer_id,
+    )
 
 
 def ingest_x937_items(
@@ -216,24 +250,9 @@ def ingest_x937_items(
     """Entry point for X9.37 cash letter bulk check-image import."""
     results: list[BulkFileRowResult] = []
     for item in items:
-        row_label = f"item {item.item_number} (routing {item.routing_number}, on-us {item.account_number})"
+        row_label = x937_item_label(item)
         try:
-            if not item.account_number:
-                raise RowFieldError("On-Us field is blank -- could not determine an account number for this item")
-            if not item.check_number:
-                raise RowFieldError("Auxiliary On-Us field is blank -- could not determine a check number for this item")
-            paid_item_id = _create_paid_item_and_images(
-                session,
-                tenant_id,
-                account_number=item.account_number,
-                check_number=item.check_number,
-                amount=item.amount,
-                presented_date=item.presented_date,
-                front_bytes=item.front_image_bytes,
-                back_bytes=item.back_image_bytes,
-                image_filename=row_label,
-                scoped_customer_id=scoped_customer_id,
-            )
+            paid_item_id = ingest_x937_item(session, tenant_id, item, scoped_customer_id=scoped_customer_id)
             session.commit()
             results.append(BulkFileRowResult(row_label=row_label, success=True, created_id=paid_item_id))
         except (RowFieldError, UnsupportedImageError) as exc:

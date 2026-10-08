@@ -83,6 +83,16 @@ def test_scoring_skips_a_tampered_model_instead_of_failing(db_session, tenant_fa
     assert "failed the integrity check" in caplog.text
 
 
+def test_scoring_skips_a_missing_model_file_instead_of_failing(db_session, tenant_factory, caplog):
+    tenant, _users, row = _trained_shared_model(db_session, tenant_factory, "sha-missing")
+    exception_item = db_session.execute(select(ExceptionItem).where(ExceptionItem.tenant_id == tenant.id)).scalars().first()
+    exception_item.ml_score = None
+    Path(row.artifact_path).unlink()
+
+    assert score_exception(db_session, exception_item) is None
+    assert "can't be read" in caplog.text
+
+
 def test_switching_to_bank_only_never_copies_a_tampered_shared_model(db_session, tenant_factory):
     tenant, users, shared = _trained_shared_model(db_session, tenant_factory, "sha-swt")
     _tamper(shared)

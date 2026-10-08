@@ -329,9 +329,27 @@ Files arrive through the UI, the API, or a watched **dropbox** directory
 - **Parsing is all-or-nothing.** A file that can't be parsed, or whose control totals don't
   add up (NACHA batch/file controls; X9.37 bundle, cash-letter and file controls), is
   rejected before anything is written.
-- **Ingestion commits row by row** (`ingest_paid_items_bulk` and friends). One bad row (an
-  unknown account, a duplicate) fails on its own, and the rest of the file still loads. The
-  per-row results are shown to the uploader.
+- **Files are imported by a background job** (`services/bulk_import_service.py`, job
+  `bulk_upload.import`). The request (or dropbox scan, or an API call over
+  `bulk_api_sync_max_rows`) stores and signs the file and parses it once to reject a bad
+  file whole; the job parses it again from storage and imports it in chunks
+  (`bulk_import_chunk_rows`, 1,000). Each row runs in a savepoint, so one bad row (an
+  unknown account, a duplicate) fails on its own. Each chunk commits once, together with
+  its `bulk_upload_row_result` rows, its audit entries (chained in one batch,
+  `audit_log_service.record_actions`), its `bulk_upload_created_record` rows and
+  `bulk_upload_file.processed_rows`, so a retried job resumes after the last committed
+  chunk without importing anything twice. On SQLite each chunk opens with a write,
+  because the driver doesn't start a transaction before one and a savepoint outside a
+  transaction commits on release.
+- **Per-exception notifications are held during an import**
+  (`notification_service.exceptions_summarized`); the job counts new exceptions per
+  customer and sends each reviewer one summary at the end.
+- **Large files stay on disk.** Uploads are copied to storage in pieces and hashed and
+  signed as they're written (`sign_digest`); X9.37 files are read through an mmap with
+  images sliced out per check, and zip images are read on demand.
+- The API's small `/bulk` calls (up to `bulk_api_sync_max_rows`) still import inside the
+  request (`ingest_paid_items_bulk` and friends), and so do the user and fraud-training
+  uploads, which are small and need an answer on the spot.
 - Every row created is recorded in `bulk_upload_created_record`, so the whole upload can be
   **backed out** later (`services/bulk_upload_reversal_service.py`). Backing out withdraws
   exceptions that haven't been decided yet, and never overrides a human decision.

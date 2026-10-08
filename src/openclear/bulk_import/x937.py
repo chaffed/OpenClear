@@ -64,6 +64,20 @@ class X937CheckItem:
     presented_date: date  # from the enclosing Cash Letter Header's Business Date, or today if unparseable
     front_image_bytes: bytes  # empty if no Image View Data record followed this check's detail record
     back_image_bytes: bytes | None
+    # Set instead of the bytes above when parsed with lazy_images=True: (start, end)
+    # offsets of each image in the file, read later with item_images().
+    front_image_span: tuple[int, int] | None = None
+    back_image_span: tuple[int, int] | None = None
+
+
+def item_images(item: X937CheckItem, content=None) -> tuple[bytes, bytes | None]:
+    """The item's (front, back) image bytes. For an item parsed with lazy_images=True,
+    `content` must be the same file (bytes or an mmap) it was parsed from."""
+    if item.front_image_span is None:
+        return item.front_image_bytes, item.back_image_bytes
+    front = bytes(content[item.front_image_span[0] : item.front_image_span[1]])
+    back = bytes(content[item.back_image_span[0] : item.back_image_span[1]]) if item.back_image_span else None
+    return front, back
 
 
 _STANDARD_RECORD_LEN = 80  # every record type below except 50/52 is fixed-length at 80 bytes
@@ -145,14 +159,18 @@ def _compare_control_total(*, field_name: str, declared: int, actual: int, curso
         )
 
 
-def parse_x937_file(content: bytes) -> list[X937CheckItem]:
+def parse_x937_file(content, *, lazy_images: bool = False) -> list[X937CheckItem]:
     """Scans an X9.37 file front to back, returning one X937CheckItem per Check Detail
     Record (Type 25) encountered, with its following image pair (if any) attached.
     Raises X937ParseError for anything that indicates the file doesn't match the
     supported layout (unrecognized record type, a truncated record, or a Type 52 whose
     declared image length doesn't fit in the remaining file) -- these are treated as
     whole-file structural problems, not a single bad check, since there's no reliable way
-    to resynchronize the scanner past a record whose type or length can't be trusted."""
+    to resynchronize the scanner past a record whose type or length can't be trusted.
+
+    `content` is bytes or anything that slices like it, such as an mmap of the stored
+    file. With lazy_images=True the image bytes aren't copied out: each item records
+    where its images are, so a large cash letter isn't held in memory (SCALE_PLAN.md S4)."""
     items: list[X937CheckItem] = []
     cursor = 0
     item_number = 0
@@ -161,7 +179,7 @@ def parse_x937_file(content: bytes) -> list[X937CheckItem]:
     current_account = ""
     current_check_number = ""
     current_amount: Decimal | None = None
-    current_images: list[bytes] = []
+    current_images: list = []  # bytes, or (start, end) spans with lazy_images
     current_business_date = date.today()
 
     bundle_items = 0
@@ -182,8 +200,10 @@ def parse_x937_file(content: bytes) -> list[X937CheckItem]:
                 check_number=current_check_number,
                 amount=current_amount,
                 presented_date=current_business_date,
-                front_image_bytes=current_images[0] if len(current_images) >= 1 else b"",
-                back_image_bytes=current_images[1] if len(current_images) >= 2 else None,
+                front_image_bytes=b"" if lazy_images else (current_images[0] if len(current_images) >= 1 else b""),
+                back_image_bytes=None if lazy_images else (current_images[1] if len(current_images) >= 2 else None),
+                front_image_span=(current_images[0] if current_images else (0, 0)) if lazy_images else None,
+                back_image_span=(current_images[1] if len(current_images) >= 2 else None) if lazy_images else None,
             )
         )
 
@@ -289,8 +309,8 @@ def parse_x937_file(content: bytes) -> list[X937CheckItem]:
                     f"Image View Data Record (Type 52) at byte {cursor} declares an image length ({image_length}) "
                     "that doesn't fit in the remaining file"
                 )
-            image_bytes = content[cursor + _T52_HEADER_LEN : cursor + _T52_HEADER_LEN + image_length]
-            current_images.append(image_bytes)
+            start = cursor + _T52_HEADER_LEN
+            current_images.append((start, start + image_length) if lazy_images else bytes(content[start : start + image_length]))
             cursor = _skip_separators(content, cursor + _T52_HEADER_LEN + image_length)
 
         elif record_type in _SKIP_RECORD_TYPES:

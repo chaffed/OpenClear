@@ -5,7 +5,7 @@ import hashlib
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 
 from openclear.auth.keys import load_private_key, load_public_key
 from openclear.config import get_settings
@@ -37,6 +37,23 @@ def verify_signature(data: bytes, signature: str) -> bool:
     public_key = load_public_key(get_settings().file_signing_public_key_path)
     try:
         public_key.verify(bytes.fromhex(signature), data, ec.ECDSA(hashes.SHA256()))
+        return True
+    except (InvalidSignature, ValueError):
+        return False
+
+
+def sign_digest(digest: bytes) -> str:
+    """sign_file for a file hashed as it was streamed to disk: the same ECDSA-SHA256
+    signature, given the file's SHA-256 digest instead of its bytes (verify_signature
+    accepts either)."""
+    private_key = load_private_key(get_settings().file_signing_private_key_path)
+    return private_key.sign(digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))).hex()
+
+
+def verify_digest_signature(digest: bytes, signature: str) -> bool:
+    public_key = load_public_key(get_settings().file_signing_public_key_path)
+    try:
+        public_key.verify(bytes.fromhex(signature), digest, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
         return True
     except (InvalidSignature, ValueError):
         return False
