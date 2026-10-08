@@ -135,9 +135,33 @@ then client libraries, an embeddable experience and a core integration kit on to
 |---|---|---|---|
 | P0 | API clients (OAuth client credentials), acting for a customer user, idempotency keys, decision feed and decision files, webhooks, external-id upserts, OpenAPI publishing and breaking-change check | L | Every SDK and integration depends on these |
 | P1 | Python and TypeScript SDKs (generated plus a thin layer), webhook verification, examples, published from their own repos | M | The two languages the first OBPs use (Q2's SDK is Python; Banno plugins are web apps) |
+| F | Federation: SAML 2.0, SCIM 2.0 provisioning, back-channel logout, IdP-initiated sign-in, and an OBP sign-on profile for customer users | M–L | Banks' identity providers and OBP handoffs still often use SAML; directory changes must reach OpenClear; P2 builds on the OBP profile |
 | P2 | Sign-on handoff for customer users, embed mode with an origin allowlist, `@openclear/embed`, reference plugins for Banno, Alkami and Q2 | L | Lets a bank offer OpenClear inside its digital banking without the OBP rebuilding screens |
 | P3 | Core integration kit: decision files and outbox (Moov), presented-item and account-sync adapters (Apache Fineract first), .NET SDK, CLI | M–L | Cores and middleware are mostly .NET and file-driven |
 | P4 | Sandbox per vendor on an Apache Fineract core, CheckSim and Moov test files, conformance suite, docs site, certification checklist | M | Turns integrations into a repeatable product (and a consulting deliverable) |
+
+### F detail (federation)
+
+What exists (2026-10-09): OIDC sign-on per bank and per business customer, generic across
+providers (Okta, Azure AD, Ping, Keycloak, Google), with group-to-security-group
+mapping, optional provisioning on first sign-in, and password sign-in switchable off per
+bank. PKCE is added as a fix ahead of this phase.
+
+- [ ] **SAML 2.0** (`python3-saml`) as a second connection type beside OIDC: SP metadata
+      per connection, signed assertions required, optional encryption, the same group
+      mapping and provisioning rules, and the same per-bank and per-customer scoping.
+- [ ] **SCIM 2.0** (`/scim/v2/Users`, `/Groups`) per connection, authenticated by a bearer
+      token the bank's admin generates: create, update, and **deactivate** users from the
+      bank's directory, with group membership mapped onto security groups. Deactivation
+      ends the user's sessions.
+- [ ] **Back-channel logout** (OIDC Back-Channel Logout, and SAML single logout): signing
+      out at the identity provider ends the OpenClear session.
+- [ ] **IdP-initiated sign-in:** an OpenClear tile in Okta or Azure starts sign-in (OIDC
+      third-party initiated login; SAML IdP-initiated with replay protection).
+- [ ] **OBP sign-on profile** for a bank's business customers' users: the online banking
+      provider is the identity provider, a user is matched to a customer by a claim, and
+      the session is customer-scoped. Mifos (on Fineract) first. P2's embedded experience
+      uses it.
 
 ### P0 detail (the first branch)
 
@@ -198,6 +222,9 @@ then client libraries, an embeddable experience and a core integration kit on to
 - 2026-10-09 Apache Fineract (sandbox core, first adapter) and Moov (file formats) adopted.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
+- 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
+  IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
+  fix ahead of it.
   Moov's reference implementations already used to fix the X9.37 and NACHA parsers
   (branch `x937-standard`).
 
