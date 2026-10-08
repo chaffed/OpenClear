@@ -32,7 +32,8 @@ def test_finalize_freezes_the_period_and_refinalizing_replaces_it(client, db_ses
     assert first.json()["version"] == 1 and first.json()["statements"] == 3
 
     finalized = client.get(f"/api/v1/billing/statements?period={PERIOD_PARAM}&finalized=true", headers=headers).json()
-    assert [s["totals"] for s in finalized] == [s["totals"] for s in sorted(live, key=lambda s: s["customer_number"] or "")]
+    assert [s["customer_number"] for s in finalized] == ["A-1", "H-1", None]  # same order as the live preview
+    assert {s["customer_number"]: s["totals"] for s in finalized} == {s["customer_number"]: s["totals"] for s in live}
 
     # A later price change alters the live calculation, not the finalized record.
     fee = next(f for f in billing_terms.list_fee_items(db_session, tenant.id) if f.code == "PP-MAINT")

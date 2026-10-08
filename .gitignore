@@ -16,3 +16,5 @@ data/
 .DS_Store
 # Private business planning (business plan, rates, contracts, engagement notes) — never commit.
 /business/
+.tmp.driveupload
+.tmp.drivedownload

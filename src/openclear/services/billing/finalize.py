@@ -28,7 +28,10 @@ def _current(session: Session, tenant_id: uuid.UUID, period: Period, customer_id
     )
     if not any_customer:
         stmt = stmt.where(BillingStatementRecord.customer_id == customer_id)
-    return list(session.execute(stmt.order_by(BillingStatementRecord.customer_number)).scalars())
+    # Customers by number, then the bank-wide statement, on every database (they disagree
+    # on where NULLs sort).
+    stmt = stmt.order_by(BillingStatementRecord.customer_id.is_(None), BillingStatementRecord.customer_number)
+    return list(session.execute(stmt).scalars())
 
 
 def finalize_period(session: Session, tenant_id: uuid.UUID, period: Period, *, finalized_by_user_id: uuid.UUID | None) -> list[Statement]:
