@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from sqlalchemy.orm import Session
 
 from openclear.auth.login_service import PasswordLoginOutcome, authenticate_password
-from openclear.auth.oidc_service import OidcError, build_authorization_url, exchange_code_for_claims
+from openclear.auth.oidc_service import OidcError, build_authorization_url, exchange_code_for_claims, new_code_verifier
 from openclear.auth.security import (
     create_session_tokens,
     create_sso_state_token,
@@ -347,14 +347,18 @@ def sso_start(
     next_path = safe_next_path(next)
     nonce = secrets.token_urlsafe(24)
     state = secrets.token_urlsafe(24)
+    code_verifier = new_code_verifier()
     redirect_uri = _redirect_uri(request, connection.id)
     try:
-        authorization_url = build_authorization_url(connection, redirect_uri=redirect_uri, state=state, nonce=nonce)
+        authorization_url = build_authorization_url(
+            connection, redirect_uri=redirect_uri, state=state, nonce=nonce, code_verifier=code_verifier
+        )
     except OidcError as exc:
         logger.warning("SSO start failed for connection %s: %s", connection.id, exc)
         return render_template(request, "auth/login.html", status_code=502, error=_SSO_FAILED_MESSAGE)
     state_token = create_sso_state_token(
-        connection_id=connection.id, tenant_id=tenant_id, nonce=nonce, next_path=next_path, state=state
+        connection_id=connection.id, tenant_id=tenant_id, nonce=nonce, next_path=next_path, state=state,
+        code_verifier=code_verifier,
     )
     response = RedirectResponse(authorization_url, status_code=303)
     set_sso_state_cookie(response, state_token)
@@ -399,7 +403,8 @@ def sso_callback(
     redirect_uri = _redirect_uri(request, connection.id)
     try:
         claims = exchange_code_for_claims(
-            connection, code=code, redirect_uri=redirect_uri, expected_nonce=state_claims["nonce"]
+            connection, code=code, redirect_uri=redirect_uri, expected_nonce=state_claims["nonce"],
+            code_verifier=state_claims.get("code_verifier"),
         )
     except OidcError as exc:
         # Details go to the server log, not the login page: they can describe the

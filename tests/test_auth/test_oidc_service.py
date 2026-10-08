@@ -32,12 +32,21 @@ def test_build_authorization_url_includes_expected_params(monkeypatch):
     )
     connection = _make_connection()
 
-    url = build_authorization_url(connection, redirect_uri="https://app.example.com/callback", state="s1", nonce="n1")
+    url = build_authorization_url(
+        connection, redirect_uri="https://app.example.com/callback", state="s1", nonce="n1", code_verifier="v" * 64
+    )
 
     assert url.startswith("https://idp.example.com/authorize")
     assert "client_id=test-client-id" in url
     assert "state=s1" in url
     assert "nonce=n1" in url
+    # PKCE (RFC 7636): the S256 challenge of the verifier, never the verifier itself.
+    import base64
+    import hashlib
+
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(b"v" * 64).digest()).rstrip(b"=").decode()
+    assert f"code_challenge={challenge}" in url and "code_challenge_method=S256" in url
+    assert "v" * 64 not in url
 
 
 def test_exchange_code_for_claims_success_with_groups(monkeypatch):
@@ -156,7 +165,7 @@ def test_discovery_document_is_cached_across_calls(monkeypatch):
     monkeypatch.setattr(oidc_service, "_http_client", lambda: _FakeHttpClient())
     connection = _make_connection()
 
-    build_authorization_url(connection, redirect_uri="https://app.example.com/callback", state="s", nonce="n")
-    build_authorization_url(connection, redirect_uri="https://app.example.com/callback", state="s2", nonce="n2")
+    build_authorization_url(connection, redirect_uri="https://app.example.com/callback", state="s", nonce="n", code_verifier="v" * 43)
+    build_authorization_url(connection, redirect_uri="https://app.example.com/callback", state="s2", nonce="n2", code_verifier="v" * 43)
 
     assert call_count["n"] == 1

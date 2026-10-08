@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Security and small fixes
+
+- **Single sign-on uses PKCE** (S256) for OIDC connections, as current OAuth guidance
+  asks even for a server-side client with a secret: an intercepted authorization code is
+  useless without the verifier, which stays in the browser's signed sign-on cookie.
+- The API documentation reported version 1.5.0; it now reads the installed version.
+
 ### Fixes: X9.37 and NACHA files as banks actually send them
 
 Checked against Moov's open source X9 and ACH implementations (Apache-2.0) and their

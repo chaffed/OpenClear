@@ -18,6 +18,7 @@ class FakeOidcProvider:
         self.issuer = issuer
         self.client_id = client_id
         self._key = RSAKey.generate_key(2048, parameters={"kid": "test-kid"}, private=True)
+        self.token_requests: list[dict] = []  # what each token-endpoint call sent
 
     def discovery_document(self) -> dict:
         return {
@@ -75,6 +76,7 @@ def patch_provider(monkeypatch, provider: FakeOidcProvider, id_token: str) -> No
             pass
 
         def fetch_token(self, url, code=None, **kwargs):
+            provider.token_requests.append({"code": code, **kwargs})
             return {"id_token": id_token}
 
     monkeypatch.setattr(oidc_service, "OAuth2Client", _FakeOAuth2Client)

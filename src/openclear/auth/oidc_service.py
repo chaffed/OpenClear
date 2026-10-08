@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -97,10 +98,23 @@ def reset_oidc_cache() -> None:
     _jwks_cache.clear()
 
 
-def build_authorization_url(connection: SsoConnection, *, redirect_uri: str, state: str, nonce: str) -> str:
+def new_code_verifier() -> str:
+    """A PKCE code verifier (RFC 7636): 64 random bytes, URL-safe, 86 characters."""
+    return secrets.token_urlsafe(64)
+
+
+def build_authorization_url(connection: SsoConnection, *, redirect_uri: str, state: str, nonce: str, code_verifier: str) -> str:
+    """The provider's sign-in URL, with PKCE (S256): the code it returns is only good with
+    `code_verifier`, which never leaves this server and the user's own browser, so an
+    intercepted code is useless. Current OAuth guidance asks for PKCE even for a server-side
+    client that also has a secret."""
     discovery = _discovery(connection)
-    client = OAuth2Client(client_id=connection.client_id, redirect_uri=redirect_uri, scope="openid email profile")
-    url, _ = client.create_authorization_url(discovery["authorization_endpoint"], state=state, nonce=nonce)
+    client = OAuth2Client(
+        client_id=connection.client_id, redirect_uri=redirect_uri, scope="openid email profile", code_challenge_method="S256"
+    )
+    url, _ = client.create_authorization_url(
+        discovery["authorization_endpoint"], state=state, nonce=nonce, code_verifier=code_verifier
+    )
     return url
 
 
@@ -110,7 +124,9 @@ def _audience_list(aud: Any) -> list[str]:
     return [aud] if isinstance(aud, str) else list(aud)
 
 
-def exchange_code_for_claims(connection: SsoConnection, *, code: str, redirect_uri: str, expected_nonce: str) -> OidcClaims:
+def exchange_code_for_claims(
+    connection: SsoConnection, *, code: str, redirect_uri: str, expected_nonce: str, code_verifier: str | None = None
+) -> OidcClaims:
     """Exchanges an authorization code at the provider's token endpoint, then verifies
     the returned id_token for real (signature against the provider's own published JWKS,
     plus iss/aud/exp/nonce) — never trusts an unverified token. Extracts `email`, falling
@@ -128,7 +144,9 @@ def exchange_code_for_claims(connection: SsoConnection, *, code: str, redirect_u
         timeout=get_settings().oidc_http_timeout_seconds,
     )
     try:
-        token = client.fetch_token(discovery["token_endpoint"], code=code)
+        token = client.fetch_token(
+            discovery["token_endpoint"], code=code, **({"code_verifier": code_verifier} if code_verifier else {})
+        )
     except Exception as exc:  # authlib raises its own exception hierarchy; normalize
         raise OidcError(f"Failed to exchange authorization code: {exc}") from exc
 

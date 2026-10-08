@@ -175,6 +175,7 @@ def create_sso_state_token(
     nonce: str,
     next_path: str,
     state: str,
+    code_verifier: str | None = None,
     settings: Settings | None = None,
 ) -> str:
     """Carries the SSO login-in-progress state across the redirect to the IdP and back —
@@ -195,6 +196,9 @@ def create_sso_state_token(
         # value back (binds the callback to the browser that started the login).
         "state": state,
         "next_path": next_path,
+        # The PKCE code verifier, for the token request at the callback. In an HttpOnly,
+        # path-scoped cookie it stays with the browser that started the login.
+        "code_verifier": code_verifier,
         "type": "sso_state",
         "iat": now,
         "exp": now + timedelta(minutes=_SSO_STATE_EXPIRE_MINUTES),

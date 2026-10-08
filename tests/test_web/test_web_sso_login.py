@@ -85,6 +85,9 @@ def test_full_sso_login_flow_auto_provisions_new_user(client, db_session, tenant
     assert resp.status_code == 303, resp.text
     assert resp.headers["location"] == "/ui/"
     assert client.cookies.get("access_token") is not None
+    # PKCE: the token request carried the verifier /start kept in the signed state cookie.
+    [token_request] = provider.token_requests
+    assert len(token_request["code_verifier"]) >= 43
 
     from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
     from openclear.repositories.user_repo import UserRepository

@@ -85,13 +85,23 @@ async def _lifespan(app: FastAPI):
         stop_scheduler()
 
 
+def _version() -> str:
+    """The installed package's version (pyproject.toml), so the API docs never go stale."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("openclear")
+    except PackageNotFoundError:  # running from a source tree that isn't installed
+        return "0.0.0+unknown"
+
+
 def create_app() -> FastAPI:
     # First thing, before anything else — a production deployment still pointing at
     # the checked-in dev/test signing keys or the default SSO encryption key must never
     # even finish starting (see SECURITY_REVIEW.md and config.py::assert_production_safe).
     assert_production_safe(get_settings())
 
-    app = FastAPI(title="OpenClear", version="1.5.0", lifespan=_lifespan)
+    app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan)
 
     # Importing each network package triggers its register_adapter() call at import
     # time (see networks/registry.py). Adding a new network later means adding one
