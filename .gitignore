@@ -14,3 +14,5 @@ data/
 # these. dev_keys/ (the checked-in, deliberately public test key pair) is NOT ignored.
 /keys/
 .DS_Store
+# Private business planning (business plan, rates, contracts, engagement notes) — never commit.
+/business/
