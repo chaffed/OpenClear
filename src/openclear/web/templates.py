@@ -152,6 +152,14 @@ def _currency(value):
 
 templates.env.filters["currency"] = _currency
 
+
+def _long_date(value):
+    """`October 1, 2026`, the same on every platform (strftime's %-d isn't on Windows)."""
+    return f"{value:%B} {value.day}, {value.year}" if value else ""
+
+
+templates.env.filters["long_date"] = _long_date
+
 # Tags a tenant/customer-authored banner or login message may use. `img` is allowed --
 # but only ever a data: URI holding a small, pre-validated raster image
 # (services/message_content.py validates/re-encodes it at save time; the

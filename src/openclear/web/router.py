@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from openclear.web.routers.accounts import router as accounts_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
 from openclear.web.routers.ach_return_reasons import router as ach_return_reasons_router
+from openclear.web.routers.billing import customer_router as billing_customer_router
+from openclear.web.routers.billing import router as billing_router
 from openclear.web.routers.ach_transactions import router as ach_transactions_router
 from openclear.web.routers.admin import router as admin_router
 from openclear.web.routers.audit_log import router as audit_log_router
@@ -73,3 +75,5 @@ web_router.include_router(wsud_router)
 web_router.include_router(theme_router)
 web_router.include_router(docs_router)
 web_router.include_router(license_router)
+web_router.include_router(billing_router)
+web_router.include_router(billing_customer_router)

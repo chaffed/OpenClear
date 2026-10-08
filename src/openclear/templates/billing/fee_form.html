@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% macro val(name, current) %}{{ values[name] if name in values else (current if current is not none else "") }}{% endmacro %}
+{% block title %}{{ "Edit" if fee else "New" }} Fee — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About fees{% endblock %}
+{% block help_body %}
+<p><strong>Tiers</strong>, one per line, as "up to" and "unit price". For example
+  <code>100 0.00</code>, <code>500 0.05</code>, <code>* 0.03</code> means the first 100 are
+  free, the next 400 are 5 cents, and the rest are 3 cents. The last line uses
+  <code>*</code>. Leave tiers empty to use the single unit price.</p>
+<p>The <strong>minimum</strong> applies in any month the service is used.</p>
+{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>{{ "Edit fee " ~ fee.code if fee else "New fee" }}</h1>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/billing/fees">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if fee %}<input type="hidden" name="fee_id" value="{{ fee.id }}">{% else %}
+    <label>Code <input type="text" name="code" value="{{ values.code or '' }}" maxlength="40" required autofocus></label>
+    {% endif %}
+    <label>Description <input type="text" name="description" value="{{ val('description', fee.description if fee else none) }}" maxlength="200" required></label>
+    <label>Charged for
+      <select name="metric" required>
+        {% set chosen = values.metric if values.metric else (fee.metric if fee else "") %}
+        {% for code, metric in metrics.items() %}
+        <option value="{{ code }}" {{ "selected" if code == chosen else "" }}>{{ metric.label }}{{ " (bank-wide only)" if metric.level == "bank" else "" }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Unit price ($) <input type="text" inputmode="decimal" name="unit_price" value="{{ val('unit_price', fee.unit_price if fee else '0') }}"></label>
+    <label>Volume tiers (optional)
+      <textarea name="tiers" rows="3" placeholder="100 0.00&#10;500 0.05&#10;* 0.03">{{ values.tiers if "tiers" in values else tiers_text }}</textarea>
+    </label>
+    <label>Monthly minimum ($, optional) <input type="text" inputmode="decimal" name="minimum_charge" value="{{ val('minimum_charge', fee.minimum_charge if fee else none) }}"></label>
+    <label>AFP service code <input type="text" name="afp_code" value="{{ val('afp_code', fee.afp_code if fee else none) }}" maxlength="16"></label>
+    <label>Bank service code (optional) <input type="text" name="bank_service_code" value="{{ val('bank_service_code', fee.bank_service_code if fee else none) }}" maxlength="32"></label>
+    <label>Effective from (optional) <input type="date" name="effective_from" value="{{ val('effective_from', fee.effective_from if fee else none) }}"></label>
+    <label>Effective to (optional) <input type="date" name="effective_to" value="{{ val('effective_to', fee.effective_to if fee else none) }}"></label>
+    <label>Sort order <input type="number" name="sort_order" value="{{ val('sort_order', fee.sort_order if fee else 0) }}"></label>
+    <label class="checkbox"><input type="checkbox" name="is_active" {{ "checked" if (values.is_active == "on" if values else (fee.is_active if fee else true)) else "" }}> Active</label>
+    <label class="checkbox"><input type="checkbox" name="taxable" {{ "checked" if (values.taxable == "on" if values else (fee.taxable if fee else false)) else "" }}> Taxable (marked on camt.086; tax isn't calculated)</label>
+    <button type="submit">{{ icon("save") }}Save</button>
+    <a href="/ui/billing/fees" class="button secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

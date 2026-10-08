@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Billing {{ period }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About billing{% endblock %}
+{% block help_body %}
+<p>Each customer's charges for the month are worked out from your fee schedule and their
+  activity. Customers on <strong>account analysis</strong> have their charges sent to your
+  analysis system, which offsets them with earnings credit on balances. <strong>Hard
+  charge</strong> customers are debited directly. <strong>Exempt</strong> customers are
+  shown what they would have paid, as waived.</p>
+<p><strong>Live</strong> figures recalculate every time you look. <strong>Finalize</strong>
+  the month once it's closed: that saves a fixed copy, which the analysis feed, the
+  hard-charge postings and the camt.086 file are produced from. Finalizing again saves a
+  replacement version, and the earlier one is kept.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Billing</h1>
+    {% if can(ctx, "billing:manage") %}
+    <span>
+      <a href="/ui/billing/fees" class="button secondary">{{ icon("request_quote") }}Fee schedule</a>
+      <a href="/ui/billing/settings" class="button secondary">{{ icon("settings") }}Settings</a>
+    </span>
+    {% endif %}
+  </div>
+
+  <form method="get" action="/ui/billing" class="toolbar">
+    <a href="/ui/billing?period={{ previous_period }}" class="button secondary" aria-label="Previous month">{{ icon("arrow_back") }}</a>
+    <label>Month <input type="month" name="period" value="{{ period }}" data-auto-submit></label>
+    <a href="/ui/billing?period={{ next_period }}" class="button secondary">Next month</a>
+    {% if versions %}
+    <label>Show
+      <select name="view" data-auto-submit>
+        <option value="finalized" {{ "selected" if view == "finalized" else "" }}>Finalized (version {{ versions[0].version }})</option>
+        <option value="live" {{ "selected" if view == "live" else "" }}>Live figures</option>
+      </select>
+    </label>
+    {% endif %}
+  </form>
+
+  <p>
+    {{ billing_period.start | long_date }} to {{ billing_period.end | long_date }}.
+    {% if versions %}
+    <span class="badge badge-ok">Finalized</span> version {{ versions[0].version }}, {{ versions[0].finalized_at[:10] }}{% if versions|length > 1 %} (replaces {{ versions|length - 1 }} earlier version{{ "s" if versions|length > 2 else "" }}){% endif %}.
+    {% else %}
+    <span class="badge badge-warn">Not finalized</span> These are live figures.
+    {% endif %}
+  </p>
+
+  {% if not has_fees %}
+  <p class="flash flash-warn">There's no fee schedule yet, so nothing is charged.
+    {% if can(ctx, "billing:manage") %}<a href="/ui/billing/fees">Set up the fee schedule</a>.{% endif %}</p>
+  {% endif %}
+
+  <div class="stat-cards">
+    <div class="stat-card"><div class="stat-value">{{ totals.analysis | currency }}</div><div class="stat-label">Account analysis</div></div>
+    <div class="stat-card"><div class="stat-value">{{ totals.hard_charge | currency }}</div><div class="stat-label">Hard charge (due)</div></div>
+    <div class="stat-card"><div class="stat-value">{{ statements|length }}</div><div class="stat-label">Statements</div></div>
+  </div>
+
+  {% if statements %}
+  <table data-sortable>
+    <thead><tr><th>Customer</th><th>Billed by</th><th>Billing account</th><th data-type="number">List</th><th data-type="number">Waived</th><th data-type="number">Due</th></tr></thead>
+    <tbody>
+      {% for s in statements %}
+      <tr>
+        <td><a href="/ui/billing/statement?period={{ period }}&customer={{ s.customer_id or 'bank' }}&view={{ view }}">{{ s.customer_name }}</a>{% if s.customer_number %} <span class="text-muted">{{ s.customer_number }}</span>{% endif %}</td>
+        <td>{{ method_labels[s.billing_method] }}</td>
+        <td>{{ s.billing_account_number or "—" }}</td>
+        <td>{{ s.list_total | currency }}</td>
+        <td>{{ s.waived_total | currency }}</td>
+        <td><strong>{{ s.net_total | currency }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No charges for this month{% if view == "finalized" %} in the finalized version{% endif %}.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Reports and exports</h2>
+  <p><a href="/ui/billing/report.csv?period={{ period }}&view={{ view }}" class="button secondary">{{ icon("download") }}Billing report (CSV)</a></p>
+  {% if versions %}
+  <p>From the finalized version:</p>
+  <p>
+    <a href="/ui/billing/export/analysis-feed.csv?period={{ period }}" class="button secondary">{{ icon("download") }}Account analysis feed (CSV)</a>
+    <a href="/ui/billing/export/hard-charge-postings.csv?period={{ period }}" class="button secondary">{{ icon("download") }}Hard-charge postings (CSV)</a>
+    <a href="/ui/billing/export/camt086.xml?period={{ period }}" class="button secondary">{{ icon("download") }}camt.086 statement (XML)</a>
+  </p>
+  {% else %}
+  <p class="text-muted">The analysis feed, hard-charge postings and camt.086 file are available once the month is finalized.</p>
+  {% endif %}
+  {% if can(ctx, "billing:manage") %}
+  <form method="post" action="/ui/billing/finalize" data-confirm="{{ 'Save a replacement version of ' ~ period ~ '? The current version is kept.' if versions else 'Finalize ' ~ period ~ '? This saves a fixed copy of the month.' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="period" value="{{ period }}">
+    <button type="submit">{{ icon("check_circle") }}{{ "Finalize again (new version)" if versions else "Finalize " ~ period }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

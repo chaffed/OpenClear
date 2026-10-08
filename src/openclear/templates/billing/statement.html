@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Statement {{ period }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About this statement{% endblock %}
+{% block help_body %}
+<p>Each line is one service: how many times it was used this month, the price, and the
+  charge. <strong>Analysis</strong> charges are offset by earnings credit on your
+  balances on your account analysis statement; <strong>hard charges</strong> are debited
+  from your billing account. Waived charges show what would have applied.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>{{ statement.customer_name if statement else "Statement" }}</h1>
+    <span>
+      {% if ctx.customer_id is none %}<a href="/ui/billing?period={{ period }}" class="button secondary">{{ icon("arrow_back") }}All statements</a>{% endif %}
+      {% if statement and pdf_available %}<a href="/ui/billing/statement.pdf?period={{ period }}&customer={{ customer_param }}&view={{ view }}" class="button secondary">{{ icon("download") }}PDF</a>{% endif %}
+    </span>
+  </div>
+  <form method="get" action="/ui/billing/statement" class="toolbar">
+    <input type="hidden" name="customer" value="{{ customer_param }}">
+    <a href="/ui/billing/statement?period={{ previous_period }}&customer={{ customer_param }}" class="button secondary" aria-label="Previous month">{{ icon("arrow_back") }}</a>
+    <label>Month <input type="month" name="period" value="{{ period }}" data-auto-submit></label>
+    <a href="/ui/billing/statement?period={{ next_period }}&customer={{ customer_param }}" class="button secondary">Next month</a>
+  </form>
+
+  {% if statement %}
+  <p>
+    {{ billing_period.start | long_date }} to {{ billing_period.end | long_date }} ·
+    {{ method_labels[statement.billing_method] }}{% if statement.billing_account_number %} · billing account {{ statement.billing_account_number }}{% endif %} ·
+    {% if statement.status == "DRAFT" %}<span class="badge badge-warn">Estimate (not finalized)</span>{% else %}<span class="badge badge-ok">Final</span> version {{ statement.version }}{% endif %}
+  </p>
+  <table>
+    <thead><tr><th>Service</th><th>Code</th><th data-type="number">Volume</th><th data-type="number">Unit price</th><th data-type="number">Amount</th><th data-type="number">Discount</th><th data-type="number">Due</th><th></th></tr></thead>
+    <tbody>
+      {% for line in statement.lines %}
+      <tr>
+        <td>{{ line.description }}{% if line.accounts|length > 1 %}<br><span class="text-muted">{% for acct, qty in line.accounts.items() %}{{ acct }}: {{ qty }}{{ ", " if not loop.last else "" }}{% endfor %}</span>{% endif %}</td>
+        <td>{{ line.afp_code or line.code }}</td>
+        <td>{{ line.priced.volume }}</td>
+        <td>${{ "%.4f"|format(line.priced.unit_price) }}</td>
+        <td>{{ line.priced.list_amount | currency }}</td>
+        <td>{{ line.priced.discount_amount | currency if line.priced.discount_amount else "" }}</td>
+        <td>{{ line.priced.net_amount | currency }}</td>
+        <td>{% if line.priced.payment_method == "WVED" %}<span class="badge">waived</span>{% elif line.priced.payment_method == "FREE" %}<span class="badge">no charge</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="4">Total</th><th>{{ statement.list_total | currency }}</th><th>{{ statement.discount_total | currency if statement.discount_total else "" }}</th><th>{{ statement.net_total | currency }}</th><th></th></tr>
+    </tfoot>
+  </table>
+  {% if statement.waived_total %}<p class="text-muted">Waived this month: {{ statement.waived_total | currency }}.</p>{% endif %}
+  {% else %}
+  <p>No charges for this month.</p>
+  {% endif %}
+</div>
+{% endblock %}

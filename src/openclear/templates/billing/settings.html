@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Billing Settings — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About billing settings{% endblock %}
+{% block help_body %}
+<p><strong>Customers without their own terms</strong> are billed this way. Set a
+  customer's own method on its billing terms (from the customer's page).</p>
+<p><strong>The bank's own accounts</strong> (not assigned to a customer) and bank-wide
+  services such as SMS messages appear on a separate bank-wide statement. Usually
+  they're exempt.</p>
+{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Billing settings</h1>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/billing/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Customers without their own terms are billed by
+      <select name="customer_default_billing_method">
+        {% for method, label in method_labels.items() %}<option value="{{ method.value }}" {{ "selected" if method == settings.customer_default_billing_method else "" }}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>The bank's own accounts and bank-wide services are billed by
+      <select name="bank_billing_method">
+        {% for method, label in method_labels.items() %}<option value="{{ method.value }}" {{ "selected" if method == settings.bank_billing_method else "" }}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Bank-wide billing account
+      <select name="bank_billing_account_id">
+        <option value="">None</option>
+        {% for account in accounts %}<option value="{{ account.id }}" {{ "selected" if account.id == settings.bank_billing_account_id else "" }}>{{ account.account_number }} ({{ account.name }})</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit">{{ icon("save") }}Save</button>
+    <a href="/ui/billing" class="button secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

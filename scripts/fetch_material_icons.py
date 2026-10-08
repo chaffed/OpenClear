@@ -38,6 +38,7 @@ ICONS: dict[str, str] = {
     "receipt_long": "nav: Issued Items",
     "block": "nav: Stop Payments; button: Revoke",
     "paid": "nav: Paid Items",
+    "request_quote": "nav: Billing",
     "image": "nav: Check Images",
     "fact_check": "nav: ACH Authorizations",
     "sync_alt": "nav: ACH Transactions",

@@ -27,7 +27,8 @@
     {% set show_wsud = ctx.customer_id is not none and can(ctx, "wsud:sign") %}
     {% set show_customer_banner = ctx.customer_id is not none and can(ctx, "customer_banner:manage") %}
     {% set show_org_section = can(ctx, "customer:manage") or can(ctx, "admin:manage") or can(ctx, "user:manage")
-        or can(ctx, "security_group:manage") or can(ctx, "tenant:manage") or can(ctx, "audit_log:read") %}
+        or can(ctx, "security_group:manage") or can(ctx, "tenant:manage") or can(ctx, "audit_log:read")
+       or (can(ctx, "billing:read") and ctx.customer_id is none) %}
     {% set show_end_user_docs = can(ctx, "end_user_documentation:read") %}
     {% set show_admin_docs = can(ctx, "admin_documentation:read") %}
     <nav class="sidenav">
@@ -62,6 +63,7 @@
         {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
         {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
         {% if show_customer_banner %}{{ nav_link("/ui/customers/" ~ ctx.customer_id ~ "/banner", "Banner Message", "campaign") }}{% endif %}
+        {% if ctx.customer_id is not none and can(ctx, "billing:read") %}{{ nav_link("/ui/billing/statement", "Billing Statement", "request_quote") }}{% endif %}
         {% if can(ctx, "ml_training_example:write") %}{{ nav_link("/ui/ml-training/fraud-examples", "Fraud Training Data", "model_training") }}{% endif %}
 
         {% if show_org_section %}
@@ -72,6 +74,7 @@
         {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/wizard/bank", "Getting Started", "checklist") }}{% endif %}
         {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
         {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Audit Log", "history") }}{% endif %}
+        {% if can(ctx, "billing:read") and ctx.customer_id is none %}{{ nav_link("/ui/billing", "Billing", "request_quote") }}{% endif %}
         {% if can(ctx, "admin:manage") or can(ctx, "tenant:manage") %}{{ nav_link("/ui/admin", "Admin", "tune") }}{% endif %}
         {% endif %}
       </div>

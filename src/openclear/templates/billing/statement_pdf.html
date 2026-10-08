@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Statement</title>
+<style>
+  @page { size: letter; margin: 18mm 16mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #111; }
+  h1 { font-size: 16pt; margin: 0 0 2mm; }
+  .meta { color: #444; margin-bottom: 6mm; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 1.6mm 2mm; border-bottom: 0.3mm solid #ccc; text-align: left; vertical-align: top; }
+  th.num, td.num { text-align: right; }
+  tfoot th { border-top: 0.6mm solid #111; border-bottom: none; }
+  .muted { color: #666; font-size: 8.5pt; }
+</style>
+</head>
+<body>
+  <h1>{{ tenant.name }}: positive pay services</h1>
+  <div class="meta">
+    <strong>{{ statement.customer_name }}</strong>{% if statement.customer_number %} ({{ statement.customer_number }}){% endif %}<br>
+    {{ statement.period.start | long_date }} to {{ statement.period.end | long_date }}<br>
+    {{ method_labels[statement.billing_method] }}{% if statement.billing_account_number %}, billing account {{ statement.billing_account_number }}{% endif %}<br>
+    {% if statement.status == "DRAFT" %}Estimate, not finalized{% else %}Final statement, version {{ statement.version }}{% endif %}
+  </div>
+  <table>
+    <thead><tr><th>Service</th><th>Code</th><th class="num">Volume</th><th class="num">Unit price</th><th class="num">Amount</th><th class="num">Discount</th><th class="num">Due</th></tr></thead>
+    <tbody>
+      {% for line in statement.lines %}
+      <tr>
+        <td>{{ line.description }}{% if line.priced.payment_method == "WVED" %} <span class="muted">(waived)</span>{% endif %}</td>
+        <td>{{ line.afp_code or line.code }}</td>
+        <td class="num">{{ line.priced.volume }}</td>
+        <td class="num">${{ "%.4f"|format(line.priced.unit_price) }}</td>
+        <td class="num">{{ line.priced.list_amount | currency }}</td>
+        <td class="num">{{ line.priced.discount_amount | currency if line.priced.discount_amount else "" }}</td>
+        <td class="num">{{ line.priced.net_amount | currency }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><th colspan="4">Total</th><th class="num">{{ statement.list_total | currency }}</th><th class="num">{{ statement.discount_total | currency if statement.discount_total else "" }}</th><th class="num">{{ statement.net_total | currency }}</th></tr></tfoot>
+  </table>
+  {% if statement.billing_method.value == "analysis" %}<p class="muted">Charges are reported on your account analysis statement, where earnings credit on your balances offsets them.</p>{% endif %}
+</body>
+</html>

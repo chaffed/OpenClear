@@ -1,0 +1,68 @@
+{% extends extend_from|default("docs/_layout.html") %}
+
+{% block doc_body %}
+<h1>Billing</h1>
+<p>OpenClear works out what each customer owes for positive pay services each month, from
+your fee schedule and the customer's activity. It produces a statement per customer, a
+report, and the files your other systems need: an account analysis feed, a hard-charge
+posting file, and an ISO 20022 camt.086 billing statement. It needs the
+<strong>billing:manage</strong> permission to set up and <strong>billing:read</strong> to
+view; both are part of the Admin group.</p>
+
+<h2>Set up the fee schedule</h2>
+<ul>
+  <li>Open <a href="/ui/billing/fees">Billing &rarr; Fee schedule</a>. <strong>Add common
+  positive pay fees</strong> gives you a starting list priced at zero.</li>
+  <li>Each fee charges for one thing OpenClear counts. Monthly charges are per customer,
+  account, ACH account, user, ACH rule or customer fraud model. Per-item charges include
+  issued checks loaded, files received, checks presented, exceptions, returns (check and
+  ACH), items paid, automatic decisions, stop payments, payee positive pay images, ACH
+  debits evaluated, unauthorized-debit statements, data exports, and SMS and email
+  messages.</li>
+  <li>Enter your own <strong>AFP Service Code</strong> for each fee (and your internal
+  bank service code if you use one). Banks code positive pay differently, so none is
+  assumed. The codes appear on the analysis feed and the camt.086 statement.</li>
+  <li>Prices can have four decimal places. A fee can have <strong>volume tiers</strong>
+  (each tier's units at that tier's price) and a <strong>monthly minimum</strong>.</li>
+</ul>
+
+<h2>Decide how each customer is billed</h2>
+<ul>
+  <li><strong>Account analysis</strong>: the charges go to your analysis system, which
+  offsets them with earnings credit on the customer's balances. OpenClear doesn't
+  calculate earnings credit; balances and the earnings credit rate stay in your core.</li>
+  <li><strong>Hard charge</strong>: the total is debited from the customer's billing
+  account.</li>
+  <li><strong>Exempt</strong>: nothing is charged. The statement still shows what would
+  have applied, as waived.</li>
+  <li>Set the default for customers in <a href="/ui/billing/settings">Billing &rarr;
+  Settings</a>, and each customer's own method, billing account, discount, negotiated
+  prices and waivers from the customer's page (<strong>Billing terms</strong>).</li>
+  <li>Your bank's own accounts (not assigned to a customer) and bank-wide services such as
+  SMS appear on a separate bank-wide statement, usually exempt.</li>
+</ul>
+
+<h2>Close a month</h2>
+<ol>
+  <li>On <a href="/ui/billing">Billing</a>, choose the month. The figures are live until
+  you finalize.</li>
+  <li>Check the statements, then <strong>Finalize</strong>. That saves a fixed copy that
+  later price or terms changes can't alter.</li>
+  <li>Download the files from the finalized month:
+    <ul>
+      <li><strong>Account analysis feed</strong> (CSV): analysis customers' service lines
+      at their billing accounts, for your analysis system.</li>
+      <li><strong>Hard-charge postings</strong> (CSV): one debit per hard-charge customer,
+      for your core's fee posting.</li>
+      <li><strong>camt.086</strong> (XML): every statement in the ISO 20022 Bank Services
+      Billing format, with your AFP codes. Check it against what your analysis system or
+      clients expect before relying on it.</li>
+    </ul>
+  </li>
+  <li>If something needs correcting, fix it and <strong>finalize again</strong>. That
+  saves a replacement version (marked as a replacement in camt.086) and keeps the old
+  one.</li>
+</ol>
+
+<p>Everything is also available through the API under <code>/api/v1/billing</code>.</p>
+{% endblock %}

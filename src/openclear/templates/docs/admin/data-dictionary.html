@@ -121,6 +121,9 @@ erDiagram
 <tr><td>access_token_expire_minutes</td><td>Integer</td><td>yes</td><td></td><td>Overrides the platform-default access token lifetime; null = use the default.</td></tr>
 <tr><td>refresh_token_expire_minutes</td><td>Integer</td><td>yes</td><td></td><td>Overrides the platform-default refresh token lifetime; null = use the default.</td></tr>
 <tr><td>data_export_timeout_seconds</td><td>Integer</td><td>yes</td><td></td><td>Overrides how long a data export job may run before failing; null = use the default.</td></tr>
+<tr><td>customer_default_billing_method</td><td>String(20) enum</td><td>no</td><td></td><td>How customers without billing terms of their own are billed: analysis / hard_charge / exempt.</td></tr>
+<tr><td>bank_billing_method</td><td>String(20) enum</td><td>no</td><td></td><td>How the bank's own accounts and bank-wide services (e.g. SMS) are billed. Usually exempt.</td></tr>
+<tr><td>bank_billing_account_id</td><td>UUID</td><td>yes</td><td></td><td>The account the bank-wide statement is billed to.</td></tr>
 <tr><td>password_min_length</td><td>Integer</td><td>no</td><td></td><td>Baseline minimum password length for every new user in this tenant.</td></tr>
 <tr><td>password_require_uppercase</td><td>Boolean</td><td>no</td><td></td><td>Baseline password complexity requirement.</td></tr>
 <tr><td>password_require_lowercase</td><td>Boolean</td><td>no</td><td></td><td>Baseline password complexity requirement.</td></tr>
@@ -699,6 +702,7 @@ erDiagram
 <tr><td>version</td><td>String(64)</td><td>no</td><td></td><td></td></tr>
 <tr><td>algorithm</td><td>String(64)</td><td>no</td><td></td><td></td></tr>
 <tr><td>artifact_path</td><td>String(500)</td><td>no</td><td></td><td>Where the trained model file lives on disk.</td></tr>
+<tr><td>artifact_sha256</td><td>String(64)</td><td>yes</td><td></td><td>SHA-256 of the model file, recorded when it was written; the file is only loaded if it still matches. Null = never loaded (retrain to replace it).</td></tr>
 <tr><td>trained_from_decision_count</td><td>Integer</td><td>no</td><td></td><td></td></tr>
 <tr><td>metrics_json</td><td>JSON</td><td>yes</td><td></td><td></td></tr>
 <tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>training / active / failed / superseded.</td></tr>
@@ -872,6 +876,7 @@ erDiagram
 <tr><td>metadata_json</td><td>JSON</td><td>yes</td><td></td><td></td></tr>
 <tr><td>prev_entry_hash</td><td>String(200)</td><td>yes</td><td></td><td>Null only for the very first entry in the chain.</td></tr>
 <tr><td>entry_hash</td><td>String(200)</td><td>no</td><td></td><td>Covers this entry's own fields plus prev_entry_hash — the hash chain "Verify chain" recomputes from scratch.</td></tr>
+<tr><td>sequence</td><td>BigInteger</td><td>no</td><td>UK (with tenant_id)</td><td>The entry's position in the organization's chain (1, 2, 3…). Unique, so two simultaneous writers can't both chain onto the same entry.</td></tr>
 </tbody>
 </table>
 
@@ -884,7 +889,7 @@ erDiagram
 <tr><td>key_hash</td><td>String(64)</td><td>no</td><td>UK</td><td>SHA-256 of the raw key; the raw value is shown once at creation and never stored.</td></tr>
 <tr><td>created_at / last_used_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
 <tr><td>revoked_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
-<tr><td>scopes</td><td>JSON</td><td>no</td><td></td><td>What the key may do: "usage" (the usage-metering API) and/or "shared_model" (operating the shared fraud-scoring model).</td></tr>
+<tr><td>scopes</td><td>JSON</td><td>no</td><td></td><td>What the key may do: "usage" (the usage-metering API), "shared_model" (operating the shared fraud-scoring model) and/or "operations" (watching and retrying background jobs).</td></tr>
 </tbody>
 </table>
 <p class="hint">No tenant_id column at all — this is the one deliberately cross-tenant
@@ -903,4 +908,75 @@ only by the platform usage-metering API.</p>
 <tr><td>acknowledged_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
+
+<h2 id="billing-jobs">7. Billing &amp; Background Jobs</h2>
+<p>Billing prices each organization's positive pay services for its customers (see the
+Billing page). Statements are calculated live from the fee schedule and each customer's
+terms, and saved as a fixed record when a month is finalized. Background jobs are the
+durable queue that OCR, data exports, dropbox scans and retraining run through.</p>
+
+<h3>billing_fee_item</h3>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>code</td><td>String(40)</td><td>no</td><td>UK (with tenant_id)</td><td>The fee's short code, e.g. PP-ITEM.</td></tr>
+<tr><td>description</td><td>String(200)</td><td>no</td><td></td><td></td></tr>
+<tr><td>metric</td><td>String(60)</td><td>no</td><td></td><td>What's counted, e.g. presented_checks, check_returns, account_monthly.</td></tr>
+<tr><td>unit_price</td><td>Numeric(12,4)</td><td>no</td><td></td><td></td></tr>
+<tr><td>tiers</td><td>JSON</td><td>yes</td><td></td><td>Step-tiered pricing: [{"up_to", "unit_price"}…], the last open-ended.</td></tr>
+<tr><td>minimum_charge</td><td>Numeric(12,2)</td><td>yes</td><td></td><td>Applies in any month the service is used.</td></tr>
+<tr><td>afp_code / bank_service_code</td><td>String(16) / String(32)</td><td>yes</td><td></td><td>The organization's own AFP Service Code and internal service code for this fee.</td></tr>
+<tr><td>taxable / is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
+<tr><td>effective_from / effective_to</td><td>Date</td><td>yes</td><td></td><td></td></tr>
+<tr><td>sort_order</td><td>Integer</td><td>no</td><td></td><td>Order on statements.</td></tr>
+</tbody>
+</table>
+
+<h3>customer_billing_terms / customer_fee_override</h3>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>customer_id</td><td>UUID</td><td>no</td><td>FK → customer.id, UK</td><td>One terms row per customer; no row = the organization's default.</td></tr>
+<tr><td>billing_method</td><td>String(20) enum</td><td>no</td><td></td><td>analysis (offset by earnings credit in the analysis system) / hard_charge (debited) / exempt.</td></tr>
+<tr><td>billing_account_id</td><td>UUID</td><td>yes</td><td>FK → account.id</td><td>The account analyzed or debited; null = the customer's first account.</td></tr>
+<tr><td>discount_percent</td><td>Numeric(5,2)</td><td>no</td><td></td><td></td></tr>
+<tr><td>waive_all</td><td>Boolean</td><td>no</td><td></td><td>Every charge reported as waived.</td></tr>
+<tr><td>override: fee_item_id, unit_price, waived</td><td>UUID / Numeric(12,4) / Boolean</td><td>varies</td><td>FK → billing_fee_item.id</td><td>A negotiated price, or a waiver, for one fee for one customer.</td></tr>
+</tbody>
+</table>
+
+<h3>billing_statement / billing_statement_line</h3>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>Null = the bank-wide statement.</td></tr>
+<tr><td>period_start / period_end</td><td>Date</td><td>no</td><td></td><td></td></tr>
+<tr><td>version / superseded_at</td><td>Integer / Timestamp</td><td>varies</td><td></td><td>Finalizing a month again saves version n+1 and marks the previous one superseded.</td></tr>
+<tr><td>customer_number, customer_name, billing_method, billing_account_number</td><td>various</td><td>varies</td><td></td><td>Copied at finalizing, so later changes don't alter the record.</td></tr>
+<tr><td>list_total / discount_total / waived_total / net_total</td><td>Numeric(14,2)</td><td>no</td><td></td><td></td></tr>
+<tr><td>finalized_at / finalized_by_user_id</td><td>Timestamp / UUID</td><td>varies</td><td></td><td></td></tr>
+<tr><td>line: fee_code, description, afp_code, volume, unit_price, amounts</td><td>various</td><td>varies</td><td></td><td>One row per fee per statement, with the camt.086 charge method (UPRC, LPRC, MCHG, DPRC) and payment method (BCMP, FLAT, WVED, FREE), tier breakdown and per-account volumes.</td></tr>
+</tbody>
+</table>
+
+<h3>job</h3>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>kind</td><td>String(64)</td><td>no</td><td></td><td>check_image.ocr, data_export.run, dropbox.scan_bank or ml.retrain_slot.</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td>The organization the job runs for; null for the shared model.</td></tr>
+<tr><td>payload</td><td>JSON</td><td>no</td><td></td><td></td></tr>
+<tr><td>dedupe_key</td><td>String(200)</td><td>yes</td><td></td><td>The same work isn't queued twice while it's waiting.</td></tr>
+<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>queued / running / succeeded / failed.</td></tr>
+<tr><td>attempts / max_attempts</td><td>Integer</td><td>no</td><td></td><td>Retried with back-off; failed after max_attempts.</td></tr>
+<tr><td>run_after / heartbeat_at</td><td>Timestamp</td><td>varies</td><td></td><td>When it's next due; the worker's last sign of life (a stale one is queued again).</td></tr>
+<tr><td>locked_by / last_error</td><td>String / Text</td><td>yes</td><td></td><td></td></tr>
+<tr><td>created_at / started_at / finished_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
+</tbody>
+</table>
+<p class="hint">No row-level security on <code>job</code>: workers claim every
+organization's jobs, then run each bound to its own organization.</p>
 {% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Fee Schedule — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About the fee schedule{% endblock %}
+{% block help_body %}
+<p>Each fee charges for one thing OpenClear counts, such as checks presented, exceptions,
+  returns, accounts or users. Give each fee your own <strong>AFP code</strong> (and bank
+  service code, if you use one): banks code positive pay differently, so none is assumed.
+  The codes appear on the analysis feed and the camt.086 statement.</p>
+<p>Prices can have up to four decimal places. A fee can use volume tiers (each tier's
+  units at that tier's price) and a monthly minimum. Negotiated prices and waivers for
+  individual customers are set on each customer's billing terms.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Fee schedule</h1>
+    <span>
+      <a href="/ui/billing" class="button secondary">{{ icon("arrow_back") }}Billing</a>
+      <a href="/ui/billing/fees/new" class="button">{{ icon("add") }}New fee</a>
+    </span>
+  </div>
+  {% if fees %}
+  <table data-sortable>
+    <thead><tr><th>Code</th><th>Description</th><th>Charged for</th><th data-type="number">Price</th><th>AFP code</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for fee in fees %}
+      <tr>
+        <td>{{ fee.code }}</td>
+        <td>{{ fee.description }}</td>
+        <td>{{ metrics[fee.metric].label if fee.metric in metrics else fee.metric }}</td>
+        <td>{% if fee.tiers %}tiered{% else %}${{ "%.4f"|format(fee.unit_price) }}{% endif %}{% if fee.minimum_charge %}<br><span class="text-muted">min {{ fee.minimum_charge | currency }}</span>{% endif %}</td>
+        <td>{{ fee.afp_code or "—" }}</td>
+        <td><span class="badge {{ 'badge-ok' if fee.is_active else '' }}">{{ "active" if fee.is_active else "inactive" }}</span></td>
+        <td><a href="/ui/billing/fees/{{ fee.id }}/edit">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No fees yet.</p>
+  {% endif %}
+  <form method="post" action="/ui/billing/fees/starter">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("add") }}Add common positive pay fees</button>
+    <span class="text-muted">Adds any of the usual fees you don't have yet, priced at zero, ready for your prices and codes.</span>
+  </form>
+</div>
+{% endblock %}

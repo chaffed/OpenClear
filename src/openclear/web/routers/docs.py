@@ -41,6 +41,7 @@ END_USER_DOC_PAGES: list[DocPage] = [
     DocPage("wsud", "Unauthorized Debit Statements", "Signing a statement that a returned ACH debit was unauthorized."),
     DocPage("fraud-training", "Known-Fraud Training Data", "Labeling known-fraud items to improve the ML model."),
     DocPage("bulk-uploads", "Bulk File Uploads", "Uploading files in bulk, and undoing an upload if needed."),
+    DocPage("billing-statement", "Your Billing Statement", "Reading your monthly statement of positive pay charges."),
 ]
 END_USER_DOC_PAGES_BY_SLUG: dict[str, DocPage] = {p.slug: p for p in END_USER_DOC_PAGES}
 
@@ -52,6 +53,7 @@ ADMIN_DOC_PAGES: list[DocPage] = [
     DocPage("branding-settings", "Organization Settings & Branding", "Branding, dual control, session timeouts, and dark mode."),
     DocPage("audit-log", "Audit Log", "The immutable, tamper-evident record of every action taken."),
     DocPage("data-export", "Data Export", "Exporting all tenant or customer data for migration or offboarding."),
+    DocPage("billing", "Billing", "The fee schedule, analysis vs. hard charge, finalizing a month, and the billing exports."),
     DocPage("authentication", "Login, SSO & Account Lockout", "Configuring single sign-on and handling locked-out users."),
     DocPage("demo-tenant", "Demo Tenant", "Resetting the sales demo environment to a clean state."),
     DocPage("data-dictionary", "Data Dictionary & Schema", "Every table and column in the database, with ER diagrams grouped by subsystem."),

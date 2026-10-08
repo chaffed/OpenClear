@@ -1,0 +1,18 @@
+{% extends extend_from|default("docs/_layout.html") %}
+
+{% block doc_body %}
+<h1>Your Billing Statement</h1>
+<p>If your bank has given you access, <strong>Billing Statement</strong> in the menu shows
+what you're charged for positive pay services each month.</p>
+<ul>
+  <li>Each line is one service: how many times it was used, the price, and the charge. If
+  a service was used on more than one of your accounts, the counts per account are shown
+  under it.</li>
+  <li><strong>Account analysis</strong>: the charges appear on your account analysis
+  statement, where earnings credit on your balances offsets them.
+  <strong>Hard charge</strong>: the total is debited from your billing account.</li>
+  <li>A month marked <strong>Estimate</strong> isn't closed yet, so its figures can still
+  change. <strong>Final</strong> is what you're billed.</li>
+  <li>Use <strong>PDF</strong> to download a copy for your records.</li>
+</ul>
+{% endblock %}

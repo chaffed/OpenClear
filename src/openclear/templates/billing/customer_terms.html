@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Billing Terms: {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About billing terms{% endblock %}
+{% block help_body %}
+<p><strong>Account analysis:</strong> charges go to your analysis system, where earnings
+  credit on the customer's balances offsets them. <strong>Hard charge:</strong> charges
+  are debited from the billing account. <strong>Exempt:</strong> nothing is charged; the
+  statement shows what would have applied, as waived.</p>
+<p>A <strong>negotiated price</strong> replaces the list price (and any tiers) for this
+  customer. The discount applies to everything that isn't waived.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Billing terms: {{ customer.name }}</h1>
+    <a href="/ui/customers/{{ customer.id }}" class="button secondary">{{ icon("arrow_back") }}Customer</a>
+  </div>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  {% if not terms %}<p class="text-muted">No terms of its own yet: billed by the bank's default ({{ method_labels[default_method] }}).</p>{% endif %}
+  <form method="post" action="/ui/customers/{{ customer.id }}/billing">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Billed by</legend>
+      {% set current = terms.billing_method if terms else default_method %}
+      {% for method, label in method_labels.items() %}
+      <label class="checkbox"><input type="radio" name="billing_method" value="{{ method.value }}" {{ "checked" if method == current else "" }}> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+    <label>Billing account (analyzed, or debited)
+      <select name="billing_account_id">
+        <option value="">The customer's first account</option>
+        {% for account in accounts %}<option value="{{ account.id }}" {{ "selected" if terms and account.id == terms.billing_account_id else "" }}>{{ account.account_number }} ({{ account.name }})</option>{% endfor %}
+      </select>
+    </label>
+    <label>Discount (%) <input type="text" inputmode="decimal" name="discount_percent" value="{{ terms.discount_percent if terms else '0' }}"></label>
+    <label class="checkbox"><input type="checkbox" name="waive_all" {{ "checked" if terms and terms.waive_all else "" }}> Waive all charges (for example, a promotional period)</label>
+    <label>Notes (internal) <input type="text" name="notes" value="{{ terms.notes or '' if terms else '' }}" maxlength="500"></label>
+
+    {% if fees %}
+    <h2>Negotiated prices and waivers</h2>
+    <table>
+      <thead><tr><th>Fee</th><th data-type="number">List price</th><th>Negotiated unit price ($)</th><th>Waive</th></tr></thead>
+      <tbody>
+        {% for fee in fees %}
+        {% set o = overrides.get(fee.id) %}
+        <tr>
+          <td>{{ fee.description }} <span class="text-muted">{{ fee.code }}</span></td>
+          <td>{% if fee.tiers %}tiered{% else %}${{ "%.4f"|format(fee.unit_price) }}{% endif %}</td>
+          <td><input type="text" inputmode="decimal" name="override_price_{{ fee.id }}" value="{{ o.unit_price if o and o.unit_price is not none else '' }}" aria-label="Negotiated price for {{ fee.description }}"></td>
+          <td><input type="checkbox" name="override_waived_{{ fee.id }}" {{ "checked" if o and o.waived else "" }} aria-label="Waive {{ fee.description }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+</div>
+{% endblock %}
