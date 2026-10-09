@@ -19,6 +19,12 @@
 - **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
   `user.is_service_account`). Existing Admin groups get `api_client:manage`.
 
+### New: customer and account sync (SDK_PLAN.md P0)
+
+- `PUT /api/v1/customers/{customer_number}` and `PUT /api/v1/accounts/{account_number}`
+  create or update by the bank's own numbers, so a core can sync nightly without lookups.
+  Both have paged lists. Customer-scoped callers only touch their own accounts.
+
 ### New: webhooks (SDK_PLAN.md P0)
 
 - **Events:** `exception.created`, `exception.decided` and `bulk_upload.completed`, sent to

@@ -203,7 +203,11 @@ bank. PKCE is added as a fix ahead of this phase.
       `exception.deadline_approaching` (needs a "warned" marker per exception) and
       `decision_batch.ready` (with the outbox in P3). Tests against a real local receiver,
       including DNS rebinding and a delivery under RLS.
-- [ ] Upserts: `PUT /api/v1/accounts/by-external-id/{id}` and the same for customers.
+- [x] Upserts (2026-10-09): `PUT /api/v1/customers/{customer_number}` and
+      `PUT /api/v1/accounts/{account_number}`, with paged lists. Keyed by the bank's own
+      numbers rather than a new external id: cores know accounts by number, and
+      `external_account_id` already means the customer's own reference. A bank can use its
+      core's CIF as the customer number.
 - [ ] OpenAPI: export the spec at release, commit it as `openapi/openclear-v1.json`, and
       fail CI on a breaking change (a removed path or field, a narrowed type).
 - [ ] Fix while there: the API reports version 1.5.0 (`main.py`); read it from the package.
@@ -239,7 +243,7 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
 - 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
-  idempotency keys done; decision feed done; webhooks done.
+  idempotency keys done; decision feed done; webhooks done; customer and account sync done.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

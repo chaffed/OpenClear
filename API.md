@@ -390,6 +390,23 @@ Error responses specific to decisioning (all `HTTPException` with a matching sta
 `submitted_by_user_id` (the maker, if any), `decided_by_user_id` (the checker),
 `decided_at`.
 
+### Customers and accounts — `/api/v1/customers`, `/api/v1/accounts`
+
+For a core or middleware keeping OpenClear in step, keyed by the bank's own numbers. A
+`PUT` creates the record or updates it to match, so a nightly sync can send everything
+without looking anything up first. It answers `201` when it created and `200` when it
+updated. As with any `PUT`, fields left out are cleared. A bank whose core numbers
+customers by CIF can use the CIF as the customer number.
+
+| method | path | permission | notes |
+|---|---|---|---|
+| GET | `/customers` (`?external_customer_id=`) | `customer:manage` | paged |
+| PUT | `/customers/{customer_number}` | `customer:manage` | `name` (required), `is_active`, `external_customer_id`, `tax_id`, contact and address fields, `notes` |
+| GET | `/accounts` | `account:read` | paged; a customer-scoped caller sees its own |
+| PUT | `/accounts/{account_number}` | `account:write` | `name` (required), `customer_number` (null for a house account), `ach_debit_block_mode`, `external_account_id` (the customer's own reference, matched in its files). A customer-scoped caller can only create or change its own customer's accounts |
+
+Every create and update is audit-logged.
+
 ### Decision feed — `/api/v1/decisions`
 
 Every pay or return decision, in order, with what a core needs to pay or return the item,
