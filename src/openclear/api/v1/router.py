@@ -22,6 +22,7 @@ from openclear.api.v1.platform_ml import router as platform_ml_router
 from openclear.api.v1.stop_payments import router as stop_payments_router
 from openclear.api.v1.users import router as users_router
 from openclear.api.v1.oauth import router as oauth_router
+from openclear.api.v1.decision_feed import router as decision_feed_router
 from openclear.api.v1.api_clients import router as api_clients_router
 from openclear.api.v1.bulk_uploads import router as bulk_uploads_router
 from openclear.api.v1.webauthn import router as webauthn_router
@@ -41,6 +42,7 @@ api_router.include_router(decisions_router)
 api_router.include_router(admin_router)
 api_router.include_router(users_router)
 api_router.include_router(oauth_router)
+api_router.include_router(decision_feed_router)
 api_router.include_router(api_clients_router)
 api_router.include_router(bulk_uploads_router)
 api_router.include_router(dropbox_import_router)

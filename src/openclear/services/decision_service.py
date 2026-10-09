@@ -16,7 +16,7 @@ from openclear.networks.registry import get_adapter
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
 from openclear.repositories.decision_repo import DecisionRepository
 from openclear.repositories.exception_repo import ExceptionRepository
-from openclear.services import notification_service
+from openclear.services import decision_feed_service, notification_service
 
 
 class DecisionError(str, enum.Enum):
@@ -169,6 +169,7 @@ def decide(
         features_json=features,
     )
     decision_repo.add(decision)
+    decision_feed_service.assign_sequence(session, decision, exception)
 
     exception.status = ExceptionStatus.PAY if outcome == DecisionOutcome.PAY else ExceptionStatus.RETURN
 

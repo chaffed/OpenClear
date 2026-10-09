@@ -210,7 +210,8 @@ def test_decision_source_survives_migration_and_orm_read(scratch_db):
     conn.commit()
     conn.close()
 
-    command.upgrade(_alembic_config(), "f7a8b9c0d1e2")
+    # All the way up: the ORM model below is today's (f7a8b9c0d1e2 added `source`).
+    command.upgrade(_alembic_config(), "head")
 
     from openclear.db.session import get_session_factory
     from openclear.domain.decision import Decision, DecisionSource

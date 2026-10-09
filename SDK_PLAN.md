@@ -187,9 +187,12 @@ bank. PKCE is added as a fix ahead of this phase.
       `Idempotency-Replayed: true`, 422 for a different request, 409 while in flight, 5xx
       not kept (an unhandled error clears the key). Tests: `tests/test_api/test_idempotency.py`,
       plus a replay under RLS.
-- [ ] Decision feed: a per-bank, monotonically increasing `decision.feed_sequence`; `GET
-      /api/v1/decisions?after=` (paged); `POST /api/v1/decisions/acknowledge` so a core can
-      confirm what it acted on. Decision files: CSV first, with a layout per bank.
+- [x] Decision feed (2026-10-09; migration `e3a5c7d9f1b2`): per-bank `decision.feed_sequence`,
+      assigned under a transaction-scoped lock so numbers become visible in order (tested
+      with eight concurrent deciders on Postgres); existing decisions numbered by the
+      migration. `GET /api/v1/decisions?after=` (paged, `X-Latest-Sequence`), `/feed.csv`,
+      `POST /acknowledge` (forward only) and `/consumers` (lag). Per-bank decision-file
+      layouts and the scheduled outbox move to PL2/P3, where layouts become plugins.
 - [ ] Webhooks: `webhook_endpoint` (URL, events, secret, active), `webhook_delivery` (event,
       attempts, response code, next try). Delivered as background jobs with exponential
       back-off for 24 hours, then failed with a visible reason. Payloads carry ids, not
@@ -231,7 +234,7 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
 - 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
-  idempotency keys done.
+  idempotency keys done; decision feed done.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

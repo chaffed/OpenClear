@@ -19,6 +19,19 @@
 - **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
   `user.is_service_account`). Existing Admin groups get `api_client:manage`.
 
+### New: the decision feed for cores (SDK_PLAN.md P0)
+
+- **`GET /api/v1/decisions?after=N`:** every pay or return decision in order, with what a
+  core needs to act on it: account, check or trace number, amount, date, outcome, return
+  reason and ACH return code. Each decision gets the bank's next sequence number when
+  it's made, and the numbers become visible in order, so a consumer never skips one.
+- Also available as a CSV (`/feed.csv`).
+- A consumer **acknowledges** what it processed (`POST /acknowledge`), and
+  `GET /consumers` shows how far behind each one is.
+- **Upgrading:** `alembic upgrade head` adds `decision.feed_sequence` and numbers existing
+  decisions per bank in the order they were made (fraud-training examples excluded). It
+  also adds `decision_feed_cursor`.
+
 ### New: Idempotency-Key on API writes (SDK_PLAN.md P0)
 
 - Send `Idempotency-Key` on a POST, PUT, PATCH or DELETE, and a retry gets the first

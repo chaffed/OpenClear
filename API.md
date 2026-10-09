@@ -339,6 +339,32 @@ Error responses specific to decisioning (all `HTTPException` with a matching sta
 `submitted_by_user_id` (the maker, if any), `decided_by_user_id` (the checker),
 `decided_at`.
 
+### Decision feed — `/api/v1/decisions`
+
+Every pay or return decision, in order, with what a core needs to pay or return the item,
+so it can act before the deadline without reading exceptions one by one. Each live
+decision gets the bank's next `sequence` (1, 2, 3...) when it's made, human or automatic.
+Numbers become visible in order, so reading "everything after N" never skips one. Fraud
+training examples aren't items and aren't in the feed. Needs `exception:read`; a
+customer-scoped caller sees only its customer's decisions.
+
+| method | path | notes |
+|---|---|---|
+| GET | `?after=N&limit=500` | decisions with `sequence > after`, oldest first (`limit` up to 1,000). `X-Latest-Sequence` gives the newest; a full page has `Link: rel="next"`. Keep the last sequence you processed and pass it as `after` |
+| GET | `/feed.csv?after=N` | the same as a CSV file (up to 10,000 rows), for a core that takes files |
+| POST | `/acknowledge` | `{"consumer": "core", "through_sequence": N}`: confirm a consumer processed through N. Only moves forward, never past the newest; bank-wide callers only; audit-logged |
+| GET | `/consumers` | each consumer's acknowledged position and how many decisions it's `behind` |
+
+Each decision: `sequence`, `decision_id`, `exception_id`, `network` (`check` / `ach`),
+`outcome` (`pay` / `return`), `reason_code`, `return_transaction_code`, `source`
+(`human`, `auto_default`, `auto_ml`), `decided_by` (email, or null for automatic),
+`decided_at`, `account_number`, `customer_number`. Plus, for a check: `check_number`,
+`amount`, `presented_date`; for an ACH debit: `trace_number`, `amount`, `effective_date`,
+`originator_id`, `originator_name`, `sec_code`.
+
+A typical core job, every few minutes: read `?after=<last>`, pay or return each item,
+then acknowledge the last sequence it handled.
+
 ### Admin — `/api/v1/admin`
 
 All gated on `admin:manage`. Each organization chooses its fraud-scoring model (Settings →
