@@ -137,4 +137,4 @@ the core adapters will be plugins.
   - `plugins.api` gains `source_item`, `apply_matching_rules` and `extra_features`, for network plugins.
   - The example plugin has one of each.
   - PL4 (UI extension slots) waits for a real plugin that needs one, as the plan says.
-
+- 2026-10-09 PL3, F, P2, P3 and P4 (and the deadline webhook) merged into `main` at `d7f6bf25`. All three suites were green: SQLite 1406 passed, Postgres 1431, Linux 3.11 1393. The live Moov, Fineract, Node and .NET tests ran.

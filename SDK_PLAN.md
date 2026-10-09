@@ -483,3 +483,4 @@ bank. PKCE is added as a fix ahead of this phase.
 
 - 2026-10-09 **P3 done**: decision outbox and NACHA returns (Moov-validated), the `openclear` CLI, the Apache Fineract adapter, and the .NET SDK. Check returns as X9.37 wait for a bank that needs them.
 - 2026-10-09 **P4 done**: self-service sandboxes, Moov-built test files from CheckSim, the integration checklist with a webhook signature probe, the sandbox stack with a real Fineract, and the docs site. Publishing the site and the SDK packages waits on approval.
+- 2026-10-09 PL3, F, P2, P3 and P4 (and the deadline webhook) merged into `main` at `d7f6bf25`. All three suites were green: SQLite 1406 passed, Postgres 1431, Linux 3.11 1393. The live Moov, Fineract, Node and .NET tests ran.
