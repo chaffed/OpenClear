@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openclear-fineract"
+version = "0.1.0"
+description = "Reference Apache Fineract adapter for OpenClear: customer/account sync, presented checks, returns undone in Fineract"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = ["openclear-sdk", "httpx>=0.27"]
+
+[project.scripts]
+openclear-fineract = "openclear_fineract.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openclear_fineract"]

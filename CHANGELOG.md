@@ -23,6 +23,11 @@
   `decision_batch`, and fills in return codes.
 - **The `openclear` command** (in the Python SDK): `push` a file, `decisions pull`,
   `decisions files`, and `webhooks tail`, for scripts and cron.
+- **An Apache Fineract adapter** (`integrations/fineract`). It:
+  - syncs customers and accounts;
+  - sends checks paid from savings accounts as presented items;
+  - undoes a returned check's withdrawal in Fineract.
+  It's a reference for other cores too.
 
 ### New: OpenClear inside online banking (SDK_PLAN.md P2)
 

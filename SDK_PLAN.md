@@ -235,7 +235,16 @@ bank. PKCE is added as a fix ahead of this phase.
       `decisions pull` (JSONL or CSV, acknowledged), `decisions files` (SHA-256 checked,
       acknowledged), and `webhooks tail` (verifying receiver). Exit codes are 0, 1 or 2.
       Tested against the app.
-- [ ] Fineract adapter, .NET SDK: next.
+- [x] **Apache Fineract reference adapter** (2026-10-09; `integrations/fineract`,
+      Apache-2.0, built on the Python SDK, `openclear-fineract run` for cron):
+  - **sync:** clients → customers, savings accounts → accounts, upserted by number;
+  - **presented:** savings withdrawals paid by check (`paymentDetailData`) → presented
+    items, remembering each one's Fineract transaction in a SQLite state file;
+  - **decisions:** returned checks' withdrawals are undone in Fineract (`?command=undo`),
+    acknowledged as consumer `fineract`.
+  - Tested end to end against a simulated Fineract API and the real app. P4's sandbox
+    runs it against a real Fineract.
+- [ ] .NET SDK: next.
 
 ### P2 detail (embedded experience)
 
