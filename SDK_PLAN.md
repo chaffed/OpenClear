@@ -435,4 +435,4 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-08 P1 merged into `main`. All three suites were green: SQLite 1338 passed, Postgres 1360, Linux 3.11 1331.
 - 2026-10-09 **P2 done** (branch `federation-f`, after F): embedded sessions from one-time launch links, origin-limited framing, partitioned cookies, `@openclear/embed`, embedding guide and example host.
 
-- 2026-10-09 **P3 done**: decision outbox and NACHA returns (Moov-validated), the `openclear` CLI, the Apache Fineract adapter, and the .NET SDK. Check returns as X9.37 wait for a bank that needs them.\n
+- 2026-10-09 **P3 done**: decision outbox and NACHA returns (Moov-validated), the `openclear` CLI, the Apache Fineract adapter, and the .NET SDK. Check returns as X9.37 wait for a bank that needs them.
