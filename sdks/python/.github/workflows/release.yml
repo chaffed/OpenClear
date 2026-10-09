@@ -1,0 +1,19 @@
+# Publishes openclear-sdk to PyPI when a version tag (v0.1.0) is pushed, with PyPI trusted
+# publishing (no token stored here). Mirrored from chaffed/OpenClear's sdks/python.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
