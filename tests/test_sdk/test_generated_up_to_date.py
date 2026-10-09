@@ -25,6 +25,8 @@ def test_every_api_endpoint_is_in_the_sdks():
     operations = generate_sdks.read_operations(spec)
     python = (ROOT / "sdks/python/src/openclear_sdk/_generated.py").read_text()
     typescript = (ROOT / "sdks/typescript/src/generated.ts").read_text()
+    csharp = (ROOT / "sdks/dotnet/src/OpenClear/Generated.cs").read_text()
     for op in operations:
         assert f"def {generate_sdks.py_ident(op.name)}(" in python, op.name
         assert f"  {generate_sdks.camel(op.name)}(" in typescript, op.name
+        assert f" {generate_sdks.pascal(op.name)}Async(" in csharp, op.name

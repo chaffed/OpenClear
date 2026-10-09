@@ -244,7 +244,16 @@ bank. PKCE is added as a fix ahead of this phase.
     acknowledged as consumer `fineract`.
   - Tested end to end against a simulated Fineract API and the real app. P4's sandbox
     runs it against a real Fineract.
-- [ ] .NET SDK: next.
+- [x] **.NET SDK** (2026-10-09; `sdks/dotnet`, `OpenClear.Sdk`, .NET 8, Apache-2.0, no
+      dependencies):
+  - records and `…Async` and `Iter…Async` methods, generated from the contract by the
+    same generator;
+  - a hand-written `OpenClearClient` (tokens, idempotent retries, paging pinned to the
+    host, act-as, typed exceptions);
+  - `Webhooks.Verify` and `DecisionFeedHelper.ConsumeAsync`.
+  - Built with warnings as errors and tested in the official .NET 8 SDK container
+    (`test_dotnet_sdk.py`, skipped without Docker). The webhook test checks a signature
+    made by OpenClear's own code.
 
 ### P2 detail (embedded experience)
 
@@ -425,3 +434,5 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-08 **P1 done** (branch `sdk-p1`): Python and TypeScript SDKs, generator, examples. Publishing to PyPI and npm from their own repositories waits on approval.
 - 2026-10-08 P1 merged into `main`. All three suites were green: SQLite 1338 passed, Postgres 1360, Linux 3.11 1331.
 - 2026-10-09 **P2 done** (branch `federation-f`, after F): embedded sessions from one-time launch links, origin-limited framing, partitioned cookies, `@openclear/embed`, embedding guide and example host.
+
+- 2026-10-09 **P3 done**: decision outbox and NACHA returns (Moov-validated), the `openclear` CLI, the Apache Fineract adapter, and the .NET SDK. Check returns as X9.37 wait for a bank that needs them.\n

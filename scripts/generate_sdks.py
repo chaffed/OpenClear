@@ -6,6 +6,7 @@ published API contract, openapi/openclear-v1.json:
 
 - sdks/python/src/openclear_sdk/_generated.py
 - sdks/typescript/src/generated.ts
+- sdks/dotnet/src/OpenClear/Generated.cs
 
 Each holds the API's models (TypedDicts / interfaces) and one class per API area with a
 method per endpoint. Everything else (tokens, retries, paging, bulk, webhooks, errors) is
@@ -27,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "openapi" / "openclear-v1.json"
 PY_OUT = ROOT / "sdks" / "python" / "src" / "openclear_sdk" / "_generated.py"
 TS_OUT = ROOT / "sdks" / "typescript" / "src" / "generated.ts"
+CS_OUT = ROOT / "sdks" / "dotnet" / "src" / "OpenClear" / "Generated.cs"
 
 # Interactive sign-in (password, WebAuthn) is for people in a browser; the token endpoint is
 # the hand-written layer's job.
@@ -524,10 +526,210 @@ def typescript(spec: dict, operations: list[Operation]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
+# --- C# --------------------------------------------------------------------------------------
+
+CS_KEYWORDS = {"base", "class", "default", "event", "fixed", "namespace", "object", "operator", "params", "ref", "string", "out", "in", "is", "lock", "checked"}
+
+
+def cs_ident(name: str) -> str:
+    ident = camel(name)
+    return "@" + ident if ident in CS_KEYWORDS else ident
+
+
+_CS_SCHEMAS: dict = {}
+
+
+def cs_type(schema: dict) -> str:
+    """Wire types: strings stay strings (dates, ids, enums), so a value a newer server sends
+    never fails to parse. A reference to an enum or alias becomes its underlying type."""
+    if not schema:
+        return "JsonElement"
+    if name := ref_name(schema):
+        target = _CS_SCHEMAS.get(schema["$ref"].split("/")[-1], {})
+        if target.get("type") == "object" and "properties" in target:
+            return name
+        return cs_type(target)
+    if "anyOf" in schema or "oneOf" in schema:
+        options = [o for o in (schema.get("anyOf") or schema.get("oneOf")) if o.get("type") != "null"]
+        types = {cs_type(o) for o in options}
+        if len(types) == 1:
+            return types.pop()
+        if "string" in types:
+            return "string"  # amounts accept a number or a string; send strings
+        return "JsonElement"
+    if "allOf" in schema and len(schema["allOf"]) == 1:
+        return cs_type(schema["allOf"][0])
+    if "enum" in schema:
+        return "string"
+    kind = schema.get("type")
+    if kind == "string":
+        return "byte[]" if is_file(schema) else "string"
+    if kind == "integer":
+        return "long"
+    if kind == "number":
+        return "double"
+    if kind == "boolean":
+        return "bool"
+    if kind == "array":
+        return f"IReadOnlyList<{cs_type(schema.get('items', {}))}>"
+    if kind == "object":
+        return "IReadOnlyDictionary<string, JsonElement>"
+    return "JsonElement"
+
+
+def _cs_nullable(t: str) -> str:
+    return t if t.endswith("?") else t + "?"
+
+
+def cs_doc(text: str, indent: str) -> list[str]:
+    lines = [line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;") for line in text.splitlines()]
+    return [f"{indent}/// <summary>"] + [f"{indent}/// {line}".rstrip() for line in lines] + [f"{indent}/// </summary>"]
+
+
+def cs_models(spec: dict) -> list[str]:
+    out = []
+    for raw_name, schema in sorted(spec["components"]["schemas"].items()):
+        if raw_name in ("HTTPValidationError", "ValidationError") or raw_name.startswith("Body_"):
+            continue
+        name = model_name(raw_name)
+        doc = (schema.get("description") or "").strip()
+        if schema.get("type") == "object" and "properties" in schema:
+            required = set(schema.get("required", []))
+            if doc:
+                out += cs_doc(" ".join(doc.split()), "")
+            out.append(f"public sealed record {name}")
+            out.append("{")
+            for prop, prop_schema in schema["properties"].items():
+                t = cs_type(prop_schema)
+                prop_name = pascal(prop) or "Value"
+                if prop_name == name:
+                    prop_name += "Value"
+                if prop in required:
+                    out.append(f'    [JsonPropertyName("{prop}")] public {t} {prop_name} {{ get; init; }} = default!;')
+                else:
+                    out.append(f'    [JsonPropertyName("{prop}")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public {_cs_nullable(t)} {prop_name} {{ get; init; }}')
+            out.append("}")
+            out.append("")
+    return out
+
+
+def cs_return(op: Operation) -> str:
+    if op.raw_response:
+        return "byte[]"
+    if not op.responses:
+        return "JsonElement"
+    types = []
+    for schema in op.responses:
+        t = cs_type(schema)
+        if t not in types:
+            types.append(t)
+    return types[0] if len(types) == 1 else "JsonElement"
+
+
+def cs_operation(spec: dict, op: Operation, *, iterate: bool = False) -> list[str]:
+    path_params = [p for p in op.params if p.location == "path"]
+    query_params = [p for p in op.params if p.location == "query" and not (iterate and p.name == "offset")]
+    args = [f"{cs_type(p.schema)} {cs_ident(p.name)}" for p in path_params]
+    form_fields: list[tuple[str, str, bool, bool]] = []
+    if op.body_kind == "json":
+        t = cs_type(op.body_schema or {})
+        args.append(f"{t} body" if op.body_required else f"{_cs_nullable(t)} body = null")
+    elif op.body_kind in ("multipart", "form"):
+        body = resolve(spec, op.body_schema or {})
+        required = set(body.get("required", []))
+        for prop, prop_schema in body.get("properties", {}).items():
+            upload = is_file(prop_schema)
+            form_fields.append((prop, "FilePart" if upload else cs_type(prop_schema), prop in required, upload))
+        args += [f"{t} {cs_ident(n)}" for n, t, req, _ in form_fields if req]
+    optional = [f"{_cs_nullable(cs_type(p.schema))} {cs_ident(p.name)} = null" for p in query_params]
+    optional += [f"{_cs_nullable(t)} {cs_ident(n)} = null" for n, t, req, _ in form_fields if not req]
+    args += optional + ["CancellationToken cancellationToken = default"]
+
+    path = op.path
+    for p in path_params:
+        path = path.replace("{" + p.name + "}", "{Uri.EscapeDataString(" + cs_ident(p.name) + ".ToString()!)}")
+    path_expr = f'$"{path}"' if path_params else f'"{path}"'
+    call = [f'"{op.method}"', path_expr]
+    if query_params:
+        call.append("query: new Dictionary<string, object?> { " + ", ".join(f'["{p.name}"] = {cs_ident(p.name)}' for p in query_params) + " }")
+    if op.body_kind == "json":
+        call.append("json: body")
+    elif form_fields:
+        call.append("form: new Dictionary<string, object?> { " + ", ".join(f'["{n}"] = {cs_ident(n)}' for n, _, _, _ in form_fields) + " }")
+    if op.platform:
+        call.append("platform: true")
+    call.append("cancellationToken: cancellationToken")
+    if iterate:
+        name = pascal(re.sub(r"^list_", "iter_", op.name) if op.name.startswith("list_") else f"iter_{op.name}") + "Async"
+        item = next((cs_type(r.get("items", {})) for r in op.responses if r.get("type") == "array"), "JsonElement")
+        lines = cs_doc(f"Every row of {pascal(op.name)}Async, following each page's Link: rel=\"next\".\n{op.method} {op.path}", "    ")
+        lines.append(f"    public IAsyncEnumerable<{item}> {name}({', '.join(args)}) =>")
+        lines.append(f"        _c.PaginateAsync<{item}>({', '.join(call)});")
+    else:
+        returns = cs_return(op)
+        lines = cs_doc("\n".join(doc_lines(op)), "    ")
+        method = "CallRawAsync" if op.raw_response else f"CallAsync<{returns}>"
+        lines.append(f"    public Task<{returns}> {pascal(op.name)}Async({', '.join(args)}) =>")
+        lines.append(f"        _c.{method}({', '.join(call)});")
+    return lines + [""]
+
+
+def csharp(spec: dict, operations: list[Operation]) -> str:
+    _CS_SCHEMAS.clear()
+    _CS_SCHEMAS.update(spec["components"]["schemas"])
+    out = [
+        "// SPDX-License-Identifier: Apache-2.0",
+        f"// {HEADER}",
+        f"// API version {spec['info']['version']}.",
+        "#nullable enable",
+        "#pragma warning disable CS1591",
+        "using System.Text.Json;",
+        "using System.Text.Json.Serialization;",
+        "",
+        "namespace OpenClear;",
+        "",
+        "public static partial class ApiInfo",
+        "{",
+        f'    public const string Version = "{spec["info"]["version"]}";',
+        "}",
+        "",
+    ]
+    out += cs_models(spec)
+    groups: dict[str, list[Operation]] = {}
+    for op in operations:
+        groups.setdefault(op.tag, []).append(op)
+    for tag, ops in sorted(groups.items()):
+        out += cs_doc(f"{tag} endpoints.", "")
+        out.append(f"public sealed partial class {pascal(tag)}Api")
+        out.append("{")
+        out.append("    private readonly ITransport _c;")
+        out.append(f"    public {pascal(tag)}Api(ITransport transport) => _c = transport;")
+        out.append("")
+        for op in sorted(ops, key=lambda o: (o.path, o.method)):
+            out += cs_operation(spec, op)
+            if op.paginated:
+                out += cs_operation(spec, op, iterate=True)
+        if out[-1] == "":
+            out.pop()
+        out += ["}", ""]
+    out.append("public partial class OpenClearClient")
+    out.append("{")
+    for tag in sorted(groups):
+        out.append(f"    public {pascal(tag)}Api {pascal(tag)} {{ get; private set; }} = default!;")
+    out.append("")
+    out.append("    private void BindAreas()")
+    out.append("    {")
+    for tag in sorted(groups):
+        out.append(f"        {pascal(tag)} = new {pascal(tag)}Api(this);")
+    out.append("    }")
+    out.append("}")
+    return "\n".join(out).rstrip() + "\n"
+
+
 def generate() -> dict[Path, str]:
     spec = json.loads(SPEC.read_text())
     operations = read_operations(spec)
-    return {PY_OUT: python(spec, operations), TS_OUT: typescript(spec, operations)}
+    return {PY_OUT: python(spec, operations), TS_OUT: typescript(spec, operations), CS_OUT: csharp(spec, operations)}
 
 
 def main() -> int:

@@ -6,7 +6,8 @@ These are client libraries for OpenClear's API, for banking cores, online bankin
 |---|---|---|
 | Python 3.11+ | `openclear-sdk` | [python/](python) |
 | TypeScript / JavaScript | `@openclear/sdk` | [typescript/](typescript) |
-| .NET | planned (SDK_PLAN.md P3) | |
+| Embedding (browser) | `@openclear/embed` | [embed/](embed) |
+| .NET 8 | `OpenClear.Sdk` | [dotnet/](dotnet) |
 
 The SDKs are licensed **Apache-2.0**, unlike the rest of this repository (AGPL-3.0). That means a proprietary core or online banking platform can ship them. The plan is to publish each from its own repository.
 

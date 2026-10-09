@@ -28,6 +28,9 @@
   - sends checks paid from savings accounts as presented items;
   - undoes a returned check's withdrawal in Fineract.
   It's a reference for other cores too.
+- **A .NET SDK** (`sdks/dotnet`, `OpenClear.Sdk`). It's generated from the same contract
+  and has the same retries, paging, errors and webhook verification as the Python and
+  TypeScript SDKs.
 
 ### New: OpenClear inside online banking (SDK_PLAN.md P2)
 
