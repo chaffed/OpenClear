@@ -1,6 +1,56 @@
 # Changelog
 
-## Unreleased
+## 1.8.0 — 2026-10-09
+
+An integration release: cores, online banking providers and identity systems can now
+connect to OpenClear the way they expect, and others can extend it without changing it.
+It brings:
+
+- SDKs for Python, TypeScript and .NET;
+- an API for a bank's systems (API clients, decision feed, webhooks, idempotency);
+- SAML and SCIM;
+- embedding in online banking;
+- decision and NACHA return files;
+- plugins;
+- a developer sandbox with an integration checklist.
+
+### Upgrading from 1.7.0
+
+- **Run `alembic upgrade head`.** The Docker image does this on startup. It adds new tables
+  for:
+  - API clients;
+  - idempotency keys;
+  - decision feed cursors;
+  - webhooks;
+  - plugin choices;
+  - SSO identities and SAML assertions;
+  - SCIM;
+  - embed launches;
+  - the decision outbox;
+  - conformance results.
+
+  It also adds new columns on `sso_connection`, `tenant`, `api_client`, `decision` and
+  `exception_item`, and existing decisions are numbered for the decision feed. Every new
+  bank table is under row-level security on Postgres.
+- **New dependency:** `python3-saml`. Its `xmlsec` dependency has prebuilt wheels, so no
+  system packages are needed. Optional: `pip install 'openclear[docs]'` for the docs site.
+- **Behaviour changes:**
+  - Existing Admin groups get `api_client:manage`.
+  - The default ACH return reasons get their NACHA codes where none was set.
+  - An identity provider no longer attaches a new membership to an existing person who
+    isn't already a member in that scope; add them as an admin first (Security fixes,
+    below).
+  - In the API contract, file downloads are declared as files.
+- **Nothing new runs until you turn it on:**
+  - plugins (`OPENCLEAR_PLUGINS`);
+  - the decision outbox (`OPENCLEAR_ENABLE_DECISION_OUTBOX_SCHEDULER`);
+  - sandbox sign-up (`OPENCLEAR_SANDBOX_SIGNUP_ENABLED`; never on an installation with
+    real banks);
+  - embedding (Settings → Embedding);
+  - SAML and SCIM (per connection).
+- **Downgrading to 1.7.0** is supported: `alembic downgrade b9d1f3a5c7e8`. Back up first.
+  The new tables and columns are dropped, along with the data in them (API clients,
+  webhooks, SSO identities, …). The default return reasons keep the codes they were given.
 
 ### Security fixes (review of this release's new features; SECURITY_REVIEW.md, 2026-10-09)
 
