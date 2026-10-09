@@ -129,6 +129,19 @@ as_jane.decisions.decide_exception(exception_id, {"outcome": "pay"})
 
 The call can only do what both your client and that person are allowed to do. The bank's action log records the action under the person's name and notes that your client made it.
 
+### If you're the bank's online banking platform
+
+If the bank signs its business customers' people in through your platform (an OIDC sign-on connection with a customer claim), and links your API client to that connection, you have two options:
+
+- **Exchange the person's ID token.** You get a client that acts for that person within their own customer. The person is created in OpenClear on first use.
+- **Name the person by your own id for them.** This works once they've signed in or been exchanged at least once.
+
+```python
+jo = oc.for_person(id_token_from_your_sign_in)   # token exchange: acts for the signed-in person
+jo.exceptions.list_exceptions()
+oc.acting_as_subject("your-user-id-for-them")     # or name them by your own id for them
+```
+
 ## Version
 
 `openclear_sdk.API_VERSION` is the OpenClear API version the SDK was generated from. `/api/v1` only changes in ways that add to it, so newer servers keep working with this SDK.

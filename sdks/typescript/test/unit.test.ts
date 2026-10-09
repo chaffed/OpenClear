@@ -89,3 +89,32 @@ test("webhooks: what sign makes, verify accepts; tampering and replays are refus
   await assert.rejects(webhooks.verify(secret, headers, body, { now: now + 3600 }), /too old/);
   await assert.rejects(webhooks.verify(secret, {}, body), /Missing/);
 });
+
+test("forPerson exchanges an ID token; actingAsSubject sends the provider's id", async () => {
+  const seen: Request[] = [];
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    seen.push(request.clone());
+    if (new URL(request.url).pathname === "/api/v1/oauth/token") {
+      const form = new URLSearchParams(await request.text());
+      if (form.get("grant_type") === "urn:ietf:params:oauth:grant-type:token-exchange") {
+        return Response.json({ access_token: "person-token", issued_token_type: "urn:ietf:params:oauth:token-type:access_token", expires_in: 300 });
+      }
+      return Response.json({ access_token: "client-token", expires_in: 1800 });
+    }
+    return Response.json([]);
+  }) as typeof fetch;
+  const oc = new OpenClear({ baseUrl: "https://oc.example", clientId: "occ_x", clientSecret: "s", fetch: fetchImpl });
+
+  const jo = await oc.forPerson("the-id-token");
+  await jo.issuedItems.listIssuedItems();
+  const exchange = new URLSearchParams(await seen[0].text());
+  assert.equal(exchange.get("subject_token"), "the-id-token");
+  assert.equal(exchange.get("subject_token_type"), "urn:ietf:params:oauth:token-type:id_token");
+  assert.equal(seen[1].headers.get("authorization"), "Bearer person-token");
+
+  await oc.actingAsSubject("mifos-7").issuedItems.listIssuedItems();
+  const last = seen[seen.length - 1];
+  assert.equal(last.headers.get("openclear-act-as-subject"), "mifos-7");
+  assert.equal(last.headers.get("openclear-act-as"), null);
+});

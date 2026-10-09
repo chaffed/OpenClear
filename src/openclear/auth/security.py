@@ -42,6 +42,7 @@ def create_token(
     session_id: uuid.UUID | None = None,
     expires_at: datetime | None = None,
     session_expires_at: datetime | None = None,
+    on_behalf_of: dict | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -95,6 +96,10 @@ def create_token(
         payload["sid"] = str(session_id)
     if session_expires_at is not None:
         payload["sxp"] = int(session_expires_at.timestamp())
+    if on_behalf_of is not None:
+        # An API client's token from token exchange (api/v1/oauth.py): it acts for this
+        # person, with the permissions both hold (auth/deps.py::_act_for_exchange).
+        payload["obo"] = on_behalf_of
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 

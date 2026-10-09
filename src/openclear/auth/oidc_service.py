@@ -38,6 +38,9 @@ class OidcClaims:
     email: str
     subject: str
     groups: list[str] = field(default_factory=list)
+    # The online banking sign-on profile (SsoConnection.customer_claim): which business
+    # customer the person belongs to, by customer number.
+    customer_number: str | None = None
 
 
 def _http_client() -> httpx.Client:
@@ -200,7 +203,10 @@ def claims_to_identity(connection: SsoConnection, claims: dict[str, Any]) -> Oid
     if isinstance(groups, str):
         groups = [groups]
 
-    return OidcClaims(email=email, subject=str(claims.get("sub", "")), groups=list(groups))
+    customer_number = None
+    if connection.customer_claim and claims.get(connection.customer_claim) is not None:
+        customer_number = str(claims[connection.customer_claim]).strip() or None
+    return OidcClaims(email=email, subject=str(claims.get("sub", "")), groups=list(groups), customer_number=customer_number)
 
 
 BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout"

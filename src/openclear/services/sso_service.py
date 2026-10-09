@@ -42,6 +42,7 @@ class SsoConnectionInput:
     saml_idp_certificate: str | None = None
     saml_email_attribute: str | None = None
     allow_idp_initiated: bool = False
+    customer_claim: str | None = None
 
 
 def _https_url(value: str | None, what: str, *, required: bool) -> str | None:
@@ -83,6 +84,12 @@ def _apply_input(session: Session, tenant_id: uuid.UUID, connection: SsoConnecti
     connection.groups_claim_name = data.groups_claim_name
     connection.auto_provision = data.auto_provision
     connection.allow_idp_initiated = data.allow_idp_initiated
+    customer_claim = (data.customer_claim or "").strip() or None
+    if customer_claim and data.customer_id is not None:
+        raise ValueError("The online banking profile (customer claim) is for a bank-wide connection, not one customer's.")
+    if customer_claim and len(customer_claim) > 100:
+        raise ValueError("The customer claim name is too long.")
+    connection.customer_claim = customer_claim
     if connection.protocol is not None and connection.protocol != data.protocol and connection.id is not None and connection.tenant_id:
         raise ValueError("A connection's protocol can't be changed; add a new connection instead.")
     connection.protocol = data.protocol
@@ -300,11 +307,19 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
     membership already exists — see domain/sso_connection.py's docstrings for the full
     rationale. Never a generic exception; every outcome is a plain, expected case a
     caller renders a specific message for."""
+    scope_customer_id = connection.customer_id
+    if connection.customer_claim:
+        # The online banking sign-on profile: the provider says which business customer the
+        # person belongs to; a missing or unknown customer gets no access at all.
+        customer = customer_service.get_customer_by_number(session, tenant_id, claims.customer_number) if claims.customer_number else None
+        if customer is None or not getattr(customer, "is_active", True):
+            return SsoLoginResult(outcome="not_authorized")
+        scope_customer_id = customer.id
     user = UserRepository(session).get_by_email(claims.email)
     existing_membership: TenantMembership | None = None
     if user is not None:
         candidates = [
-            m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == connection.customer_id
+            m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == scope_customer_id
         ]
         existing_membership = candidates[0] if candidates else None
 
@@ -341,15 +356,15 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
             email=claims.email,
             password=_generate_unusable_password(),
             security_group_id=resolved_group_id,
-            customer_id=connection.customer_id,
+            customer_id=scope_customer_id,
         )
         new_membership = [
-            m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == connection.customer_id
+            m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == scope_customer_id
         ][0]
         return SsoLoginResult(outcome="success", user=user, membership=new_membership)
 
     membership = TenantMembership(
-        user_id=user.id, tenant_id=tenant_id, customer_id=connection.customer_id, security_group_id=resolved_group_id
+        user_id=user.id, tenant_id=tenant_id, customer_id=scope_customer_id, security_group_id=resolved_group_id
     )
     TenantMembershipRepository(session, tenant_id).add(membership)
     session.flush()

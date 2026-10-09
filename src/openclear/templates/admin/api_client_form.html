@@ -22,6 +22,16 @@
     </label>
     <label><input type="checkbox" name="can_act_for_users" value="true" {{ "checked" if values.can_act_for_users else "" }}>
       May act for your users (for an online banking provider's server acting for a signed-in customer)</label>
+    {% if connections %}
+    <label>Online banking sign-on connection (optional)
+      <select name="sso_connection_id">
+        <option value="">None</option>
+        {% for c in connections %}<option value="{{ c.id }}" {{ "selected" if values.sso_connection_id == c.id|string else "" }}>{{ c.display_name }}</option>{% endfor %}
+      </select>
+      <small>Lets the provider exchange a signed-in person's ID token for a token acting for them (OAuth token exchange),
+        and name people by the provider's own id (<code>OpenClear-Act-As-Subject</code>). Needs "may act for your users".</small>
+    </label>
+    {% endif %}
     <button type="submit">{{ icon("vpn_key") }}Create and show the secret</button>
   </form>
   <p><a href="/ui/admin/api-clients">Back to API clients</a></p>

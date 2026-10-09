@@ -82,8 +82,17 @@ def create_client(
     customer_id: uuid.UUID | None = None,
     can_act_for_users: bool = False,
     created_by_user_id: uuid.UUID | None = None,
+    sso_connection_id: uuid.UUID | None = None,
 ) -> IssuedSecret:
     name = (name or "").strip()
+    if sso_connection_id is not None:
+        from openclear.domain.sso_connection import SsoConnection, SsoProtocol
+
+        connection = session.get(SsoConnection, sso_connection_id)
+        if connection is None or connection.tenant_id != tenant_id or connection.protocol != SsoProtocol.OIDC:
+            raise ApiClientError("Choose one of this organization's OIDC sign-on connections.")
+        if not can_act_for_users:
+            raise ApiClientError("Linking a sign-on connection needs “may act for your users”.")
     if not name:
         raise ApiClientError("A name is required.")
     group = session.get(SecurityGroup, security_group_id)
@@ -113,6 +122,7 @@ def create_client(
     client = ApiClient(
         tenant_id=tenant_id, name=name, client_id=client_id, secret_hash=_hash(secret), user_id=service_user.id,
         membership_id=membership.id, can_act_for_users=can_act_for_users, created_by_user_id=created_by_user_id,
+        sso_connection_id=sso_connection_id,
     )
     session.add(client)
     session.flush()
@@ -180,6 +190,7 @@ def describe(session: Session, client: ApiClient) -> dict:
         "id": client.id, "name": client.name, "client_id": client.client_id,
         "security_group": group.name if group else None, "customer": customer.name if customer else None,
         "can_act_for_users": client.can_act_for_users, "created_by": creator.email if creator else None,
+        "sso_connection_id": client.sso_connection_id,
         "created_at": client.created_at, "secret_rotated_at": client.secret_rotated_at,
         "last_used_at": client.last_used_at, "revoked_at": client.revoked_at,
     }

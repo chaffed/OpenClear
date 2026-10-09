@@ -184,22 +184,21 @@ ACT_AS_HEADER = "openclear-act-as"
 ACT_AS_CUSTOMER_HEADER = "openclear-act-as-customer"
 
 
-def _act_as(request: Request, db: Session, ctx: TenantContext, email: str) -> TenantContext:
-    """An API client acting for one of its bank's users (SDK_PLAN.md P0): an online
-    banking provider's server making a call for the person signed in to it, so the action
-    is theirs (and the maker-checker rules see them). Only for clients the bank allowed;
-    only for an existing, active member (of the client's customer, if it has one); and only
-    with the permissions both the client and the user hold."""
+ACT_AS_SUBJECT_HEADER = "openclear-act-as-subject"
+
+
+def _acting_client(db: Session, ctx: TenantContext, why: str):
     from openclear.domain.api_client import ApiClient
-    from openclear.services import audit_log_service
 
     client = db.execute(
         select(ApiClient).where(ApiClient.user_id == ctx.user_id, ApiClient.tenant_id == ctx.tenant_id, ApiClient.revoked_at.is_(None))
     ).scalar_one_or_none()
     if client is None or not client.can_act_for_users:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an API client allowed to act for users can send OpenClear-Act-As")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Only an API client allowed to act for users can {why}")
+    return client
 
-    target = db.execute(select(User).where(func.lower(User.email) == email.strip().lower())).scalar_one_or_none()
+
+def _membership_for(request: Request, db: Session, ctx: TenantContext, target: User | None) -> TenantMembership:
     if target is None or not target.is_active or target.is_service_account:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No such active user in this organization")
     memberships = [
@@ -216,10 +215,16 @@ def _act_as(request: Request, db: Session, ctx: TenantContext, email: str) -> Te
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No such active user in this organization")
     if len(memberships) > 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That user has several memberships here; send OpenClear-Act-As-Customer too")
-    membership = memberships[0]
+    return memberships[0]
+
+
+def _acting_context(request: Request, db: Session, ctx: TenantContext, client, target: User, membership: TenantMembership) -> TenantContext:
+    """The context of a client acting for a person: their identity and scope, with only the
+    permissions both hold, and (for writes) an audit entry naming the client."""
+    from openclear.services import audit_log_service
+
     if target.must_change_password:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "That user must change their password before anything can be done for them")
-
     group = db.get(SecurityGroup, membership.security_group_id)
     permissions = frozenset(group.permissions if group else ()) & ctx.permissions
     customer = db.get(Customer, membership.customer_id) if membership.customer_id else None
@@ -244,15 +249,67 @@ def _act_as(request: Request, db: Session, ctx: TenantContext, email: str) -> Te
     return acting
 
 
+def _act_as(request: Request, db: Session, ctx: TenantContext, email: str) -> TenantContext:
+    """An API client acting for one of its bank's users (SDK_PLAN.md P0): an online
+    banking provider's server making a call for the person signed in to it, so the action
+    is theirs (and the maker-checker rules see them). Only for clients the bank allowed;
+    only for an existing, active member (of the client's customer, if it has one); and only
+    with the permissions both the client and the user hold."""
+    client = _acting_client(db, ctx, "send OpenClear-Act-As")
+    target = db.execute(select(User).where(func.lower(User.email) == email.strip().lower())).scalar_one_or_none()
+    return _acting_context(request, db, ctx, client, target, _membership_for(request, db, ctx, target))
+
+
+def _act_as_subject(request: Request, db: Session, ctx: TenantContext, subject: str) -> TenantContext:
+    """Like _act_as, naming the person by the online banking provider's own id for them
+    (SDK_PLAN.md phase F): an id that doesn't change when an email does. The client must
+    be linked to that provider's SSO connection, and the person must have signed in through
+    it (or been exchanged) at least once."""
+    from openclear.services import sso_service
+
+    client = _acting_client(db, ctx, "send OpenClear-Act-As-Subject")
+    connection = sso_service.get_connection(db, ctx.tenant_id, client.sso_connection_id) if client.sso_connection_id else None
+    if connection is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This API client isn't linked to an SSO connection")
+    target = sso_service.find_identity_user(db, connection, subject.strip())
+    return _acting_context(request, db, ctx, client, target, _membership_for(request, db, ctx, target))
+
+
+def _act_for_exchange(request: Request, db: Session, ctx: TenantContext, obo: dict) -> TenantContext:
+    """A token from token exchange (api/v1/oauth.py) acts for the person it was issued for,
+    in the membership the exchange resolved, re-checked on every request."""
+    client = _acting_client(db, ctx, "use an exchanged token")
+    try:
+        target = db.get(User, uuid.UUID(obo["uid"]))
+        membership = db.get(TenantMembership, uuid.UUID(obo["mid"]))
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from None
+    if (
+        target is None or not target.is_active or membership is None or not membership.is_active
+        or membership.user_id != target.id or membership.tenant_id != ctx.tenant_id
+    ):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "The person this token acts for no longer has access")
+    return _acting_context(request, db, ctx, client, target, membership)
+
+
 def get_current_context(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> TenantContext:
     ctx = _header_context(credentials, db, expected_type="access")
-    act_as = request.headers.get(ACT_AS_HEADER)
-    if act_as:
+    obo = decode_token(credentials.credentials).get("obo")
+    act_as, act_as_subject = request.headers.get(ACT_AS_HEADER), request.headers.get(ACT_AS_SUBJECT_HEADER)
+    if obo:
+        if act_as or act_as_subject:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "An exchanged token already acts for someone")
+        ctx = _act_for_exchange(request, db, ctx, obo)
+    elif act_as and act_as_subject:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send OpenClear-Act-As or OpenClear-Act-As-Subject, not both")
+    elif act_as:
         ctx = _act_as(request, db, ctx, act_as)
+    elif act_as_subject:
+        ctx = _act_as_subject(request, db, ctx, act_as_subject)
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise HTTPException(status.HTTP_403_FORBIDDEN, DEMO_LOCKED_MESSAGE)
     if ctx.must_change_password:

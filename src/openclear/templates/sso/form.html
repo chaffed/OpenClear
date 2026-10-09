@@ -83,6 +83,13 @@
     <label>Groups claim / attribute name
       <input type="text" name="groups_claim_name" value="{{ connection.groups_claim_name if connection else 'groups' }}" required>
     </label>
+    {% if customer is not defined %}
+    <label>Customer claim / attribute (online banking sign-on, optional)
+      <input type="text" name="customer_claim" value="{{ (connection.customer_claim or '') if connection else '' }}" placeholder="e.g. customer_number">
+      <small>For your online banking provider: the people who sign in belong to your business customers, and this
+        claim carries their customer number. Each session is limited to that customer.</small>
+    </label>
+    {% endif %}
     <label>
       <input type="checkbox" name="auto_provision" value="true" {{ "checked" if connection and connection.auto_provision else "" }}>
       Auto-provision a new OpenClear account the first time someone signs in

@@ -39,6 +39,10 @@ class ApiClient(Base):
     # banking provider's server does for a signed-in customer (SDK_PLAN.md P0). Off unless
     # the bank turns it on.
     can_act_for_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # The online banking provider's SSO connection whose ID tokens this client may exchange
+    # for a token acting for that person (RFC 8693; api/v1/oauth.py), and whose subject ids
+    # OpenClear-Act-As-Subject refers to. Needs can_act_for_users.
+    sso_connection_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sso_connection.id"), nullable=True)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     secret_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

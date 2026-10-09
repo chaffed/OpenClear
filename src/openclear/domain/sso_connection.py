@@ -80,6 +80,10 @@ class SsoConnection(Base):
     allow_idp_initiated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # SCIM 2.0 provisioning from the bank's directory (services/scim_service.py): the
     # bearer token's SHA-256; the token itself is shown once.
+    # The online banking sign-on profile: a bank-wide connection whose people belong to
+    # the bank's business customers. This claim (OIDC) or attribute (SAML) carries the
+    # person's customer number; their session is scoped to that customer.
+    customer_claim: Mapped[str | None] = mapped_column(String(100), nullable=True)
     scim_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     scim_token_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

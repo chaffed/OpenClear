@@ -120,6 +120,41 @@ export class OpenClear implements Transport {
     return other;
   }
 
+  /**
+   * Like `actingAs`, naming the person by your online banking platform's own id for them
+   * (`OpenClear-Act-As-Subject`). Needs the client linked to your sign-on connection.
+   */
+  actingAsSubject(subject: string): OpenClear {
+    const other = this.actingAs("");
+    delete other.headers["OpenClear-Act-As"];
+    other.headers["OpenClear-Act-As-Subject"] = subject;
+    return other;
+  }
+
+  /**
+   * Token exchange (RFC 8693): trades the ID token of a person signed in to your online
+   * banking platform for a client that acts for them, with what both they and this client
+   * may do. It expires when the ID token does; exchange again after that.
+   */
+  async forPerson(idToken: string): Promise<OpenClear> {
+    const response = await this.send("POST", "/api/v1/oauth/token", {
+      auth: "none",
+      form: {
+        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+        client_id: this.options.clientId,
+        client_secret: this.options.clientSecret,
+        subject_token: idToken,
+        subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+      },
+    }, false);
+    const body = (await response.json()) as { access_token: string };
+    const other = new OpenClear({ ...this.options, accessToken: body.access_token });
+    other.sleep = this.sleep;
+    other.maxRetries = this.maxRetries;
+    other.headers = { ...this.headers };
+    return other;
+  }
+
   // --- Authentication -------------------------------------------------------------------
 
   private async bearer(refresh = false): Promise<string> {

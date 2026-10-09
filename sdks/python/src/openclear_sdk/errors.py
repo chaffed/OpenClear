@@ -71,6 +71,7 @@ class BulkUploadError(OpenClearError):
     upload: dict | None = None
 
 
+_OAUTH_AUTH_ERRORS = {"invalid_client", "invalid_grant", "unauthorized_client"}
 _BY_STATUS = {401: AuthenticationError, 403: PermissionDeniedError, 404: NotFoundError, 409: ConflictError, 422: ValidationError, 429: RateLimitError}
 
 
@@ -86,4 +87,6 @@ def error_for(status_code: int, body: Any) -> OpenClearError:
     else:
         message = str(detail) if detail else (body if isinstance(body, str) and body else f"HTTP {status_code}")
     cls = _BY_STATUS.get(status_code, ServerError if status_code >= 500 else OpenClearError)
+    if isinstance(body, dict) and body.get("error") in _OAUTH_AUTH_ERRORS:
+        cls = AuthenticationError  # the token endpoint refused the credentials or the person's ID token
     return cls(f"{status_code}: {message}", status_code=status_code, detail=detail, body=body)

@@ -88,7 +88,8 @@ def assertion_consumer(
         return error_page(_SSO_FAILED_MESSAGE)
     if request_id is None and RelayState.startswith("/"):
         next_path = RelayState  # an identity provider's target page; safe_next_path keeps it on this site
-    claims = OidcClaims(email=assertion.email, subject=assertion.subject, groups=assertion.groups)
+    claims = OidcClaims(email=assertion.email, subject=assertion.subject, groups=assertion.groups,
+                        customer_number=assertion.customer_number)
     return finish_sso_login(request, db, tenant_id, connection, claims, next_path, error_page)
 
 

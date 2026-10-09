@@ -189,10 +189,23 @@ bank. PKCE is added as a fix ahead of this phase.
     `target_link_uri` on this site, passes `login_hint` through, and starts a normal
     PKCE sign-in.
   - **SAML IdP-initiated:** opt-in per connection, and each assertion is accepted once.
-- [ ] **OBP sign-on profile** for a bank's business customers' users: the online banking
-      provider is the identity provider, a user is matched to a customer by a claim, and
-      the session is customer-scoped. Mifos (on Fineract) first. P2's embedded experience
-      uses it.
+- [x] **OBP sign-on profile** (2026-10-09; migration `e0a2c4e6a8b1`): a bank-wide
+      connection with a **customer claim** (or SAML attribute), whose people belong to
+      business customers. The claim names the person's customer, and their session is
+      scoped to it. A missing or unknown customer gets no access.
+  - **RFC 8693 token exchange** (`/api/v1/oauth/token`): the provider's backend trades
+    a person's ID token for a client token carrying an `obo` claim.
+    - Each request re-checks the person's membership and intersects their permissions
+      with the client's, through the same path as act-as.
+    - The token expires no later than the ID token.
+    - The person is created on first use. This covers the item moved here from P0.
+  - **`OpenClear-Act-As-Subject`:** act for someone by the provider's own id, through
+    `sso_identity`.
+  - **API clients** can be linked to a connection (`api_client.sso_connection_id`).
+  - **Tests:** the customer claim, the exchange, intersected permissions, revocation
+    re-checked, eight refusal cases, act-as by subject, and the exchange under RLS on
+    Postgres.
+  - Mifos itself comes in P2's reference integration.
 
 ### P1 detail (SDKs)
 

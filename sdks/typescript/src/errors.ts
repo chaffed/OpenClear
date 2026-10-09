@@ -45,6 +45,9 @@ export class BulkUploadError extends OpenClearError {
   upload: Record<string, unknown> | undefined;
 }
 
+// The token endpoint refused the credentials or a person's ID token (RFC 6749 §5.2).
+const OAUTH_AUTH_ERRORS = new Set(["invalid_client", "invalid_grant", "unauthorized_client"]);
+
 const BY_STATUS: Record<number, typeof OpenClearError> = {
   401: AuthenticationError,
   403: PermissionDeniedError,
@@ -74,6 +77,8 @@ export function errorFor(status: number, body: unknown): OpenClearError {
   } else {
     message = detail ? String(detail) : typeof body === "string" && body ? body : `HTTP ${status}`;
   }
-  const Cls = BY_STATUS[status] ?? (status >= 500 ? ServerError : OpenClearError);
+  let Cls = BY_STATUS[status] ?? (status >= 500 ? ServerError : OpenClearError);
+  const oauthError = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
+  if (typeof oauthError === "string" && OAUTH_AUTH_ERRORS.has(oauthError)) Cls = AuthenticationError;
   return new Cls(`${status}: ${message}`, { status, detail, body });
 }

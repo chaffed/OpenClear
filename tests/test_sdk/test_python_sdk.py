@@ -217,3 +217,24 @@ def test_a_next_link_stays_on_the_configured_host():
     oc, seen, _waits = _mock(pages)
     assert [row["n"] for row in oc.issued_items.iter_issued_items(limit=1)] == [1, 2]
     assert seen[-1].url.host == "oc.example" and seen[-1].url.params["offset"] == "1"
+
+
+def test_an_online_banking_platform_acts_for_its_signed_in_person(client, db_session, monkeypatch):
+    """Token exchange and act-as-by-subject through the SDK (SDK_PLAN.md phase F)."""
+    import openclear.auth.oidc_service as oidc_service
+    from tests.conftest import TenantFactory
+    from tests.test_api.test_obp_profile import _bank, _client, _id_token
+    from tests.test_auth.oidc_helpers import FakeOidcProvider
+
+    provider = FakeOidcProvider(issuer="https://mifos.example.com", client_id="openclear-at-mifos")
+    monkeypatch.setattr(oidc_service, "_get_discovery_document", lambda issuer: provider.discovery_document())
+    monkeypatch.setattr(oidc_service, "_get_jwks", lambda jwks_uri: provider.jwks())
+    tenant, _users, connection, _acme, _beta, _a = _bank(db_session, TenantFactory(db_session), "sdk-obp", provider)
+    issued = _client(db_session, tenant, connection)
+    oc = OpenClear("http://testserver", client_id=issued.client.client_id, client_secret=issued.secret, http_client=client)
+
+    jo = oc.for_person(_id_token(provider, sub="mifos-7"))
+    assert jo.issued_items.list_issued_items() == []
+    assert oc.acting_as_subject("mifos-7").issued_items.list_issued_items() == []
+    with pytest.raises(AuthenticationError):
+        oc.for_person("not-a-token")  # a refused exchange is a 400 invalid_grant

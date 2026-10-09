@@ -118,6 +118,19 @@ await oc.actingAs("jane@acme.example", { customerNumber: "CIF-1001" }).decisions
 
 The call can only do what both your client and that person are allowed to do. The bank's action log records the action under the person's name and notes that your client made it.
 
+### If you're the bank's online banking platform
+
+If the bank signs its business customers' people in through your platform (an OIDC sign-on connection with a customer claim), and links your API client to that connection, you have two options:
+
+- **Exchange the person's ID token.** You get a client that acts for that person within their own customer. The person is created in OpenClear on first use.
+- **Name the person by your own id for them.** This works once they've signed in or been exchanged at least once.
+
+```ts
+const jo = await oc.forPerson(idTokenFromYourSignIn); // token exchange: acts for the signed-in person
+await jo.exceptions.listExceptions();
+oc.actingAsSubject("your-user-id-for-them");           // or name them by your own id for them
+```
+
 ## Developing
 
 ```sh

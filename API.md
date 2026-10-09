@@ -100,7 +100,34 @@ OpenClear-Act-As-Customer: ACME     # only if that person belongs to several cus
 - The action's audit entry names the person, and every change made this way also records
   an `api_client.act_as` entry naming the client.
 - Without the bank's permission, or for anyone else, the answer is `403`.
-- Creating a person on first use is planned with the federation phase (SDK_PLAN.md F).
+- `OpenClear-Act-As-Subject: <id>` names the person by the online banking provider's own id
+  for them (its OIDC `sub`) instead of their email, for a client linked to that provider's
+  sign-on connection. The person must have signed in, or been exchanged (below), at least once.
+
+**Token exchange (RFC 8693).** An online banking provider whose people sign in with it
+(the bank sets up its OIDC connection with a *customer claim*, so each person belongs to a
+business customer) can trade the person's ID token for an OpenClear token that acts for
+them. This also creates the person on first use, with the connection's group mappings:
+
+```
+POST /api/v1/oauth/token
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+client_id=occ_...&client_secret=...
+subject_token=<the person's ID token from the provider>
+subject_token_type=urn:ietf:params:oauth:token-type:id_token
+```
+
+The answer is `{"access_token", "issued_token_type": "urn:ietf:params:oauth:token-type:access_token", "token_type": "Bearer", "expires_in"}`.
+
+- The token expires no later than the ID token does.
+- What it allows is re-checked on every request, as with `OpenClear-Act-As`.
+- The client must be allowed to act for users and be linked to the provider's connection
+  (Admin → API clients).
+- A refused exchange answers `400` with an RFC 6749 error:
+  - `invalid_grant`: a bad or expired ID token, or a person with no mapped group or
+    customer;
+  - `unauthorized_client`: a client that isn't set up for exchange;
+  - `invalid_request`: a malformed request.
 
 | method | path | permission | notes |
 |---|---|---|---|

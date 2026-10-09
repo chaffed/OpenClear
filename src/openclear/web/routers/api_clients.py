@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.services import api_client_service, audit_log_service, customer_service, security_group_service
+from openclear.services import api_client_service, audit_log_service, customer_service, security_group_service, sso_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
 
@@ -26,6 +26,7 @@ def _form(request: Request, db: Session, ctx: TenantContext, *, error: str | Non
         request, "admin/api_client_form.html", ctx=ctx, error=error, values=values or {}, status_code=status_code,
         groups=security_group_service.list_security_groups(db, ctx.tenant_id),
         customers=customer_service.list_customers(db, ctx.tenant_id),
+        connections=[c for c in sso_service.list_connections(db, ctx.tenant_id) if c.protocol.value == "oidc"],
     )
 
 
@@ -53,17 +54,20 @@ def create_api_client(
     security_group_id: str = Form(""),
     customer_id: str = Form(""),
     can_act_for_users: bool = Form(False),
+    sso_connection_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(_manage),
     _csrf: None = Depends(verify_csrf),
 ) -> Response:
-    values = {"name": name, "security_group_id": security_group_id, "customer_id": customer_id, "can_act_for_users": can_act_for_users}
+    values = {"name": name, "security_group_id": security_group_id, "customer_id": customer_id, "can_act_for_users": can_act_for_users,
+              "sso_connection_id": sso_connection_id}
     try:
         issued = api_client_service.create_client(
             db, ctx.tenant_id, name=name,
             security_group_id=uuid.UUID(security_group_id) if security_group_id else uuid.UUID(int=0),
             customer_id=uuid.UUID(customer_id) if customer_id else None,
             can_act_for_users=can_act_for_users, created_by_user_id=ctx.user_id,
+            sso_connection_id=uuid.UUID(sso_connection_id) if sso_connection_id else None,
         )
     except (api_client_service.ApiClientError, ValueError) as exc:
         db.rollback()

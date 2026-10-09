@@ -158,6 +158,36 @@ class OpenClear(Transport):
         other.bulk = Bulk(other)
         return other
 
+    def acting_as_subject(self, subject: str) -> OpenClear:
+        """Like `acting_as`, naming the person by your online banking platform's own id for
+        them (`OpenClear-Act-As-Subject`). Needs the client linked to your sign-on
+        connection, and the person to have signed in (or been exchanged) once."""
+        other = self.acting_as("")
+        other._headers.pop("OpenClear-Act-As", None)
+        other._headers["OpenClear-Act-As-Subject"] = subject
+        return other
+
+    def for_person(self, id_token: str) -> OpenClear:
+        """Token exchange (RFC 8693): trades the ID token of a person signed in to your online
+        banking platform for a client that acts for them, with what both they and this
+        client may do. It expires when the ID token does; exchange again after that."""
+        response = self._send(
+            "POST", "/api/v1/oauth/token", auth=None, idempotent=False,
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange", "client_id": self._client_id,
+                "client_secret": self._client_secret, "subject_token": id_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+            },
+        )
+        other = copy.copy(self)
+        other._token = _Token(response.json()["access_token"])
+        other._owns_http = False
+        other._bind_areas()
+        from openclear_sdk.bulk import Bulk
+
+        other.bulk = Bulk(other)
+        return other
+
     # --- Authentication ----------------------------------------------------------------
 
     def _bearer(self, *, refresh: bool = False) -> str:

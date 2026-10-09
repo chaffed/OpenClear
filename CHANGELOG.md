@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### New: online banking sign-on profile and token exchange (SDK_PLAN.md phase F)
+
+- **A connection for an online banking provider:** the provider is the identity provider,
+  and a **customer claim** names each person's business customer. Each session is
+  limited to that customer.
+- **Token exchange (RFC 8693):** the provider's server trades a signed-in person's ID token
+  for an OpenClear token that acts for them. The token allows only what both the person
+  and the API client may do, and the person is created on first use. Link the API client
+  to the connection under Admin → API clients.
+- **`OpenClear-Act-As-Subject`:** a client can act for someone by the provider's own id
+  for them, instead of their email.
+- **Upgrading:** run `alembic upgrade head`. It adds the columns
+  `sso_connection.customer_claim` and `api_client.sso_connection_id`.
+
 ### New: sign-out from the identity provider, and sign-in from its portal (SDK_PLAN.md phase F)
 
 - **OIDC back-channel logout:** when someone signs out at the identity provider, their

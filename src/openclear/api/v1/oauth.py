@@ -2,7 +2,8 @@
 # Copyright (C) 2026 Chaffed
 
 """OAuth 2.0 token endpoint for a bank's systems (SDK_PLAN.md P0): the client credentials
-grant (RFC 6749 section 4.4). See services/api_client_service.py."""
+grant (RFC 6749 section 4.4), and token exchange (RFC 8693, phase F) for an online banking
+provider acting for the person signed in to it. See services/api_client_service.py."""
 
 import base64
 import binascii
@@ -44,20 +45,36 @@ def _basic_credentials(request: Request) -> tuple[str, str] | None:
     return client_id, secret
 
 
+TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
+ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"
+ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token"
+
+
 @router.post("/token")
 def token(
     request: Request,
     grant_type: str = Form(...),
     client_id: str | None = Form(None),
     client_secret: str | None = Form(None),
+    subject_token: str | None = Form(None),
+    subject_token_type: str | None = Form(None),
+    requested_token_type: str | None = Form(None),
     db: Session = Depends(get_db),
     _rate_limit: None = Depends(rate_limit("oauth_token", limit_setting="oauth_token_rate_limit_per_minute")),
 ) -> JSONResponse:
     """`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic
     auth or as `client_id` and `client_secret` form fields. Returns a bearer access token
-    for every `/api/v1` endpoint the client's security group allows."""
-    if grant_type != "client_credentials":
-        return _error("unsupported_grant_type", "Only client_credentials is supported.", 400)
+    for every `/api/v1` endpoint the client's security group allows.
+
+    `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) trades the ID
+    token of a person signed in to the bank's online banking provider (`subject_token`,
+    `subject_token_type=urn:ietf:params:oauth:token-type:id_token`) for a token that acts
+    for them: what both they and the client may do, recorded as theirs. The client must be
+    allowed to act for users and linked to that provider's SSO connection; the ID token is
+    verified against the provider's keys, and the person is matched (or provisioned) with
+    the connection's group mappings and customer claim, as at sign-in."""
+    if grant_type not in ("client_credentials", TOKEN_EXCHANGE):
+        return _error("unsupported_grant_type", "Supported: client_credentials and token exchange.", 400)
     basic = _basic_credentials(request)
     if basic is not None:
         client_id, client_secret = basic
@@ -65,6 +82,8 @@ def token(
     if client is None:
         db.rollback()
         return _error("invalid_client", "Unknown client, wrong secret, or the client has been revoked.", 401)
+    if grant_type == TOKEN_EXCHANGE:
+        return _exchange(db, client, subject_token, subject_token_type, requested_token_type)
 
     membership = db.get(TenantMembership, client.membership_id)
     user = db.get(User, client.user_id)
@@ -78,3 +97,49 @@ def token(
     return JSONResponse(
         {"access_token": access_token, "token_type": "Bearer", "expires_in": minutes * 60}, headers=_NO_STORE,
     )
+
+
+def _exchange(db: Session, client, subject_token: str | None, subject_token_type: str | None, requested_token_type: str | None) -> JSONResponse:
+    from openclear.auth.oidc_service import OidcError, claims_to_identity, verify_provider_token
+    from openclear.domain.sso_connection import SsoProtocol
+    from openclear.services import audit_log_service, sso_service
+
+    if not subject_token or subject_token_type != ID_TOKEN_TYPE:
+        return _error("invalid_request", f"Send subject_token with subject_token_type={ID_TOKEN_TYPE}.", 400)
+    if requested_token_type not in (None, "", ACCESS_TOKEN_TYPE):
+        return _error("invalid_request", "Only access tokens are issued.", 400)
+    connection = sso_service.get_connection(db, client.tenant_id, client.sso_connection_id) if client.sso_connection_id else None
+    if not client.can_act_for_users or connection is None or not connection.is_active or connection.protocol != SsoProtocol.OIDC:
+        return _error("unauthorized_client", "This client may not exchange tokens: it must be allowed to act for users and linked to an OIDC SSO connection.", 400)
+    try:
+        claims = verify_provider_token(connection, subject_token, kind="subject_token", require_exp=True)
+        identity = claims_to_identity(connection, claims)
+    except OidcError:
+        return _error("invalid_grant", "The subject token was rejected.", 400)
+    result = sso_service.complete_sso_login(db, client.tenant_id, connection, identity)
+    if result.outcome != "success":
+        db.commit()  # a membership the provider's groups no longer justify stays revoked
+        return _error("invalid_grant", "That person has no access to OpenClear.", 400)
+    client_membership = db.get(TenantMembership, client.membership_id)
+    if client_membership.customer_id is not None and result.membership.customer_id != client_membership.customer_id:
+        return _error("invalid_grant", "That person belongs to another customer than this client.", 400)
+
+    service_user = db.get(User, client.user_id)
+    now = datetime.now(timezone.utc)
+    expires_at = min(now + timedelta(minutes=get_settings().api_client_token_minutes),
+                     datetime.fromtimestamp(float(claims["exp"]), timezone.utc))
+    access_token = create_token(
+        user_id=service_user.id, tenant_id=client.tenant_id, security_group_id=client_membership.security_group_id,
+        token_type="access", customer_id=client_membership.customer_id, token_version=service_user.token_version,
+        expires_at=expires_at, on_behalf_of={"uid": str(result.user.id), "mid": str(result.membership.id)},
+    )
+    audit_log_service.record_action(
+        db, client.tenant_id, actor_user_id=client.user_id, channel="api", action="api_client.token_exchange",
+        summary=f"{client.name} exchanged {result.user.email}'s sign-in at {connection.display_name} for a token acting for them",
+        resource_type="user", resource_id=result.user.id,
+    )
+    db.commit()
+    return JSONResponse({
+        "access_token": access_token, "issued_token_type": ACCESS_TOKEN_TYPE, "token_type": "Bearer",
+        "expires_in": max(1, int((expires_at - now).total_seconds())),
+    }, headers=_NO_STORE)
