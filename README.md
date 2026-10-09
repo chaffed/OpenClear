@@ -1212,4 +1212,7 @@ This means that if you run a modified version of OpenClear as a network service,
 make the modified source available to that service's users — see [LICENSE](LICENSE) for
 the full text.
 
+**Building an integration?** Start with a free developer sandbox (`sandbox/`, or `/ui/sandbox`
+on a sandbox installation) and the [integration checklist](docs/guides/certification.md).
+
 The client SDKs in [sdks/](sdks) are licensed **Apache-2.0** instead (each has its own `LICENSE`). A proprietary core or online banking platform can include them without any AGPL obligation.

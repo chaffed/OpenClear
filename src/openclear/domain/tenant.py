@@ -67,6 +67,11 @@ class Tenant(Base):
     # tenant. Gates the reactive reset-on-idle check in the login flow and the manual
     # "reset now" admin action; never affects any other tenant's behavior.
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # A vendor's self-service sandbox (SDK_PLAN.md P4; services/sandbox_service.py): who asked
+    # for it, and when it's wiped.
+    is_sandbox: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    sandbox_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sandbox_contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Fraud-scoring model choice (services/tenant_ml_service.py). Every bank starts on the
     # shared model. `ml_private_switch_allowed_at` is the 90-day lock for new banks: set at

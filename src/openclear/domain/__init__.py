@@ -18,6 +18,7 @@ from openclear.domain import (  # noqa: F401
     bulk_upload_created_record,
     bulk_upload_file,
     check_image,
+    conformance,
     customer,
     customer_disposition_setting,
     customer_ml_setting,

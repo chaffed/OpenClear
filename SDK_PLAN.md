@@ -207,6 +207,52 @@ bank. PKCE is added as a fix ahead of this phase.
     Postgres.
   - Mifos itself comes in P2's reference integration.
 
+### P4 detail (sandbox and certification)
+
+- [x] **Self-service sandboxes** (2026-10-09; `services/sandbox_service.py`, `/ui/sandbox`,
+      migration `c4e6a8c0e2a5`): only on an installation run as a sandbox
+      (`sandbox_signup_enabled`). Free.
+  - A vendor gets a bank seeded with the demo dataset, under addresses unique to it, plus
+    the admin sign-in and an API client (Admin, may act for users). Secrets are shown
+    once.
+  - Sign-ups are rate-limited per address, and the vendor accepts synthetic data only.
+  - Housekeeping wipes a sandbox after `sandbox_lifetime_days`: its data, files and people
+    go, and the bank row stays inactive.
+- [x] **Synthetic test files** (`scripts/sandbox_test_files.py`), built by Moov:
+  - the issued-checks CSV;
+  - presented checks as an X9.37 file from Moov imagecashletter, with TIFF images;
+  - ACH debits as a NACHA file from Moov ACH;
+  - `expected.csv`, what each item should become.
+  - Checks come from **CheckSim**'s ground-truth manifest and images, or from built-in
+    SPECIMEN images.
+  - **Tested end to end:** Moov builds the files and OpenClear imports them, with every
+    item as expected, for both sources.
+  - Moov imagecashletter is amd64-only and crashes under emulation, so
+    `sandbox/moov-icl/Dockerfile` builds it natively.
+- [x] **Integration checklist / conformance** (`services/conformance_service.py`, Admin →
+      Integration checklist, `GET /api/v1/conformance`, migration `d5f7b9d1f3b6`):
+  - **Required checks**, read from what the integration did:
+    - an API client used;
+    - customers and accounts synced;
+    - issued and presented items sent;
+    - Idempotency-Key sent;
+    - decisions acknowledged through the latest;
+    - a webhook delivered;
+    - a **webhook signature probe** passed: a signed event must be accepted and a forged
+      one rejected.
+  - **Optional checks:** acting for people, embedding, decision files.
+  - `docs/guides/certification.md` is the checklist.
+- [x] **The sandbox stack** (`sandbox/docker-compose.yml`): OpenClear (sign-up on) with its
+      worker and Postgres, Moov ACH and imagecashletter, **Apache Fineract** on Postgres,
+      and the Fineract adapter on a loop.
+  - **Checked against a real Fineract:** it runs on Postgres, because current images ship
+    only that driver. `openclear_fineract.demo.seed` sets one up.
+  - `test_fineract_live.py` runs the adapter against it: the returned check's withdrawal
+    is undone in Fineract itself.
+- [x] **Docs site** (`scripts/build_docs_site.py`, MkDocs Material, the `docs` extra):
+      built from the repo's Markdown, with links rewritten, and tested for broken links.
+      **Publishing it** (GitHub Pages) waits on approval.
+
 ### P3 detail (core integration kit)
 
 - [x] **Decision outbox** (2026-10-09; `services/decision_outbox_service.py`, migration
@@ -436,3 +482,4 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 **P2 done** (branch `federation-f`, after F): embedded sessions from one-time launch links, origin-limited framing, partitioned cookies, `@openclear/embed`, embedding guide and example host.
 
 - 2026-10-09 **P3 done**: decision outbox and NACHA returns (Moov-validated), the `openclear` CLI, the Apache Fineract adapter, and the .NET SDK. Check returns as X9.37 wait for a bank that needs them.
+- 2026-10-09 **P4 done**: self-service sandboxes, Moov-built test files from CheckSim, the integration checklist with a webhook signature probe, the sandbox stack with a real Fineract, and the docs site. Publishing the site and the SDK packages waits on approval.

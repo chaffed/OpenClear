@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### New: developer sandbox and integration checklist (SDK_PLAN.md P4)
+
+- **Developer sandboxes:** on an installation run as a sandbox, a vendor gets a free,
+  seeded sandbox bank at **/ui/sandbox**, with its admin sign-in and an API client. It's
+  wiped after 30 days. The setting is `OPENCLEAR_SANDBOX_SIGNUP_ENABLED`; never turn it on
+  where real banks are.
+- **Integration checklist** (Admin → Integration checklist, `GET /api/v1/conformance`):
+  shows what a core or online banking integration has done. A **webhook probe** checks that
+  its receiver rejects a forged signature. See
+  [docs/guides/certification.md](docs/guides/certification.md).
+- **Test files:** `scripts/sandbox_test_files.py` builds issued-check, X9.37 and NACHA test
+  files with Moov, from CheckSim's synthetic checks. `expected.csv` says what each item
+  should become.
+- **`sandbox/`:** the sandbox stack. It includes Apache Fineract and the Fineract adapter,
+  which was checked against a real Fineract.
+- **Docs site:** `python scripts/build_docs_site.py` builds a developer docs site from the
+  repo's docs.
+- **Docker image:** it now keeps decision files and audit archives under `/data`.
+- **Upgrading:** run `alembic upgrade head`. It adds the tenant columns `is_sandbox`,
+  `sandbox_expires_at` and `sandbox_contact_email`, and the table `conformance_result`.
+
 ### New: decision files for cores (SDK_PLAN.md P3)
 
 - **Decision outbox:** turn it on under **Settings → Decision files**. OpenClear writes each

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Your sandbox is ready{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Your sandbox is ready</h1>
+  <p class="flash flash-warn" role="alert"><strong>Copy these now.</strong> The password and secret won't be shown again.</p>
+  <h2>Sign in</h2>
+  <dl>
+    <dt>Address</dt><dd><a href="{{ base }}/ui/login/{{ sandbox.tenant.slug }}">{{ base }}/ui/login/{{ sandbox.tenant.slug }}</a></dd>
+    <dt>Email</dt><dd><code>{{ sandbox.admin_email }}</code></dd>
+    <dt>Password</dt><dd><code class="secret">{{ sandbox.admin_password }}</code></dd>
+  </dl>
+  <h2>API client</h2>
+  <dl>
+    <dt>Token URL</dt><dd><code>{{ base }}/api/v1/oauth/token</code></dd>
+    <dt>Client id</dt><dd><code>{{ sandbox.client_id }}</code></dd>
+    <dt>Client secret</dt><dd><code class="secret">{{ sandbox.client_secret }}</code></dd>
+  </dl>
+  <p>It's an Admin client allowed to act for your sandbox's users. Your sandbox is wiped on
+    {{ sandbox.tenant.sandbox_expires_at.strftime("%B %-d, %Y") }}.</p>
+  <p>Next: check your integration with the certification checklist (Admin → Integration checklist).</p>
+</div>
+{% endblock %}

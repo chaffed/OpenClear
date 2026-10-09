@@ -82,6 +82,8 @@ ENV PATH="/venv/bin:$PATH" \
     OPENCLEAR_BULK_UPLOAD_STORAGE_DIR=/data/bulk_uploads \
     OPENCLEAR_ML_ARTIFACT_DIR=/data/ml_artifacts \
     OPENCLEAR_DATA_EXPORT_STORAGE_DIR=/data/exports \
+    OPENCLEAR_DECISION_FILE_STORAGE_DIR=/data/decision_files \
+    OPENCLEAR_AUDIT_ARCHIVE_STORAGE_DIR=/data/audit_archives \
     OPENCLEAR_AUTO_IMPORT_DROPBOX_DIR=/data/auto_import_dropbox
 
 # Deliberately NOT setting OPENCLEAR_*_KEY_PATH/OPENCLEAR_SSO_ENCRYPTION_KEY/OPENCLEAR_WSUD_*_TEXT

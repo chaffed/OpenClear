@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Integration checklist — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About the checklist{% endblock %}
+{% block help_body %}
+<p>What your core or online banking integration has shown it does here, read from what it
+  actually did. When every required check passes, it meets OpenClear's integration
+  checklist. The guide is in docs/guides/certification.md.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Integration checklist</h1>
+  <p>{% if summary.certified %}<span class="badge badge-ok">Every required check passes</span>{% else %}
+    {{ summary.required_passed }} of {{ summary.required_total }} required checks pass.{% endif %}</p>
+  <table>
+    <thead><tr><th>Check</th><th>Required</th><th>Status</th><th>Seen</th></tr></thead>
+    <tbody>
+      {% for c in summary.checks %}
+      <tr>
+        <td>{{ c.title }}</td>
+        <td>{{ "Yes" if c.required else "Optional" }}</td>
+        <td><span class="badge {{ 'badge-ok' if c.status == 'pass' else ('badge-danger' if c.status == 'fail' else '') }}">{{ c.status }}</span></td>
+        <td>{{ c.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/ui/admin/integration/probe" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">{{ icon("send") }}Probe my webhook receiver</button>
+  </form>
+  <p class="text-muted">Sends your first webhook endpoint a signed test event, which it should accept, and a forged one,
+    which it must reject.</p>
+</div>
+{% endblock %}

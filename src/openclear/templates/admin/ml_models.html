@@ -132,6 +132,15 @@
     OpenClear's API without a person's password.</p>
 </div>
 {% endif %}
+{% if can(ctx, "api_client:manage") %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Integration checklist</h1>
+    <a href="/ui/admin/integration" class="button secondary">{{ icon("checklist") }}View</a>
+  </div>
+  <p>What your core or online banking integration has shown it does: sync, items, decisions, webhooks.</p>
+</div>
+{% endif %}
 {% if can(ctx, "admin:manage") %}
 <div class="card">
   <div class="toolbar">

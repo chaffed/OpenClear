@@ -69,6 +69,12 @@ def run(session: Session) -> HousekeepingResult:
         cutoff = session.execute(select(func.now())).scalar_one() - timedelta(hours=settings.idempotency_key_hours)
         result.deleted["idempotency_keys"] = _delete_in_batches(session, IdempotencyRecord, IdempotencyRecord.created_at < cutoff)
 
+    # Vendor sandboxes past their lifetime (services/sandbox_service.py).
+    from openclear.services import sandbox_service
+
+    if wiped := sandbox_service.expire_due(session):
+        result.deleted["sandboxes"] = wiped
+
     # Used SAML assertions are only kept until they'd have expired anyway (no setting:
     # keeping them longer protects nothing).
     now = session.execute(select(func.now())).scalar_one()

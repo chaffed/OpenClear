@@ -152,7 +152,10 @@ def _seed_check_activity(
     return decided
 
 
-def seed_demo_content(session: Session, tenant: Tenant, admin_user: User, *, password: str) -> None:
+def seed_demo_content(
+    session: Session, tenant: Tenant, admin_user: User, *, password: str, email_domain: str = "riversidebank.example.com",
+    customer_contact_email: str = "dana@maplestreetdental.example.com", tenant_name: str = DEMO_TENANT_NAME,
+) -> None:
     """The full realistic dataset -- accounts, a customer, issued/paid items (tenant-wide
     and customer-scoped), a stop payment, ACH authorizations/transactions, and a
     per-customer (never global -- see module docstring) ML model. Assumes `tenant` and
@@ -173,7 +176,7 @@ def seed_demo_content(session: Session, tenant: Tenant, admin_user: User, *, pas
         if group is None:
             continue
         users[group_name.lower()] = user_service.create_user_with_membership(
-            session, tenant.id, email=f"{local_part}@riversidebank.example.com", password=password,
+            session, tenant.id, email=f"{local_part}@{email_domain}", password=password,
             security_group_id=group.id,
         )
     session.commit()
@@ -197,7 +200,7 @@ def seed_demo_content(session: Session, tenant: Tenant, admin_user: User, *, pas
         session, tenant.id,
         customer_service.CustomerInput(
             customer_number="CUST-1001", name="Maple Street Dental", primary_contact_name="Dana Reyes",
-            email="dana@maplestreetdental.example.com",
+            email=customer_contact_email,
         ),
     )
     customer_account = account_service.create_account(
@@ -273,7 +276,7 @@ def seed_demo_content(session: Session, tenant: Tenant, admin_user: User, *, pas
         logger.info("  Skipping ML training (%s) -- admin page will just show no active model.", exc)
         session.rollback()
 
-    tenant_service.update_tenant_branding(session, tenant.id, name=DEMO_TENANT_NAME, accent_color="#0f5b8a")
+    tenant_service.update_tenant_branding(session, tenant.id, name=tenant_name, accent_color="#0f5b8a")
     session.commit()
     logger.info("Demo content seeded.")
 

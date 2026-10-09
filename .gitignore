@@ -19,3 +19,6 @@ data/
 /business/
 .tmp.driveupload
 .tmp.drivedownload
+
+# The docs site (scripts/build_docs_site.py)
+/site/

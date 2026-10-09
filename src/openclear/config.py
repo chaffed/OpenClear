@@ -215,6 +215,12 @@ class Settings(BaseSettings):
     webhook_timeout_seconds: int = 10
     webhook_allow_private_hosts: bool = False
     oauth_token_rate_limit_per_minute: int = 30
+    # Vendor sandboxes (services/sandbox_service.py, SDK_PLAN.md P4): only on an installation
+    # run as a public sandbox. Anyone can create a seeded sandbox bank at /ui/sandbox; it's
+    # wiped after sandbox_lifetime_days. Never turn this on for an installation with real banks.
+    sandbox_signup_enabled: bool = False
+    sandbox_lifetime_days: int = 30
+    sandbox_signups_per_hour: int = 5  # per address
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     rate_limit_redis_url: str = ""
 

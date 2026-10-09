@@ -1,0 +1,137 @@
+# The OpenClear developer sandbox (SDK_PLAN.md P4; sandbox/README.md): OpenClear with
+# self-service sandbox banks, Postgres, Moov's ACH and image cash letter servers for test
+# files, and an Apache Fineract core with the reference adapter syncing it.
+#
+#   cp sandbox/.env.example sandbox/.env   # then set the secrets
+#   docker compose -f sandbox/docker-compose.yml --env-file sandbox/.env up -d
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: openclear
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: openclear
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openclear"]
+      interval: 5s
+      retries: 20
+
+  openclear:
+    image: ${OPENCLEAR_IMAGE:-openclear:latest}
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports: ["8000:8000"]
+    environment: &openclear_env
+      OPENCLEAR_DATABASE_URL: postgresql+psycopg://openclear:${POSTGRES_PASSWORD}@postgres:5432/openclear
+      OPENCLEAR_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL, e.g. https://sandbox.openclear.example}
+      OPENCLEAR_WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:?set WEBAUTHN_RP_ID}
+      OPENCLEAR_WEBAUTHN_ORIGIN: ${PUBLIC_BASE_URL}
+      OPENCLEAR_SSO_ENCRYPTION_KEY: ${SSO_ENCRYPTION_KEY:?set SSO_ENCRYPTION_KEY}
+      OPENCLEAR_JWT_PRIVATE_KEY_PATH: /keys/jwt_private.pem
+      OPENCLEAR_JWT_PUBLIC_KEY_PATH: /keys/jwt_public.pem
+      OPENCLEAR_FILE_SIGNING_PRIVATE_KEY_PATH: /keys/file_signing_private.pem
+      OPENCLEAR_FILE_SIGNING_PUBLIC_KEY_PATH: /keys/file_signing_public.pem
+      OPENCLEAR_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH: /keys/audit_log_signing_private.pem
+      OPENCLEAR_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH: /keys/audit_log_signing_public.pem
+      OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH: /keys/wsud_signing_private.pem
+      OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH: /keys/wsud_signing_public.pem
+      # A public sandbox: anyone can create a seeded sandbox bank at /ui/sandbox. Never
+      # point this at an installation with real banks.
+      OPENCLEAR_SANDBOX_SIGNUP_ENABLED: "true"
+      OPENCLEAR_SANDBOX_LIFETIME_DAYS: "30"
+      OPENCLEAR_WORKER_MODE: external
+      OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER: "true"
+      OPENCLEAR_ENABLE_DECISION_OUTBOX_SCHEDULER: "true"
+      OPENCLEAR_ENABLE_DISPOSITION_SCHEDULER: "true"
+    volumes:
+      - data:/data
+      - ${KEYS_DIR:-./keys}:/keys:ro
+
+  worker:
+    image: ${OPENCLEAR_IMAGE:-openclear:latest}
+    depends_on: [openclear]
+    command: ["openclear-worker"]
+    environment: *openclear_env
+    volumes:
+      - data:/data
+      - ${KEYS_DIR:-./keys}:/keys:ro
+
+  moov-ach:
+    image: moov/ach:v1.64.0
+    ports: ["18080:8080"]
+
+  moov-icl:
+    # amd64 only upstream; on arm64 hosts build it natively: sandbox/README.md.
+    image: ${MOOV_ICL_IMAGE:-moov/imagecashletter:v0.17.0}
+    ports: ["18083:8083"]
+
+  fineract-db:
+    # Postgres: current Fineract images ship only the PostgreSQL driver.
+    image: postgres:16
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${FINERACT_DB_PASSWORD:?set FINERACT_DB_PASSWORD}
+    volumes:
+      - fineract-db:/var/lib/postgresql/data
+      - ./fineract-init.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root && psql -U root -lqt | grep -q fineract_default"]
+      interval: 5s
+      retries: 30
+
+  fineract:
+    image: apache/fineract:latest
+    depends_on:
+      fineract-db: {condition: service_healthy}
+    ports: ["8443:8443"]
+    environment:
+      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.postgresql.Driver
+      FINERACT_HIKARI_JDBC_URL: jdbc:postgresql://fineract-db:5432/fineract_tenants
+      FINERACT_HIKARI_USERNAME: root
+      FINERACT_HIKARI_PASSWORD: ${FINERACT_DB_PASSWORD}
+      FINERACT_DEFAULT_TENANTDB_HOSTNAME: fineract-db
+      FINERACT_DEFAULT_TENANTDB_PORT: "5432"
+      FINERACT_DEFAULT_TENANTDB_UID: root
+      FINERACT_DEFAULT_TENANTDB_PWD: ${FINERACT_DB_PASSWORD}
+      FINERACT_DEFAULT_TENANTDB_CONN_PARAMS: ""
+      FINERACT_DEFAULT_TENANTDB_TIMEZONE: UTC
+      FINERACT_DEFAULT_TENANTDB_IDENTIFIER: default
+      FINERACT_DEFAULT_TENANTDB_NAME: fineract_default
+      FINERACT_DEFAULT_TENANTDB_DESCRIPTION: Sandbox core
+      JAVA_TOOL_OPTIONS: -Xmx1G
+
+  fineract-adapter:
+    # The reference adapter (integrations/fineract), every 5 minutes, for the sandbox bank
+    # named by its API client.
+    image: python:3.13-slim
+    depends_on: [openclear, fineract]
+    working_dir: /src
+    volumes:
+      - ..:/src:ro
+      - adapter-state:/state
+    environment:
+      OPENCLEAR_URL: http://openclear:8000
+      OPENCLEAR_CLIENT_ID: ${ADAPTER_CLIENT_ID:-}
+      OPENCLEAR_CLIENT_SECRET: ${ADAPTER_CLIENT_SECRET:-}
+      FINERACT_URL: https://fineract:8443/fineract-provider/api/v1
+      FINERACT_USERNAME: mifos
+      FINERACT_PASSWORD: password
+      FINERACT_TENANT: default
+      OPENCLEAR_FINERACT_STATE: /state/openclear-fineract.sqlite
+    command:
+      - sh
+      - -c
+      - |
+        pip install -q /src/sdks/python /src/integrations/fineract &&
+        while true; do
+          if [ -n "$$OPENCLEAR_CLIENT_ID" ]; then openclear-fineract run || true; fi
+          sleep 300
+        done
+
+volumes:
+  postgres:
+  data:
+  fineract-db:
+  adapter-state:

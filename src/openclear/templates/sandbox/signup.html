@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}OpenClear developer sandbox{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Get a developer sandbox</h1>
+  <p>For cores, online banking providers and anyone building on OpenClear. Free.</p>
+  <p>You get a sandbox bank seeded with realistic data, the admin's sign-in, and an API client.
+    It's yours for {{ lifetime_days }} days, then it's wiped.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/sandbox">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Organization <input type="text" name="organization" value="{{ (values or {}).organization or '' }}" required maxlength="100"></label>
+    <label>Your email <input type="email" name="contact_email" value="{{ (values or {}).contact_email or '' }}" required maxlength="255"></label>
+    <label><input type="checkbox" name="accept" value="true" required> I'll only use synthetic test data here: no real customers,
+      accounts or checks. The sandbox is wiped after {{ lifetime_days }} days.</label>
+    <button type="submit">{{ icon("add") }}Create my sandbox</button>
+  </form>
+  <p>Guides: <a href="https://github.com/chaffed/OpenClear/blob/main/API.md">API</a> ·
+    <a href="https://github.com/chaffed/OpenClear/tree/main/sdks">SDKs</a> ·
+    <a href="https://github.com/chaffed/OpenClear/blob/main/docs/guides/certification.md">Certification checklist</a></p>
+</div>
+{% endblock %}
