@@ -78,6 +78,10 @@ class SsoConnection(Base):
     # Sign-in started at the identity provider (a tile in Okta or Azure): off unless the
     # bank turns it on, since there's no request of ours to match the answer to.
     allow_idp_initiated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # SCIM 2.0 provisioning from the bank's directory (services/scim_service.py): the
+    # bearer token's SHA-256; the token itself is shown once.
+    scim_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scim_token_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     auto_provision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -137,3 +141,55 @@ class SsoAssertionSeen(Base):
     connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sso_connection.id"), nullable=False)
     assertion_id: Mapped[str] = mapped_column(String(255), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+
+class ScimUser(Base):
+    """A person as the bank's directory provisioned them over SCIM, for one connection: the
+    directory's own names for them, kept so they can be read back, and the OpenClear user
+    they are. Their access comes from their SCIM groups, through the connection's group
+    mappings, like a sign-in's groups do."""
+
+    __tablename__ = "scim_user"
+    __table_args__ = (
+        UniqueConstraint("connection_id", "user_name", name="uq_scim_user_user_name"),
+        UniqueConstraint("connection_id", "user_id", name="uq_scim_user_user"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sso_connection.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    user_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    given_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    family_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ScimGroup(Base):
+    """A group the bank's directory pushed over SCIM. Its display name is matched against the
+    connection's group mappings (SsoGroupMapping.external_group)."""
+
+    __tablename__ = "scim_group"
+    __table_args__ = (UniqueConstraint("connection_id", "display_name", name="uq_scim_group_display_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sso_connection.id"), nullable=False, index=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ScimGroupMember(Base):
+    __tablename__ = "scim_group_member"
+    __table_args__ = (UniqueConstraint("group_id", "scim_user_id", name="uq_scim_group_member"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    group_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scim_group.id"), nullable=False, index=True)
+    scim_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("scim_user.id"), nullable=False, index=True)

@@ -106,6 +106,34 @@
 
 {% if connection %}
 <div class="card">
+  <h1>Directory provisioning (SCIM 2.0)</h1>
+  <p>Let your directory create, update and deactivate people here, and push its groups (they're
+    matched against the group mappings below). Deactivating someone in the directory ends their
+    OpenClear sessions.</p>
+  {% if scim_token %}
+  <p class="flash flash-warn" role="alert"><strong>Copy this token now.</strong> It won't be shown again.</p>
+  <dl>
+    <dt>SCIM base URL</dt><dd><code>{{ scim_base }}</code></dd>
+    <dt>Bearer token</dt><dd><code class="secret">{{ scim_token }}</code></dd>
+  </dl>
+  {% elif connection.scim_token_hash %}
+  <p>SCIM is on. Base URL: <code>{{ scim_base }}</code></p>
+  {% else %}
+  <p>SCIM is off. Base URL once it's on: <code>{{ scim_base }}</code></p>
+  {% endif %}
+  <form method="post" action="{{ base }}/{{ connection.id }}/scim-token" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">{{ icon("vpn_key") }}{{ "Replace the token" if connection.scim_token_hash else "Turn on SCIM" }}</button>
+  </form>
+  {% if connection.scim_token_hash %}
+  <form method="post" action="{{ base }}/{{ connection.id }}/scim-token/revoke" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("block") }}Turn off SCIM</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
   <h1>Group mappings</h1>
   {% if mappings %}
   <table>

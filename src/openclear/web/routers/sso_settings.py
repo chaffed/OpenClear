@@ -80,6 +80,12 @@ def _saml_urls(request: Request, connection) -> dict | None:
     return saml_service.sp_urls(saml_service.base_url(str(request.base_url)), connection)
 
 
+def _scim_base(request: Request) -> str:
+    from openclear.config import get_settings
+
+    return (get_settings().public_base_url or str(request.base_url)).rstrip("/") + "/scim/v2"
+
+
 def _tenant_password_login_enabled(db: Session, tenant_id: uuid.UUID) -> bool:
     tenant = db.get(Tenant, tenant_id)
     return bool(tenant and tenant.password_login_enabled)
@@ -165,7 +171,7 @@ def edit_bank_connection_form(
     return render_template(
         request, "sso/form.html", ctx=ctx, back_path="/ui/admin/sso", connection=connection, mappings=mappings,
         groups=security_group_service.list_security_groups(db, ctx.tenant_id), providers=list(SsoProvider), error=None,
-        saml_urls=_saml_urls(request, connection),
+        saml_urls=_saml_urls(request, connection), scim_base=_scim_base(request),
     )
 
 
@@ -346,6 +352,7 @@ def edit_customer_connection_form(
         request, "sso/form.html", ctx=ctx, back_path=f"/ui/customers/{customer_id}/sso", connection=connection,
         mappings=mappings, groups=security_group_service.list_security_groups(db, ctx.tenant_id),
         providers=list(SsoProvider), error=None, customer=customer, saml_urls=_saml_urls(request, connection),
+        scim_base=_scim_base(request),
     )
 
 
@@ -437,3 +444,84 @@ def remove_customer_group_mapping(
     sso_service.remove_group_mapping(db, ctx.tenant_id, mapping_id)
     db.commit()
     return RedirectResponse(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=Mapping+removed.", status_code=303)
+
+
+# --- SCIM tokens (services/scim_service.py) ---
+
+
+def _scim_page(request: Request, db: Session, ctx: TenantContext, connection, back_path: str, token: str | None, customer=None):
+    response = render_template(
+        request, "sso/form.html", ctx=ctx, back_path=back_path, connection=connection,
+        mappings=sso_service.list_group_mappings(db, ctx.tenant_id, connection.id),
+        groups=security_group_service.list_security_groups(db, ctx.tenant_id), providers=list(SsoProvider), error=None,
+        saml_urls=_saml_urls(request, connection), scim_token=token, scim_base=_scim_base(request),
+        **({"customer": customer} if customer else {}),
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def _scim_change(db: Session, ctx: TenantContext, connection, issue: bool) -> str | None:
+    from openclear.services import scim_service
+
+    token = scim_service.issue_token(db, connection) if issue else None
+    if not issue:
+        scim_service.revoke_token(db, connection)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
+        action="sso_connection.scim_token" if issue else "sso_connection.scim_revoke",
+        summary=("Generated a SCIM token" if issue else "Turned off SCIM") + f" for {connection.display_name}",
+        resource_type="sso_connection", resource_id=connection.id,
+    )
+    db.commit()
+    return token
+
+
+@router.post("/ui/admin/sso/{connection_id}/scim-token")
+def generate_bank_scim_token(
+    request: Request, connection_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id is not None:
+        raise WebNotFound()
+    token = _scim_change(db, ctx, connection, issue=True)
+    return _scim_page(request, db, ctx, connection, "/ui/admin/sso", token)
+
+
+@router.post("/ui/admin/sso/{connection_id}/scim-token/revoke")
+def revoke_bank_scim_token(
+    connection_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id is not None:
+        raise WebNotFound()
+    _scim_change(db, ctx, connection, issue=False)
+    return RedirectResponse(f"/ui/admin/sso/{connection_id}/edit?flash=SCIM+turned+off.", status_code=303)
+
+
+@router.post("/ui/customers/{customer_id}/sso/{connection_id}/scim-token")
+def generate_customer_scim_token(
+    request: Request, customer_id: uuid.UUID, connection_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("customer:manage")), _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id != customer_id:
+        raise WebNotFound()
+    token = _scim_change(db, ctx, connection, issue=True)
+    return _scim_page(request, db, ctx, connection, f"/ui/customers/{customer_id}/sso", token, customer=customer)
+
+
+@router.post("/ui/customers/{customer_id}/sso/{connection_id}/scim-token/revoke")
+def revoke_customer_scim_token(
+    customer_id: uuid.UUID, connection_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("customer:manage")), _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id != customer_id:
+        raise WebNotFound()
+    _scim_change(db, ctx, connection, issue=False)
+    return RedirectResponse(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=SCIM+turned+off.", status_code=303)

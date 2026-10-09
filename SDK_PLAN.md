@@ -162,10 +162,19 @@ bank. PKCE is added as a fix ahead of this phase.
   - **Tests:** a simulated identity provider signs real assertions. Tampering, an unsigned
     assertion, the wrong audience, expiry, someone else's request, an unsolicited answer,
     a wrong RelayState and a replay are each refused for the right reason.
-- [ ] **SCIM 2.0** (`/scim/v2/Users`, `/Groups`) per connection, authenticated by a bearer
-      token the bank's admin generates: create, update, and **deactivate** users from the
-      bank's directory, with group membership mapped onto security groups. Deactivation
-      ends the user's sessions.
+- [x] **SCIM 2.0** (2026-10-08; `services/scim_service.py`, `api/scim.py`, migration
+      `d9f1b3c5e7a9`): `/scim/v2/Users`, `/Groups`, `ServiceProviderConfig`,
+      `ResourceTypes` and `Schemas`, per connection.
+  - **Authentication:** a bearer token embedding the bank and connection ids, so it binds
+    under RLS before anything is read. It's shown once, and only its hash is stored.
+  - **Access:** a person's SCIM groups go through the connection's group mappings, as a
+    sign-in's do. With no match or `active: false`, their membership here is
+    deactivated and their sessions end.
+  - Deactivation, never deletion. People are matched to existing users by email. An
+    email can't change if the person belongs to other banks.
+  - **Filters:** `eq` only.
+  - **Tests:** Okta-style and Entra-style requests, a customer-scoped connection, linking
+    an existing user, and RLS isolation.
 - [ ] **Back-channel logout** (OIDC Back-Channel Logout, and SAML single logout): signing
       out at the identity provider ends the OpenClear session. **SAML single logout done**
       with SAML (signed LogoutRequests only; it ends the person's sessions everywhere).

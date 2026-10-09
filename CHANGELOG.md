@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### New: SCIM 2.0 provisioning (SDK_PLAN.md phase F)
+
+- **What it does:** a bank's directory (Okta, Entra ID, ...) can create, update and
+  deactivate people in OpenClear for an SSO connection, and push its groups, at
+  `/scim/v2`.
+  - People get access through the connection's existing group mappings.
+  - Deactivating someone in the directory, or removing their last mapped group, takes
+    their access away and ends their sessions.
+  - Nothing is deleted; a deactivated person stays in the action log.
+- **Turning it on:** on the connection's page. The page shows the bearer token once.
+- **The PATCH formats Okta and Entra ID send** are both handled, including Entra's
+  capitalised operations and `"False"` strings.
+- **Upgrading:** run `alembic upgrade head`. It adds the tables `scim_user`, `scim_group`
+  and `scim_group_member`, and the columns `sso_connection.scim_token_*`.
+
 ### New: SAML 2.0 sign-on (SDK_PLAN.md phase F)
 
 - **SAML connections:** a bank, or one of its business customers, can sign in through a

@@ -325,6 +325,7 @@ one customer.</p>
 <tr><td>saml_email_attribute</td><td>String(200)</td><td>yes</td><td></td><td>SAML: the attribute carrying the email; null means the NameID.</td></tr>
 <tr><td>saml_sp_certificate / saml_sp_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: OpenClear's own key pair for this connection, generated when it's created; the key is encrypted.</td></tr>
 <tr><td>allow_idp_initiated</td><td>Boolean</td><td>no</td><td></td><td>Accept sign-in started at the identity provider (SAML). Off by default.</td></tr>
+<tr><td>scim_token_hash / scim_token_created_at</td><td>String(64) / Timestamp</td><td>yes</td><td></td><td>SCIM provisioning: the SHA-256 of the directory's bearer token (shown once). Null = SCIM off.</td></tr>
 <tr><td>auto_provision</td><td>Boolean</td><td>no</td><td></td><td>Create a OpenClear account automatically on first sign-in.</td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at / updated_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
@@ -360,6 +361,15 @@ replayed. Housekeeping removes expired rows.</p>
 <tr><td>expires_at</td><td>Timestamp</td><td>no</td><td>indexed</td><td></td></tr>
 </tbody>
 </table>
+
+<h3>scim_user, scim_group, scim_group_member</h3>
+<p>People and groups the bank's directory provisioned over SCIM, per connection.
+<code>scim_user</code> keeps the directory's own names (userName, externalId, display name,
+given and family name, active) and links to the OpenClear <code>user</code> (matched by email).
+<code>scim_group</code> has the group's displayName (matched against
+<code>sso_group_mapping.external_group</code>) and externalId; <code>scim_group_member</code>
+links them. A person's access here comes from their groups through the connection's
+mappings; nothing is deleted, deactivation keeps the record.</p>
 
 <h3>sso_group_mapping</h3>
 <p>Maps one external IdP group to one OpenClear security group, for one connection.</p>

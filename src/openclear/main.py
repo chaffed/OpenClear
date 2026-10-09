@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy.exc import DataError, IntegrityError
 from fastapi.staticfiles import StaticFiles
 
+from openclear.api.scim import router as scim_router
 from openclear.api.v1.router import api_router
 from openclear.config import assert_production_safe, get_settings
 from openclear.web.client_ip import get_client_ip
@@ -162,6 +163,7 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(api_router)
+    app.include_router(scim_router)
     # The web pages aren't API: keep them out of the published OpenAPI description.
     app.include_router(web_router, include_in_schema=False)
     # Registered before the broader "/static" mount below -- Starlette matches mounts by
