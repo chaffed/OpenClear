@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import dataclasses
 import uuid
 from datetime import datetime, timezone
 
@@ -179,12 +180,79 @@ def _header_context(credentials: HTTPAuthorizationCredentials, db: Session, *, e
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from None
 
 
+ACT_AS_HEADER = "openclear-act-as"
+ACT_AS_CUSTOMER_HEADER = "openclear-act-as-customer"
+
+
+def _act_as(request: Request, db: Session, ctx: TenantContext, email: str) -> TenantContext:
+    """An API client acting for one of its bank's users (SDK_PLAN.md P0): an online
+    banking provider's server making a call for the person signed in to it, so the action
+    is theirs (and the maker-checker rules see them). Only for clients the bank allowed;
+    only for an existing, active member (of the client's customer, if it has one); and only
+    with the permissions both the client and the user hold."""
+    from openclear.domain.api_client import ApiClient
+    from openclear.services import audit_log_service
+
+    client = db.execute(
+        select(ApiClient).where(ApiClient.user_id == ctx.user_id, ApiClient.tenant_id == ctx.tenant_id, ApiClient.revoked_at.is_(None))
+    ).scalar_one_or_none()
+    if client is None or not client.can_act_for_users:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an API client allowed to act for users can send OpenClear-Act-As")
+
+    target = db.execute(select(User).where(func.lower(User.email) == email.strip().lower())).scalar_one_or_none()
+    if target is None or not target.is_active or target.is_service_account:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No such active user in this organization")
+    memberships = [
+        m for m in db.execute(select(TenantMembership).where(
+            TenantMembership.user_id == target.id, TenantMembership.tenant_id == ctx.tenant_id, TenantMembership.is_active.is_(True),
+        )).scalars()
+        if ctx.customer_id is None or m.customer_id == ctx.customer_id
+    ]
+    customer_number = request.headers.get(ACT_AS_CUSTOMER_HEADER)
+    if customer_number:
+        wanted = db.execute(select(Customer.id).where(Customer.tenant_id == ctx.tenant_id, Customer.customer_number == customer_number)).scalar_one_or_none()
+        memberships = [m for m in memberships if m.customer_id == wanted]
+    if not memberships:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No such active user in this organization")
+    if len(memberships) > 1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That user has several memberships here; send OpenClear-Act-As-Customer too")
+    membership = memberships[0]
+    if target.must_change_password:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "That user must change their password before anything can be done for them")
+
+    group = db.get(SecurityGroup, membership.security_group_id)
+    permissions = frozenset(group.permissions if group else ()) & ctx.permissions
+    customer = db.get(Customer, membership.customer_id) if membership.customer_id else None
+    if customer is not None:
+        permissions = permissions - CUSTOMER_SCOPE_MASKED_PERMISSIONS
+    bind_session_to_tenant(db, ctx.tenant_id, user_id=target.id)
+    acting = dataclasses.replace(
+        ctx, user_id=target.id, security_group_id=membership.security_group_id, permissions=permissions,
+        customer_id=membership.customer_id, customer_name=customer.name if customer else None,
+        customer_banner_message=customer.banner_message if customer else None, must_change_password=False,
+        session_id=None, acting_api_client_id=client.id,
+        pending_approval_count=_pending_approval_count(db, ctx.tenant_id, membership.customer_id, target.id)
+        if "exception:decide" in permissions else 0,
+    )
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        # The action's own audit entry names the person; this one shows a system did it for them.
+        audit_log_service.record_action(
+            db, ctx.tenant_id, actor_user_id=client.user_id, channel="api", action="api_client.act_as",
+            summary=f"{client.name} acted for {target.email}: {request.method} {request.url.path}",
+            resource_type="user", resource_id=target.id,
+        )
+    return acting
+
+
 def get_current_context(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> TenantContext:
     ctx = _header_context(credentials, db, expected_type="access")
+    act_as = request.headers.get(ACT_AS_HEADER)
+    if act_as:
+        ctx = _act_as(request, db, ctx, act_as)
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise HTTPException(status.HTTP_403_FORBIDDEN, DEMO_LOCKED_MESSAGE)
     if ctx.must_change_password:

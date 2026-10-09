@@ -206,3 +206,70 @@ def test_access_review_lists_clients_without_secrets(client, db_session, tenant_
     issued = _client(db_session, tenant)
     rows = client.get("/api/v1/api-clients", headers=login_headers(client, tenant.slug, users["admin"].email)).json()
     assert [r["client_id"] for r in rows] == [issued.client.client_id] and "secret" not in str(rows).lower().replace("secret_rotated_at", "")
+
+
+# --- Acting for a user (OpenClear-Act-As) ---------------------------------------------------
+
+
+def _acting_client(db_session, tenant, group_name="Admin", customer_id=None, can_act=True):
+    group = security_group_service.get_security_group_by_name(db_session, tenant.id, group_name)
+    issued = api_client_service.create_client(
+        db_session, tenant.id, name="Online banking", security_group_id=group.id, customer_id=customer_id, can_act_for_users=can_act,
+    )
+    db_session.commit()
+    return issued
+
+
+def _new_item(account, number):
+    return {"account_id": str(account.id), "check_number": number, "amount": "10.00", "payee_name": "Vendor", "issue_date": "2026-03-01"}
+
+
+def test_a_client_acts_for_a_user_and_both_are_on_the_record(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="actas-basic")
+    issued = _acting_client(db_session, tenant)
+    headers = {**_bearer(client, issued), "OpenClear-Act-As": users["preparer"].email.upper()}  # case doesn't matter
+
+    created = client.post("/api/v1/issued-items", headers=headers, json=_new_item(account, "AS-1"))
+    assert created.status_code == 201, created.text
+    entries = db_session.execute(select(AuditLogEntry).where(AuditLogEntry.tenant_id == tenant.id)).scalars().all()
+    by_action = {e.action: e for e in entries}
+    assert by_action["issued_item.create"].actor_user_id == users["preparer"].id  # the person
+    assert by_action["api_client.act_as"].actor_user_id == issued.client.user_id  # and the system that did it for them
+    assert users["preparer"].email in by_action["api_client.act_as"].summary
+
+
+def test_acting_needs_the_banks_permission_and_an_existing_member(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="actas-refused")
+    plain = _acting_client(db_session, tenant, can_act=False)
+    resp = client.post("/api/v1/issued-items", headers={**_bearer(client, plain), "OpenClear-Act-As": users["admin"].email}, json=_new_item(account, "X"))
+    assert resp.status_code == 403
+
+    allowed = _bearer(client, _acting_client(db_session, tenant))
+    assert client.get("/api/v1/issued-items", headers={**allowed, "OpenClear-Act-As": "nobody@nowhere.example.com"}).status_code == 403
+    other, _a, other_users = tenant_factory.make(slug="actas-other-bank")
+    assert client.get("/api/v1/issued-items", headers={**allowed, "OpenClear-Act-As": other_users["admin"].email}).status_code == 403
+
+
+def test_acting_gets_only_what_both_may_do(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="actas-intersect")
+    viewer_client = _bearer(client, _acting_client(db_session, tenant, group_name="Viewer"))
+    as_admin = client.post("/api/v1/issued-items", headers={**viewer_client, "OpenClear-Act-As": users["admin"].email}, json=_new_item(account, "Y"))
+    assert as_admin.status_code == 403  # the client can't write, whoever it acts for
+
+    admin_client = _bearer(client, _acting_client(db_session, tenant))
+    as_viewer = client.post("/api/v1/issued-items", headers={**admin_client, "OpenClear-Act-As": users["viewer"].email}, json=_new_item(account, "Z"))
+    assert as_viewer.status_code == 403  # nor can the person
+
+
+def test_a_customer_scoped_client_acts_only_for_its_customers_users(client, db_session, tenant_factory):
+    tenant, _account, users = tenant_factory.make(slug="actas-scoped")
+    acme = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="ACME", name="Acme"))
+    group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Viewer")
+    user_service.create_user_with_membership(
+        db_session, tenant.id, email="pat@acme.example.com", password=TenantFactory.PASSWORD, security_group_id=group.id, customer_id=acme.id,
+    )
+    db_session.commit()
+    scoped = _bearer(client, _acting_client(db_session, tenant, group_name="Viewer", customer_id=acme.id))
+
+    assert client.get("/api/v1/issued-items", headers={**scoped, "OpenClear-Act-As": "pat@acme.example.com"}).status_code == 200
+    assert client.get("/api/v1/issued-items", headers={**scoped, "OpenClear-Act-As": users["viewer"].email}).status_code == 403

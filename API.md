@@ -83,6 +83,24 @@ the audit log under its name. Revoking it takes effect on its next request; rota
 secret stops the old secret from getting new tokens. Nobody can sign in as a client's
 service identity, by password or SSO.
 
+**Acting for a user.** An online banking provider's server can act for the person signed
+in to it, so a decision or recommendation is theirs and dual control still sees who made
+it. The bank turns this on per client ("may act for your users"). The client then sends:
+
+```
+Authorization: Bearer <the client's token>
+OpenClear-Act-As: pat@acme.example.com
+OpenClear-Act-As-Customer: ACME     # only if that person belongs to several customers
+```
+
+- The person must already be an active member of the bank (and of the client's customer,
+  if the client has one).
+- The request gets only the permissions both the client and the person hold.
+- The action's audit entry names the person, and every change made this way also records
+  an `api_client.act_as` entry naming the client.
+- Without the bank's permission, or for anyone else, the answer is `403`.
+- Creating a person on first use is planned with the federation phase (SDK_PLAN.md F).
+
 | method | path | permission | notes |
 |---|---|---|---|
 | GET | `/api/v1/api-clients` | `api_client:manage` | the bank's API clients for access reviews: name, client id, security group, customer, created by, last used, rotated, revoked. Never a secret |

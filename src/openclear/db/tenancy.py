@@ -104,6 +104,10 @@ class TenantContext:
     access_expires_at: datetime | None = None
     session_expires_at: datetime | None = None
 
+    # Set when an API client is acting for this user (auth/deps.py::_act_as, SDK_PLAN.md
+    # P0): the request runs as the user, with only the permissions both have.
+    acting_api_client_id: uuid.UUID | None = None
+
 
 # --- Postgres row-level security --------------------------------------------------------
 #

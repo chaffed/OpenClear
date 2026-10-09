@@ -177,11 +177,13 @@ bank. PKCE is added as a fix ahead of this phase.
       issuing 30-minute access tokens with the existing ECDSA keys, rate-limited per
       address. Tests: `tests/test_api/test_api_clients.py`,
       `tests/test_postgres/test_rls_api_clients.py`.
-- [ ] Acting for a user: a client allowed to may send `OpenClear-Act-As: <external user
-      id>` (or use RFC 8693 token exchange). The user is a membership bound to the
-      client's customer, matched by `external_id`, and can be created on first use with a
-      security group the bank picks. Decisions and audit entries carry both the user and
-      the client.
+- [x] Acting for a user (2026-10-09): a client the bank allowed (`can_act_for_users`) sends
+      `OpenClear-Act-As: <email>` (and `OpenClear-Act-As-Customer` if needed). Existing,
+      active members only (of the client's customer, if any); permissions are the
+      intersection; the action's audit entry names the person and an `api_client.act_as`
+      entry names the client (writes). **Moved to phase F:** matching by the provider's own
+      user id and creating the person on first use, which need the provider's verified
+      identity (the OBP sign-on profile); RFC 8693 token exchange likewise.
 - [x] `Idempotency-Key` on POST, PUT, PATCH and DELETE (2026-10-09; `api/idempotency.py`,
       migration `d2f4b6c8e0a1`, RLS): per caller, 24 hours, replay with
       `Idempotency-Replayed: true`, 422 for a different request, 409 while in flight, 5xx
@@ -248,7 +250,7 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
 - 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
-  idempotency keys done; decision feed done; webhooks done; customer and account sync done; API contract published and checked.
+  idempotency keys done; decision feed done; webhooks done; customer and account sync done; API contract published and checked; acting for a user done. **P0 complete.**
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

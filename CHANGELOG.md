@@ -63,6 +63,13 @@
   decisions per bank in the order they were made (fraud-training examples excluded). It
   also adds `decision_feed_cursor`.
 
+### New: an API client can act for a user (SDK_PLAN.md P0)
+
+- With the bank's permission per client, a client sends `OpenClear-Act-As: <email>` to act
+  for an existing member: an online banking provider acting for its signed-in customer.
+- The request has only the permissions both hold. The audit log names the person, plus an
+  `api_client.act_as` entry for the client.
+
 ### New: Idempotency-Key on API writes (SDK_PLAN.md P0)
 
 - Send `Idempotency-Key` on a POST, PUT, PATCH or DELETE, and a retry gets the first
