@@ -54,6 +54,8 @@ PERMISSION_CATALOG: dict[str, str] = {
     # users, who see only their own customer's statement; billing:manage is bank-only.
     "billing:read": "View billing statements and reports",
     "billing:manage": "Manage the fee schedule and customer billing terms, and finalize statements",
+    # API clients (SDK_PLAN.md P0): credentials for the bank's own systems. Bank-only.
+    "api_client:manage": "Create, rotate and revoke API clients for the bank's systems",
 }
 
 # Masked out of TenantContext.permissions whenever the active membership is
@@ -66,7 +68,7 @@ PERMISSION_CATALOG: dict[str, str] = {
 CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
     {
         "user:manage", "security_group:manage", "tenant:manage", "customer:manage", "admin:manage", "audit_log:read",
-        "ach_return_reason:manage", "wsud:read", "billing:manage",
+        "ach_return_reason:manage", "wsud:read", "billing:manage", "api_client:manage",
     }
 )
 

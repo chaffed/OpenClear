@@ -51,6 +51,8 @@ erDiagram
     user ||--o{ notification : receives
     tenant ||--o{ notification : scopes
     user ||--o{ notification_preference : sets
+    tenant ||--o{ api_client : registers
+    user ||--o| api_client : "acts as"
 
     tenant { uuid id PK }
     customer {
@@ -63,6 +65,12 @@ erDiagram
         uuid customer_id FK
     }
     user { uuid id PK }
+    api_client {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        uuid membership_id FK
+    }
     tenant_membership {
         uuid id PK
         uuid user_id FK
@@ -197,6 +205,26 @@ several tenants and customers.</p>
 <tr><td>failed_login_attempts</td><td>Integer</td><td>no</td><td></td><td>Resets to 0 on unlock or successful login.</td></tr>
 <tr><td>locked_until</td><td>Timestamp</td><td>yes</td><td></td><td>Set after too many failed attempts; cleared by an admin unlock.</td></tr>
 <tr><td>phone</td><td>String(32)</td><td>yes</td><td></td><td>Used only for SMS notifications the user opts into.</td></tr>
+<tr><td>is_service_account</td><td>Boolean</td><td>no</td><td></td><td>The service identity of an API client (see api_client): it can't sign in by password or SSO, and isn't listed with the bank's people.</td></tr>
+</tbody>
+</table>
+
+<h3>api_client</h3>
+<p>A bank system that calls the API with OAuth 2.0 client credentials. It acts through its
+own service identity (a user with <code>is_service_account</code>) and one membership,
+which carries its security group and optional customer.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>name</td><td>String(200)</td><td>no</td><td></td><td></td></tr>
+<tr><td>client_id</td><td>String(100)</td><td>no</td><td>UK</td><td>Public; includes the bank's id, so the token endpoint can find the right bank.</td></tr>
+<tr><td>secret_hash</td><td>String(64)</td><td>no</td><td></td><td>SHA-256 of the secret, which is shown once and never stored.</td></tr>
+<tr><td>user_id / membership_id</td><td>UUID</td><td>no</td><td>FK → user.id / tenant_membership.id</td><td>Its service identity and the membership that sets what it may do.</td></tr>
+<tr><td>can_act_for_users</td><td>Boolean</td><td>no</td><td></td><td>Whether it may act for one of the bank's users (an online banking provider's server).</td></tr>
+<tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>created_at / secret_rotated_at / last_used_at / revoked_at</td><td>Timestamp</td><td>varies</td><td></td><td>Revoking is one-way.</td></tr>
 </tbody>
 </table>
 

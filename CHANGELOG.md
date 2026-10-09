@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### New: API clients for a bank's systems (SDK_PLAN.md P0)
+
+- **OAuth 2.0 client credentials:** a bank admin creates an API client under Admin → API
+  clients. It gets a security group (what it may do) and optionally a customer (whose
+  data it may see). The system exchanges the client id and secret at
+  `POST /api/v1/oauth/token` for a 30-minute token. Integrations no longer need a
+  person's password.
+- **A client acts through a service identity:**
+  - it gets the same permission checks, customer scope, row-level security and audit
+    trail as a member;
+  - nobody can sign in as it, by password or SSO, and it can't be attached to by email;
+  - it isn't listed or edited with the bank's people.
+- **Rotating** a secret stops the old one at once; **revoking** a client stops it on its
+  next request. `GET /api/v1/api-clients` lists clients for access reviews.
+- **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
+  `user.is_service_account`). Existing Admin groups get `api_client:manage`.
+
 ## 1.7.0 — 2026-10-09
 
 A scale release: OpenClear can now import large files, train on large histories and run as

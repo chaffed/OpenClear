@@ -122,4 +122,14 @@
   {% endif %}
 </div>
 {% endif %}
+{% if can(ctx, "api_client:manage") %}
+<div class="card">
+  <div class="toolbar">
+    <h1>API clients</h1>
+    <a href="/ui/admin/api-clients" class="button secondary">{{ icon("tune") }}Manage</a>
+  </div>
+  <p>Credentials for your own systems (your core, your online banking provider) to call
+    OpenClear's API without a person's password.</p>
+</div>
+{% endif %}
 {% endblock %}

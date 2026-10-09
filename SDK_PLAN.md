@@ -165,12 +165,18 @@ bank. PKCE is added as a fix ahead of this phase.
 
 ### P0 detail (the first branch)
 
-- [ ] `api_client` table: bank, name, client id, secret hash (or a registered public key
-      for `private_key_jwt`), scopes (a subset of the permission catalog), optional
-      customer, optional "may act for users", created/rotated/last used, revoked. Managed
-      under Settings → API clients; every change audited.
-- [ ] `POST /api/v1/oauth/token` (client credentials) issuing short-lived access tokens
-      (the existing ECDSA JWT keys), plus rate limits per client.
+- [x] **API clients** (2026-10-09, branch `sdk-p0`): `api_client` table (migration
+      `c1e3a5b7d9f0`, RLS). Each client acts through a **service identity**: a user that
+      can't sign in, with one membership carrying a security group the bank picks (its
+      "scopes") and an optional customer. So permission checks, customer scope, RLS and
+      audit attribution are the existing ones. Client ids embed the bank's id, so the token
+      endpoint binds to the right bank before reading anything. Managed under Admin → API
+      clients (`api_client:manage`); create, rotate and revoke are audited; the secret is
+      shown once. `private_key_jwt` is left for later.
+- [x] `POST /api/v1/oauth/token` (client credentials, RFC 6749 errors, form or Basic auth)
+      issuing 30-minute access tokens with the existing ECDSA keys, rate-limited per
+      address. Tests: `tests/test_api/test_api_clients.py`,
+      `tests/test_postgres/test_rls_api_clients.py`.
 - [ ] Acting for a user: a client allowed to may send `OpenClear-Act-As: <external user
       id>` (or use RFC 8693 token exchange). The user is a membership bound to the
       client's customer, matched by `external_id`, and can be created on first use with a
@@ -222,6 +228,7 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Apache Fineract (sandbox core, first adapter) and Moov (file formats) adopted.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
+- 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

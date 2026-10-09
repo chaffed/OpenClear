@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}API clients — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About API clients{% endblock %}
+{% block help_body %}
+<p>An API client lets one of your systems (your core, your online banking provider, your
+  own middleware) call OpenClear's API without a person's password. It signs in with OAuth
+  2.0 client credentials: its client id and secret, exchanged at
+  <code>POST /api/v1/oauth/token</code> for an access token that lasts a short while.</p>
+<p>Each client can do exactly what its security group allows, and only for its customer
+  if you pick one. Everything it does is in the audit log under its name. Rotate a secret
+  if it may have leaked; revoke a client you no longer use (that takes effect at once).</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>API clients</h1>
+    <a href="/ui/admin/api-clients/new" class="button">{{ icon("add") }}New API client</a>
+  </div>
+  {% if clients %}
+  <table data-sortable>
+    <thead><tr><th>Name</th><th>Client id</th><th>Security group</th><th>Customer</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for c in clients %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td><code>{{ c.client_id }}</code></td>
+        <td>{{ c.security_group or "—" }}</td>
+        <td>{{ c.customer or "All (bank-wide)" }}</td>
+        <td>{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}</td>
+        <td><span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span></td>
+        <td>
+          {% if not c.revoked_at %}
+          <form method="post" action="/ui/admin/api-clients/{{ c.id }}/rotate" class="inline-form" data-confirm="Make a new secret? The old one stops working for new tokens at once.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Rotate secret</button>
+          </form>
+          <form method="post" action="/ui/admin/api-clients/{{ c.id }}/revoke" class="inline-form" data-confirm="Revoke {{ c.name }}? It stops working at once, and this can't be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Revoke</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No API clients yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -90,7 +90,7 @@ def authenticate_password(
     bind_session_to_tenant(session, tenant.id)
 
     user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.is_service_account:
         return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
 
     if user.locked_until is not None and _as_utc(user.locked_until) > datetime.now(timezone.utc):

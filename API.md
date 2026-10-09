@@ -50,6 +50,37 @@ Body: `{"refresh_token": "..."}`. Returns a new `TokenResponse` (`access_token` 
 group and active status — not whatever was true when the refresh token was issued — so a
 permission change or deactivation takes effect the next time a client refreshes.
 
+### API clients (for a bank's systems)
+
+A bank's own systems (its core, its online banking provider, its middleware) sign in with
+**OAuth 2.0 client credentials** instead of a person's password. A bank admin creates an
+API client under Admin → API clients, choosing a security group (what it may do) and
+optionally a customer (whose data it may see), and copies the secret, shown once.
+
+```
+POST /api/v1/oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=occ_...&client_secret=ocs_...
+```
+
+The id and secret can also go in HTTP Basic auth. The response is
+`{"access_token": "...", "token_type": "Bearer", "expires_in": 1800}`
+(`OPENCLEAR_API_CLIENT_TOKEN_MINUTES`, default 30); request a new one when it expires.
+Errors follow RFC 6749: `401 {"error": "invalid_client"}` for an unknown client, a wrong
+secret or a revoked client, and `400 {"error": "unsupported_grant_type"}`. The endpoint is
+rate-limited per address (`OPENCLEAR_OAUTH_TOKEN_RATE_LIMIT_PER_MINUTE`, 30).
+
+A client acts through its own service identity, so the token works on every endpoint its
+security group allows, limited to its customer if it has one, and everything it does is in
+the audit log under its name. Revoking it takes effect on its next request; rotating its
+secret stops the old secret from getting new tokens. Nobody can sign in as a client's
+service identity, by password or SSO.
+
+| method | path | permission | notes |
+|---|---|---|---|
+| GET | `/api/v1/api-clients` | `api_client:manage` | the bank's API clients for access reviews: name, client id, security group, customer, created by, last used, rotated, revoked. Never a secret |
+
 ### Using the access token
 
 Every other endpoint requires:
@@ -126,6 +157,7 @@ optional customer scope governing whose data it can see (see
 | `tenant:manage` | manage organization branding/settings |
 | `audit_log:read` | view the immutable action log |
 | `customer:manage` | manage customers |
+| `api_client:manage` | create, rotate and revoke API clients for the bank's systems (bank-wide only) |
 | `billing:read` | view billing statements and download the billing exports (a customer-scoped user sees only its own statement) |
 | `billing:manage` | manage the fee schedule, billing settings and customer billing terms, and finalize a month |
 

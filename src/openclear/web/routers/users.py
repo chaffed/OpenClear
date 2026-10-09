@@ -42,6 +42,17 @@ router = APIRouter(prefix="/ui/users", tags=["web-users"])
 # never about the admin's own scope.
 
 
+
+
+def _people_only(
+    membership_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("user:manage"))
+) -> None:
+    """An API client's service identity is managed on the API clients page, never here."""
+    membership = TenantMembershipRepository(db, ctx.tenant_id).get(membership_id)
+    user = UserRepository(db).get(membership.user_id) if membership is not None else None
+    if user is not None and user.is_service_account:
+        raise WebNotFound()
+
 @router.get("")
 def list_users(
     request: Request, page: int = 1, db: Session = Depends(get_db),
@@ -49,7 +60,7 @@ def list_users(
 ) -> HTMLResponse:
     page_obj = paginate(
         page=page,
-        count_fn=lambda: TenantMembershipRepository(db, ctx.tenant_id).count(),
+        count_fn=lambda: user_service.count_tenant_users(db, ctx.tenant_id),
         list_fn=lambda **kw: user_service.list_tenant_users(db, ctx.tenant_id, order_by=TenantMembership.created_at.desc(), **kw),
     )
     return render_template(request, "users/list.html", ctx=ctx, page_obj=page_obj)
@@ -213,7 +224,7 @@ def confirm_existing_user(
     return RedirectResponse("/ui/users?flash=Access+granted.", status_code=303)
 
 
-@router.post("/{membership_id}/deactivate")
+@router.post("/{membership_id}/deactivate", dependencies=[Depends(_people_only)])
 def deactivate_user(
     membership_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -239,7 +250,7 @@ def deactivate_user(
     return RedirectResponse("/ui/users?flash=Access+removed.", status_code=303)
 
 
-@router.post("/{membership_id}/reactivate")
+@router.post("/{membership_id}/reactivate", dependencies=[Depends(_people_only)])
 def reactivate_user(
     membership_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -265,7 +276,7 @@ def reactivate_user(
     return RedirectResponse("/ui/users?flash=Access+restored.", status_code=303)
 
 
-@router.post("/{membership_id}/unlock")
+@router.post("/{membership_id}/unlock", dependencies=[Depends(_people_only)])
 def unlock_user(
     membership_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -292,7 +303,7 @@ def unlock_user(
     return RedirectResponse("/ui/users?flash=Account+unlocked.", status_code=303)
 
 
-@router.post("/{membership_id}/sign-out")
+@router.post("/{membership_id}/sign-out", dependencies=[Depends(_people_only)])
 def sign_out_everywhere(
     membership_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -318,7 +329,7 @@ def sign_out_everywhere(
     return RedirectResponse("/ui/users?flash=" + quote(f"{user.email} has been signed out everywhere."), status_code=303)
 
 
-@router.post("/{membership_id}/reset-password")
+@router.post("/{membership_id}/reset-password", dependencies=[Depends(_people_only)])
 def reset_password(
     request: Request,
     membership_id: uuid.UUID,
@@ -583,7 +594,7 @@ def access_grant(
 # as /bulk vs /{item_id} elsewhere in this codebase.
 
 
-@router.get("/{membership_id}/edit")
+@router.get("/{membership_id}/edit", dependencies=[Depends(_people_only)])
 def edit_user_form(
     request: Request,
     membership_id: uuid.UUID,
@@ -601,7 +612,7 @@ def edit_user_form(
     )
 
 
-@router.post("/{membership_id}")
+@router.post("/{membership_id}", dependencies=[Depends(_people_only)])
 def update_user(
     request: Request,
     membership_id: uuid.UUID,

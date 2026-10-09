@@ -194,6 +194,11 @@ class Settings(BaseSettings):
     # "memory" counts per process (above). "redis" shares the counts between every
     # instance (pip install 'openclear[redis]'); if Redis can't be reached, requests are
     # allowed and the error logged, so an outage of the limiter isn't an outage of the app.
+    # OAuth 2.0 client credentials for the bank's systems (services/api_client_service.py):
+    # how long an access token from /api/v1/oauth/token lasts, and how many token
+    # requests one address may make a minute.
+    api_client_token_minutes: int = 30
+    oauth_token_rate_limit_per_minute: int = 30
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     rate_limit_redis_url: str = ""
 

@@ -623,7 +623,14 @@ key. BILLING_PLAN.md has the research and the decisions.
 
 ## Authentication
 
-Username + password (bcrypt-hashed) issuing JWTs (`api/v1/auth.py`), with an optional
+**A bank's systems** (its core, its online banking provider) don't use a person's
+password: an admin creates an **API client** (Admin → API clients) with a security group
+and, optionally, a customer, and the system exchanges its client id and secret for a
+short-lived token at `POST /api/v1/oauth/token` (OAuth 2.0 client credentials; API.md).
+It acts through a service identity nobody can sign in as, with exactly its group's
+permissions; revoking it takes effect at once.
+
+**People** sign in with username + password (bcrypt-hashed) issuing JWTs (`api/v1/auth.py`), with an optional
 FIDO2/WebAuthn second factor (`api/v1/webauthn.py`, `auth/webauthn_service.py`):
 
 - `POST /auth/webauthn/register/options` + `/register/verify` — register a security key

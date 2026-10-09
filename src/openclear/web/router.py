@@ -4,6 +4,7 @@
 from fastapi import APIRouter
 
 from openclear.web.routers.accounts import router as accounts_router
+from openclear.web.routers.api_clients import router as api_clients_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
 from openclear.web.routers.ach_return_reasons import router as ach_return_reasons_router
 from openclear.web.routers.billing import customer_router as billing_customer_router
@@ -69,6 +70,7 @@ web_router.include_router(security_groups_router)
 web_router.include_router(bulk_uploads_router)
 web_router.include_router(audit_log_router)
 web_router.include_router(sso_settings_router)
+web_router.include_router(api_clients_router)
 web_router.include_router(data_export_router)
 web_router.include_router(wizard_router)
 web_router.include_router(wsud_router)

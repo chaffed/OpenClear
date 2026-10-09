@@ -189,7 +189,9 @@ def complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoCo
         ]
         existing_membership = candidates[0] if candidates else None
 
-    if user is not None and not user.is_active:
+    if user is not None and (not user.is_active or user.is_service_account):
+        # An API client's service identity never signs in, whatever an identity
+        # provider claims about the email.
         return SsoLoginResult(outcome="not_authorized")
 
     resolved_group_id = _resolve_security_group_id(session, tenant_id, connection.id, claims.groups)

@@ -14,6 +14,23 @@ single sign-on your organization can configure.</p>
 own detail page, if you want a specific customer's users to authenticate through their own
 identity provider instead of a password.</p>
 
+<h2>API clients</h2>
+<p>To let one of your systems (your core, your online banking provider, your own
+middleware) use OpenClear's API, create an API client under
+<a href="/ui/admin/api-clients">Admin &rarr; API clients</a> rather than giving it a
+person's sign-in. Choose a security group for what it may do and, if it should only see one
+customer's data, that customer. Copy the secret when it's shown: it's shown only once.</p>
+<ul>
+  <li>The system exchanges its client id and secret for a token that lasts about half an
+  hour, at <code>POST /api/v1/oauth/token</code>, and asks for a new one when it expires.</li>
+  <li>Everything it does appears in the audit log under the client's name.</li>
+  <li><strong>Rotate</strong> a secret you think may have leaked: the old one stops working
+  for new tokens at once. <strong>Revoke</strong> a client you no longer use: it stops
+  working at once, and can't be undone.</li>
+  <li>Review your API clients alongside your users: the page shows when each was last
+  used.</li>
+</ul>
+
 <h2>Account lockout</h2>
 <p>An account locks automatically after too many failed login attempts, as a brute-force
 protection. A locked account can be unlocked early by an administrator from

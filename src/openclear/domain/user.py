@@ -40,6 +40,9 @@ class User(Base):
     # every web route except the change-password page redirects there (web/deps.py), and
     # the JSON API refuses the session outright.
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # The service identity of an API client (domain/api_client.py): it can't sign in, by
+    # password or SSO, and it isn't listed or managed with the bank's people.
+    is_service_account: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Stamped into every token as the `tv` claim (auth/security.py). Incrementing it
     # (services/session_service.py::revoke_all_sessions — on a password change or reset,

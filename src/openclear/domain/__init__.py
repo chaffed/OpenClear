@@ -9,6 +9,7 @@
 # NoReferencedTableError, even though every individual module imports cleanly on its own.
 from openclear.domain import (  # noqa: F401
     account,
+    api_client,
     ach_authorization_rule,
     ach_return_reason,
     ach_transaction,

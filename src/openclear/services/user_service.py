@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from openclear.auth.password_policy import PasswordPolicy, effective_policy, strictest, validate_password
@@ -69,7 +69,20 @@ def list_tenant_users(
     offset: int | None = None,
     order_by: Any = None,
 ) -> list[TenantUserRow]:
-    memberships = TenantMembershipRepository(session, tenant_id).list(limit=limit, offset=offset, order_by=order_by)
+    # API clients' service identities aren't people: they're listed and managed on the API
+    # clients page (services/api_client_service.py), not here.
+    query = (
+        TenantMembershipRepository(session, tenant_id).query()
+        .join(User, User.id == TenantMembership.user_id)
+        .where(User.is_service_account.is_(False))
+    )
+    if order_by is not None:
+        query = query.order_by(*order_by) if isinstance(order_by, (tuple, list)) else query.order_by(order_by)
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    memberships = list(session.execute(query).scalars())
     user_repo = UserRepository(session)
     rows: list[TenantUserRow] = []
     for membership in memberships:
@@ -85,6 +98,16 @@ def list_tenant_users(
             TenantUserRow(membership=membership, user=user, security_group_name=group.name, customer_name=customer_name)
         )
     return rows
+
+
+def count_tenant_users(session: Session, tenant_id: uuid.UUID) -> int:
+    """How many rows list_tenant_users has in all (people only, not API clients)."""
+    query = (
+        TenantMembershipRepository(session, tenant_id).query()
+        .join(User, User.id == TenantMembership.user_id)
+        .where(User.is_service_account.is_(False))
+    )
+    return session.execute(select(func.count()).select_from(query.subquery())).scalar_one()
 
 
 def list_memberships_for_user(session: Session, user_id: uuid.UUID) -> list[MembershipRow]:
@@ -158,7 +181,7 @@ def confirm_cross_tenant_membership(
     Returns None only if the identity no longer exists (a race, not the normal path);
     idempotent if a membership in this exact (tenant, customer) scope already exists."""
     user = UserRepository(session).get_by_email(email)
-    if user is None:
+    if user is None or user.is_service_account:
         return None
     existing = [
         m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == customer_id
@@ -196,6 +219,8 @@ def add_user(
     caller must re-post to confirm_cross_tenant_membership to actually grant it, after
     showing the admin an explicit confirmation step."""
     existing = UserRepository(session).get_by_email(email)
+    if existing is not None and existing.is_service_account:
+        return AddUserResult(outcome="failed", error="That email belongs to an API client, not a person.")
     if existing is None:
         if not password:
             return AddUserResult(outcome="failed", error="A password is required for a new user.")

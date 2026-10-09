@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}New API client — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>New API client</h1>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/admin/api-clients">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name <input type="text" name="name" value="{{ values.name or '' }}" required maxlength="200" placeholder="Core nightly sync"></label>
+    <label>Security group (what it may do)
+      <select name="security_group_id" required>
+        <option value="">Choose…</option>
+        {% for g in groups %}<option value="{{ g.id }}" {{ "selected" if values.security_group_id == g.id|string else "" }}>{{ g.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Customer (optional: limit it to one customer's data)
+      <select name="customer_id">
+        <option value="">All (bank-wide)</option>
+        {% for c in customers %}<option value="{{ c.id }}" {{ "selected" if values.customer_id == c.id|string else "" }}>{{ c.name }} ({{ c.customer_number }})</option>{% endfor %}
+      </select>
+    </label>
+    <label><input type="checkbox" name="can_act_for_users" value="true" {{ "checked" if values.can_act_for_users else "" }}>
+      May act for your users (for an online banking provider's server acting for a signed-in customer)</label>
+    <button type="submit">{{ icon("vpn_key") }}Create and show the secret</button>
+  </form>
+  <p><a href="/ui/admin/api-clients">Back to API clients</a></p>
+</div>
+{% endblock %}
