@@ -251,6 +251,7 @@ bank. PKCE is added as a fix ahead of this phase.
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
 - 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
   idempotency keys done; decision feed done; webhooks done; customer and account sync done; API contract published and checked; acting for a user done. **P0 complete.**
+- 2026-10-08 P0 merged into `main`. All three suites were green: SQLite 1315 passed, Postgres 1335, Linux 3.11 1309.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

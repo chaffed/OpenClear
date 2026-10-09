@@ -129,3 +129,4 @@ the core adapters will be plugins.
     - per-bank enablement for networks, which waits until a network plugin exists;
     - dropbox inboxes for plugin formats;
     - a scheduled decision-file outbox, which is SDK P3.
+- 2026-10-08 PL1 and PL2 merged into `main`. All three suites were green: SQLite 1325 passed, Postgres 1347, Linux 3.11 1319.
