@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.files import CSV_FILE, XML_FILE
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -231,7 +232,7 @@ def list_statements(
     return [statement_to_dict(s) for s in _statements(db, ctx, period, start, end, customer_id, finalized)]
 
 
-@router.get("/report.csv")
+@router.get("/report.csv", **CSV_FILE)
 def billing_report_csv(
     period: str | None = None,
     start: date | None = None,
@@ -295,19 +296,19 @@ def _download(content, media_type: str, filename: str) -> Response:
     return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-@router.get("/periods/{period}/analysis-feed.csv")
+@router.get("/periods/{period}/analysis-feed.csv", **CSV_FILE)
 def analysis_feed(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:read"))) -> Response:
     """Account analysis customers' service lines, for the bank's analysis system."""
     return _download(analysis_feed_csv(_finalized_for_export(db, ctx, period)), "text/csv", f"analysis-feed-{period}.csv")
 
 
-@router.get("/periods/{period}/hard-charge-postings.csv")
+@router.get("/periods/{period}/hard-charge-postings.csv", **CSV_FILE)
 def hard_charge_postings(period: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("billing:read"))) -> Response:
     """One debit per hard-charge customer with something due, for the core's fee posting."""
     return _download(postings_csv(_finalized_for_export(db, ctx, period)), "text/csv", f"hard-charge-postings-{period}.csv")
 
 
-@router.get("/periods/{period}/camt086.xml")
+@router.get("/periods/{period}/camt086.xml", **XML_FILE)
 def camt086(
     period: str,
     customer_id: uuid.UUID | None = None,

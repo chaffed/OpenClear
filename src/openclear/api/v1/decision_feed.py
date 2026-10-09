@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.files import ANY_FILE, CSV_FILE
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -41,7 +42,7 @@ def decision_feed(
     return feed
 
 
-@router.get("/feed.csv")
+@router.get("/feed.csv", **CSV_FILE)
 def decision_feed_csv(
     after: int = Query(0, ge=0), limit: int = Query(1000, ge=1, le=10000),
     db: Session = Depends(get_db), ctx: TenantContext = Depends(_read),
@@ -55,7 +56,7 @@ def decision_feed_csv(
     )
 
 
-@router.get("/file")
+@router.get("/file", **ANY_FILE)
 def decision_file(
     layout: str = Query("openclear_csv", description="A decision layout: openclear_csv, or one a plugin provides that's turned on"),
     after: int = Query(0, ge=0), limit: int = Query(1000, ge=1, le=10000),

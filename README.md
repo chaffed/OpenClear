@@ -1197,3 +1197,5 @@ version 3 of the License, or (at your option) any later version.
 This means that if you run a modified version of OpenClear as a network service, you must
 make the modified source available to that service's users — see [LICENSE](LICENSE) for
 the full text.
+
+The client SDKs in [sdks/](sdks) are licensed **Apache-2.0** instead (each has its own `LICENSE`). A proprietary core or online banking platform can include them without any AGPL obligation.

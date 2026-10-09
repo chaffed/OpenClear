@@ -3,8 +3,9 @@
 All endpoints are prefixed with `/api/v1`. This is the JSON API surface — it exists
 alongside (and, where equivalent, is backed by the same services as) the server-rendered
 `/ui/*` web app, but the two are separate: the web app uses cookie sessions, the API
-below uses JWT bearer tokens, and some web-only conveniences (file-upload bulk import)
-have no API equivalent (see [Bulk uploads](#bulk-uploads)).
+below uses JWT bearer tokens.
+
+**SDKs:** [Python](sdks/python) (`openclear-sdk`) and [TypeScript](sdks/typescript) (`@openclear/sdk`), Apache-2.0. Both are generated from the contract below, with a hand-written layer for tokens, retries with idempotency keys, paging, bulk, the decision feed and webhook verification.
 
 The full machine-readable contract is [`openapi/openclear-v1.json`](openapi/openclear-v1.json)
 (OpenAPI 3.1), regenerated with `python scripts/export_openapi.py`. `/api/v1` only changes

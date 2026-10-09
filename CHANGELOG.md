@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### New: Python and TypeScript SDKs (SDK_PLAN.md P1)
+
+- **Two client libraries:** `sdks/python` (`openclear-sdk`, Python 3.11+, depends only on
+  httpx) and `sdks/typescript` (`@openclear/sdk`, no runtime dependencies; runs on Node 20+,
+  Deno, Bun and Workers). Both are licensed **Apache-2.0**, so vendors can ship them.
+- **Generated from the API contract:** each SDK's models and endpoint methods are generated
+  from `openapi/openclear-v1.json` by `scripts/generate_sdks.py`. A test fails when the
+  generated code is out of date.
+- **What the hand-written layer adds:**
+  - client-credentials tokens, renewed automatically;
+  - an `Idempotency-Key` on every write, reused across retries, which cover connection
+    failures and responses 429 and 502–504, with `Retry-After` honoured;
+  - page iterators;
+  - bulk submit, which splits large lists, follows a `202` to its background import and
+    returns results in the original order;
+  - file upload;
+  - decision feed consumption with acknowledgement;
+  - Standard Webhooks verification;
+  - acting for a person;
+  - typed errors.
+- **Tests:** both SDKs are tested against a running OpenClear (`tests/test_sdk/`).
+- **The API contract now marks file downloads as files:** the CSV, XML and decision-file
+  endpoints declare their real content type instead of JSON.
+
 ### New: plugins (PLUGIN_PLAN.md PL1)
 
 - **What a plugin can add:** another payment network, OCR provider, email or SMS

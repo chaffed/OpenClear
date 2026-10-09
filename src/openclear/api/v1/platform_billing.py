@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from openclear.api.v1.files import CSV_FILE, XML_FILE
 from openclear.auth.platform_api_key_deps import require_platform_scope
 from openclear.config import get_settings
 from openclear.db.session import get_db
@@ -90,7 +91,7 @@ def invoices(
     return [_invoice_dict(i) for i in _invoices(db, period, start, end, tenant_id)]
 
 
-@router.get("/invoices.csv")
+@router.get("/invoices.csv", **CSV_FILE)
 def invoices_csv(
     period: str | None = None, start: date | None = None, end: date | None = None,
     db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator),
@@ -102,7 +103,7 @@ def invoices_csv(
     )
 
 
-@router.get("/invoices/camt086.xml")
+@router.get("/invoices/camt086.xml", **XML_FILE)
 def invoices_camt086(period: str, tenant_id: uuid.UUID | None = None, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)) -> Response:
     settings = get_settings()
     xml = camt086_xml(

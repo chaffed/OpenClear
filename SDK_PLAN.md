@@ -163,6 +163,38 @@ bank. PKCE is added as a fix ahead of this phase.
       the session is customer-scoped. Mifos (on Fineract) first. P2's embedded experience
       uses it.
 
+### P1 detail (SDKs)
+
+- [x] **Generator** (2026-10-08): `scripts/generate_sdks.py` turns the OpenAPI contract
+      into each SDK's models (TypedDicts / interfaces) and one class per API area with a
+      method per endpoint, plus `iter_` methods for paged lists that follow `Link: rel="next"`.
+      A custom generator rather than openapi-generator: no Java or third-party templates,
+      and output that reads like hand-written code. `tests/test_sdk/test_generated_up_to_date.py`
+      fails when it's stale.
+- [x] **Python** (`sdks/python`, `openclear-sdk`, httpx only), with these features:
+      - tokens (renewed before expiry, and once on a 401);
+      - retries with one idempotency key per call;
+      - paging, with next links pinned to the configured host;
+      - `bulk.submit` (batches, the 202 path, results back in the original order) and
+        `bulk.upload_file`;
+      - `decision_feed.consume`;
+      - `webhooks.verify` and `webhooks.sign`;
+      - `acting_as`;
+      - typed errors.
+
+      Tests run against the app (`test_python_sdk.py`), with a mock transport for the
+      retry cases.
+- [x] **TypeScript** (`sdks/typescript`, `@openclear/sdk`), with the same features. It
+      depends only on fetch and Web Crypto, and ships as ESM with type declarations.
+      Node 22.18+ runs the tests without a build step: unit tests use a fake fetch, and
+      live tests run against a real server started by `test_typescript_sdk.py`.
+- [x] Examples: a core decision job and webhook receivers (Python, TypeScript).
+- [x] Fixed on the way: file downloads (CSV, XML, decision files) are declared as files in
+      the contract, so generated clients return bytes.
+- [ ] **Publishing from their own repos** (`openclear-sdk-python`, `openclear-sdk-js`) to
+      PyPI and npm: waiting on approval. It creates public repositories and package names.
+      Until then they live in `sdks/`, Apache-2.0.
+
 ### P0 detail (the first branch)
 
 - [x] **API clients** (2026-10-09, branch `sdk-p0`): `api_client` table (migration
@@ -277,3 +309,4 @@ bank. PKCE is added as a fix ahead of this phase.
 - Mifos Mobile (MPL-2.0): https://github.com/openMF/mifos-mobile · Mifos X web app: https://github.com/openMF/web-app
 - Moov ACH and Image Cash Letter: https://github.com/moov-io/ach · https://github.com/moov-io/imagecashletter ·
   https://www.redhat.com/en/blog/moov-to-digital-banking-on-openshift
+- 2026-10-08 **P1 done** (branch `sdk-p1`): Python and TypeScript SDKs, generator, examples. Publishing to PyPI and npm from their own repositories waits on approval.
