@@ -6,6 +6,12 @@ alongside (and, where equivalent, is backed by the same services as) the server-
 below uses JWT bearer tokens, and some web-only conveniences (file-upload bulk import)
 have no API equivalent (see [Bulk uploads](#bulk-uploads)).
 
+The full machine-readable contract is [`openapi/openclear-v1.json`](openapi/openclear-v1.json)
+(OpenAPI 3.1), regenerated with `python scripts/export_openapi.py`. `/api/v1` only changes
+additively: endpoints, optional parameters and response fields can be added, but nothing
+is removed, renamed or made newly required. `tests/test_openapi_contract.py` enforces
+that on every test run.
+
 ## Authentication
 
 ### Login

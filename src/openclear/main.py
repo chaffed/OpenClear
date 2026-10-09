@@ -162,7 +162,8 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(api_router)
-    app.include_router(web_router)
+    # The web pages aren't API: keep them out of the published OpenAPI description.
+    app.include_router(web_router, include_in_schema=False)
     # Registered before the broader "/static" mount below -- Starlette matches mounts by
     # prefix in registration order, so the more specific path must come first or every
     # request under it would be swallowed by "/static" (and 404, since that directory has

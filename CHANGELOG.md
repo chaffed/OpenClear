@@ -19,6 +19,14 @@
 - **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
   `user.is_service_account`). Existing Admin groups get `api_client:manage`.
 
+### New: a published API contract (SDK_PLAN.md P0)
+
+- `openapi/openclear-v1.json` is the API's OpenAPI description, committed, and the base for
+  generated SDKs (`python scripts/export_openapi.py` regenerates it).
+- A test fails on any breaking change to `/api/v1`: a removed endpoint, a newly required
+  input, or a removed response field.
+- The web pages are no longer listed in the API description.
+
 ### New: customer and account sync (SDK_PLAN.md P0)
 
 - `PUT /api/v1/customers/{customer_number}` and `PUT /api/v1/accounts/{account_number}`
