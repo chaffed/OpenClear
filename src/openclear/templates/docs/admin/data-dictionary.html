@@ -244,6 +244,35 @@ housekeeping after <code>idempotency_key_hours</code> (24).</p>
 </tbody>
 </table>
 
+<h3>webhook_endpoint</h3>
+<p>Where a bank's events are sent: a URL, the event types it wants, and its signing
+secret (encrypted, since it's used to sign).</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id / tenant_id</td><td>UUID</td><td>no</td><td>PK / FK → tenant.id</td><td></td></tr>
+<tr><td>url / description</td><td>String(1000) / String(200)</td><td>no / yes</td><td></td><td>Public https unless the platform allows private hosts.</td></tr>
+<tr><td>event_types</td><td>JSON</td><td>no</td><td></td><td>exception.created, exception.decided, bulk_upload.completed.</td></tr>
+<tr><td>secret_encrypted</td><td>String(500)</td><td>no</td><td></td><td>The whsec_ signing secret, encrypted at rest.</td></tr>
+<tr><td>is_active / created_by_user_id / created_at</td><td>Boolean / UUID / Timestamp</td><td>varies</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>webhook_delivery</h3>
+<p>One event to one endpoint and how sending it went; written with the change that caused
+it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id / tenant_id / endpoint_id</td><td>UUID</td><td>no</td><td>PK / FK</td><td></td></tr>
+<tr><td>message_id</td><td>String(64)</td><td>no</td><td></td><td>The webhook-id header: the same on every retry.</td></tr>
+<tr><td>event_type / payload</td><td>String(64) / JSON</td><td>no</td><td></td><td>The message as sent (ids only).</td></tr>
+<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>pending / succeeded / failed (retries used up).</td></tr>
+<tr><td>attempts / last_status_code / last_error / next_attempt_at</td><td>various</td><td>varies</td><td></td><td></td></tr>
+<tr><td>created_at / delivered_at</td><td>Timestamp</td><td>varies</td><td>indexed with endpoint_id</td><td></td></tr>
+</tbody>
+</table>
+
 <h3>tenant_membership</h3>
 <p>The actual access grant — pairs a user with a tenant (and optionally one customer
 scope) and a security group. One user can hold several of these.</p>

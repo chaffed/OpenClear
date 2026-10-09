@@ -111,6 +111,57 @@ normal access token:
 
 `WebauthnCredentialRead`: `id`, `nickname`, `aaguid`, `created_at`, `last_used_at`.
 
+## Webhooks
+
+OpenClear can tell your systems the moment something happens, instead of their polling.
+Set endpoints up under Admin → Webhooks (`api_client:manage`): a URL, the events it
+wants, and a signing secret (`whsec_...`, shown once).
+
+| Event | When | `data` |
+|---|---|---|
+| `exception.created` | a presented check or ACH debit raised an exception | `exception_id`, `network`, `customer_id` |
+| `exception.decided` | an exception was decided, by a person or automatically | `exception_id`, `decision_id`, `sequence` (its place in the [decision feed](#decision-feed--apiv1decisions)), `outcome` |
+| `bulk_upload.completed` | a bulk upload finished, or failed | `upload_id`, `status`, `succeeded`, `failed` |
+| `webhook.test` | the "Send a test event" button | `endpoint_id` |
+
+Each message is a JSON `POST` in the [Standard Webhooks](https://www.standardwebhooks.com/)
+format:
+
+```json
+{"type": "exception.decided", "timestamp": "2026-10-09T14:03:11+00:00",
+ "data": {"exception_id": "...", "decision_id": "...", "sequence": 1042, "outcome": "return"}}
+```
+
+Payloads carry ids, not data: fetch the details through the API with your own
+credentials, so a misconfigured endpoint can't leak anything. Headers:
+
+- `webhook-id`: the message id, the same on every retry. Use it to ignore duplicates.
+- `webhook-timestamp`: Unix seconds. Reject messages more than a few minutes old.
+- `webhook-signature`: `v1,<signature>`, a base64 HMAC-SHA256, keyed with the secret
+  (base64-decoded, after the `whsec_` prefix), of `{webhook-id}.{webhook-timestamp}.{body}`.
+
+```python
+import base64, hashlib, hmac
+
+def verify(secret: str, headers: dict, body: bytes) -> bool:
+    key = base64.b64decode(secret.removeprefix("whsec_"))
+    signed = f"{headers['webhook-id']}.{headers['webhook-timestamp']}.".encode() + body
+    expected = "v1," + base64.b64encode(hmac.new(key, signed, hashlib.sha256).digest()).decode()
+    return any(hmac.compare_digest(expected, s) for s in headers["webhook-signature"].split())
+```
+
+Any 2xx response within 10 seconds (`OPENCLEAR_WEBHOOK_TIMEOUT_SECONDS`) counts as
+delivered. Anything else is retried after 5 s, 5 min, 30 min, 2 h, 5 h, 10 h and 10 h,
+then marked failed. The endpoint's page lists recent deliveries, and can send a failed
+one again. An event is written in the same transaction as what caused it, so it's sent
+only for a change that was saved, and isn't lost if a server stops before sending it.
+
+The URL must be public `https`, and it's checked again when connecting, so a name that
+resolves to a private address is refused and redirects aren't followed. A single-bank
+install whose receivers are on its own network can turn on
+`OPENCLEAR_WEBHOOK_ALLOW_PRIVATE_HOSTS`. Leave it off when several banks share an
+installation.
+
 ## Retrying writes safely: Idempotency-Key
 
 Send `Idempotency-Key: <a unique value of your own>` (up to 255 characters, e.g. a UUID)

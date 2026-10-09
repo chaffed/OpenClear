@@ -28,7 +28,7 @@ from openclear.networks.registry import get_adapter, registered_codes
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
 from openclear.repositories.customer_disposition_setting_repo import CustomerDispositionSettingRepository
 from openclear.repositories.decision_repo import DecisionRepository
-from openclear.services import decision_feed_service, notification_service
+from openclear.services import decision_feed_service, notification_service, webhook_service
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +190,9 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
     )
     DecisionRepository(session, exception_item.tenant_id).add(decision)
     decision_feed_service.assign_sequence(session, decision, exception_item)
+    webhook_service.emit(session, exception_item.tenant_id, "exception.decided", {
+        "exception_id": exception_item.id, "decision_id": decision.id, "sequence": decision.feed_sequence, "outcome": decision.outcome.value,
+    })
 
     exception_item.status = ExceptionStatus.PAY if outcome == DecisionOutcome.PAY else ExceptionStatus.RETURN
 

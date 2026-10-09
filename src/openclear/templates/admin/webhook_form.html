@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ "Edit" if endpoint else "Add" }} webhook — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>{{ "Edit webhook" if endpoint else "Add a webhook endpoint" }}</h1>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/admin/webhooks{{ '/' ~ endpoint.id if endpoint else '' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>URL <input type="url" name="url" value="{{ values.url or '' }}" required maxlength="1000" placeholder="https://core.example.com/openclear/events"></label>
+    <label>Description (optional) <input type="text" name="description" value="{{ values.description or '' }}" maxlength="200"></label>
+    <fieldset>
+      <legend>Events to send</legend>
+      {% for code, label in event_types.items() %}
+      <label><input type="checkbox" name="event_types" value="{{ code }}" {{ "checked" if code in (values.event_types or []) else "" }}>
+        <code>{{ code }}</code>: {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+    {% if endpoint %}
+    <label><input type="checkbox" name="is_active" value="true" {{ "checked" if values.is_active else "" }}> Active</label>
+    {% endif %}
+    <button type="submit">{{ icon("save") if endpoint else icon("add") }}{{ "Save" if endpoint else "Add and show the secret" }}</button>
+  </form>
+  <p><a href="/ui/admin/webhooks">Back to webhooks</a></p>
+</div>
+{% endblock %}

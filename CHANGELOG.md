@@ -19,6 +19,23 @@
 - **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
   `user.is_service_account`). Existing Admin groups get `api_client:manage`.
 
+### New: webhooks (SDK_PLAN.md P0)
+
+- **Events:** `exception.created`, `exception.decided` and `bulk_upload.completed`, sent to
+  endpoints a bank sets up under Admin → Webhooks.
+- **Standard Webhooks format:** signed with HMAC-SHA256, with `webhook-id` for
+  de-duplication. Payloads carry only ids.
+- **Delivery:** retried for about a day. Each endpoint's page shows recent deliveries, sends
+  a test event, replays a failed delivery and rotates the signing secret.
+- **Safety:**
+  - events are written in the same transaction as the change that caused them;
+  - URLs must be public https, checked again at connection time, with no redirects
+    followed.
+  - `OPENCLEAR_WEBHOOK_ALLOW_PRIVATE_HOSTS` is for single-bank installs with internal
+    receivers.
+- New tables `webhook_endpoint` and `webhook_delivery`. `api_client:manage` now covers
+  webhooks too.
+
 ### New: the decision feed for cores (SDK_PLAN.md P0)
 
 - **`GET /api/v1/decisions?after=N`:** every pay or return decision in order, with what a

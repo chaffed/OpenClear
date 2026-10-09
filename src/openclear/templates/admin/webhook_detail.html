@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Webhook — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>{{ endpoint.url }}</h1>
+    <a href="/ui/admin/webhooks/{{ endpoint.id }}/edit" class="button secondary">{{ icon("edit") }}Edit</a>
+  </div>
+  <p>{{ endpoint.description or "" }}</p>
+  <p><span class="badge {{ 'badge-ok' if endpoint.is_active else '' }}">{{ "active" if endpoint.is_active else "off" }}</span>
+    Sends: {{ endpoint.event_types | join(", ") }}</p>
+  <form method="post" action="/ui/admin/webhooks/{{ endpoint.id }}/test" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("send") }}Send a test event</button>
+  </form>
+  <form method="post" action="/ui/admin/webhooks/{{ endpoint.id }}/rotate" class="inline-form" data-confirm="Make a new signing secret? Messages are signed with the new one from now on.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("vpn_key") }}Rotate secret</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Recent deliveries</h2>
+  {% if deliveries %}
+  <table>
+    <thead><tr><th>When</th><th>Event</th><th>Status</th><th>Tries</th><th>Last result</th><th></th></tr></thead>
+    <tbody>
+      {% for d in deliveries %}
+      <tr>
+        <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") if d.created_at else "" }}</td>
+        <td><code>{{ d.event_type }}</code></td>
+        <td><span class="badge {{ 'badge-ok' if d.status.value == 'succeeded' else ('badge-danger' if d.status.value == 'failed' else 'badge-warn') }}">{{ d.status.value }}</span>
+          {% if d.next_attempt_at and d.status.value == "pending" %}<br><span class="text-muted">next try {{ d.next_attempt_at.strftime("%H:%M") }}</span>{% endif %}</td>
+        <td>{{ d.attempts }}</td>
+        <td>{{ d.last_status_code or "" }} {{ d.last_error or "" }}</td>
+        <td>{% if d.status.value == "failed" %}
+          <form method="post" action="/ui/admin/webhooks/{{ endpoint.id }}/deliveries/{{ d.id }}/replay" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Send again</button>
+          </form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nothing sent yet.</p>
+  {% endif %}
+  <p><a href="/ui/admin/webhooks">Back to webhooks</a></p>
+</div>
+{% endblock %}

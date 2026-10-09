@@ -48,7 +48,13 @@ from openclear.domain.bulk_upload_file import (
     BulkUploadStatus,
 )
 from openclear.domain.exception_item import ExceptionItem
-from openclear.services import audit_log_service, bulk_upload_file_service, bulk_upload_reversal_service, notification_service
+from openclear.services import (
+    audit_log_service,
+    bulk_upload_file_service,
+    bulk_upload_reversal_service,
+    notification_service,
+    webhook_service,
+)
 
 IMPORT_JOB_KIND = "bulk_upload.import"
 
@@ -408,6 +414,7 @@ def run_import(session: Session, upload_id: uuid.UUID, *, last_attempt: bool = F
         if last_attempt:
             record = session.get(BulkUploadFile, upload_id)
             record.status, record.error, record.completed_at = BulkUploadStatus.FAILED, str(exc)[:2000], datetime.now(timezone.utc)
+            webhook_service.emit(session, record.tenant_id, "bulk_upload.completed", {"upload_id": record.id, "status": "failed"})
             session.commit()
         raise
 
@@ -451,6 +458,9 @@ def _import(session: Session, record: BulkUploadFile) -> None:
 
     _send_summary(session, record)
     record.status, record.completed_at = BulkUploadStatus.COMPLETED, datetime.now(timezone.utc)
+    webhook_service.emit(session, record.tenant_id, "bulk_upload.completed", {
+        "upload_id": record.id, "status": record.status.value, "succeeded": record.succeeded_count, "failed": record.failed_count,
+    })
     session.commit()
     if queued_ocr:
         jobs_queued(session.get_bind())

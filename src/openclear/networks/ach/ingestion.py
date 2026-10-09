@@ -19,7 +19,7 @@ from openclear.domain.exception_item import ExceptionItem
 from openclear.ml.predict import score_exception
 from openclear.networks.ach.adapter import AchAdapter
 from openclear.repositories.account_repo import AccountRepository
-from openclear.services import auto_disposition_service, notification_service
+from openclear.services import auto_disposition_service, notification_service, webhook_service
 
 _adapter = AchAdapter()
 
@@ -96,6 +96,9 @@ def ingest_ach_transaction(
         session.flush()
         score_exception(session, exception_item)
         notification_service.notify_exception_created(session, exception_item)
+        webhook_service.emit(session, tenant_id, "exception.created", {
+            "exception_id": exception_item.id, "network": "ach", "customer_id": exception_item.customer_id,
+        })
 
     session.flush()
     return txn

@@ -201,6 +201,13 @@ class Settings(BaseSettings):
     # How long an Idempotency-Key's stored response is kept for replays (api/idempotency.py);
     # housekeeping removes older ones.
     idempotency_key_hours: int = 24
+    # Webhooks (services/webhook_service.py): the receiver must answer within this many
+    # seconds. Webhook URLs must be public https unless webhook_allow_private_hosts is on,
+    # for a single-bank install whose receivers are on its own network. Leave it off when
+    # several banks share an installation: one bank could otherwise aim requests at the
+    # platform's own internal addresses.
+    webhook_timeout_seconds: int = 10
+    webhook_allow_private_hosts: bool = False
     oauth_token_rate_limit_per_minute: int = 30
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     rate_limit_redis_url: str = ""

@@ -39,6 +39,7 @@ from openclear.domain import (  # noqa: F401
     tenant,
     tenant_membership,
     user,
+    webhook,
     webauthn_challenge,
     webauthn_credential,
     wizard_step_ack,

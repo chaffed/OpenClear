@@ -54,11 +54,12 @@ def _is_public_ip(address: str) -> bool:
     return ip.is_global and not ip.is_multicast
 
 
-def check_url(url: str, *, what: str = "URL") -> str:
+def check_url(url: str, *, what: str = "URL", allow_private: bool | None = None) -> str:
     """Returns the URL unchanged if it's an acceptable outbound destination, else raises
-    UnsafeUrlError. Does no DNS lookup (see public_only_client for that)."""
+    UnsafeUrlError. Does no DNS lookup (see public_only_client for that). `allow_private`
+    defaults to the SSO setting; webhooks pass their own (services/webhook_service.py)."""
     parts = urlsplit(url)
-    allow_private = _allow_private()
+    allow_private = _allow_private() if allow_private is None else allow_private
     if parts.scheme != "https" and not (allow_private and parts.scheme == "http"):
         raise UnsafeUrlError(f"The {what} must start with https://")
     if parts.username or parts.password:
@@ -99,11 +100,12 @@ class _PublicOnlyTransport(httpx.HTTPTransport):
         self._pool._network_backend = _PublicOnlyBackend()
 
 
-def public_only_transport() -> httpx.BaseTransport:
+def public_only_transport(allow_private: bool | None = None) -> httpx.BaseTransport:
     """The transport for any outbound request to an admin-configured address; a plain one
-    when oidc_allow_private_hosts is on."""
-    return httpx.HTTPTransport() if _allow_private() else _PublicOnlyTransport()
+    when private hosts are allowed (the SSO setting by default)."""
+    allow_private = _allow_private() if allow_private is None else allow_private
+    return httpx.HTTPTransport() if allow_private else _PublicOnlyTransport()
 
 
-def public_only_client(**kwargs) -> httpx.Client:
-    return httpx.Client(transport=public_only_transport(), follow_redirects=False, **kwargs)
+def public_only_client(*, allow_private: bool | None = None, **kwargs) -> httpx.Client:
+    return httpx.Client(transport=public_only_transport(allow_private), follow_redirects=False, **kwargs)

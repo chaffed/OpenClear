@@ -31,6 +31,20 @@ customer's data, that customer. Copy the secret when it's shown: it's shown only
   used.</li>
 </ul>
 
+<h2>Webhooks</h2>
+<p>A webhook tells one of your systems the moment something happens: an exception is
+raised, a decision is made, or a bulk upload finishes. Set one up under
+<a href="/ui/admin/webhooks">Admin &rarr; Webhooks</a> with the address your system
+receives on and the events it wants, and give your developers the signing secret shown
+when you create it (shown only once).</p>
+<ul>
+  <li>Each message carries only ids; your system reads the details through the API with an
+  API client.</li>
+  <li>A message your system doesn't accept is tried again for about a day. The endpoint's
+  page shows each delivery and lets you send a failed one again, or send a test.</li>
+  <li>The address must be a public <code>https://</code> one.</li>
+</ul>
+
 <h2>Account lockout</h2>
 <p>An account locks automatically after too many failed login attempts, as a brute-force
 protection. A locked account can be unlocked early by an administrator from

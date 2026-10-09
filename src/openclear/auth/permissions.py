@@ -55,7 +55,7 @@ PERMISSION_CATALOG: dict[str, str] = {
     "billing:read": "View billing statements and reports",
     "billing:manage": "Manage the fee schedule and customer billing terms, and finalize statements",
     # API clients (SDK_PLAN.md P0): credentials for the bank's own systems. Bank-only.
-    "api_client:manage": "Create, rotate and revoke API clients for the bank's systems",
+    "api_client:manage": "Manage integrations: API clients and webhooks for the bank's systems",
 }
 
 # Masked out of TenantContext.permissions whenever the active membership is

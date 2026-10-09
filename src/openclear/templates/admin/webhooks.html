@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Webhooks — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About webhooks{% endblock %}
+{% block help_body %}
+<p>A webhook tells one of your systems that something happened (an exception was raised,
+  a decision was made, an upload finished) the moment it does, so it doesn't have to keep
+  asking. OpenClear sends a small signed message with the ids involved; your system then
+  reads the details through the API with its own credentials.</p>
+<p>Messages follow the Standard Webhooks format and are signed with the endpoint's secret,
+  so your system can check they came from OpenClear. A message that isn't accepted is
+  retried for about a day, and you can resend it from the endpoint's page.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Webhooks</h1>
+    <a href="/ui/admin/webhooks/new" class="button">{{ icon("add") }}Add endpoint</a>
+  </div>
+  {% if endpoints %}
+  <table data-sortable>
+    <thead><tr><th>URL</th><th>Events</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for e in endpoints %}
+      <tr>
+        <td><a href="/ui/admin/webhooks/{{ e.id }}">{{ e.url }}</a>{% if e.description %}<br><span class="text-muted">{{ e.description }}</span>{% endif %}</td>
+        <td>{{ e.event_types | join(", ") }}</td>
+        <td><span class="badge {{ 'badge-ok' if e.is_active else '' }}">{{ "active" if e.is_active else "off" }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No webhook endpoints yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

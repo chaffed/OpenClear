@@ -65,3 +65,28 @@ def test_an_idempotent_retry_replays_under_rls(rls_client, db_session, tenant_fa
     retry = rls_client.post("/api/v1/issued-items", headers=headers, json=item)
     assert first.status_code == retry.status_code == 201, first.text
     assert retry.headers["idempotency-replayed"] == "true" and retry.json()["id"] == first.json()["id"]
+
+
+def test_webhooks_are_delivered_by_a_worker_under_rls(app_engine, db_session, tenant_factory, monkeypatch):
+    from tests.test_api.test_webhooks import _Receiver
+
+    from openclear.config import get_settings
+    from openclear.domain.webhook import WebhookDelivery, WebhookDeliveryStatus
+    from openclear.services import webhook_service
+    from openclear.workers import jobs
+
+    monkeypatch.setattr(get_settings(), "webhook_allow_private_hosts", True)
+    receiver = _Receiver()
+    try:
+        tenant, _account, _ = tenant_factory.make(slug="rls-hooks")
+        endpoint, _secret = webhook_service.create_endpoint(db_session, tenant.id, url=receiver.url, event_types=["exception.created"])
+        delivery = webhook_service.send_test(db_session, tenant.id, endpoint.id)
+        db_session.commit()
+
+        jobs.drain(app_engine)  # the restricted role, bound to the job's bank
+
+        db_session.expire_all()
+        assert db_session.get(WebhookDelivery, delivery.id).status == WebhookDeliveryStatus.SUCCEEDED
+        assert len(receiver.requests) == 1
+    finally:
+        receiver.close()

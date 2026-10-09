@@ -132,4 +132,14 @@
     OpenClear's API without a person's password.</p>
 </div>
 {% endif %}
+{% if can(ctx, "api_client:manage") %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Webhooks</h1>
+    <a href="/ui/admin/webhooks" class="button secondary">{{ icon("tune") }}Manage</a>
+  </div>
+  <p>Tell your own systems the moment an exception is raised, a decision is made or an upload
+    finishes.</p>
+</div>
+{% endif %}
 {% endblock %}

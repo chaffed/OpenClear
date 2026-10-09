@@ -193,11 +193,16 @@ bank. PKCE is added as a fix ahead of this phase.
       migration. `GET /api/v1/decisions?after=` (paged, `X-Latest-Sequence`), `/feed.csv`,
       `POST /acknowledge` (forward only) and `/consumers` (lag). Per-bank decision-file
       layouts and the scheduled outbox move to PL2/P3, where layouts become plugins.
-- [ ] Webhooks: `webhook_endpoint` (URL, events, secret, active), `webhook_delivery` (event,
-      attempts, response code, next try). Delivered as background jobs with exponential
-      back-off for 24 hours, then failed with a visible reason. Payloads carry ids, not
-      data, so a receiver fetches through the API with its own permissions. Settings →
-      Webhooks shows deliveries and can replay one.
+- [x] Webhooks (2026-10-09; `services/webhook_service.py`, migration `f4b6d8e0a2c3`, RLS):
+      Standard Webhooks signing, thin payloads, events written in the caller's transaction
+      (outbox), delivered as jobs on Svix's retry schedule (about a day), then failed.
+      Admin → Webhooks: endpoints, recent deliveries, test event, replay, rotate secret.
+      SSRF-safe (public https, checked at connect time, no redirects;
+      `webhook_allow_private_hosts` for single-bank installs). Events: `exception.created`,
+      `exception.decided`, `bulk_upload.completed`. **Not yet:**
+      `exception.deadline_approaching` (needs a "warned" marker per exception) and
+      `decision_batch.ready` (with the outbox in P3). Tests against a real local receiver,
+      including DNS rebinding and a delivery under RLS.
 - [ ] Upserts: `PUT /api/v1/accounts/by-external-id/{id}` and the same for customers.
 - [ ] OpenAPI: export the spec at release, commit it as `openapi/openclear-v1.json`, and
       fail CI on a breaking change (a removed path or field, a narrowed type).
@@ -234,7 +239,7 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
 - 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
-  idempotency keys done; decision feed done.
+  idempotency keys done; decision feed done; webhooks done.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.

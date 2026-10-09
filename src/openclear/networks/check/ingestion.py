@@ -14,7 +14,7 @@ from openclear.domain.paid_item import PaidItem, PaidItemMatchStatus, PaidItemSe
 from openclear.ml.predict import score_exception
 from openclear.networks.check.adapter import CheckAdapter
 from openclear.repositories.account_repo import AccountRepository
-from openclear.services import auto_disposition_service, notification_service
+from openclear.services import auto_disposition_service, notification_service, webhook_service
 
 _adapter = CheckAdapter()
 
@@ -88,6 +88,9 @@ def ingest_paid_item(
         session.flush()
         score_exception(session, exception_item)
         notification_service.notify_exception_created(session, exception_item)
+        webhook_service.emit(session, tenant_id, "exception.created", {
+            "exception_id": exception_item.id, "network": "check", "customer_id": exception_item.customer_id,
+        })
 
     session.flush()
     return paid_item
