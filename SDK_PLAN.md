@@ -207,6 +207,32 @@ bank. PKCE is added as a fix ahead of this phase.
     Postgres.
   - Mifos itself comes in P2's reference integration.
 
+### P3 detail (core integration kit)
+
+- [x] **Decision outbox** (2026-10-09; `services/decision_outbox_service.py`, migration
+      `a2c4e6b8d0f3`): per-bank settings (on or off, layout, every 5 to 1,440 minutes,
+      and each layout's settings).
+  - Each run writes the decisions since the last batch to the `decision_files` storage
+    area, records a batch with its SHA-256, and sends `decision_batch.ready`.
+  - The core downloads and acknowledges each batch (`/api/v1/decision-batches`).
+    Acknowledging moves the feed's `outbox` consumer as far as acknowledged batches are
+    contiguous.
+  - Runs by an opt-in scheduler tick, bank by bank under RLS, or on demand.
+  - Decision layouts now take per-bank settings (`config_fields`, `write(feed, settings)`;
+    the plugin API wasn't released yet).
+- [x] **NACHA return file** (`networks/ach/returns_file.py`, layout `nacha_returns`):
+  - return entries 26/36 with type 99 addenda (R code and original trace);
+  - batches per company, SEC code and effective date;
+  - the ODFI taken from the original trace number;
+  - **validated by Moov's ACH server** in the tests (`moov/ach`, skipped if it isn't
+    running).
+  - The default return reasons are now seeded with their R codes, and existing banks'
+    unset defaults are filled in (migration `b3d5f7a9c1e4`).
+  - The feed gains `account_name`, for the return entry's name.
+- [ ] Check returns as an X9.37 return file (Moov imagecashletter): next, if a bank needs
+      it; check returns are in the CSV layout until then.
+- [ ] CLI, Fineract adapter, .NET SDK: next.
+
 ### P2 detail (embedded experience)
 
 - [x] **Sign-on handoff** (2026-10-09): the online banking server, acting for the

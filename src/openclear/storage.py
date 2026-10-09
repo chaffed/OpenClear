@@ -44,6 +44,7 @@ AREAS = {
     "data_exports": "data_export_storage_dir",
     "ml_artifacts": "ml_artifact_dir",
     "audit_archives": "audit_archive_storage_dir",
+    "decision_files": "decision_file_storage_dir",
 }
 
 

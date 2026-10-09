@@ -66,7 +66,7 @@ def _parse_presented(ref: str, filename: str) -> LoadedFile:
     return LoadedFile(rows)
 
 
-def _decision_file(feed: list[dict]) -> bytes:
+def _decision_file(feed: list[dict], settings: dict) -> bytes:
     """One line per decision: sequence (10), account (17), check or trace number (15),
     amount in cents (12), P or R (1), return reason (3)."""
     lines = []

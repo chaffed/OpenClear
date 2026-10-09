@@ -1883,6 +1883,86 @@
         "title": "DecideRequest",
         "type": "object"
       },
+      "DecisionBatchRead": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "from_sequence": {
+            "title": "From Sequence",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "title": "Layout",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "to_sequence": {
+            "title": "To Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "layout",
+          "from_sequence",
+          "to_sequence",
+          "decision_count",
+          "filename",
+          "media_type",
+          "sha256",
+          "size",
+          "created_at",
+          "acknowledged_at"
+        ],
+        "title": "DecisionBatchRead",
+        "type": "object"
+      },
       "DecisionOutcome": {
         "enum": [
           "pay",
@@ -3490,6 +3570,23 @@
           "model"
         ],
         "title": "RetrainResponse",
+        "type": "object"
+      },
+      "RunRequest": {
+        "properties": {
+          "layout": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout"
+          }
+        },
+        "title": "RunRequest",
         "type": "object"
       },
       "SharedModelSummaryRead": {
@@ -6431,6 +6528,293 @@
         "summary": "Upsert Customer",
         "tags": [
           "customers"
+        ]
+      }
+    },
+    "/api/v1/decision-batches": {
+      "get": {
+        "description": "Decision files the outbox wrote, oldest first. `unacknowledged_only=true` for the ones\na core still has to process.",
+        "operationId": "list_decision_batches_api_v1_decision_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "unacknowledged_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unacknowledged Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Rows per page (at most 1,000)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "description": "Rows per page (at most 1,000)",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DecisionBatchRead"
+                  },
+                  "title": "Response List Decision Batches Api V1 Decision Batches Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Decision Batches",
+        "tags": [
+          "decision-batches"
+        ]
+      },
+      "post": {
+        "description": "Writes a file now with the decisions since the last one (in the outbox's layout, or\n`layout`). Returns null if there's nothing new.",
+        "operationId": "run_outbox_api_v1_decision_batches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DecisionBatchRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Run Outbox Api V1 Decision Batches Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Outbox",
+        "tags": [
+          "decision-batches"
+        ]
+      }
+    },
+    "/api/v1/decision-batches/{batch_id}": {
+      "get": {
+        "operationId": "get_decision_batch_api_v1_decision_batches__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionBatchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Decision Batch",
+        "tags": [
+          "decision-batches"
+        ]
+      }
+    },
+    "/api/v1/decision-batches/{batch_id}/acknowledge": {
+      "post": {
+        "description": "Confirms the core processed this file. Repeating it is harmless.",
+        "operationId": "acknowledge_decision_batch_api_v1_decision_batches__batch_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionBatchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Acknowledge Decision Batch",
+        "tags": [
+          "decision-batches"
+        ]
+      }
+    },
+    "/api/v1/decision-batches/{batch_id}/file": {
+      "get": {
+        "description": "The file, byte for byte as written; `X-Content-SHA256` lets the core check it.",
+        "operationId": "get_decision_batch_file_api_v1_decision_batches__batch_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "A file; its Content-Type depends on the layout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Decision Batch File",
+        "tags": [
+          "decision-batches"
         ]
       }
     },

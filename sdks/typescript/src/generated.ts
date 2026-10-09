@@ -263,6 +263,20 @@ export interface DecideRequest {
   reason_code?: string;
 }
 
+export interface DecisionBatchRead {
+  acknowledged_at: string | null;
+  created_at: string | null;
+  decision_count: number;
+  filename: string;
+  from_sequence: number;
+  id: string;
+  layout: string;
+  media_type: string;
+  sha256: string;
+  size: number;
+  to_sequence: number;
+}
+
 export type DecisionOutcome = "pay" | "return";
 
 export interface DecisionRead {
@@ -526,6 +540,10 @@ export interface RetrainResponse {
   model: MlModelRead;
   network_code: string;
   promoted: boolean;
+}
+
+export interface RunRequest {
+  layout?: string | null;
 }
 
 /** What a bank may see about the shared model — counts only, never other banks. */
@@ -1139,6 +1157,79 @@ export class CustomersApi {
    */
   upsertCustomer(customerNumber: string, body: CustomerUpsert): Promise<CustomerRead> {
     return this.c.call<CustomerRead>("PUT", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}`, { json: body });
+  }
+}
+
+/** `decision-batches` endpoints. */
+export class DecisionBatchesApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * List Decision Batches.
+   *
+   * GET /api/v1/decision-batches
+   *
+   * Decision files the outbox wrote, oldest first. `unacknowledged_only=true` for the ones
+   * a core still has to process.
+   */
+  listDecisionBatches(query: { unacknowledged_only?: boolean; limit?: number; offset?: number } = {}): Promise<Array<DecisionBatchRead>> {
+    return this.c.call<Array<DecisionBatchRead>>("GET", `/api/v1/decision-batches`, { query });
+  }
+
+  /**
+   * Every row of listDecisionBatches, following each page's `Link: rel="next"`.
+   *
+   * GET /api/v1/decision-batches
+   */
+  iterDecisionBatches(query: { unacknowledged_only?: boolean; limit?: number } = {}): AsyncIterable<DecisionBatchRead> {
+    return this.c.paginate<DecisionBatchRead>("GET", `/api/v1/decision-batches`, { query });
+  }
+
+  /**
+   * Run Outbox.
+   *
+   * POST /api/v1/decision-batches
+   *
+   * Writes a file now with the decisions since the last one (in the outbox's layout, or
+   * `layout`). Returns null if there's nothing new.
+   */
+  runOutbox(body?: RunRequest | null): Promise<DecisionBatchRead | null> {
+    return this.c.call<DecisionBatchRead | null>("POST", `/api/v1/decision-batches`, { json: body });
+  }
+
+  /**
+   * Get Decision Batch.
+   *
+   * GET /api/v1/decision-batches/{batch_id}
+   */
+  getDecisionBatch(batchId: string): Promise<DecisionBatchRead> {
+    return this.c.call<DecisionBatchRead>("GET", `/api/v1/decision-batches/${encodeURIComponent(String(batchId))}`, {  });
+  }
+
+  /**
+   * Acknowledge Decision Batch.
+   *
+   * POST /api/v1/decision-batches/{batch_id}/acknowledge
+   *
+   * Confirms the core processed this file. Repeating it is harmless.
+   */
+  acknowledgeDecisionBatch(batchId: string): Promise<DecisionBatchRead> {
+    return this.c.call<DecisionBatchRead>("POST", `/api/v1/decision-batches/${encodeURIComponent(String(batchId))}/acknowledge`, {  });
+  }
+
+  /**
+   * Get Decision Batch File.
+   *
+   * GET /api/v1/decision-batches/{batch_id}/file
+   *
+   * The file, byte for byte as written; `X-Content-SHA256` lets the core check it.
+   */
+  getDecisionBatchFile(batchId: string): Promise<Uint8Array> {
+    return this.c.call<Uint8Array>("GET", `/api/v1/decision-batches/${encodeURIComponent(String(batchId))}/file`, { raw: true });
   }
 }
 
@@ -1837,6 +1928,7 @@ export const AREAS = {
   bulkUploads: BulkUploadsApi,
   checkImages: CheckImagesApi,
   customers: CustomersApi,
+  decisionBatches: DecisionBatchesApi,
   decisionFeed: DecisionFeedApi,
   decisions: DecisionsApi,
   dropboxImport: DropboxImportApi,

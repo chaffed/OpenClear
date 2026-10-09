@@ -18,7 +18,7 @@ def test_new_tenant_gets_default_reasons_seeded(db_session, tenant_factory):
 
     assert {r.reason_text for r in reasons} == {text for text, _code in DEFAULT_ACH_RETURN_REASONS}
     assert all(r.is_active for r in reasons)
-    assert all(r.transaction_code is None for r in reasons)
+    assert {r.reason_text: r.transaction_code for r in reasons} == dict(DEFAULT_ACH_RETURN_REASONS)  # with NACHA R codes
 
 
 def test_create_ach_return_reason_with_transaction_code(db_session, tenant_factory):

@@ -459,6 +459,30 @@ customers by CIF can use the CIF as the customer number.
 
 Every create and update is audit-logged.
 
+### Decision files — `/api/v1/decision-batches`
+
+For a core that takes files rather than calling the feed. The bank turns on the outbox under
+**Settings → Decision files**: a layout, how often, and the layout's settings. OpenClear then
+writes each run's new decisions to a file and sends the `decision_batch.ready` webhook.
+
+The built-in layouts:
+
+- `openclear_csv`;
+- `nacha_returns`, a NACHA return file of the ACH debits returned, with R codes from the
+  bank's return reasons, checked against Moov's validator;
+- any layout a plugin provides and the bank turned on.
+
+These endpoints are for bank-wide callers only.
+
+| method | path | notes |
+|---|---|---|
+| GET | `?unacknowledged_only=true` | the files, oldest first (`from_sequence`, `to_sequence`, `decision_count`, `layout`, `filename`, `sha256`, `size`, `acknowledged_at`); paged |
+| POST | `` | write a file now (`{"layout": ...}` optional); `null` if there's nothing new |
+| GET | `/{id}`, `/{id}/file` | the batch, and its file as written (`X-Content-SHA256`) |
+| POST | `/{id}/acknowledge` | the core processed it. Moves the feed's `outbox` consumer forward, as far as acknowledged files are contiguous. Repeating it is harmless |
+
+`GET /api/v1/decisions/file?layout=nacha_returns` uses the same saved settings.
+
 ### Embedding — `/api/v1/embed`
 
 | method | path | notes |

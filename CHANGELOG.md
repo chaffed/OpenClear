@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### New: decision files for cores (SDK_PLAN.md P3)
+
+- **Decision outbox:** turn it on under **Settings → Decision files**. OpenClear writes each
+  run's new decisions to a file on the bank's schedule and sends the `decision_batch.ready`
+  webhook.
+- **Getting the files:** a core downloads and acknowledges each one at
+  `/api/v1/decision-batches`.
+- **NACHA return files:** the new `nacha_returns` layout writes the ACH debits the bank
+  returned as a NACHA return file for its ACH operator. Set the bank's routing number and
+  the operator's under Settings → Decision files. The files pass Moov's ACH validator.
+- **Return reason codes:** the default ACH return reasons now carry their NACHA codes
+  (R01, R02, R03, R08, R09, R10, R11). An existing bank's defaults get them too, unless
+  the bank set its own.
+- **For plugin authors:** decision layouts take the bank's settings:
+  `write(feed, settings)`, with `config_fields`.
+- **Scheduling:** set `OPENCLEAR_ENABLE_DECISION_OUTBOX_SCHEDULER=true`, or call
+  `workers.tasks.decision_outbox_job` from cron.
+- **Upgrading:** run `alembic upgrade head`. It adds the tables `decision_outbox` and
+  `decision_batch`, and fills in return codes.
+
 ### New: OpenClear inside online banking (SDK_PLAN.md P2)
 
 - **Embedding:** a bank's business customers can review and decide exceptions inside the

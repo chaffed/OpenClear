@@ -101,6 +101,7 @@ def read_feed(
             "decided_by": decider.email if decider else None,
             "decided_at": decision.decided_at.isoformat() if decision.decided_at else None,
             "account_number": account.account_number if account else None,
+            "account_name": account.name if account else None,
             "customer_number": customer.customer_number if customer else None,
         }
         if exception.network_code == "check" and item is not None:

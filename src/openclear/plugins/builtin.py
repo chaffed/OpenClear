@@ -85,11 +85,18 @@ class _Builtin:
         for (kind, file_format), spec in BUILTIN_SPECS.items():
             registry.add_import_format(kind, file_format, spec)
 
-        from openclear.plugins.api import DecisionLayout
+        from openclear.networks.ach import returns_file
+        from openclear.plugins.api import ConfigField, DecisionLayout
         from openclear.services.decision_feed_service import to_csv
 
         registry.add_decision_layout(
-            "openclear_csv", DecisionLayout("OpenClear CSV", "text/csv", "csv", lambda feed: to_csv(feed).encode()),
+            "openclear_csv", DecisionLayout("OpenClear CSV", "text/csv", "csv", lambda feed, settings: to_csv(feed).encode()),
+        )
+        registry.add_decision_layout(
+            "nacha_returns", DecisionLayout(
+                "NACHA return file (ACH returns)", "text/plain", "ach", lambda feed, settings: returns_file.write(feed, settings),
+                config_fields=tuple(ConfigField(name, label) for name, label in returns_file.SETTINGS_FIELDS),
+            ),
         )
 
 

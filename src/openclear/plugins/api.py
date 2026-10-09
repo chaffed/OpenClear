@@ -39,14 +39,16 @@ def builtin_import_format(kind: BulkUploadKind, file_format: str) -> ImportSpec:
 
 @dataclass(frozen=True)
 class DecisionLayout:
-    """A decision file a core takes back. `write` receives decisions as the decision feed
-    returns them (GET /api/v1/decisions; services/decision_feed_service.read_feed), oldest
-    first, and returns the file's contents."""
+    """A decision file a core takes back. `write(feed, settings)` receives decisions as the
+    decision feed returns them (GET /api/v1/decisions; services/decision_feed_service.read_feed),
+    oldest first, and the bank's settings for this layout (its `config_fields`, filled in
+    under Settings → Decision files), and returns the file's contents."""
 
     label: str  # shown to people, e.g. "Fineract repayment reversal CSV"
     media_type: str  # e.g. "text/csv"
     extension: str  # e.g. "csv", without the dot
-    write: Callable[[list[dict]], bytes]
+    write: Callable[[list[dict], dict[str, str]], bytes]
+    config_fields: tuple = ()  # ConfigField, below
 
 
 @dataclass(frozen=True)

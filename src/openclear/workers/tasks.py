@@ -355,6 +355,19 @@ def notification_dispatch_job() -> None:
         session.close()
 
 
+def decision_outbox_job() -> None:
+    """Writes each bank's decision file when its schedule says (services/decision_outbox_service.py)."""
+    from openclear.services import decision_outbox_service
+
+    session = get_session_factory()()
+    try:
+        written = decision_outbox_service.run_due(session)
+        if written:
+            logger.info("Decision outbox: %d file(s) written", written)
+    finally:
+        session.close()
+
+
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
     jobs, sent notifications, old bulk-upload row results and expired export archives."""

@@ -285,6 +285,20 @@ class DecideRequest(TypedDict):
     reason_code: NotRequired[str]
 
 
+class DecisionBatchRead(TypedDict):
+    acknowledged_at: str | None
+    created_at: str | None
+    decision_count: int
+    filename: str
+    from_sequence: int
+    id: str
+    layout: str
+    media_type: str
+    sha256: str
+    size: int
+    to_sequence: int
+
+
 DecisionOutcome = Literal["pay", "return"]
 
 
@@ -563,6 +577,10 @@ class RetrainResponse(TypedDict):
     model: MlModelRead
     network_code: str
     promoted: bool
+
+
+class RunRequest(TypedDict):
+    layout: NotRequired[str | None]
 
 
 class SharedModelSummaryRead(TypedDict):
@@ -1075,6 +1093,65 @@ class CustomersApi:
         `201` when it was created. Fields left out are cleared, as with any `PUT`.
         """
         return self._c.call("PUT", f"/api/v1/customers/{_path(customer_number)}", json=body)
+
+
+class DecisionBatchesApi:
+    """`decision-batches` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def list_decision_batches(self, *, unacknowledged_only: bool | None = None, limit: int | None = None, offset: int | None = None) -> list[DecisionBatchRead]:
+        """List Decision Batches.
+
+        GET /api/v1/decision-batches
+
+        Decision files the outbox wrote, oldest first. `unacknowledged_only=true` for the ones
+        a core still has to process.
+        """
+        return self._c.call("GET", "/api/v1/decision-batches", query={"unacknowledged_only": unacknowledged_only, "limit": limit, "offset": offset})
+
+    def iter_decision_batches(self, *, unacknowledged_only: bool | None = None, limit: int | None = None) -> Iterator[DecisionBatchRead]:
+        """Every row of list_decision_batches, following each page's `Link: rel="next"`.
+
+        GET /api/v1/decision-batches
+        """
+        return self._c.paginate("GET", "/api/v1/decision-batches", query={"unacknowledged_only": unacknowledged_only, "limit": limit})
+
+    def run_outbox(self, body: RunRequest | None | None = None) -> DecisionBatchRead | None:
+        """Run Outbox.
+
+        POST /api/v1/decision-batches
+
+        Writes a file now with the decisions since the last one (in the outbox's layout, or
+        `layout`). Returns null if there's nothing new.
+        """
+        return self._c.call("POST", "/api/v1/decision-batches", json=body)
+
+    def get_decision_batch(self, batch_id: str) -> DecisionBatchRead:
+        """Get Decision Batch.
+
+        GET /api/v1/decision-batches/{batch_id}
+        """
+        return self._c.call("GET", f"/api/v1/decision-batches/{_path(batch_id)}")
+
+    def acknowledge_decision_batch(self, batch_id: str) -> DecisionBatchRead:
+        """Acknowledge Decision Batch.
+
+        POST /api/v1/decision-batches/{batch_id}/acknowledge
+
+        Confirms the core processed this file. Repeating it is harmless.
+        """
+        return self._c.call("POST", f"/api/v1/decision-batches/{_path(batch_id)}/acknowledge")
+
+    def get_decision_batch_file(self, batch_id: str) -> bytes:
+        """Get Decision Batch File.
+
+        GET /api/v1/decision-batches/{batch_id}/file
+
+        The file, byte for byte as written; `X-Content-SHA256` lets the core check it.
+        """
+        return self._c.call("GET", f"/api/v1/decision-batches/{_path(batch_id)}/file", raw=True)
 
 
 class DecisionFeedApi:
@@ -1632,6 +1709,7 @@ AREAS = {
     "bulk_uploads": BulkUploadsApi,
     "check_images": CheckImagesApi,
     "customers": CustomersApi,
+    "decision_batches": DecisionBatchesApi,
     "decision_feed": DecisionFeedApi,
     "decisions": DecisionsApi,
     "dropbox_import": DropboxImportApi,

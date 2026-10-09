@@ -78,10 +78,12 @@ A bank uploads a file in a plugin's format in one of two ways:
 
 ## Decision file layouts
 
-`DecisionLayout(label, media_type, extension, write)` describes a layout:
+`DecisionLayout(label, media_type, extension, write, config_fields=())` describes a layout:
 
-- `write` receives decisions as `GET /api/v1/decisions` returns them, oldest first.
+- `write(feed, settings)` receives decisions as `GET /api/v1/decisions` returns them, oldest first.
+- It also receives the bank's settings for the layout: the `config_fields` it declares, filled in under **Settings → Decision files**.
 - It returns the file's bytes.
+- The outbox writes it on the bank's schedule.
 
 A core fetches the file with `GET /api/v1/decisions/file?layout=<name>&after=<last sequence>`. The `X-Last-Sequence` header gives the sequence to acknowledge once the core has acted on the file.
 

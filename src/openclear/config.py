@@ -154,6 +154,7 @@ class Settings(BaseSettings):
     bulk_upload_storage_dir: str = "./data/bulk_uploads"
     data_export_storage_dir: str = "./data/exports"
     audit_archive_storage_dir: str = "./data/audit_archives"
+    decision_file_storage_dir: str = "./data/decision_files"
     # Where new files are written (storage.py): "local" (the directories above) or "s3",
     # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
     # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.
@@ -309,6 +310,10 @@ class Settings(BaseSettings):
     # has passed with no human decision, per a per-customer CustomerDispositionSetting.
     enable_disposition_scheduler: bool = False  # opt-in: off by default, same reasoning as enable_ml_scheduler
     disposition_sweep_interval_seconds: int = 300
+    # Decision outbox (services/decision_outbox_service.py, SDK_PLAN.md P3): writes each
+    # bank's new decisions to a file on the bank's own schedule. This tick checks who's due.
+    enable_decision_outbox_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
+    decision_outbox_tick_seconds: int = 60
     # Housekeeping (services/housekeeping_service.py, SCALE_PLAN.md S7): clears out
     # operational rows that otherwise grow with every request. Runs daily at
     # housekeeping_cron_hour when enabled (or call workers.tasks.housekeeping_job from

@@ -23,6 +23,7 @@ from openclear.domain import (  # noqa: F401
     customer_ml_setting,
     data_export_job,
     decision,
+    decision_outbox,
     embed_launch,
     exception_item,
     idempotency_record,

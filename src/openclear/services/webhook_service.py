@@ -45,6 +45,7 @@ EVENT_TYPES = {
     "exception.created": "A presented check or ACH debit raised an exception to review",
     "exception.decided": "An exception was decided, pay or return (it's in the decision feed)",
     "bulk_upload.completed": "A bulk upload finished importing (or failed)",
+    "decision_batch.ready": "A decision file is ready in the outbox (services/decision_outbox_service.py)",
 }
 TEST_EVENT = "webhook.test"
 

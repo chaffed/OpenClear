@@ -27,14 +27,15 @@ class AchReturnReasonInput:
 # in sync with this exact list; see that migration's own copy and comment).
 # transaction_code is left blank for all of these: it's the bank's own core-system
 # posting code (see domain/ach_return_reason.py), which only the bank's own admin knows.
+# With their NACHA return reason codes, which a return file needs (networks/ach/returns_file.py).
 DEFAULT_ACH_RETURN_REASONS: list[tuple[str, str | None]] = [
-    ("Insufficient Funds", None),
-    ("Account Closed", None),
-    ("No Account/Unable to Locate Account", None),
-    ("Customer Advises Not Authorized", None),
-    ("Amount Not Same As Indicated", None),
-    ("Payment Stopped", None),
-    ("Uncollected Funds", None),
+    ("Insufficient Funds", "R01"),
+    ("Account Closed", "R02"),
+    ("No Account/Unable to Locate Account", "R03"),
+    ("Customer Advises Not Authorized", "R10"),
+    ("Amount Not Same As Indicated", "R11"),  # R11: entry not in accordance with the authorization
+    ("Payment Stopped", "R08"),
+    ("Uncollected Funds", "R09"),
 ]
 
 

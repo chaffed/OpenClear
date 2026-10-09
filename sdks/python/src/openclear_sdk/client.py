@@ -84,6 +84,7 @@ class OpenClear(Transport):
     bulk_uploads: g.BulkUploadsApi
     check_images: g.CheckImagesApi
     customers: g.CustomersApi
+    decision_batches: g.DecisionBatchesApi
     decision_feed: DecisionFeedApi
     decisions: g.DecisionsApi
     dropbox_import: g.DropboxImportApi

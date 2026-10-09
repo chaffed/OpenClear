@@ -68,10 +68,17 @@ def decision_file(
         chosen = plugin_service.require_enabled(db, ctx.tenant_id, "decision_layouts", layout, what="decision layout")
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    from openclear.networks.ach.returns_file import ReturnsFileError
+    from openclear.services import decision_outbox_service
+
     feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id)
     last = feed[-1]["sequence"] if feed else after
+    try:
+        content = chosen.write(feed, decision_outbox_service.layout_settings(db, ctx.tenant_id, layout))
+    except ReturnsFileError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     return Response(
-        chosen.write(feed), media_type=chosen.media_type,
+        content, media_type=chosen.media_type,
         headers={"Content-Disposition": f'attachment; filename="decisions-{after + 1}-{last}.{chosen.extension}"',
                  "X-Last-Sequence": str(last)},
     )

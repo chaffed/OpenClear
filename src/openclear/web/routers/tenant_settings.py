@@ -54,6 +54,7 @@ def settings_form(
         request, "settings/form.html", ctx=ctx, tenant_display_name=ctx.tenant_name, accent_color=ctx.accent_color or "",
         require_dual_control=tenant.require_dual_control,
         embed_allowed_origins=tenant.embed_allowed_origins or "",
+        **_outbox_kwargs(db, ctx.tenant_id),
         access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
         default_access_token_expire_minutes=settings.jwt_access_token_expire_minutes,
@@ -275,6 +276,47 @@ def update_contact_info(
         )
     db.commit()
     return RedirectResponse("/ui/settings?flash=Settings+updated.", status_code=303)
+
+
+def _outbox_kwargs(db: Session, tenant_id) -> dict:
+    from openclear import plugins
+    from openclear.services import decision_outbox_service, plugin_service
+
+    outbox = decision_outbox_service.get_outbox(db, tenant_id)
+    layouts = [(name, plugins.registry.decision_layouts[name]) for name in plugin_service.enabled(db, tenant_id, "decision_layouts")]
+    return {"outbox": outbox, "outbox_layouts": layouts, "outbox_settings": outbox.layout_settings or {}}
+
+
+@router.post("/decision-files")
+async def update_decision_files(
+    request: Request,
+    enabled: bool = Form(False),
+    layout: str = Form("openclear_csv"),
+    interval_minutes: int = Form(60),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """The decision outbox (services/decision_outbox_service.py)."""
+    from urllib.parse import quote
+
+    from openclear.services import decision_outbox_service
+
+    form = await request.form()
+    prefix = f"setting_{layout}__"
+    values = {key[len(prefix):]: str(value) for key, value in form.items() if key.startswith(prefix)}
+    try:
+        decision_outbox_service.save(db, ctx.tenant_id, enabled=enabled, layout=layout, interval_minutes=interval_minutes, settings=values)
+    except decision_outbox_service.OutboxError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/settings?error={quote(str(exc))}#decision-files", status_code=303)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="tenant.update_decision_files",
+        summary=f"Decision files {'on' if enabled else 'off'}: {layout}, every {interval_minutes} minutes",
+        resource_type="tenant", resource_id=ctx.tenant_id,
+    )
+    db.commit()
+    return RedirectResponse("/ui/settings?flash=Settings+updated.#decision-files", status_code=303)
 
 
 @router.post("/embedding")
