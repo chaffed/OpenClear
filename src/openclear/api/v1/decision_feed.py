@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.services import audit_log_service, decision_feed_service
+from openclear.services import audit_log_service, decision_feed_service, plugin_service
 
 router = APIRouter(prefix="/decisions", tags=["decision-feed"])
 _read = require_permission("exception:read")
@@ -52,6 +52,27 @@ def decision_feed_csv(
     return Response(
         decision_feed_service.to_csv(feed), media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="decisions-{after + 1}-{last}.csv"'},
+    )
+
+
+@router.get("/file")
+def decision_file(
+    layout: str = Query("openclear_csv", description="A decision layout: openclear_csv, or one a plugin provides that's turned on"),
+    after: int = Query(0, ge=0), limit: int = Query(1000, ge=1, le=10000),
+    db: Session = Depends(get_db), ctx: TenantContext = Depends(_read),
+) -> Response:
+    """The same decisions as a file in the layout a core takes back. Layouts beyond the
+    built-in CSV come from plugins, turned on per organization (Admin → Plugins)."""
+    try:
+        chosen = plugin_service.require_enabled(db, ctx.tenant_id, "decision_layouts", layout, what="decision layout")
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id)
+    last = feed[-1]["sequence"] if feed else after
+    return Response(
+        chosen.write(feed), media_type=chosen.media_type,
+        headers={"Content-Disposition": f'attachment; filename="decisions-{after + 1}-{last}.{chosen.extension}"',
+                 "X-Last-Sequence": str(last)},
     )
 
 

@@ -1,20 +1,48 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Plugins: what's loaded, from where, and what each provides (PLUGIN_PLAN.md)."""
+"""Admin → Plugins (PLUGIN_PLAN.md): what's loaded, from where and what each provides, and
+which plugin import formats and decision layouts this bank has turned on."""
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session
 
 from openclear import plugins
+from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
+from openclear.services import audit_log_service, plugin_service
 from openclear.web.deps import render_template, require_web_permission
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/admin/plugins", tags=["web-plugins"])
+_manage = require_web_permission("admin:manage")
+
+POINT_LABELS = {"import_formats": "Import format", "decision_layouts": "Decision file layout"}
 
 
 @router.get("")
-def list_plugins(request: Request, ctx: TenantContext = Depends(require_web_permission("admin:manage"))) -> HTMLResponse:
+def list_plugins(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
     return render_template(
         request, "admin/plugins.html", ctx=ctx, plugins=plugins.status(), api_version=plugins.PLUGIN_API_VERSION,
+        choices=plugin_service.choices(db, ctx.tenant_id), point_labels=POINT_LABELS,
     )
+
+
+@router.post("/choices")
+def set_choice(
+    point: str = Form(...), name: str = Form(...), enabled: bool = Form(False),
+    db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    try:
+        changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id)
+    except ValueError:
+        return RedirectResponse("/ui/admin/plugins?flash=That+isn%27t+available.", status_code=303)
+    if changed:
+        audit_log_service.record_action(
+            db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="plugin.enable" if enabled else "plugin.disable",
+            summary=f"Turned {'on' if enabled else 'off'} the {POINT_LABELS.get(point, point).lower()} {name}",
+            resource_type="tenant_extension", metadata={"point": point, "name": name},
+        )
+    db.commit()
+    return RedirectResponse(f"/ui/admin/plugins?flash={'Turned+on' if enabled else 'Turned+off'}.", status_code=303)

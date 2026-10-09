@@ -37,6 +37,7 @@ from openclear.domain import (  # noqa: F401
     sso_connection,
     stop_payment,
     tenant,
+    tenant_extension,
     tenant_membership,
     user,
     webhook,

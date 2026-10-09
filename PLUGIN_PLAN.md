@@ -115,3 +115,17 @@ the core adapters will be plugins.
   - Deferred to PL2:
     - per-bank enablement;
     - the "required plugin" setting, under which the app won't start without the plugin.
+- 2026-10-08 **PL2 done** (branch `plugins-pl2`).
+  - **Decision layouts are an extension point.** The built-in is `openclear_csv`, served at `GET /api/v1/decisions/file?layout=`.
+  - **Banks choose which plugin entries they use.** A plugin's import formats and decision layouts are off for each bank until its admin turns them on under Admin → Plugins. The change is audited, and the setting is stored in `tenant_extension` under row-level security.
+  - **Files in any format can be uploaded.** The API has `POST /api/v1/bulk-uploads` (multipart) and `GET /api/v1/bulk-uploads/formats`; the web UI has Bulk uploads → Other formats.
+  - **Required plugins:** with `OPENCLEAR_PLUGINS_REQUIRED`, OpenClear refuses to start if a listed plugin doesn't load.
+  - **For plugin authors:**
+    - `openclear.plugins.api` is the stable set of names a plugin imports;
+    - `examples/openclear-plugin-example` provides a fixed-width paid-items format and a fixed-width decision file, and is tested end to end;
+    - `docs/PLUGINS.md` is the guide to writing a plugin.
+  - **A new Postgres guard** checks that every table with a `tenant_id` has row-level security, apart from the five left out on purpose (`decision`, `exception_item`, `ml_model`, `job`, `notification`). Each of those is listed with the migration that explains why.
+  - **Still open:**
+    - per-bank enablement for networks, which waits until a network plugin exists;
+    - dropbox inboxes for plugin formats;
+    - a scheduled decision-file outbox, which is SDK P3.

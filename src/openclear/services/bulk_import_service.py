@@ -383,9 +383,13 @@ def receive_upload(
 ) -> BulkUploadFile:
     """Stores and signs the file, then either rejects it (status REJECTED, with `error`)
     or queues its import (status QUEUED). Commits either way, so a rejected file is still
-    kept as evidence of what was sent. Call workers.jobs.jobs_queued afterwards."""
+    kept as evidence of what was sent. Call workers.jobs.jobs_queued afterwards. Raises
+    ValueError (nothing stored) for a format that doesn't exist or isn't on for the bank."""
+    from openclear.services import plugin_service
     from openclear.workers.jobs import enqueue
 
+    # A plugin's format only for a bank that turned it on; raises before the file is stored.
+    plugin_service.require_enabled(session, tenant_id, "import_formats", (kind, file_format), what="import format")
     record = bulk_upload_file_service.record_uploaded_file(
         session, tenant_id, kind=kind, filename=filename, content_type=content_type, data=data, stream=stream,
         uploaded_by_user_id=uploaded_by_user_id, customer_id=customer_id, source=source,

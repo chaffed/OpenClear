@@ -444,6 +444,7 @@ customer-scoped caller sees only its customer's decisions.
 |---|---|---|
 | GET | `?after=N&limit=500` | decisions with `sequence > after`, oldest first (`limit` up to 1,000). `X-Latest-Sequence` gives the newest; a full page has `Link: rel="next"`. Keep the last sequence you processed and pass it as `after` |
 | GET | `/feed.csv?after=N` | the same as a CSV file (up to 10,000 rows), for a core that takes files |
+| GET | `/file?layout=openclear_csv&after=N` | the same in a decision file layout: `openclear_csv`, or one a plugin provides that the bank turned on ([docs/PLUGINS.md](docs/PLUGINS.md)). `X-Last-Sequence` is the last decision in the file |
 | POST | `/acknowledge` | `{"consumer": "core", "through_sequence": N}`: confirm a consumer processed through N. Only moves forward, never past the newest; bank-wide callers only; audit-logged |
 | GET | `/consumers` | each consumer's acknowledged position and how many decisions it's `behind` |
 
@@ -660,10 +661,13 @@ Both need the permission that gated the upload (`paid_item:write`, `issued_item:
 committed stay if an import `failed`. New exceptions from a background import send one
 summary notification per reviewer rather than one each.
 
-**This is not a file-upload API.** The `/ui/*/bulk` web routes (CSV/file upload for
-issued items, ACH transactions, paid items, *and* users) parse a file into rows and then
-call the same underlying bulk-ingestion service — but there is no equivalent
-`multipart/form-data` file-upload endpoint under `/api/v1`. A client integrating via the
-API must already have parsed its data into a JSON array before calling `/bulk`.
+**Uploading a file.** You can also send a whole file in any import format the bank can use: the built-in ones, and any a plugin provides that a bank admin turned on ([docs/PLUGINS.md](docs/PLUGINS.md)). It's imported in the background like the large requests above.
+
+| method | path | notes |
+|---|---|---|
+| GET | `/api/v1/bulk-uploads/formats` | the `kind` and `format` pairs the caller may upload, each with `built_in` |
+| POST | `/api/v1/bulk-uploads` | `multipart/form-data`: `kind` (e.g. `paid_items`), `format` (e.g. `tabular`, `nacha`, `x937`), `file`, and optionally `create_missing_accounts`. Answers `202` with `status_url`. A format that doesn't exist or isn't turned on gets `422`. A file that can't be read comes back `rejected` |
+
+Needs the permission for that `kind`.
 
 There is no `/bulk` endpoint for stop payments, ACH authorizations, or check images.

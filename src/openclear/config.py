@@ -204,6 +204,8 @@ class Settings(BaseSettings):
     # Plugins (plugins/__init__.py): the installed packages allowed to load, by entry point
     # name, comma-separated. Installing a package alone activates nothing.
     plugins: str = ""
+    # Plugins the app won't start without (allowed too, so no need to list them twice).
+    plugins_required: str = ""
     # Webhooks (services/webhook_service.py): the receiver must answer within this many
     # seconds. Webhook URLs must be public https unless webhook_allow_private_hosts is on,
     # for a single-bank install whose receivers are on its own network. Leave it off when

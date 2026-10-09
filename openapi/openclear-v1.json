@@ -905,6 +905,35 @@
         "title": "Body_upload_check_image_api_v1_check_images_post",
         "type": "object"
       },
+      "Body_upload_file_api_v1_bulk_uploads_post": {
+        "properties": {
+          "create_missing_accounts": {
+            "default": false,
+            "title": "Create Missing Accounts",
+            "type": "boolean"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "format": {
+            "description": "An import format from GET /api/v1/bulk-uploads/formats",
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BulkUploadKind"
+          }
+        },
+        "required": [
+          "kind",
+          "format",
+          "file"
+        ],
+        "title": "Body_upload_file_api_v1_bulk_uploads_post",
+        "type": "object"
+      },
       "BulkRowResultOut": {
         "properties": {
           "error": {
@@ -1015,6 +1044,19 @@
         ],
         "title": "BulkUploadAccepted",
         "type": "object"
+      },
+      "BulkUploadKind": {
+        "enum": [
+          "issued_items",
+          "ach_transactions",
+          "users",
+          "accounts",
+          "check_images",
+          "paid_items",
+          "fraud_training_examples"
+        ],
+        "title": "BulkUploadKind",
+        "type": "string"
       },
       "BulkUploadRead": {
         "properties": {
@@ -2531,6 +2573,29 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImportFormatRead": {
+        "properties": {
+          "built_in": {
+            "title": "Built In",
+            "type": "boolean"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "format",
+          "built_in"
+        ],
+        "title": "ImportFormatRead",
         "type": "object"
       },
       "ImportRunResponse": {
@@ -5773,6 +5838,84 @@
         ]
       }
     },
+    "/api/v1/bulk-uploads": {
+      "post": {
+        "description": "Uploads a file to import in the background. Poll `status_url` for progress. A file\nthat can't be read at all comes back `rejected`, with the reason in `error`.",
+        "operationId": "upload_file_api_v1_bulk_uploads_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_v1_bulk_uploads_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkUploadAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload File",
+        "tags": [
+          "bulk-uploads"
+        ]
+      }
+    },
+    "/api/v1/bulk-uploads/formats": {
+      "get": {
+        "description": "The import formats this organization can send to `POST /api/v1/bulk-uploads`: the\nbuilt-in ones and any a plugin provides that an admin has turned on, limited to the\nkinds the caller may upload.",
+        "operationId": "list_import_formats_api_v1_bulk_uploads_formats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportFormatRead"
+                  },
+                  "title": "Response List Import Formats Api V1 Bulk Uploads Formats Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Import Formats",
+        "tags": [
+          "bulk-uploads"
+        ]
+      }
+    },
     "/api/v1/bulk-uploads/{upload_id}": {
       "get": {
         "description": "Where the import is: `queued`, `processing` (`processed_rows` of `total_rows`),\n`completed`, `rejected` (nothing imported; see `error`) or `failed`.",
@@ -6413,6 +6556,78 @@
           }
         ],
         "summary": "Decision Feed Csv",
+        "tags": [
+          "decision-feed"
+        ]
+      }
+    },
+    "/api/v1/decisions/file": {
+      "get": {
+        "description": "The same decisions as a file in the layout a core takes back. Layouts beyond the\nbuilt-in CSV come from plugins, turned on per organization (Admin \u2192 Plugins).",
+        "operationId": "decision_file_api_v1_decisions_file_get",
+        "parameters": [
+          {
+            "description": "A decision layout: openclear_csv, or one a plugin provides that's turned on",
+            "in": "query",
+            "name": "layout",
+            "required": false,
+            "schema": {
+              "default": "openclear_csv",
+              "description": "A decision layout: openclear_csv, or one a plugin provides that's turned on",
+              "title": "Layout",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 10000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decision File",
         "tags": [
           "decision-feed"
         ]

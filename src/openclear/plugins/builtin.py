@@ -85,5 +85,12 @@ class _Builtin:
         for (kind, file_format), spec in BUILTIN_SPECS.items():
             registry.add_import_format(kind, file_format, spec)
 
+        from openclear.plugins.api import DecisionLayout
+        from openclear.services.decision_feed_service import to_csv
+
+        registry.add_decision_layout(
+            "openclear_csv", DecisionLayout("OpenClear CSV", "text/csv", "csv", lambda feed: to_csv(feed).encode()),
+        )
+
 
 plugin = _Builtin()

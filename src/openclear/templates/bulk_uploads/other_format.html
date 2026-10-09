@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Upload a file in another format — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Upload a file in another format</h1>
+  <p>For file formats a plugin adds, such as your core's own layout. The usual formats are
+    uploaded from each list's page.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% if formats %}
+  <form method="post" action="/ui/bulk-uploads/new" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Format
+      <select name="import_format" required>
+        {% for kind, fmt in formats %}<option value="{{ kind.value }}/{{ fmt }}">{{ kind.value | replace("_", " ") }}: {{ fmt }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>File <input type="file" name="upload_file" required></label>
+    <label><input type="checkbox" name="create_missing_accounts" value="true"> Create accounts that don't exist yet</label>
+    <button type="submit">{{ icon("upload_file") }}Upload</button>
+  </form>
+  {% else %}
+  <p>There are no other formats to use. An admin turns on a plugin's formats under Admin → Plugins.</p>
+  {% endif %}
+</div>
+{% endblock %}

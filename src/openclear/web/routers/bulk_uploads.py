@@ -6,7 +6,7 @@ import io
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -14,9 +14,10 @@ from openclear import storage
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
-from openclear.services import bulk_import_service, bulk_upload_file_service, bulk_upload_reversal_service
+from openclear.services import bulk_import_service, bulk_upload_file_service, bulk_upload_reversal_service, plugin_service
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template
 from openclear.web.security import verify_csrf
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/ui/bulk-uploads", tags=["web-bulk-uploads"])
 
@@ -53,6 +54,49 @@ def _get_authorized_record(db: Session, ctx: TenantContext, upload_id: uuid.UUID
     if _PERMISSION_BY_KIND[record.kind] not in ctx.permissions:
         raise WebForbidden()
     return record
+
+
+def _plugin_formats(db: Session, ctx: TenantContext) -> list[tuple[BulkUploadKind, str]]:
+    """Plugin import formats this bank turned on that this user may upload (the built-in ones
+    have their own forms on each list's page)."""
+    from openclear import plugins
+
+    return [
+        (kind, fmt) for kind, fmt in plugin_service.enabled(db, ctx.tenant_id, "import_formats")
+        if not plugins.is_builtin("import_formats", (kind, fmt)) and _PERMISSION_BY_KIND.get(kind) in ctx.permissions
+    ]
+
+
+@router.get("/new")
+def other_format_form(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)) -> HTMLResponse:
+    """Upload a file in an import format a plugin provides (PLUGIN_PLAN.md PL2)."""
+    return render_template(request, "bulk_uploads/other_format.html", ctx=ctx, formats=_plugin_formats(db, ctx))
+
+
+@router.post("/new")
+def other_format_upload(
+    request: Request,
+    upload_file: UploadFile,
+    import_format: str = Form(...),
+    create_missing_accounts: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    formats = _plugin_formats(db, ctx)
+    chosen = next(((k, f) for k, f in formats if f"{k.value}/{f}" == import_format), None)
+    if chosen is None:
+        raise WebForbidden()
+    kind, fmt = chosen
+    record = bulk_import_service.receive_upload(
+        db, ctx.tenant_id, kind=kind, file_format=fmt, filename=upload_file.filename or f"upload.{fmt}",
+        content_type=upload_file.content_type, uploaded_by_user_id=ctx.user_id, customer_id=ctx.customer_id,
+        stream=upload_file.file, options={"create_missing_accounts": create_missing_accounts},
+    )
+    if record.status.value == "rejected":
+        return render_template(request, "bulk_uploads/other_format.html", ctx=ctx, formats=formats, status_code=422, error=record.error)
+    jobs_queued(db.get_bind())
+    return RedirectResponse(f"/ui/bulk-uploads/{record.id}", status_code=303)
 
 
 @router.get("/{upload_id}")

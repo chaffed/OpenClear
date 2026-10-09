@@ -1,10 +1,13 @@
 {% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
 {% block title %}Plugins — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About plugins{% endblock %}
 {% block help_body %}
 <p>Plugins add to what OpenClear can do: another payment network, a file format your core
-  sends, an OCR service, a storage service. They're installed and allowed by whoever runs
-  your OpenClear installation, not from this page. This page shows what's in use.</p>
+  sends, a decision file your core takes back, an OCR or storage service. Whoever runs your
+  OpenClear installation installs and allows them.</p>
+<p>A plugin's import formats and decision file layouts are off for your organization until
+  you turn them on here. OpenClear's own are always on.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -25,5 +28,41 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="card">
+  <h2>Used by {{ ctx.tenant_name }}</h2>
+  {% if choices %}
+  <table>
+    <thead><tr><th>What</th><th>Name</th><th>From plugin</th><th>For this organization</th></tr></thead>
+    <tbody>
+      {% for c in choices %}
+      <tr>
+        <td>{{ point_labels.get(c.point, c.point) }}</td>
+        <td><code>{{ c.label }}</code></td>
+        <td>{{ c.plugin }}</td>
+        <td>
+          <form method="post" action="/ui/admin/plugins/choices" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="point" value="{{ c.point }}">
+            <input type="hidden" name="name" value="{{ c.label }}">
+            {% if c.enabled %}
+            <span class="badge badge-ok">on</span>
+            <button type="submit" class="secondary">{{ icon("block") }}Turn off</button>
+            {% else %}
+            <input type="hidden" name="enabled" value="true">
+            <button type="submit">{{ icon("check_circle") }}Turn on</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>Upload files in a plugin's format from <a href="/ui/bulk-uploads/new">Bulk uploads → Other formats</a>.
+    Decision files: <code>GET /api/v1/decisions/file?layout=&lt;name&gt;</code>.</p>
+  {% else %}
+  <p>No plugin here adds import formats or decision file layouts.</p>
+  {% endif %}
 </div>
 {% endblock %}

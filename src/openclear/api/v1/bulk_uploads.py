@@ -3,12 +3,13 @@
 
 """The status and row results of a bulk upload imported in the background
 (SCALE_PLAN.md S4): a JSON bulk call over the row cap answers 202 with one of these to
-poll, and every web and dropbox upload has one too."""
+poll, and every web and dropbox upload has one too. A file in any import format the bank
+can use, built in or from a plugin (PLUGIN_PLAN.md PL2), can also be sent here directly."""
 
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -17,8 +18,9 @@ from openclear.auth.deps import get_current_context
 from openclear.config import get_settings
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.bulk_upload_file import BulkUploadFile
-from openclear.services import bulk_import_service, bulk_upload_file_service
+from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind, BulkUploadSource
+from openclear.services import bulk_import_service, bulk_upload_file_service, plugin_service
+from openclear.workers.jobs import jobs_queued
 
 router = APIRouter(prefix="/bulk-uploads", tags=["bulk-uploads"])
 
@@ -80,6 +82,52 @@ def _authorized(db: Session, ctx: TenantContext, upload_id: uuid.UUID) -> BulkUp
     if permission not in ctx.permissions:
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
     return record
+
+
+class ImportFormatRead(BaseModel):
+    kind: str
+    format: str
+    built_in: bool
+
+
+@router.get("/formats", response_model=list[ImportFormatRead])
+def list_import_formats(db: Session = Depends(get_db), ctx: TenantContext = Depends(get_current_context)) -> list[ImportFormatRead]:
+    """The import formats this organization can send to `POST /api/v1/bulk-uploads`: the
+    built-in ones and any a plugin provides that an admin has turned on, limited to the
+    kinds the caller may upload."""
+    from openclear import plugins
+
+    return [
+        ImportFormatRead(kind=kind.value, format=fmt, built_in=plugins.is_builtin("import_formats", (kind, fmt)))
+        for kind, fmt in plugin_service.enabled(db, ctx.tenant_id, "import_formats")
+        if bulk_import_service.PERMISSION_BY_KIND.get(kind) in ctx.permissions
+    ]
+
+
+@router.post("", response_model=BulkUploadAccepted, status_code=status.HTTP_202_ACCEPTED)
+def upload_file(
+    kind: BulkUploadKind = Form(...),
+    format: str = Form(..., description="An import format from GET /api/v1/bulk-uploads/formats"),
+    file: UploadFile = File(...),
+    create_missing_accounts: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_current_context),
+) -> BulkUploadAccepted:
+    """Uploads a file to import in the background. Poll `status_url` for progress. A file
+    that can't be read at all comes back `rejected`, with the reason in `error`."""
+    permission = bulk_import_service.PERMISSION_BY_KIND.get(kind)
+    if permission not in ctx.permissions:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
+    try:
+        record = bulk_import_service.receive_upload(
+            db, ctx.tenant_id, kind=kind, file_format=format, filename=file.filename or f"upload.{format}",
+            content_type=file.content_type, uploaded_by_user_id=ctx.user_id, customer_id=ctx.customer_id,
+            source=BulkUploadSource.API, stream=file.file, options={"create_missing_accounts": create_missing_accounts},
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    jobs_queued(db.get_bind())
+    return accepted(record)
 
 
 @router.get("/{upload_id}", response_model=BulkUploadRead)

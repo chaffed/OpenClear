@@ -18,6 +18,27 @@
 - **Scoring model:** the model is chosen by `OPENCLEAR_ML_SCORING_MODEL`. It defaults
   to `logistic_regression`, so this doesn't change unless you set it.
 
+### New: plugin import formats and decision files, per bank (PLUGIN_PLAN.md PL2)
+
+- **Plugins can add decision file layouts:** the file a core takes back.
+  `GET /api/v1/decisions/file?layout=` returns decisions in any layout the bank can use.
+  The built-in `openclear_csv` is always available.
+- **A bank chooses which plugin formats and layouts it uses:** a plugin's import formats
+  and decision layouts are off for each bank until its admin turns them on under
+  **Admin → Plugins**. The change is audit-logged.
+- **Uploading a whole file through the API:** `POST /api/v1/bulk-uploads` (multipart)
+  takes a file in any format the bank can use, built in or from a plugin.
+  `GET /api/v1/bulk-uploads/formats` lists them. In the web UI, plugin formats are
+  uploaded under **Bulk uploads → Other formats**.
+- **`OPENCLEAR_PLUGINS_REQUIRED`:** OpenClear won't start if a plugin listed here
+  doesn't load.
+- **For plugin authors:**
+  - [docs/PLUGINS.md](docs/PLUGINS.md) explains how to write a plugin, and
+    `openclear.plugins.api` is the stable set of names a plugin imports;
+  - `examples/openclear-plugin-example` is a working template, with a fixed-width
+    import format and a fixed-width decision file.
+- **Upgrading:** run `alembic upgrade head`. It adds the table `tenant_extension`.
+
 ### New: API clients for a bank's systems (SDK_PLAN.md P0)
 
 - **OAuth 2.0 client credentials:** a bank admin creates an API client under Admin → API

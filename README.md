@@ -1099,6 +1099,13 @@ Plugins run inside OpenClear with its full access. They're trusted code, so inst
 
 A plugin loaded into OpenClear is part of the same program, so it's AGPL-3.0 too. A closed system should integrate through the API and webhooks instead.
 
+A plugin's import formats and decision file layouts are off for each bank until its admin turns them on under **Admin → Plugins**. To make a plugin required, set `OPENCLEAR_PLUGINS_REQUIRED`; OpenClear won't start if it doesn't load.
+
+To write a plugin:
+
+- read [docs/PLUGINS.md](docs/PLUGINS.md);
+- copy [examples/openclear-plugin-example](examples/openclear-plugin-example).
+
 The plan is in [PLUGIN_PLAN.md](PLUGIN_PLAN.md).
 
 ## Upgrade and downgrade support

@@ -16,11 +16,17 @@ For example, in the plugin's pyproject.toml:
     rtp = "openclear_rtp:plugin"
 
 The operator allows it with `OPENCLEAR_PLUGINS=rtp` (a comma-separated list of entry point
-names; installing a package alone activates nothing). A plugin that isn't allowed, needs
+names; installing a package alone activates nothing), or `OPENCLEAR_PLUGINS_REQUIRED=rtp`
+to also refuse to start without it. A plugin that isn't allowed, needs
 another plugin API version, fails to load, or claims a name something else already has is
 reported (Admin → Plugins, and the log) and skipped; the app still starts. OpenClear's own
 built-in network, OCR, notification, storage, scoring and import-format code registers
 the same way (plugins/builtin.py).
+
+Where using an entry is a bank's choice (BANK_CHOICE_POINTS: import formats, decision
+layouts), a plugin's entry is off for each bank until its admin turns it on.
+
+The stable names a plugin imports are in plugins/api.py.
 
 Plugins run inside OpenClear with its full access, so only an operator installs them. A
 plugin loaded into OpenClear is part of the same program, so it's AGPL-3.0 too
@@ -43,7 +49,13 @@ ENTRY_POINT_GROUP = "openclear.plugins"
 
 EXTENSION_POINTS = (
     "networks", "ocr_providers", "email_providers", "sms_providers", "storage_backends", "scoring_models", "import_formats",
+    "decision_layouts",
 )
+BUILTIN_NAME = "openclear"
+# Extension points where using a plugin's entry is each bank's choice: a bank admin turns it
+# on under Admin → Plugins (services/plugin_service.py). The rest are the operator's choice,
+# made in configuration. Built-in entries are always on.
+BANK_CHOICE_POINTS = ("import_formats", "decision_layouts")
 
 
 class PluginError(Exception):
@@ -73,6 +85,8 @@ class Registry:
         self.storage_backends: dict[str, Callable[[], Any]] = {}
         self.scoring_models: dict[str, Callable[[], Any]] = {}
         self.import_formats: dict[tuple[Any, str], Any] = {}
+        self.decision_layouts: dict[str, Any] = {}
+        self.origins: dict[tuple[str, Any], str] = {}  # (point, key) -> the plugin that registered it
         self._current: PluginInfo | None = None
         self._added: list[tuple[str, Any]] = []
         self._networks_pending: list[Any] = []
@@ -84,8 +98,8 @@ class Registry:
         table[key] = value
         self._added.append((point, key))
         if self._current is not None:
-            label = f"{key[0].value}/{key[1]}" if isinstance(key, tuple) else str(key)
-            self._current.provides.append(f"{point}: {label}")
+            self.origins[(point, key)] = self._current.name
+            self._current.provides.append(f"{point}: {label(key)}")
 
     def add_network(self, adapter) -> None:
         """A payment network (networks.base.NetworkAdapter), registered under its `code`."""
@@ -111,6 +125,11 @@ class Registry:
         """A bulk file format (services/bulk_import_service.ImportSpec) for an upload kind."""
         self._add("import_formats", (kind, file_format), spec)
 
+    def add_decision_layout(self, name: str, layout) -> None:
+        """A decision file a core takes back (plugins/api.py DecisionLayout): given decisions
+        from the feed, the file's bytes."""
+        self._add("decision_layouts", name, layout)
+
 
 registry = Registry()
 _status: list[PluginInfo] = []
@@ -118,8 +137,17 @@ _loaded = False
 _lock = threading.Lock()
 
 
+def label(key) -> str:
+    """How an extension point's key is written: "paid_items/tabular" for an import format."""
+    return f"{key[0].value}/{key[1]}" if isinstance(key, tuple) else str(key)
+
+
+def _names(value: str) -> set[str]:
+    return {name.strip() for name in (value or "").split(",") if name.strip()}
+
+
 def _allowed() -> set[str]:
-    return {name.strip() for name in get_settings().plugins.split(",") if name.strip()}
+    return _names(get_settings().plugins) | _names(get_settings().plugins_required)
 
 
 def _supports(plugin) -> bool:
@@ -142,6 +170,7 @@ def _register(plugin, source: str) -> PluginInfo:
         info.status, info.error, info.provides = "failed", f"{type(exc).__name__}: {exc}", []
         for point, key in registry._added:
             getattr(registry, point).pop(key, None)
+            registry.origins.pop((point, key), None)
         logger.exception("Plugin %s failed to register", info.name)
     else:
         for adapter in registry._networks_pending:
@@ -178,12 +207,34 @@ def load() -> list[PluginInfo]:
         for info in _status:
             if info.status != "loaded":
                 logger.warning("Plugin %s %s: %s", info.name, info.status, info.error)
+        loaded = {info.name for info in _status if info.status == "loaded"}
+        missing = sorted(_names(get_settings().plugins_required) - loaded)
+        if missing:
+            problems = "; ".join(f"{i.name}: {i.status} ({i.error})" for i in _status if i.name in missing) or "not installed"
+            _reset()
+            raise PluginError(f"Required plugins didn't load: {', '.join(missing)} ({problems})")
         _loaded = True
         return list(_status)
 
 
 def status() -> list[PluginInfo]:
     return load()
+
+
+def is_builtin(point: str, key) -> bool:
+    load()
+    return registry.origins.get((point, key)) == BUILTIN_NAME
+
+
+def bank_choices() -> list[dict]:
+    """The plugin-provided entries a bank can turn on, for Admin → Plugins."""
+    load()
+    return [
+        {"point": point, "key": key, "label": label(key), "plugin": registry.origins.get((point, key), "?")}
+        for point in BANK_CHOICE_POINTS
+        for key in getattr(registry, point)
+        if registry.origins.get((point, key)) != BUILTIN_NAME
+    ]
 
 
 def lookup(point: str, key, *, what: str):
@@ -195,9 +246,13 @@ def lookup(point: str, key, *, what: str):
     return table[key]
 
 
-def reset_for_tests() -> None:
+def _reset() -> None:
     global registry, _loaded
+    registry = Registry()
+    _status.clear()
+    _loaded = False
+
+
+def reset_for_tests() -> None:
     with _lock:
-        registry = Registry()
-        _status.clear()
-        _loaded = False
+        _reset()

@@ -512,9 +512,17 @@ A plugin is checked in several ways:
 - Registration is all-or-nothing. A plugin adds to a staging copy of the registry, and the copy replaces the live one only if `register()` succeeds. A plugin that raises, or claims a name that's already taken, leaves nothing behind and is marked `failed`.
 - `plugins.status()` feeds Admin → Plugins.
 
+Some extension points are a bank's choice rather than the operator's: import formats and decision layouts (`BANK_CHOICE_POINTS`).
+
+- `registry.origins` records which plugin registered each entry.
+- A plugin's entry is usable by a bank only if the bank has a `tenant_extension` row for it.
+- `services/plugin_service.require_enabled` checks this at the points of use: `bulk_import_service.receive_upload` and `GET /api/v1/decisions/file`.
+- Built-in entries need no row.
+
+`plugins/api.py` is the stable surface plugins import.
+
 The phases are in PLUGIN_PLAN.md:
 
-- PL2 adds per-bank enablement, decision-file layouts and an example plugin.
 - PL3 adds matching rules, scoring features and notification channels.
 
 ## Data growth
