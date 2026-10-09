@@ -53,6 +53,7 @@ def settings_form(
     return render_template(
         request, "settings/form.html", ctx=ctx, tenant_display_name=ctx.tenant_name, accent_color=ctx.accent_color or "",
         require_dual_control=tenant.require_dual_control,
+        embed_allowed_origins=tenant.embed_allowed_origins or "",
         access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
         default_access_token_expire_minutes=settings.jwt_access_token_expire_minutes,
@@ -274,6 +275,31 @@ def update_contact_info(
         )
     db.commit()
     return RedirectResponse("/ui/settings?flash=Settings+updated.", status_code=303)
+
+
+@router.post("/embedding")
+def update_embedding(
+    embed_allowed_origins: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Which online banking origins may frame OpenClear (services/embed_service.py)."""
+    from urllib.parse import quote
+
+    from openclear.services import embed_service
+
+    try:
+        origins = embed_service.set_allowed_origins(db, ctx.tenant_id, embed_allowed_origins)
+    except embed_service.EmbedError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/settings?error={quote(str(exc))}#embedding", status_code=303)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="tenant.update_embedding",
+        summary=f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}", resource_type="tenant", resource_id=ctx.tenant_id,
+    )
+    db.commit()
+    return RedirectResponse("/ui/settings?flash=Settings+updated.#embedding", status_code=303)
 
 
 @router.post("/dual-control")

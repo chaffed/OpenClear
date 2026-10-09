@@ -463,3 +463,10 @@ pre, code { overflow-wrap: anywhere; }
 /* The accent-color picker: without a fixed size it stretched full-width and rendered as a
    thin blank line, so it didn't look like a color control at all. */
 input[type="color"] { width: 3.5rem; height: 2.25rem; padding: 0.15rem; cursor: pointer; }
+
+
+/* Embedded in a bank's online banking (services/embed_service.py): no navigation, the page
+   fills the frame, and the frame sizes itself to it (static/js/app.js). */
+body.embedded .app-shell { display: block; }
+body.embedded .page { max-width: none; margin: 0; padding: 1rem; }
+body.embedded .app-footer { margin-top: 1rem; font-size: 0.75rem; }

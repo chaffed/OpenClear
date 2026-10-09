@@ -332,6 +332,12 @@ one customer.</p>
 </tbody>
 </table>
 
+<h3>embed_launch</h3>
+<p>One-time links that start an embedded session inside the bank's online banking
+(<code>POST /api/v1/embed/launch</code>): only the code's hash, the person and membership,
+the page to open, the online banking origin that frames it, and when it expires (a minute)
+and was used. The tenant's <code>embed_allowed_origins</code> lists the origins allowed.</p>
+
 <h3>sso_identity</h3>
 <p>Who a person is at an identity provider: its own stable id for them (OIDC <code>sub</code>,
 SAML NameID), per connection, recorded at each sign-in. Used by sign-out from the identity

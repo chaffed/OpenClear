@@ -459,6 +459,12 @@ customers by CIF can use the CIF as the customer number.
 
 Every create and update is audit-logged.
 
+### Embedding — `/api/v1/embed`
+
+| method | path | notes |
+|---|---|---|
+| POST | `/launch` | `{"parent_origin": "https://banking.example.com", "path": "/ui/exceptions"}`. Answers `201` with `{"url", "expires_in": 60}`: a one-time link that opens `path` in a frame on `parent_origin`, as the person the call acts for. Only for an API client acting for someone (an exchanged token, `OpenClear-Act-As` or `OpenClear-Act-As-Subject`): `403` otherwise. `422` if the origin isn't on the bank's list (Settings → Embedding) or the path isn't a `/ui/` page. See [docs/guides/embedding.md](docs/guides/embedding.md) |
+
 ### Decision feed — `/api/v1/decisions`
 
 Every pay or return decision, in order, with what a core needs to pay or return the item,

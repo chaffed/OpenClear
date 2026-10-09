@@ -300,6 +300,16 @@ class DecisionRead(TypedDict):
     submitted_by_user_id: str | None
 
 
+class EmbedLaunchCreate(TypedDict):
+    parent_origin: str
+    path: NotRequired[str]
+
+
+class EmbedLaunchRead(TypedDict):
+    expires_in: int
+    url: str
+
+
 class ExceptionRead(TypedDict):
     created_at: str
     decision_deadline: str | None
@@ -1179,6 +1189,24 @@ class DropboxImportApi:
         return self._c.call("POST", "/api/v1/import/run")
 
 
+class EmbedApi:
+    """`embed` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def create_launch(self, body: EmbedLaunchCreate) -> EmbedLaunchRead:
+        """Create Launch.
+
+        POST /api/v1/embed/launch
+
+        A one-time link (good for a minute) that opens `path` in a frame on `parent_origin`
+        as the person this call acts for. Only for an API client acting for someone: an
+        exchanged token, OpenClear-Act-As or OpenClear-Act-As-Subject.
+        """
+        return self._c.call("POST", "/api/v1/embed/launch", json=body)
+
+
 class ExceptionsApi:
     """`exceptions` endpoints."""
 
@@ -1607,6 +1635,7 @@ AREAS = {
     "decision_feed": DecisionFeedApi,
     "decisions": DecisionsApi,
     "dropbox_import": DropboxImportApi,
+    "embed": EmbedApi,
     "exceptions": ExceptionsApi,
     "fraud_training": FraudTrainingApi,
     "issued_items": IssuedItemsApi,

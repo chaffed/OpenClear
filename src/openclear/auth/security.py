@@ -43,6 +43,7 @@ def create_token(
     expires_at: datetime | None = None,
     session_expires_at: datetime | None = None,
     on_behalf_of: dict | None = None,
+    embed: dict | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -100,6 +101,10 @@ def create_token(
         # An API client's token from token exchange (api/v1/oauth.py): it acts for this
         # person, with the permissions both hold (auth/deps.py::_act_for_exchange).
         payload["obo"] = on_behalf_of
+    if embed is not None:
+        # An embedded session (services/embed_service.py): `po` is the online banking origin
+        # allowed to frame it. Carried through refreshes.
+        payload["emb"] = embed
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 
@@ -113,6 +118,8 @@ class SessionTokens:
     # The session's hard limit ("maximum session length"): the refresh token expires
     # here, and refreshing never extends it — only signing in again starts a new one.
     session_expires_at: datetime
+    # An embedded session's claim ({"po": parent origin}); its cookies are set for a frame.
+    embed: dict | None = None
 
 
 def create_session_tokens(
@@ -126,6 +133,7 @@ def create_session_tokens(
     refresh_token_expire_minutes: int | None = None,
     session_id: uuid.UUID | None = None,
     session_expires_at: datetime | None = None,
+    embed: dict | None = None,
     settings: Settings | None = None,
 ) -> SessionTokens:
     """Mints the access + refresh pair for one login session — every sign-in, refresh,
@@ -151,6 +159,7 @@ def create_session_tokens(
         token_version=token_version,
         session_id=session_id,
         session_expires_at=session_expires_at,
+        embed=embed,
         settings=settings,
     )
     return SessionTokens(
@@ -159,6 +168,7 @@ def create_session_tokens(
         session_id=session_id,
         access_expires_at=access_expires_at,
         session_expires_at=session_expires_at,
+        embed=embed,
     )
 
 

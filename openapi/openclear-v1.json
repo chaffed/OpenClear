@@ -859,6 +859,39 @@
           "grant_type": {
             "title": "Grant Type",
             "type": "string"
+          },
+          "requested_token_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Token Type"
+          },
+          "subject_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Token"
+          },
+          "subject_token_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Token Type"
           }
         },
         "required": [
@@ -1934,6 +1967,44 @@
           "decided_at"
         ],
         "title": "DecisionRead",
+        "type": "object"
+      },
+      "EmbedLaunchCreate": {
+        "properties": {
+          "parent_origin": {
+            "description": "The online banking origin that will frame the page, e.g. https://banking.example.com",
+            "title": "Parent Origin",
+            "type": "string"
+          },
+          "path": {
+            "default": "/ui/exceptions",
+            "description": "The page to open, e.g. /ui/exceptions",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_origin"
+        ],
+        "title": "EmbedLaunchCreate",
+        "type": "object"
+      },
+      "EmbedLaunchRead": {
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in"
+        ],
+        "title": "EmbedLaunchRead",
         "type": "object"
       },
       "ExceptionRead": {
@@ -6651,6 +6722,53 @@
         ]
       }
     },
+    "/api/v1/embed/launch": {
+      "post": {
+        "description": "A one-time link (good for a minute) that opens `path` in a frame on `parent_origin`\nas the person this call acts for. Only for an API client acting for someone: an\nexchanged token, OpenClear-Act-As or OpenClear-Act-As-Subject.",
+        "operationId": "create_launch_api_v1_embed_launch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbedLaunchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedLaunchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Launch",
+        "tags": [
+          "embed"
+        ]
+      }
+    },
     "/api/v1/exceptions": {
       "get": {
         "operationId": "list_exceptions_api_v1_exceptions_get",
@@ -7576,7 +7694,7 @@
     },
     "/api/v1/oauth/token": {
       "post": {
-        "description": "`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic\nauth or as `client_id` and `client_secret` form fields. Returns a bearer access token\nfor every `/api/v1` endpoint the client's security group allows.",
+        "description": "`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic\nauth or as `client_id` and `client_secret` form fields. Returns a bearer access token\nfor every `/api/v1` endpoint the client's security group allows.\n\n`grant_type=urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) trades the ID\ntoken of a person signed in to the bank's online banking provider (`subject_token`,\n`subject_token_type=urn:ietf:params:oauth:token-type:id_token`) for a token that acts\nfor them: what both they and the client may do, recorded as theirs. The client must be\nallowed to act for users and linked to that provider's SSO connection; the ID token is\nverified against the provider's keys, and the person is matched (or provisioned) with\nthe connection's group mappings and customer claim, as at sign-in.",
         "operationId": "token_api_v1_oauth_token_post",
         "requestBody": {
           "content": {

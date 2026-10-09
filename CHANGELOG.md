@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### New: OpenClear inside online banking (SDK_PLAN.md P2)
+
+- **Embedding:** a bank's business customers can review and decide exceptions inside the
+  bank's online banking, without signing in again.
+- **How a session starts:** the online banking server, acting for the signed-in person,
+  asks `POST /api/v1/embed/launch` for a one-time link (good for a minute). Its page
+  shows the link with the new **`@openclear/embed`** library (`sdks/embed`), or in a
+  WebView in a mobile app.
+- **What the embedded pages are like:**
+  - no navigation;
+  - framed only by the origins the bank lists under **Settings → Embedding**;
+  - they tell the host page when they resize, navigate, record a decision or end.
+- **Ordinary sessions** still can't be framed at all.
+- **Guide:** [docs/guides/embedding.md](docs/guides/embedding.md). There's also a runnable
+  host page in `examples/embed-host`.
+- **Upgrading:** run `alembic upgrade head`. It adds the column
+  `tenant.embed_allowed_origins` and the table `embed_launch`.
+
 ### New: online banking sign-on profile and token exchange (SDK_PLAN.md phase F)
 
 - **A connection for an online banking provider:** the provider is the identity provider,

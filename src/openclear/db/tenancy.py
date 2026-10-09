@@ -79,6 +79,10 @@ class TenantContext:
     banner_message: str | None = None
     customer_banner_message: str | None = None
 
+    # An embedded session (services/embed_service.py): the online banking origin that frames
+    # it. Templates drop the navigation, and the pages may be framed by that origin only.
+    embed_parent_origin: str | None = None
+
     # Mirrors User.must_change_password (an admin reset this user's password to a
     # temporary one). web/deps.py::get_web_context redirects every page but the
     # change-password form while it's set; auth/deps.py::get_current_context refuses API

@@ -181,9 +181,13 @@ def create_app() -> FastAPI:
     def _handle_web_auth_required(request: Request, exc: WebAuthRequired) -> RedirectResponse:
         from openclear.web.security import safe_next_path
 
+        from openclear.web.security import was_embedded
+
         next_path = safe_next_path(exc.next_path)
         if exc.try_resume:
             return RedirectResponse(f"/ui/auth/resume?next={quote(next_path)}", status_code=status.HTTP_303_SEE_OTHER)
+        if was_embedded(request):  # a frame can't show the login page; tell its parent instead
+            return RedirectResponse("/ui/embed/ended", status_code=status.HTTP_303_SEE_OTHER)
         url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
         return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 

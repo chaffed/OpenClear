@@ -272,3 +272,30 @@ document.querySelectorAll("select[data-toggle-protocol]").forEach((select) => {
   select.addEventListener("change", show);
   show();
 });
+
+
+// Embedded in a bank's online banking (services/embed_service.py): tell the parent page
+// (only the origin the session was started for) the page's height, where it is, and what
+// just happened, so @openclear/embed can size the frame and pass events on. Events are
+// hints for the page's UI; the bank's systems should act on webhooks or the API.
+(() => {
+  const parentOrigin = document.body.dataset.embedParent;
+  if (!parentOrigin || window.parent === window) return;
+  const post = (type, detail = {}) => window.parent.postMessage({ source: "openclear", type, ...detail }, parentOrigin);
+  let lastHeight = 0;
+  const report = () => {
+    const height = Math.ceil(document.documentElement.scrollHeight);
+    if (height !== lastHeight) {
+      lastHeight = height;
+      post("resize", { height });
+    }
+  };
+  new ResizeObserver(report).observe(document.body);
+  report();
+  post("navigated", { path: location.pathname, title: document.title });
+  const event = document.body.dataset.embedEvent;
+  if (event) {
+    const match = location.pathname.match(/^\/ui\/exceptions\/([0-9a-f-]{36})/);
+    post(event, match ? { exceptionId: match[1] } : {});
+  }
+})();

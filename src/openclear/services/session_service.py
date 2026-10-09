@@ -115,5 +115,6 @@ def refresh_session(session: Session, refresh_token: str) -> tuple[SessionTokens
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
         session_id=session_id,
         session_expires_at=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
+        embed=claims.get("emb"),  # an embedded session stays one
     )
     return tokens, tenant

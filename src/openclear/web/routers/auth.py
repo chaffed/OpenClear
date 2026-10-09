@@ -169,6 +169,7 @@ def logout(request: Request, db: Session = Depends(get_db), _csrf: None = Depend
     # these cookies taken before logout stops working too — clearing cookies alone only
     # affects this browser.
     token = request.cookies.get(ACCESS_COOKIE_NAME)
+    claims: dict = {}
     if token:
         try:
             claims = decode_token(token, verify_exp=False)
@@ -177,8 +178,9 @@ def logout(request: Request, db: Session = Depends(get_db), _csrf: None = Depend
         if claims.get("sid") and claims.get("sub"):
             session_service.revoke_session(db, session_id=uuid.UUID(claims["sid"]), user_id=uuid.UUID(claims["sub"]))
             db.commit()
-    response = RedirectResponse("/ui/login", status_code=303)
-    clear_auth_cookies(response)
+    embedded = bool(token and claims.get("emb"))
+    response = RedirectResponse("/ui/embed/ended" if embedded else "/ui/login", status_code=303)
+    clear_auth_cookies(response, embed=embedded)
     return response
 
 

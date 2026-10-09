@@ -35,7 +35,7 @@ def new_csp_nonce() -> str:
     return secrets.token_urlsafe(16)
 
 
-def _build_csp(nonce: str) -> str:
+def _build_csp(nonce: str, frame_ancestors: str = "'none'") -> str:
     return "; ".join(
         [
             "default-src 'self'",
@@ -44,7 +44,7 @@ def _build_csp(nonce: str) -> str:
             "img-src 'self' data:",
             "font-src 'self'",
             "connect-src 'self'",
-            "frame-ancestors 'none'",
+            f"frame-ancestors {frame_ancestors}",
             "form-action 'self'",
             "base-uri 'self'",
             "object-src 'none'",
@@ -61,12 +61,17 @@ def apply_security_headers(request: Request, response: Response) -> None:
     nonce = getattr(request.state, "csp_nonce", None) or new_csp_nonce()
     # A route that set a stricter policy of its own (the sandboxed branding images in
     # web/routers/branding.py) keeps it; every other response gets the page policy.
+    # An embedded session's pages may be framed by its online banking origin, and only
+    # those (web/deps.py::get_web_context sets this); everything else, never.
+    frame_ancestor = getattr(request.state, "frame_ancestor", None)
     if "content-security-policy" not in response.headers:
-        response.headers["Content-Security-Policy"] = _build_csp(nonce)
+        response.headers["Content-Security-Policy"] = _build_csp(nonce, frame_ancestor or "'none'")
     response.headers["X-Content-Type-Options"] = "nosniff"
     # Belt-and-suspenders with frame-ancestors above — X-Frame-Options is the older
     # header every browser still honors, CSP's frame-ancestors is what modern ones prefer.
-    response.headers["X-Frame-Options"] = "DENY"
+    # It can't name an origin, so an embedded page relies on frame-ancestors alone.
+    if frame_ancestor is None:
+        response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=(), "

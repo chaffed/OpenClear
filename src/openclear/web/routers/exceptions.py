@@ -295,7 +295,7 @@ def recommend(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(message)}", status_code=303)
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.", status_code=303)
+    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.&event=exception-recommended", status_code=303)
 
 
 @router.post("/{exception_id}/decide")
@@ -331,4 +331,5 @@ def decide(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(message)}", status_code=303)
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Decision+recorded.", status_code=303)
+    # `event` tells an embedding online banking page (static/js/app.js); ignored otherwise.
+    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Decision+recorded.&event=exception-decided", status_code=303)

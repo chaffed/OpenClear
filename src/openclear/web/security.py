@@ -42,6 +42,39 @@ def _secure_cookies() -> bool:
     return is_https_deployment()
 
 
+def _framed(embed: bool, default: str) -> dict:
+    """Cookie attributes for an embedded session (services/embed_service.py). Inside a frame
+    on another site, browsers only send SameSite=None cookies, which need Secure; and
+    Partitioned (CHIPS) keeps them in a jar for that one online banking site, so they're
+    no use to anyone else framing OpenClear. Plain-HTTP development keeps the default."""
+    if embed and _secure_cookies():
+        return {"samesite": "none", "partitioned": True}
+    return {"samesite": default}
+
+
+def _set_cookie(response: Response, name: str, value: str, *, partitioned: bool = False, **kwargs) -> None:
+    """response.set_cookie, plus the Partitioned attribute, which Starlette only writes on
+    Python 3.14+ (http.cookies gained it there); added to the header by hand otherwise."""
+    response.set_cookie(name, value, **kwargs)
+    if partitioned:
+        _mark_last_cookie_partitioned(response)
+
+
+def _delete_cookie(response: Response, name: str, *, partitioned: bool = False, **kwargs) -> None:
+    response.delete_cookie(name, **kwargs)
+    if partitioned:
+        _mark_last_cookie_partitioned(response)
+
+
+def _mark_last_cookie_partitioned(response: Response) -> None:
+    for index in range(len(response.raw_headers) - 1, -1, -1):
+        key, value = response.raw_headers[index]
+        if key == b"set-cookie":
+            if b"partitioned" not in value.lower():
+                response.raw_headers[index] = (key, value + b"; Partitioned")
+            return
+
+
 def set_session_cookies(response: Response, tokens: SessionTokens) -> None:
     """Both cookies live until the SESSION's end (its maximum length), not the access
     token's: an access token past its own (idle) expiry is still sent, so
@@ -50,23 +83,25 @@ def set_session_cookies(response: Response, tokens: SessionTokens) -> None:
     signed `exp` inside each token is what actually governs validity, and it honors the
     tenant's own timeouts (auth/security.py::create_session_tokens)."""
     max_age = max(0, int((tokens.session_expires_at - datetime.now(timezone.utc)).total_seconds()))
-    response.set_cookie(
+    _set_cookie(
+        response,
         ACCESS_COOKIE_NAME,
         tokens.access_token,
         httponly=True,
         secure=_secure_cookies(),
-        samesite="lax",
         path="/",
         max_age=max_age,
+        **_framed(bool(tokens.embed), "lax"),
     )
-    response.set_cookie(
+    _set_cookie(
+        response,
         REFRESH_COOKIE_NAME,
         tokens.refresh_token,
         httponly=True,
         secure=_secure_cookies(),
-        samesite="strict",
         path=REFRESH_COOKIE_PATH,
         max_age=max_age,
+        **_framed(bool(tokens.embed), "strict"),
     )
 
 
@@ -83,11 +118,14 @@ def set_mfa_cookie(response: Response, token: str) -> None:
     )
 
 
-def clear_auth_cookies(response: Response) -> None:
+def clear_auth_cookies(response: Response, *, embed: bool = False) -> None:
     # Attributes here must match exactly what was used when the cookie was SET, or the
     # browser silently keeps it — the most common way a "logout" button does nothing.
     response.delete_cookie(ACCESS_COOKIE_NAME, path="/", secure=_secure_cookies(), samesite="lax")
     response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, secure=_secure_cookies(), samesite="strict")
+    if embed and _secure_cookies():  # a partitioned cookie is only cleared by a partitioned delete
+        _delete_cookie(response, ACCESS_COOKIE_NAME, path="/", secure=True, samesite="none", partitioned=True)
+        _delete_cookie(response, REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, secure=True, samesite="none", partitioned=True)
 
 
 def clear_mfa_cookie(response: Response) -> None:
@@ -170,13 +208,14 @@ def set_csrf_cookie_if_new(request: Request, response: Response, token: str) -> 
     # A browser-session cookie (no max_age). It used to expire with the access token,
     # which meant a form left open past that (a long exception review) failed CSRF on
     # submit even though the session itself was still fine.
-    response.set_cookie(
+    _set_cookie(
+        response,
         CSRF_COOKIE_NAME,
         token,
         httponly=False,
         secure=_secure_cookies(),
-        samesite="lax",
         path="/",
+        **_framed(bool(getattr(request.state, "embed_parent_origin", None)), "lax"),
     )
 
 
@@ -205,3 +244,19 @@ def safe_next_path(path: str | None, *, default: str = "/ui/") -> str:
     if not path or not path.startswith("/") or path.startswith("//"):
         return default
     return path
+
+
+def was_embedded(request: Request) -> bool:
+    """Whether the browser's session cookies, valid or not, belong to an embedded session
+    (services/embed_service.py): where a frame should land when that session ends, instead
+    of a login page it can't show. Only the signature is checked, not expiry."""
+    from openclear.auth.security import decode_token
+
+    for name in (ACCESS_COOKIE_NAME,):
+        token = request.cookies.get(name)
+        if token:
+            try:
+                return bool(decode_token(token, verify_exp=False).get("emb"))
+            except Exception:  # noqa: BLE001 -- not ours, or garbled: not embedded
+                return False
+    return False

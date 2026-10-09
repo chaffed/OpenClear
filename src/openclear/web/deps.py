@@ -93,6 +93,15 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
         raise WebPasswordChangeRequired()
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise WebForbidden(DEMO_LOCKED_MESSAGE, title="Turned off in the demo")
+    if ctx.embed_parent_origin:
+        # Framing is allowed for this session's pages, by its online banking origin, while
+        # the bank still allows that origin (security_headers.py).
+        from openclear.services import embed_service
+
+        request.state.embed_parent_origin = ctx.embed_parent_origin
+        request.state.frame_ancestor = (
+            ctx.embed_parent_origin if embed_service.origin_allowed(db, ctx.tenant_id, ctx.embed_parent_origin) else None
+        )
     return ctx
 
 

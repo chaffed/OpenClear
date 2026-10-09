@@ -87,6 +87,7 @@ class OpenClear(Transport):
     decision_feed: DecisionFeedApi
     decisions: g.DecisionsApi
     dropbox_import: g.DropboxImportApi
+    embed: g.EmbedApi
     exceptions: g.ExceptionsApi
     fraud_training: g.FraudTrainingApi
     issued_items: g.IssuedItemsApi

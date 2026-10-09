@@ -34,6 +34,7 @@ from openclear.web.security import (
     ACCESS_COOKIE_NAME,
     REFRESH_COOKIE_NAME,
     clear_auth_cookies,
+    was_embedded,
     safe_next_path,
     set_session_cookies,
     verify_csrf_header,
@@ -70,7 +71,7 @@ def refresh(request: Request, db: Session = Depends(get_db), _csrf: None = Depen
         tokens = _continue_session(request, db)
     except session_service.RefreshFailed:
         response = JSONResponse({"error": "Your session has ended. Please sign in again."}, status_code=401)
-        clear_auth_cookies(response)
+        clear_auth_cookies(response, embed=was_embedded(request))
         return response
     response = JSONResponse(
         {
@@ -88,9 +89,10 @@ def resume(request: Request, next: str | None = None, db: Session = Depends(get_
     try:
         tokens = _continue_session(request, db)
     except session_service.RefreshFailed:
+        embedded = was_embedded(request)
         login_url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
-        response = RedirectResponse(login_url, status_code=303)
-        clear_auth_cookies(response)
+        response = RedirectResponse("/ui/embed/ended" if embedded else login_url, status_code=303)
+        clear_auth_cookies(response, embed=embedded)
         return response
     response = RedirectResponse(next_path, status_code=303)
     set_session_cookies(response, tokens)

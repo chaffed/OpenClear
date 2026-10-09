@@ -166,6 +166,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         pending_approval_count=_pending_approval_count(db, tenant_id, customer_id, user_id)
         if "exception:decide" in permissions
         else 0,
+        embed_parent_origin=(payload.get("emb") or {}).get("po"),
     )
 
     return ctx

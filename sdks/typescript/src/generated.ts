@@ -277,6 +277,16 @@ export interface DecisionRead {
   submitted_by_user_id: string | null;
 }
 
+export interface EmbedLaunchCreate {
+  parent_origin: string;
+  path?: string;
+}
+
+export interface EmbedLaunchRead {
+  expires_in: number;
+  url: string;
+}
+
 export interface ExceptionRead {
   created_at: string;
   decision_deadline: string | null;
@@ -1270,6 +1280,28 @@ export class DropboxImportApi {
   }
 }
 
+/** `embed` endpoints. */
+export class EmbedApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Create Launch.
+   *
+   * POST /api/v1/embed/launch
+   *
+   * A one-time link (good for a minute) that opens `path` in a frame on `parent_origin`
+   * as the person this call acts for. Only for an API client acting for someone: an
+   * exchanged token, OpenClear-Act-As or OpenClear-Act-As-Subject.
+   */
+  createLaunch(body: EmbedLaunchCreate): Promise<EmbedLaunchRead> {
+    return this.c.call<EmbedLaunchRead>("POST", `/api/v1/embed/launch`, { json: body });
+  }
+}
+
 /** `exceptions` endpoints. */
 export class ExceptionsApi {
   private readonly c: Transport;
@@ -1808,6 +1840,7 @@ export const AREAS = {
   decisionFeed: DecisionFeedApi,
   decisions: DecisionsApi,
   dropboxImport: DropboxImportApi,
+  embed: EmbedApi,
   exceptions: ExceptionsApi,
   fraudTraining: FraudTrainingApi,
   issuedItems: IssuedItemsApi,

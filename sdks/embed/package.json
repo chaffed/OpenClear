@@ -1,0 +1,18 @@
+{
+  "name": "@openclear/embed",
+  "version": "0.1.0",
+  "description": "Show OpenClear's positive pay pages inside a bank's online banking",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "src", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/"
+  },
+  "devDependencies": { "typescript": "^5.9.0", "@types/node": "^24.0.0" },
+  "repository": { "type": "git", "url": "https://github.com/chaffed/OpenClear.git", "directory": "sdks/embed" }
+}

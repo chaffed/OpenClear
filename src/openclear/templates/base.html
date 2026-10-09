@@ -15,10 +15,12 @@
   {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
-<body>
+{% set embedded = ctx and ctx.embed_parent_origin %}
+{% set embed_event = request.query_params.get("event") if embedded else none %}
+<body{% if embedded %} class="embedded" data-embed-parent="{{ ctx.embed_parent_origin }}"{% if embed_event in ("exception-decided", "exception-recommended") %} data-embed-event="{{ embed_event }}"{% endif %}{% endif %}>
   <a href="#main-content" class="skip-link">Skip to content</a>
   <div class="app-shell">
-    {% if ctx %}
+    {% if ctx and not embedded %}
     {% from "_macros/icon.html" import icon %}
     {% macro nav_link(href, label, icon_name, badge=0) %}
     <a href="{{ href }}" class="{{ 'active' if (request.url.path == href or request.url.path.startswith(href + '/')) else '' }}">{{ icon(icon_name) }}{{ label }}{% if badge %}<span class="nav-count" aria-label="{{ badge }} waiting">{{ badge }}</span>{% endif %}</a>
@@ -124,7 +126,7 @@
       </dialog>
       {% endif %}
       {% block content %}{% endblock %}
-      {% set contact = ctx if ctx else branding %}
+      {% set contact = ctx if ctx and not embedded else (none if embedded else branding) %}
       <footer class="app-footer">
         {% if contact and (contact.support_email or contact.support_phone or contact.website or contact.address_line1) %}
         <p>

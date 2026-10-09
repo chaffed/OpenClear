@@ -207,6 +207,36 @@ bank. PKCE is added as a fix ahead of this phase.
     Postgres.
   - Mifos itself comes in P2's reference integration.
 
+### P2 detail (embedded experience)
+
+- [x] **Sign-on handoff** (2026-10-09): the online banking server, acting for the
+      signed-in person, asks `POST /api/v1/embed/launch` for a single-use launch URL.
+  - It acts through token exchange (phase F) or act-as.
+  - The URL is good for 60 seconds and once (`embed_launch`, migration `f1b3d5f7a9c2`).
+  - It starts an embedded session for that person, with intersected permissions and the
+    frame's origin in the session (`emb` claim, kept through refresh).
+  - This avoids sending identity-provider redirects through an iframe, which many
+    providers block.
+- [x] **Embed mode:** the bank lists allowed origins (Settings → Embedding).
+  - An embedded session's pages drop the navigation.
+  - They're framed only by the session's origin, while the bank still lists it
+    (`frame-ancestors`). Ordinary sessions stay `'none'`/`DENY`.
+  - **Cookies:** `SameSite=None; Secure; Partitioned` over HTTPS. Partitioned is written
+    by hand, since Starlette needs Python 3.14 for it.
+  - **Ending:** an expired, signed-out or revoked embedded session lands on
+    `/ui/embed/ended`, the only page any site may frame. It tells the parent.
+- [x] **`@openclear/embed`** (`sdks/embed`, Apache-2.0, no dependencies):
+  - `mount()` sizes the frame and passes events (`navigated`, `exception-decided`,
+    `exception-recommended`, `session-ended`);
+  - it only trusts messages from the frame's own window and origin;
+  - `navigate()` relaunches.
+- [x] **Reference:**
+  - `docs/guides/embedding.md`, including mobile WebViews and Mifos specifics;
+  - `examples/embed-host` (a stand-in online banking page);
+  - SDKs gain `embed.create_launch` from the contract.
+- [ ] Reference plugins for Banno, Alkami and Q2: when a bank asks (X8). Mifos Mobile
+      integration code lives in Mifos; the guide covers the WebView flow it needs.
+
 ### P1 detail (SDKs)
 
 - [x] **Generator** (2026-10-08): `scripts/generate_sdks.py` turns the OpenAPI contract
@@ -355,3 +385,4 @@ bank. PKCE is added as a fix ahead of this phase.
   https://www.redhat.com/en/blog/moov-to-digital-banking-on-openshift
 - 2026-10-08 **P1 done** (branch `sdk-p1`): Python and TypeScript SDKs, generator, examples. Publishing to PyPI and npm from their own repositories waits on approval.
 - 2026-10-08 P1 merged into `main`. All three suites were green: SQLite 1338 passed, Postgres 1360, Linux 3.11 1331.
+- 2026-10-09 **P2 done** (branch `federation-f`, after F): embedded sessions from one-time launch links, origin-limited framing, partitioned cookies, `@openclear/embed`, embedding guide and example host.

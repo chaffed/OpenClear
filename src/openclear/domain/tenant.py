@@ -121,6 +121,9 @@ class Tenant(Base):
     # are enforced in Python, not the column type.
     login_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     banner_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Embedding (SDK_PLAN.md P2; services/embed_service.py): the https origins of the bank's
+    # online banking that may frame OpenClear's pages, one per line. Empty: no embedding.
+    embed_allowed_origins: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Billing (domain/billing.py, BILLING_PLAN.md). How customers with no billing terms of
     # their own are billed, and how the bank's own accounts (not assigned to a customer)
