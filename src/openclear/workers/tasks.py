@@ -258,8 +258,17 @@ def sweep_expired_dispositions_job() -> None:
     one bad row can't lose the rest of the batch, same isolation as notification_dispatch_job.
     auto_decide_exception() returning None means "leave it open, try again next sweep"
     (no model/score yet, or no configured ACH return reason) -- not a failure."""
+    from openclear.services import webhook_service
+
     session = get_session_factory()()
     try:
+        # First, warn about deadlines that are near (exception.deadline_approaching webhook).
+        try:
+            if warned := webhook_service.warn_deadlines_approaching(session):
+                logger.info("Deadline warnings sent for %d exceptions", warned)
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            session.rollback()
+            logger.exception("Deadline warnings failed")
         now = datetime.now(timezone.utc)
         rows = (
             session.execute(

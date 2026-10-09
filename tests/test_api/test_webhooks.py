@@ -172,3 +172,22 @@ def test_the_admin_pages(receiver, client, db_session, tenant_factory):
 
     bad = client.post("/ui/admin/webhooks", data={"csrf_token": csrf, "url": receiver.url})
     assert bad.status_code == 422 and "at least one event" in bad.text
+
+
+def test_deadline_approaching_is_announced_once(receiver, db_session, tenant_factory):
+    from datetime import datetime, timedelta, timezone
+
+    tenant, account, users = tenant_factory.make(slug="hooks-deadline")
+    webhook_service.create_endpoint(db_session, tenant.id, url=receiver.url, event_types=["exception.deadline_approaching"])
+    soon = _make_exception(db_session, tenant, account, users, "DL1", "100.00", "999.00")
+    later = _make_exception(db_session, tenant, account, users, "DL2", "100.00", "999.00")
+    now = datetime.now(timezone.utc)
+    soon.decision_deadline, later.decision_deadline = now + timedelta(hours=2), now + timedelta(hours=30)
+    db_session.commit()
+
+    assert webhook_service.warn_deadlines_approaching(db_session, now=now) == 1
+    assert webhook_service.warn_deadlines_approaching(db_session, now=now) == 0  # once
+    jobs.drain(db_session.get_bind())
+    [event] = [json.loads(r["body"]) for r in receiver.requests]
+    assert event["type"] == "exception.deadline_approaching" and event["data"]["exception_id"] == str(soon.id)
+    assert event["data"]["decision_deadline"].startswith(soon.decision_deadline.isoformat()[:16])

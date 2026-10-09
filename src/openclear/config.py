@@ -316,6 +316,9 @@ class Settings(BaseSettings):
     # has passed with no human decision, per a per-customer CustomerDispositionSetting.
     enable_disposition_scheduler: bool = False  # opt-in: off by default, same reasoning as enable_ml_scheduler
     disposition_sweep_interval_seconds: int = 300
+    # The exception.deadline_approaching webhook goes out this many hours before an open
+    # exception's decision deadline (checked by the same sweep).
+    webhook_deadline_warning_hours: int = 4
     # Decision outbox (services/decision_outbox_service.py, SDK_PLAN.md P3): writes each
     # bank's new decisions to a file on the bank's own schedule. This tick checks who's due.
     enable_decision_outbox_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler

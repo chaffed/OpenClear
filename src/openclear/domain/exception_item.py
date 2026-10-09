@@ -89,6 +89,9 @@ class ExceptionItem(Base):
     recommended_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
 
     decision_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the exception.deadline_approaching webhook went out (services/webhook_service.py
+    # warn_deadlines_approaching), so each exception is announced once.
+    deadline_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     source: Mapped[ExceptionItemSource] = mapped_column(

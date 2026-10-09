@@ -43,6 +43,7 @@ DELIVER_JOB_KIND = "webhook.deliver"
 
 EVENT_TYPES = {
     "exception.created": "A presented check or ACH debit raised an exception to review",
+    "exception.deadline_approaching": "An open exception's decision deadline is near (OPENCLEAR_WEBHOOK_DEADLINE_WARNING_HOURS)",
     "exception.decided": "An exception was decided, pay or return (it's in the decision feed)",
     "bulk_upload.completed": "A bulk upload finished importing (or failed)",
     "decision_batch.ready": "A decision file is ready in the outbox (services/decision_outbox_service.py)",
@@ -260,3 +261,29 @@ def deliver(session: Session, delivery_id: uuid.UUID) -> None:
         enqueue(session, DELIVER_JOB_KIND, tenant_id=delivery.tenant_id, payload={"delivery_id": str(delivery.id)},
                 run_after=delivery.next_attempt_at)
     session.flush()
+
+
+def warn_deadlines_approaching(session: Session, now: datetime | None = None) -> int:
+    """Sends exception.deadline_approaching once for each open exception whose decision
+    deadline is within webhook_deadline_warning_hours, and marks it. Across every bank, bound
+    to each exception's own. Returns how many were announced."""
+    from openclear.db.tenancy import bind_session_to_tenant
+    from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
+
+    now = now or datetime.now(timezone.utc)
+    horizon = now + timedelta(hours=get_settings().webhook_deadline_warning_hours)
+    rows = session.execute(select(ExceptionItem).where(
+        ExceptionItem.status.in_([ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL]),
+        ExceptionItem.decision_deadline.is_not(None), ExceptionItem.decision_deadline > now,
+        ExceptionItem.decision_deadline <= horizon, ExceptionItem.deadline_warned_at.is_(None),
+    )).scalars().all()
+    for exception in rows:
+        bind_session_to_tenant(session, exception.tenant_id)
+        deadline = exception.decision_deadline if exception.decision_deadline.tzinfo else exception.decision_deadline.replace(tzinfo=timezone.utc)
+        emit(session, exception.tenant_id, "exception.deadline_approaching", {
+            "exception_id": exception.id, "network": exception.network_code, "customer_id": exception.customer_id,
+            "decision_deadline": deadline.isoformat(),
+        })
+        exception.deadline_warned_at = now
+        session.commit()
+    return len(rows)

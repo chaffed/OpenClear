@@ -23,6 +23,14 @@
 - **Upgrading:** run `alembic upgrade head`. It adds the tenant columns `is_sandbox`,
   `sandbox_expires_at` and `sandbox_contact_email`, and the table `conformance_result`.
 
+### New: the `exception.deadline_approaching` webhook
+
+- **What it does:** sent once per open exception when its decision deadline is near. The
+  default is 4 hours before; change it with `OPENCLEAR_WEBHOOK_DEADLINE_WARNING_HOURS`.
+- **When it's checked:** by the disposition sweep.
+- **Upgrading:** run `alembic upgrade head`. It adds the column
+  `exception_item.deadline_warned_at`.
+
 ### New: decision files for cores (SDK_PLAN.md P3)
 
 - **Decision outbox:** turn it on under **Settings → Decision files**. OpenClear writes each

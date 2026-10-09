@@ -1062,6 +1062,33 @@ class CheckImagesApi:
         return self._c.call("POST", f"/api/v1/check-images/{_path(check_image_id)}/reprocess")
 
 
+class ConformanceApi:
+    """`conformance` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def integration_checklist(self) -> dict[str, Any]:
+        """Integration Checklist.
+
+        GET /api/v1/conformance
+
+        What this bank's integration has shown it does: each check `pass`, `todo` or `fail`,
+        and `certified` once every required one passes (docs/guides/certification.md).
+        """
+        return self._c.call("GET", "/api/v1/conformance")
+
+    def webhook_probe(self) -> dict[str, Any]:
+        """Webhook Probe.
+
+        POST /api/v1/conformance/webhook-probe
+
+        Sends the first webhook endpoint a signed test event (it should accept it) and a
+        forged one (it must reject it), and records the result.
+        """
+        return self._c.call("POST", "/api/v1/conformance/webhook-probe")
+
+
 class CustomersApi:
     """`customers` endpoints."""
 
@@ -1708,6 +1735,7 @@ AREAS = {
     "billing": BillingApi,
     "bulk_uploads": BulkUploadsApi,
     "check_images": CheckImagesApi,
+    "conformance": ConformanceApi,
     "customers": CustomersApi,
     "decision_batches": DecisionBatchesApi,
     "decision_feed": DecisionFeedApi,

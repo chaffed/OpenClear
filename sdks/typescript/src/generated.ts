@@ -1119,6 +1119,39 @@ export class CheckImagesApi {
   }
 }
 
+/** `conformance` endpoints. */
+export class ConformanceApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Integration Checklist.
+   *
+   * GET /api/v1/conformance
+   *
+   * What this bank's integration has shown it does: each check `pass`, `todo` or `fail`,
+   * and `certified` once every required one passes (docs/guides/certification.md).
+   */
+  integrationChecklist(): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/conformance`, {  });
+  }
+
+  /**
+   * Webhook Probe.
+   *
+   * POST /api/v1/conformance/webhook-probe
+   *
+   * Sends the first webhook endpoint a signed test event (it should accept it) and a
+   * forged one (it must reject it), and records the result.
+   */
+  webhookProbe(): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("POST", `/api/v1/conformance/webhook-probe`, {  });
+  }
+}
+
 /** `customers` endpoints. */
 export class CustomersApi {
   private readonly c: Transport;
@@ -1927,6 +1960,7 @@ export const AREAS = {
   billing: BillingApi,
   bulkUploads: BulkUploadsApi,
   checkImages: CheckImagesApi,
+  conformance: ConformanceApi,
   customers: CustomersApi,
   decisionBatches: DecisionBatchesApi,
   decisionFeed: DecisionFeedApi,

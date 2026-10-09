@@ -401,9 +401,9 @@ bank. PKCE is added as a fix ahead of this phase.
       Admin → Webhooks: endpoints, recent deliveries, test event, replay, rotate secret.
       SSRF-safe (public https, checked at connect time, no redirects;
       `webhook_allow_private_hosts` for single-bank installs). Events: `exception.created`,
-      `exception.decided`, `bulk_upload.completed`. **Not yet:**
-      `exception.deadline_approaching` (needs a "warned" marker per exception) and
-      `decision_batch.ready` (with the outbox in P3). Tests against a real local receiver,
+      `exception.decided`, `bulk_upload.completed`. `exception.deadline_approaching` added 2026-10-09 (once per exception, `deadline_warned_at`,
+      `OPENCLEAR_WEBHOOK_DEADLINE_WARNING_HOURS`, checked by the disposition sweep) and
+      `decision_batch.ready` with the outbox in P3. Tests against a real local receiver,
       including DNS rebinding and a delivery under RLS.
 - [x] Upserts (2026-10-09): `PUT /api/v1/customers/{customer_number}` and
       `PUT /api/v1/accounts/{account_number}`, with paged lists. Keyed by the bank's own

@@ -1113,6 +1113,37 @@ public sealed partial class CheckImagesApi
 }
 
 /// <summary>
+/// conformance endpoints.
+/// </summary>
+public sealed partial class ConformanceApi
+{
+    private readonly ITransport _c;
+    public ConformanceApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Integration Checklist.
+    ///
+    /// GET /api/v1/conformance
+    ///
+    /// What this bank's integration has shown it does: each check `pass`, `todo` or `fail`,
+    /// and `certified` once every required one passes (docs/guides/certification.md).
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> IntegrationChecklistAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/conformance", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Webhook Probe.
+    ///
+    /// POST /api/v1/conformance/webhook-probe
+    ///
+    /// Sends the first webhook endpoint a signed test event (it should accept it) and a
+    /// forged one (it must reject it), and records the result.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> WebhookProbeAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("POST", "/api/v1/conformance/webhook-probe", cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// customers endpoints.
 /// </summary>
 public sealed partial class CustomersApi
@@ -1848,6 +1879,7 @@ public partial class OpenClearClient
     public BillingApi Billing { get; private set; } = default!;
     public BulkUploadsApi BulkUploads { get; private set; } = default!;
     public CheckImagesApi CheckImages { get; private set; } = default!;
+    public ConformanceApi Conformance { get; private set; } = default!;
     public CustomersApi Customers { get; private set; } = default!;
     public DecisionBatchesApi DecisionBatches { get; private set; } = default!;
     public DecisionFeedApi DecisionFeed { get; private set; } = default!;
@@ -1875,6 +1907,7 @@ public partial class OpenClearClient
         Billing = new BillingApi(this);
         BulkUploads = new BulkUploadsApi(this);
         CheckImages = new CheckImagesApi(this);
+        Conformance = new ConformanceApi(this);
         Customers = new CustomersApi(this);
         DecisionBatches = new DecisionBatchesApi(this);
         DecisionFeed = new DecisionFeedApi(this);

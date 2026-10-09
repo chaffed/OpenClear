@@ -6377,6 +6377,64 @@
         ]
       }
     },
+    "/api/v1/conformance": {
+      "get": {
+        "description": "What this bank's integration has shown it does: each check `pass`, `todo` or `fail`,\nand `certified` once every required one passes (docs/guides/certification.md).",
+        "operationId": "integration_checklist_api_v1_conformance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Integration Checklist Api V1 Conformance Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Integration Checklist",
+        "tags": [
+          "conformance"
+        ]
+      }
+    },
+    "/api/v1/conformance/webhook-probe": {
+      "post": {
+        "description": "Sends the first webhook endpoint a signed test event (it should accept it) and a\nforged one (it must reject it), and records the result.",
+        "operationId": "webhook_probe_api_v1_conformance_webhook_probe_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Webhook Probe Api V1 Conformance Webhook Probe Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Webhook Probe",
+        "tags": [
+          "conformance"
+        ]
+      }
+    },
     "/api/v1/customers": {
       "get": {
         "description": "Oldest first, paged. Filter by the core's id with `external_customer_id`.",
