@@ -114,6 +114,31 @@ def clear_sso_state_cookie(response: Response) -> None:
     response.delete_cookie(SSO_STATE_COOKIE_NAME, path=SSO_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite="lax")
 
 
+SAML_STATE_COOKIE_NAME = "saml_state"
+SAML_STATE_COOKIE_PATH = "/ui/sso/saml"
+
+
+def _saml_samesite() -> str:
+    # The identity provider POSTs the answer from its own site, and a Lax cookie isn't sent
+    # with a cross-site POST. None requires Secure, which needs HTTPS; plain-HTTP local
+    # development falls back to Lax (fine when both run on localhost).
+    return "none" if _secure_cookies() else "lax"
+
+
+def set_saml_state_cookie(response: Response, token: str) -> None:
+    """A SAML sign-in in progress (web/routers/auth.py::_saml_start): the request ID, where to
+    go afterwards, and the RelayState it must come back with, signed. It binds the answer
+    to the browser that asked, so someone else's SAML response can't be slipped into it."""
+    response.set_cookie(
+        SAML_STATE_COOKIE_NAME, token, httponly=True, secure=_secure_cookies(), samesite=_saml_samesite(),
+        path=SAML_STATE_COOKIE_PATH, max_age=10 * 60,
+    )
+
+
+def clear_saml_state_cookie(response: Response) -> None:
+    response.delete_cookie(SAML_STATE_COOKIE_NAME, path=SAML_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite=_saml_samesite())
+
+
 # --- CSRF: double-submit cookie pattern ---
 #
 # The existing JSON API (Authorization header) is inherently CSRF-immune — a cross-site

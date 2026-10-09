@@ -313,15 +313,51 @@ one customer.</p>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
 <tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>Null = bank-wide connection.</td></tr>
-<tr><td>provider</td><td>String(20) enum</td><td>no</td><td></td><td><code>OKTA</code> or <code>AZURE_AD</code>.</td></tr>
+<tr><td>provider</td><td>String(20) enum</td><td>no</td><td></td><td><code>OKTA</code>, <code>AZURE_AD</code>, <code>PING</code>, <code>GOOGLE</code>, <code>KEYCLOAK</code> or <code>OTHER</code> (labels only).</td></tr>
+<tr><td>protocol</td><td>String(10) enum</td><td>no</td><td></td><td><code>OIDC</code> or <code>SAML</code>.</td></tr>
 <tr><td>display_name</td><td>String(255)</td><td>no</td><td></td><td>Shown as the "Sign in with ..." button label.</td></tr>
-<tr><td>issuer</td><td>String(500)</td><td>no</td><td></td><td>The IdP's OIDC issuer URL.</td></tr>
-<tr><td>client_id</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
-<tr><td>client_secret_encrypted</td><td>String(1000)</td><td>no</td><td></td><td>Encrypted at rest; never rendered back to the browser.</td></tr>
-<tr><td>groups_claim_name</td><td>String(100)</td><td>no</td><td></td><td>Which token claim carries the person's group/role membership.</td></tr>
+<tr><td>issuer</td><td>String(500)</td><td>no</td><td></td><td>OIDC: the IdP's issuer URL. SAML: the IdP's entity ID.</td></tr>
+<tr><td>client_id</td><td>String(255)</td><td>yes</td><td></td><td>OIDC only.</td></tr>
+<tr><td>client_secret_encrypted</td><td>String(1000)</td><td>yes</td><td></td><td>OIDC only. Encrypted at rest; never rendered back to the browser.</td></tr>
+<tr><td>groups_claim_name</td><td>String(100)</td><td>no</td><td></td><td>Which claim (OIDC) or attribute (SAML) carries the person's groups.</td></tr>
+<tr><td>saml_sso_url / saml_slo_url</td><td>String(1000)</td><td>yes</td><td></td><td>SAML: the IdP's sign-in and (optional) sign-out URLs.</td></tr>
+<tr><td>saml_idp_certificate</td><td>Text</td><td>yes</td><td></td><td>SAML: the IdP's signing certificate (PEM).</td></tr>
+<tr><td>saml_email_attribute</td><td>String(200)</td><td>yes</td><td></td><td>SAML: the attribute carrying the email; null means the NameID.</td></tr>
+<tr><td>saml_sp_certificate / saml_sp_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: OpenClear's own key pair for this connection, generated when it's created; the key is encrypted.</td></tr>
+<tr><td>allow_idp_initiated</td><td>Boolean</td><td>no</td><td></td><td>Accept sign-in started at the identity provider (SAML). Off by default.</td></tr>
 <tr><td>auto_provision</td><td>Boolean</td><td>no</td><td></td><td>Create a OpenClear account automatically on first sign-in.</td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at / updated_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>sso_identity</h3>
+<p>Who a person is at an identity provider: its own stable id for them (OIDC <code>sub</code>,
+SAML NameID), per connection, recorded at each sign-in. Used by sign-out from the identity
+provider and directory provisioning.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>connection_id</td><td>UUID</td><td>no</td><td>FK → sso_connection.id; UK (with subject)</td><td></td></tr>
+<tr><td>subject</td><td>String(500)</td><td>no</td><td></td><td>The provider's id for the person.</td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td></td></tr>
+<tr><td>created_at / last_login_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>sso_assertion_seen</h3>
+<p>SAML assertions (and logout tokens) already used, kept until they expire so one can't be
+replayed. Housekeeping removes expired rows.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>connection_id</td><td>UUID</td><td>no</td><td>FK → sso_connection.id; UK (with assertion_id)</td><td></td></tr>
+<tr><td>assertion_id</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
+<tr><td>expires_at</td><td>Timestamp</td><td>no</td><td>indexed</td><td></td></tr>
 </tbody>
 </table>
 

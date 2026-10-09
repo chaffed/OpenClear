@@ -31,6 +31,8 @@ dependencies = [
   "httpx>=0.27",
   "markdown>=3.7",
   "nh3>=0.2",
+  # SAML sign-on (auth/saml_service.py); xmlsec ships prebuilt wheels, no system packages.
+  "python3-saml>=1.16",
 ]
 
 [project.scripts]

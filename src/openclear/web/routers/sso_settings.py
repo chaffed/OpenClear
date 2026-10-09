@@ -2,6 +2,7 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
+from dataclasses import dataclass
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.outbound_http import UnsafeUrlError
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.sso_connection import SsoProvider
+from openclear.domain.sso_connection import SsoProtocol, SsoProvider
 from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, customer_service, security_group_service, sso_service
 from openclear.services.sso_service import SsoConnectionInput
@@ -21,20 +22,62 @@ from openclear.web.security import verify_csrf
 router = APIRouter(tags=["web-sso"])
 
 
-def _connection_input_from_form(
-    provider: SsoProvider, display_name: str, issuer: str, client_id: str, client_secret: str,
-    groups_claim_name: str, auto_provision: bool, customer_id: uuid.UUID | None,
-) -> SsoConnectionInput:
-    return SsoConnectionInput(
-        provider=provider,
-        display_name=display_name,
-        issuer=issuer,
-        client_id=client_id,
-        client_secret=client_secret or None,
-        groups_claim_name=groups_claim_name or "groups",
-        auto_provision=auto_provision,
-        customer_id=customer_id,
+@dataclass
+class SsoForm:
+    """The connection form's fields, OIDC and SAML (sso/form.html)."""
+
+    provider: SsoProvider
+    protocol: SsoProtocol
+    display_name: str
+    issuer: str
+    client_id: str
+    client_secret: str
+    groups_claim_name: str
+    auto_provision: bool
+    saml_sso_url: str
+    saml_slo_url: str
+    saml_idp_certificate: str
+    saml_email_attribute: str
+    allow_idp_initiated: bool
+
+    def to_input(self, customer_id: uuid.UUID | None) -> SsoConnectionInput:
+        return SsoConnectionInput(
+            provider=self.provider, protocol=self.protocol, display_name=self.display_name, issuer=self.issuer,
+            client_id=self.client_id or None, client_secret=self.client_secret or None,
+            groups_claim_name=self.groups_claim_name or "groups", auto_provision=self.auto_provision, customer_id=customer_id,
+            saml_sso_url=self.saml_sso_url, saml_slo_url=self.saml_slo_url, saml_idp_certificate=self.saml_idp_certificate,
+            saml_email_attribute=self.saml_email_attribute, allow_idp_initiated=self.allow_idp_initiated,
+        )
+
+
+def sso_form(
+    provider: SsoProvider = Form(...),
+    protocol: SsoProtocol = Form(SsoProtocol.OIDC),
+    display_name: str = Form(...),
+    issuer: str = Form(...),
+    client_id: str = Form(""),
+    client_secret: str = Form(""),
+    groups_claim_name: str = Form("groups"),
+    auto_provision: bool = Form(False),
+    saml_sso_url: str = Form(""),
+    saml_slo_url: str = Form(""),
+    saml_idp_certificate: str = Form(""),
+    saml_email_attribute: str = Form(""),
+    allow_idp_initiated: bool = Form(False),
+) -> SsoForm:
+    return SsoForm(
+        provider, protocol, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, saml_sso_url,
+        saml_slo_url, saml_idp_certificate, saml_email_attribute, allow_idp_initiated,
     )
+
+
+def _saml_urls(request: Request, connection) -> dict | None:
+    """What the bank gives its identity provider for a SAML connection."""
+    if connection.protocol != SsoProtocol.SAML:
+        return None
+    from openclear.auth import saml_service
+
+    return saml_service.sp_urls(saml_service.base_url(str(request.base_url)), connection)
 
 
 def _tenant_password_login_enabled(db: Session, tenant_id: uuid.UUID) -> bool:
@@ -71,18 +114,12 @@ def new_bank_connection_form(
 @router.post("/ui/admin/sso")
 def create_bank_connection(
     request: Request,
-    provider: SsoProvider = Form(...),
-    display_name: str = Form(...),
-    issuer: str = Form(...),
-    client_id: str = Form(...),
-    client_secret: str = Form(""),
-    groups_claim_name: str = Form("groups"),
-    auto_provision: bool = Form(False),
+    form: SsoForm = Depends(sso_form),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    data = _connection_input_from_form(provider, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, None)
+    data = form.to_input(None)
     try:
         connection = sso_service.create_connection(db, ctx.tenant_id, data)
     except ValueError as exc:
@@ -128,6 +165,7 @@ def edit_bank_connection_form(
     return render_template(
         request, "sso/form.html", ctx=ctx, back_path="/ui/admin/sso", connection=connection, mappings=mappings,
         groups=security_group_service.list_security_groups(db, ctx.tenant_id), providers=list(SsoProvider), error=None,
+        saml_urls=_saml_urls(request, connection),
     )
 
 
@@ -135,18 +173,12 @@ def edit_bank_connection_form(
 def update_bank_connection(
     request: Request,
     connection_id: uuid.UUID,
-    provider: SsoProvider = Form(...),
-    display_name: str = Form(...),
-    issuer: str = Form(...),
-    client_id: str = Form(...),
-    client_secret: str = Form(""),
-    groups_claim_name: str = Form("groups"),
-    auto_provision: bool = Form(False),
+    form: SsoForm = Depends(sso_form),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    data = _connection_input_from_form(provider, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, None)
+    data = form.to_input(None)
     try:
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except UnsafeUrlError as exc:
@@ -257,19 +289,13 @@ def new_customer_connection_form(
 def create_customer_connection(
     request: Request,
     customer_id: uuid.UUID,
-    provider: SsoProvider = Form(...),
-    display_name: str = Form(...),
-    issuer: str = Form(...),
-    client_id: str = Form(...),
-    client_secret: str = Form(""),
-    groups_claim_name: str = Form("groups"),
-    auto_provision: bool = Form(False),
+    form: SsoForm = Depends(sso_form),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("customer:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
     customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
-    data = _connection_input_from_form(provider, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, customer_id)
+    data = form.to_input(customer_id)
     try:
         connection = sso_service.create_connection(db, ctx.tenant_id, data)
     except ValueError as exc:
@@ -319,7 +345,7 @@ def edit_customer_connection_form(
     return render_template(
         request, "sso/form.html", ctx=ctx, back_path=f"/ui/customers/{customer_id}/sso", connection=connection,
         mappings=mappings, groups=security_group_service.list_security_groups(db, ctx.tenant_id),
-        providers=list(SsoProvider), error=None, customer=customer,
+        providers=list(SsoProvider), error=None, customer=customer, saml_urls=_saml_urls(request, connection),
     )
 
 
@@ -328,13 +354,7 @@ def update_customer_connection(
     request: Request,
     customer_id: uuid.UUID,
     connection_id: uuid.UUID,
-    provider: SsoProvider = Form(...),
-    display_name: str = Form(...),
-    issuer: str = Form(...),
-    client_id: str = Form(...),
-    client_secret: str = Form(""),
-    groups_claim_name: str = Form("groups"),
-    auto_provision: bool = Form(False),
+    form: SsoForm = Depends(sso_form),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("customer:manage")),
     _csrf: None = Depends(verify_csrf),
@@ -343,7 +363,7 @@ def update_customer_connection(
     existing = sso_service.get_connection(db, ctx.tenant_id, connection_id)
     if existing is None or existing.customer_id != customer_id:
         raise WebNotFound()
-    data = _connection_input_from_form(provider, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, customer_id)
+    data = form.to_input(customer_id)
     try:
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except UnsafeUrlError as exc:

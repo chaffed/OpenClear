@@ -25,6 +25,7 @@ from openclear.config import get_settings
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadRowResult
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
 from openclear.domain.idempotency_record import IdempotencyRecord
+from openclear.domain.sso_connection import SsoAssertionSeen
 from openclear.domain.job import Job, JobStatus
 from openclear.domain.notification import Notification, NotificationStatus
 
@@ -67,6 +68,12 @@ def run(session: Session) -> HousekeepingResult:
     if settings.idempotency_key_hours > 0:
         cutoff = session.execute(select(func.now())).scalar_one() - timedelta(hours=settings.idempotency_key_hours)
         result.deleted["idempotency_keys"] = _delete_in_batches(session, IdempotencyRecord, IdempotencyRecord.created_at < cutoff)
+
+    # Used SAML assertions are only kept until they'd have expired anyway (no setting:
+    # keeping them longer protects nothing).
+    now = session.execute(select(func.now())).scalar_one()
+    if expired := _delete_in_batches(session, SsoAssertionSeen, SsoAssertionSeen.expires_at < now):
+        result.deleted["sso_assertions"] = expired
 
     if cutoff := _cutoff(session, settings.retention_notifications_days):
         result.deleted["notifications"] = _delete_in_batches(

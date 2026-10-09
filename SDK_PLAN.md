@@ -147,17 +147,31 @@ providers (Okta, Azure AD, Ping, Keycloak, Google), with group-to-security-group
 mapping, optional provisioning on first sign-in, and password sign-in switchable off per
 bank. PKCE is added as a fix ahead of this phase.
 
-- [ ] **SAML 2.0** (`python3-saml`) as a second connection type beside OIDC: SP metadata
-      per connection, signed assertions required, optional encryption, the same group
-      mapping and provisioning rules, and the same per-bank and per-customer scoping.
+- [x] **SAML 2.0** (2026-10-08, branch `federation-f`; `auth/saml_service.py`,
+      `web/routers/saml.py`, migration `c8e0a2d4f6b8`): a second connection type beside
+      OIDC, with the same group mapping, provisioning and per-bank and per-customer scoping.
+  - SP metadata per connection, and a key pair generated per connection (requests
+    signed; encrypted assertions accepted).
+  - **What an assertion must be:** signed, SHA-256 or better, for our audience and ACS, and
+    within its validity window.
+  - **Matching answers to requests:** InResponseTo must match the request named in a signed
+    `SameSite=None` state cookie, whose RelayState must come back. That's because the
+    identity provider's POST is cross-site, and RelayState is limited to 80 bytes.
+  - Each assertion is accepted once (`sso_assertion_seen`).
+  - `sso_identity` records the provider's subject for each person.
+  - **Tests:** a simulated identity provider signs real assertions. Tampering, an unsigned
+    assertion, the wrong audience, expiry, someone else's request, an unsolicited answer,
+    a wrong RelayState and a replay are each refused for the right reason.
 - [ ] **SCIM 2.0** (`/scim/v2/Users`, `/Groups`) per connection, authenticated by a bearer
       token the bank's admin generates: create, update, and **deactivate** users from the
       bank's directory, with group membership mapped onto security groups. Deactivation
       ends the user's sessions.
 - [ ] **Back-channel logout** (OIDC Back-Channel Logout, and SAML single logout): signing
-      out at the identity provider ends the OpenClear session.
+      out at the identity provider ends the OpenClear session. **SAML single logout done**
+      with SAML (signed LogoutRequests only; it ends the person's sessions everywhere).
 - [ ] **IdP-initiated sign-in:** an OpenClear tile in Okta or Azure starts sign-in (OIDC
-      third-party initiated login; SAML IdP-initiated with replay protection).
+      third-party initiated login; SAML IdP-initiated with replay protection). **SAML done**
+      (opt-in per connection, each assertion accepted once, target page kept on-site).
 - [ ] **OBP sign-on profile** for a bank's business customers' users: the online banking
       provider is the identity provider, a user is matched to a customer by a claim, and
       the session is customer-scoped. Mifos (on Fineract) first. P2's embedded experience

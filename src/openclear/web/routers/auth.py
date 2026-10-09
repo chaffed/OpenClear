@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from openclear.auth import saml_service
 from openclear.auth.login_service import PasswordLoginOutcome, authenticate_password
 from openclear.auth.oidc_service import OidcError, build_authorization_url, exchange_code_for_claims, new_code_verifier
 from openclear.auth.security import (
@@ -30,6 +31,7 @@ from openclear.auth.webauthn_service import (
 from openclear.config import get_settings
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext, bind_session_to_tenant
+from openclear.domain.sso_connection import SsoProtocol
 from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 from openclear.schemas.webauthn import AuthenticationVerifyRequest, RegistrationVerifyRequest
@@ -47,9 +49,11 @@ from openclear.web.security import (
     ACCESS_COOKIE_NAME,
     clear_auth_cookies,
     clear_mfa_cookie,
+    clear_saml_state_cookie,
     clear_sso_state_cookie,
     safe_next_path,
     set_mfa_cookie,
+    set_saml_state_cookie,
     set_session_cookies,
     set_sso_state_cookie,
     verify_csrf,
@@ -345,6 +349,8 @@ def sso_start(
         raise WebNotFound()
 
     next_path = safe_next_path(next)
+    if connection.protocol == SsoProtocol.SAML:
+        return _saml_start(request, connection, tenant_id, next_path)
     nonce = secrets.token_urlsafe(24)
     state = secrets.token_urlsafe(24)
     code_verifier = new_code_verifier()
@@ -362,6 +368,24 @@ def sso_start(
     )
     response = RedirectResponse(authorization_url, status_code=303)
     set_sso_state_cookie(response, state_token)
+    return response
+
+
+def _saml_start(request: Request, connection, tenant_id: uuid.UUID, next_path: str) -> Response:
+    """SAML sign-in: a signed AuthnRequest to the identity provider. RelayState is a short
+    random key (SAML suggests at most 80 bytes); the request ID and where to go afterwards
+    travel in a signed cookie, which the RelayState must match when the answer comes back."""
+    relay_state = secrets.token_urlsafe(18)
+    try:
+        url, request_id = saml_service.login_redirect(connection, saml_service.base_url(str(request.base_url)), relay_state)
+    except saml_service.SamlError as exc:
+        logger.warning("SAML start failed for connection %s: %s", connection.id, exc)
+        return render_template(request, "auth/login.html", status_code=502, error=_SSO_FAILED_MESSAGE)
+    state_token = create_sso_state_token(
+        connection_id=connection.id, tenant_id=tenant_id, nonce=request_id, next_path=next_path, state=relay_state,
+    )
+    response = RedirectResponse(url, status_code=303)
+    set_saml_state_cookie(response, state_token)
     return response
 
 
@@ -412,12 +436,18 @@ def sso_callback(
         logger.warning("SSO callback failed for connection %s: %s", connection.id, exc)
         return _error_page(_SSO_FAILED_MESSAGE)
 
+    return finish_sso_login(request, db, tenant_id, connection, claims, state_claims.get("next_path"), _error_page)
+
+
+def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connection, claims, next_path: str | None, error_page) -> Response:
+    """The end of every federated sign-in (OIDC here, SAML in web/routers/saml.py): map the
+    person's groups, record the login, and start the session."""
     result = sso_service.complete_sso_login(db, tenant_id, connection, claims)
     if result.outcome == "not_authorized":
         db.commit()
-        return _error_page(_NOT_AUTHORIZED_MESSAGE)
+        return error_page(_NOT_AUTHORIZED_MESSAGE)
     if result.outcome == "not_provisioned":
-        return _error_page(_NOT_PROVISIONED_MESSAGE)
+        return error_page(_NOT_PROVISIONED_MESSAGE)
 
     user, membership = result.user, result.membership
     user_service.record_login(db, user.id)
@@ -433,7 +463,6 @@ def sso_callback(
     )
     db.commit()
 
-    next_path = safe_next_path(state_claims.get("next_path"))
     login_tenant = db.get(Tenant, tenant_id)
     tokens = create_session_tokens(
         user_id=user.id,
@@ -444,9 +473,10 @@ def sso_callback(
         access_token_expire_minutes=login_tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=login_tenant.refresh_token_expire_minutes,
     )
-    response = RedirectResponse(next_path, status_code=303)
+    response = RedirectResponse(safe_next_path(next_path), status_code=303)
     set_session_cookies(response, tokens)
     clear_sso_state_cookie(response)
+    clear_saml_state_cookie(response)
     return response
 
 

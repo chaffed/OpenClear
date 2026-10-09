@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### New: SAML 2.0 sign-on (SDK_PLAN.md phase F)
+
+- **SAML connections:** a bank, or one of its business customers, can sign in through a
+  SAML 2.0 identity provider (ADFS, Okta, Entra ID, Ping, Shibboleth, ...) as well as OIDC.
+  It uses the same group mapping, provisioning and "require SSO" rules.
+- **Setting one up:** enter the identity provider's entity ID, sign-in URL and signing
+  certificate. The connection page then shows OpenClear's entity ID, reply (ACS) URL and
+  metadata URL for the identity provider.
+- **Security:**
+  - OpenClear signs its requests with a key pair generated for each connection.
+  - Assertions must be signed with SHA-256 or better, addressed to OpenClear, and within
+    their validity window.
+  - Each assertion is accepted once.
+  - An answer must match the request that this browser started.
+- **Sign-in started at the identity provider:** for example, an OpenClear tile in Okta.
+  It's off unless the bank turns it on for the connection.
+- **Single logout:** a signed logout request from the identity provider ends the person's
+  OpenClear sessions.
+- **Upgrading:**
+  - Run `alembic upgrade head`. It adds new SAML columns to `sso_connection`, makes
+    `client_id` and `client_secret_encrypted` optional, and adds the tables `sso_identity`
+    and `sso_assertion_seen`.
+  - New dependency: `python3-saml`. Its `xmlsec` dependency has prebuilt wheels, so no
+    system packages are needed.
+
 ### New: plugin matching rules, scoring features and notification channels (PLUGIN_PLAN.md PL3)
 
 - **Matching rules:** a plugin can add checks to check and ACH matching, and each bank

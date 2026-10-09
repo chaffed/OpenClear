@@ -5,12 +5,14 @@
 {% block title %}{{ "Edit" if connection else "Add" }} SSO connection — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this form{% endblock %}
 {% block help_body %}
-<p>Both Okta and Azure AD are OIDC-compliant, so the same form works for either —
+<p><strong>OIDC</strong> works with Okta, Azure AD (Entra ID), Ping, Google and Keycloak.
   "Issuer URL" is the identity provider's OIDC issuer (Okta: your authorization server's
-  issuer URL; Azure AD: <code>https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0</code>).
-  "Groups/roles claim name" is which claim in the sign-in token carries the person's
-  group/role membership — you'll need to configure your IdP to include one (an Okta
-  Authorization Server claim, or an Azure AD App Role / groups claim).</p>
+  issuer URL; Azure AD: <code>https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0</code>).</p>
+<p><strong>SAML 2.0</strong>: enter the identity provider's entity ID, sign-in URL and signing
+  certificate (all in its metadata). Once saved, this page shows the entity ID, reply (ACS)
+  URL and metadata URL to give your identity provider. Assertions must be signed.</p>
+<p>"Groups claim / attribute" is which claim (OIDC) or attribute (SAML) carries the person's
+  groups — configure your identity provider to send one.</p>
 <p>A connection refuses every login until at least one group mapping exists below —
   the federated org's own current group membership always governs access; there's no
   "anyone who can sign in gets access" mode.</p>
@@ -21,21 +23,33 @@
   {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
   <form method="post" action="{{ action }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% set protocol = connection.protocol.value if connection else "oidc" %}
+    <label>Protocol
+      {% if connection %}
+      <input type="hidden" name="protocol" value="{{ protocol }}"><strong>{{ "SAML 2.0" if protocol == "saml" else "OpenID Connect" }}</strong>
+      {% else %}
+      <select name="protocol" required data-toggle-protocol>
+        <option value="oidc">OpenID Connect</option>
+        <option value="saml">SAML 2.0</option>
+      </select>
+      {% endif %}
+    </label>
     <label>Provider
       <select name="provider" required>
         {% for p in providers %}
-        <option value="{{ p.value }}" {{ "selected" if connection and connection.provider == p else "" }}>{{ "Okta" if p.value == "okta" else "Azure AD" }}</option>
+        <option value="{{ p.value }}" {{ "selected" if connection and connection.provider == p else "" }}>{{ {"okta": "Okta", "azure_ad": "Azure AD (Entra ID)", "ping": "Ping Identity", "google": "Google", "keycloak": "Keycloak", "other": "Other"}[p.value] }}</option>
         {% endfor %}
       </select>
     </label>
     <label>Display name
       <input type="text" name="display_name" value="{{ connection.display_name if connection else '' }}" required placeholder="e.g. Acme Bank Okta">
     </label>
+    <fieldset data-protocol="oidc" {% if protocol != "oidc" %}hidden disabled{% endif %}>
     <label>Issuer URL
       <input type="url" name="issuer" value="{{ connection.issuer if connection else '' }}" required placeholder="https://your-domain.okta.com">
     </label>
     <label>Client ID
-      <input type="text" name="client_id" value="{{ connection.client_id if connection else '' }}" required>
+      <input type="text" name="client_id" value="{{ (connection.client_id or '') if connection else '' }}" required>
     </label>
     <label>Client secret
       {% if connection %}
@@ -44,7 +58,29 @@
       <input type="password" name="client_secret" required>
       {% endif %}
     </label>
-    <label>Groups/roles claim name
+    </fieldset>
+    <fieldset data-protocol="saml" {% if protocol != "saml" %}hidden disabled{% endif %}>
+      <label>Identity provider entity ID
+        <input type="text" name="issuer" value="{{ connection.issuer if connection else '' }}" required placeholder="http://www.okta.com/exk...">
+      </label>
+      <label>Sign-in URL (SSO, HTTP-Redirect)
+        <input type="url" name="saml_sso_url" value="{{ (connection.saml_sso_url or '') if connection else '' }}" required placeholder="https://idp.example.com/sso/saml">
+      </label>
+      <label>Sign-out URL (SLO, optional)
+        <input type="url" name="saml_slo_url" value="{{ (connection.saml_slo_url or '') if connection else '' }}">
+      </label>
+      <label>Signing certificate (PEM)
+        <textarea name="saml_idp_certificate" rows="6" required placeholder="-----BEGIN CERTIFICATE-----">{{ (connection.saml_idp_certificate or '') if connection else '' }}</textarea>
+      </label>
+      <label>Email attribute (blank: the NameID)
+        <input type="text" name="saml_email_attribute" value="{{ (connection.saml_email_attribute or '') if connection else '' }}" placeholder="e.g. email">
+      </label>
+      <label>
+        <input type="checkbox" name="allow_idp_initiated" value="true" {{ "checked" if connection and connection.allow_idp_initiated else "" }}>
+        Allow sign-in started at the identity provider (an OpenClear tile in its portal)
+      </label>
+    </fieldset>
+    <label>Groups claim / attribute name
       <input type="text" name="groups_claim_name" value="{{ connection.groups_claim_name if connection else 'groups' }}" required>
     </label>
     <label>
@@ -55,6 +91,18 @@
   </form>
   <p><a href="{{ back_path }}">Cancel</a></p>
 </div>
+
+{% if saml_urls %}
+<div class="card">
+  <h1>For your identity provider</h1>
+  <p>Set these up in your identity provider's SAML application, or give it the metadata URL.</p>
+  <dl>
+    <dt>Entity ID (audience) and metadata URL</dt><dd><code>{{ saml_urls.entity_id }}</code></dd>
+    <dt>Reply URL (Assertion Consumer Service, HTTP-POST)</dt><dd><code>{{ saml_urls.acs }}</code></dd>
+    <dt>Single logout URL (HTTP-Redirect)</dt><dd><code>{{ saml_urls.slo }}</code></dd>
+  </dl>
+</div>
+{% endif %}
 
 {% if connection %}
 <div class="card">

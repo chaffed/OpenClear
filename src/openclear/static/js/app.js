@@ -257,3 +257,18 @@ function initSortableTables() {
     });
   });
 }
+
+// SSO connection form (sso/form.html): show the fields for the chosen protocol. The hidden
+// fieldset is also disabled, so its required fields don't block submitting the other one.
+document.querySelectorAll("select[data-toggle-protocol]").forEach((select) => {
+  const form = select.closest("form");
+  const show = () => {
+    form.querySelectorAll("fieldset[data-protocol]").forEach((fieldset) => {
+      const active = fieldset.dataset.protocol === select.value;
+      fieldset.hidden = !active;
+      fieldset.disabled = !active;
+    });
+  };
+  select.addEventListener("change", show);
+  show();
+});
