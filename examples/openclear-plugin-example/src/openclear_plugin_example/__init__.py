@@ -1,22 +1,36 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""An example OpenClear plugin (docs/PLUGINS.md): a fixed-width paid-items import format and
-a fixed-width decision file. Import only from openclear.plugins.api, which stays stable
-within a plugin API version."""
+"""An example OpenClear plugin (docs/PLUGINS.md), with one of each kind of extension a bank
+chooses:
 
+- a fixed-width paid-items import format and a fixed-width decision file;
+- a matching rule: a large check for a round amount is an exception;
+- a scoring feature: whether a check's amount is a round number;
+- a notification channel that records what it's sent (a real one would post to a chat tool).
+
+Import only from openclear.plugins.api, which stays stable within a plugin API version."""
+
+import logging
 from decimal import Decimal, InvalidOperation
 
 from openclear.plugins.api import (
     BulkFileRejected,
     BulkUploadKind,
+    ConfigField,
     DecisionLayout,
     ImportSpec,
     LoadedFile,
+    MatchingRule,
+    NotificationChannel,
+    ScoringFeature,
     SourceRow,
     builtin_import_format,
     read_stored_file,
+    source_item,
 )
+
+logger = logging.getLogger(__name__)
 
 # Presented checks, one per line:
 #   columns  1-17  account number (left-aligned, space-padded)
@@ -66,6 +80,30 @@ def _decision_file(feed: list[dict]) -> bytes:
     return ("\n".join(lines) + "\n").encode("ascii", "replace") if lines else b""
 
 
+LARGE_ROUND_AMOUNT = Decimal("10000")
+
+
+def _large_round_amount(session, paid_item) -> list[str]:
+    """Round-thousand checks of $10,000 or more: a pattern in altered and counterfeit checks."""
+    amount = Decimal(paid_item.presented_amount)
+    return ["large_round_amount"] if amount >= LARGE_ROUND_AMOUNT and amount % 1000 == 0 else []
+
+
+def _round_amount_feature(session, exception_item) -> dict:
+    paid_item = source_item(session, exception_item)
+    amount = Decimal(paid_item.presented_amount) if paid_item else Decimal(0)
+    return {"round_dollars": amount % 1 == 0, "round_thousands": amount % 1000 == 0}
+
+
+# What the example channel was asked to send, for tests; a real channel would post it.
+SENT: list[tuple[dict, dict]] = []
+
+
+def _record(event: dict, config: dict) -> None:
+    SENT.append((event, config))
+    logger.info("%s %s: %s", config.get("prefix", ""), event["type"], event.get("link") or event["data"])
+
+
 class _Plugin:
     name = "example"
     version = "0.1.0"
@@ -83,6 +121,15 @@ class _Plugin:
         registry.add_decision_layout(
             "example_fixed_width", DecisionLayout("Example fixed-width", "text/plain", "txt", _decision_file),
         )
+        registry.add_matching_rule(MatchingRule(
+            "example_large_round_amount", "check", {"large_round_amount": "Large round-amount check"}, _large_round_amount,
+        ))
+        registry.add_scoring_feature(ScoringFeature("example_round_amount", "check", _round_amount_feature))
+        registry.add_notification_channel(NotificationChannel(
+            "example_log", "Example log channel", _record,
+            config_fields=(ConfigField("prefix", "Message prefix"), ConfigField("token", "Access token", secret=True, required=False)),
+            events=("exception.created", "exception.decided"),
+        ))
 
 
 plugin = _Plugin()

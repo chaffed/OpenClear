@@ -20,6 +20,7 @@ SCAN_BANK_DROPBOX = "dropbox.scan_bank"
 RETRAIN_MODEL_SLOT = "ml.retrain_slot"
 IMPORT_BULK_UPLOAD = "bulk_upload.import"  # services/bulk_import_service.IMPORT_JOB_KIND
 DELIVER_WEBHOOK = "webhook.deliver"  # services/webhook_service.DELIVER_JOB_KIND
+NOTIFY_PLUGIN_CHANNEL = "plugin.notify"  # services/plugin_service.NOTIFY_JOB_KIND
 
 
 @handler(OCR_CHECK_IMAGE)
@@ -43,6 +44,13 @@ def _deliver_webhook(session: Session, job: Job) -> None:
     from openclear.services import webhook_service
 
     webhook_service.deliver(session, uuid.UUID(job.payload["delivery_id"]))
+
+
+@handler(NOTIFY_PLUGIN_CHANNEL)
+def _notify_plugin_channel(session: Session, job: Job) -> None:
+    from openclear.services import plugin_service
+
+    plugin_service.deliver_channel_event(session, job.tenant_id, job.payload["channel"], job.payload["event"])
 
 
 @handler(RUN_DATA_EXPORT)

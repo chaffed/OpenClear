@@ -49,13 +49,16 @@ ENTRY_POINT_GROUP = "openclear.plugins"
 
 EXTENSION_POINTS = (
     "networks", "ocr_providers", "email_providers", "sms_providers", "storage_backends", "scoring_models", "import_formats",
-    "decision_layouts",
+    "decision_layouts", "matching_rules", "scoring_features", "notification_channels",
 )
 BUILTIN_NAME = "openclear"
 # Extension points where using a plugin's entry is each bank's choice: a bank admin turns it
 # on under Admin → Plugins (services/plugin_service.py). The rest are the operator's choice,
 # made in configuration. Built-in entries are always on.
-BANK_CHOICE_POINTS = ("import_formats", "decision_layouts")
+BANK_CHOICE_POINTS = ("import_formats", "decision_layouts", "matching_rules", "notification_channels")
+# Exception codes a matching rule plugin may not claim: the built-in rules' own, and the one
+# a failing plugin rule raises (services/plugin_service.RULE_FAILED).
+RESERVED_EXCEPTION_CODES = {"plugin_rule_failed"}
 
 
 class PluginError(Exception):
@@ -86,9 +89,14 @@ class Registry:
         self.scoring_models: dict[str, Callable[[], Any]] = {}
         self.import_formats: dict[tuple[Any, str], Any] = {}
         self.decision_layouts: dict[str, Any] = {}
+        self.matching_rules: dict[str, Any] = {}
+        self.scoring_features: dict[str, Any] = {}
+        self.notification_channels: dict[str, Any] = {}
+        self.exception_type_labels: dict[str, str] = {}  # codes plugin rules add, and their names
         self.origins: dict[tuple[str, Any], str] = {}  # (point, key) -> the plugin that registered it
         self._current: PluginInfo | None = None
         self._added: list[tuple[str, Any]] = []
+        self._added_labels: list[str] = []
         self._networks_pending: list[Any] = []
 
     def _add(self, point: str, key, value) -> None:
@@ -130,11 +138,39 @@ class Registry:
         from the feed, the file's bytes."""
         self._add("decision_layouts", name, layout)
 
+    def add_matching_rule(self, rule) -> None:
+        """An extra check run after a network's own rules (plugins/api.py MatchingRule). It can
+        only add exception types, never clear one, so it can't let through an item the
+        built-in rules flagged."""
+        taken = _builtin_exception_codes() | RESERVED_EXCEPTION_CODES | set(self.exception_type_labels)
+        clash = sorted(set(rule.exception_types) & taken)
+        if clash:
+            raise PluginError(f"exception types already defined: {', '.join(clash)}")
+        self._add("matching_rules", rule.name, rule)
+        self.exception_type_labels.update(rule.exception_types)
+        self._added_labels.extend(rule.exception_types)
+
+    def add_scoring_feature(self, feature) -> None:
+        """Extra inputs to the fraud model for one network (plugins/api.py ScoringFeature)."""
+        self._add("scoring_features", feature.name, feature)
+
+    def add_notification_channel(self, channel) -> None:
+        """Somewhere a bank's events can be sent, such as a chat tool (plugins/api.py
+        NotificationChannel). Each bank turns it on and fills in its settings."""
+        self._add("notification_channels", channel.name, channel)
+
 
 registry = Registry()
 _status: list[PluginInfo] = []
 _loaded = False
 _lock = threading.Lock()
+
+
+def _builtin_exception_codes() -> set[str]:
+    from openclear.networks.ach.types import AchExceptionType
+    from openclear.networks.check.types import CheckExceptionType
+
+    return {e.value for e in CheckExceptionType} | {e.value for e in AchExceptionType}
 
 
 def label(key) -> str:
@@ -163,7 +199,7 @@ def _register(plugin, source: str) -> PluginInfo:
         return info
     from openclear.networks.registry import register_adapter
 
-    registry._current, registry._added, registry._networks_pending = info, [], []
+    registry._current, registry._added, registry._networks_pending, registry._added_labels = info, [], [], []
     try:
         plugin.register(registry)
     except Exception as exc:  # noqa: BLE001 -- a broken plugin is reported, not fatal
@@ -171,12 +207,14 @@ def _register(plugin, source: str) -> PluginInfo:
         for point, key in registry._added:
             getattr(registry, point).pop(key, None)
             registry.origins.pop((point, key), None)
+        for code in registry._added_labels:
+            registry.exception_type_labels.pop(code, None)
         logger.exception("Plugin %s failed to register", info.name)
     else:
         for adapter in registry._networks_pending:
             register_adapter(adapter)
     finally:
-        registry._current, registry._added, registry._networks_pending = None, [], []
+        registry._current, registry._added, registry._networks_pending, registry._added_labels = None, [], [], []
     return info
 
 
@@ -235,6 +273,21 @@ def bank_choices() -> list[dict]:
         for key in getattr(registry, point)
         if registry.origins.get((point, key)) != BUILTIN_NAME
     ]
+
+
+def registry_rules(network_code: str) -> list:
+    load()
+    return [r for r in registry.matching_rules.values() if r.network == network_code]
+
+
+def registry_features(network_code: str) -> list:
+    load()
+    return [f for f in registry.scoring_features.values() if f.network == network_code]
+
+
+def registry_has(point: str) -> bool:
+    load()
+    return bool(getattr(registry, point))
 
 
 def lookup(point: str, key, *, what: str):

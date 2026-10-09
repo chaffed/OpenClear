@@ -780,16 +780,17 @@ processed.</p>
 </table>
 
 <h3>tenant_extension</h3>
-<p>A plugin's import format or decision file layout that an organization has turned on
-(Admin → Plugins). OpenClear's own are always on and need no row.</p>
+<p>A plugin's import format, decision file layout, matching rule or notification channel
+that an organization has turned on (Admin → Plugins). OpenClear's own are always on and need no row.</p>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>point</td><td>String(40)</td><td>no</td><td>UK (with tenant_id, name)</td><td><code>import_formats</code> or <code>decision_layouts</code>.</td></tr>
+<tr><td>point</td><td>String(40)</td><td>no</td><td>UK (with tenant_id, name)</td><td><code>import_formats</code>, <code>decision_layouts</code>, <code>matching_rules</code> or <code>notification_channels</code>.</td></tr>
 <tr><td>name</td><td>String(200)</td><td>no</td><td></td><td>The entry's name, e.g. <code>paid_items/example_fixed_width</code>. Kept if the plugin is removed, and in force again if it's reinstalled.</td></tr>
 <tr><td>enabled_by_user_id / enabled_at</td><td>UUID / Timestamp</td><td>varies</td><td>FK → user.id</td><td></td></tr>
+<tr><td>config_encrypted</td><td>Text</td><td>yes</td><td></td><td>A notification channel's settings for this organization, JSON, encrypted.</td></tr>
 </tbody>
 </table>
 

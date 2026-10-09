@@ -130,3 +130,11 @@ the core adapters will be plugins.
     - dropbox inboxes for plugin formats;
     - a scheduled decision-file outbox, which is SDK P3.
 - 2026-10-08 PL1 and PL2 merged into `main`. All three suites were green: SQLite 1325 passed, Postgres 1347, Linux 3.11 1319.
+- 2026-10-08 **PL3 done** (branch `plugins-pl3`).
+  - **Matching rules** are chosen per bank. A rule can only add exception codes, declared with the names people see, and can't claim a code that's built in or another plugin's. Each rule runs in a savepoint after the network's own rules. A rule that fails (it raises, or returns a code it didn't declare) raises `plugin_rule_failed` instead, so the item goes to a person. This is P-D5.
+  - **Scoring features** are the operator's choice and apply to every bank, because they feed the shared model. They reach the model as `plugin:<name>:<key>`. A failing feature is skipped.
+  - **Notification channels** are chosen per bank, with settings stored encrypted (`tenant_extension.config_encrypted`, migration `b7d9f1c3e5a7`). Channels get the webhook events and run as retried jobs.
+  - `plugins.api` gains `source_item`, `apply_matching_rules` and `extra_features`, for network plugins.
+  - The example plugin has one of each.
+  - PL4 (UI extension slots) waits for a real plugin that needs one, as the plan says.
+

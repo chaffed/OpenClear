@@ -512,7 +512,7 @@ A plugin is checked in several ways:
 - Registration is all-or-nothing. A plugin adds to a staging copy of the registry, and the copy replaces the live one only if `register()` succeeds. A plugin that raises, or claims a name that's already taken, leaves nothing behind and is marked `failed`.
 - `plugins.status()` feeds Admin → Plugins.
 
-Some extension points are a bank's choice rather than the operator's: import formats and decision layouts (`BANK_CHOICE_POINTS`).
+Some extension points are a bank's choice rather than the operator's (`BANK_CHOICE_POINTS`): import formats, decision layouts, matching rules and notification channels. Scoring features aren't a bank's choice: they feed the shared model, so they apply to every bank.
 
 - `registry.origins` records which plugin registered each entry.
 - A plugin's entry is usable by a bank only if the bank has a `tenant_extension` row for it.
@@ -523,7 +523,18 @@ Some extension points are a bank's choice rather than the operator's: import for
 
 The phases are in PLUGIN_PLAN.md:
 
-- PL3 adds matching rules, scoring features and notification channels.
+- PL3 added matching rules, scoring features and notification channels.
+
+Where the PL3 extension points run:
+
+- **Matching rules:** in `CheckAdapter`/`AchAdapter.evaluate`, through `plugin_service.apply_matching_rules`.
+  - Each rule runs in a savepoint.
+  - A rule can only add exception codes.
+  - A rule that fails adds `plugin_rule_failed`, so the item fails closed.
+- **Scoring features:** in `build_features`, through `plugin_service.extra_features`.
+- **Notification channels:** `webhook_service.emit` queues a `plugin.notify` job per channel the bank turned on.
+
+A network plugin calls the same helpers from `plugins.api`.
 
 ## Data growth
 

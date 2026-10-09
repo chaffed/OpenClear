@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### New: plugin matching rules, scoring features and notification channels (PLUGIN_PLAN.md PL3)
+
+- **Matching rules:** a plugin can add checks to check and ACH matching, and each bank
+  chooses which ones it uses under Admin → Plugins.
+  - A rule can only **add** exceptions, never clear one.
+  - A rule that fails flags the item ("A plugin's check failed (review by hand)") rather
+    than letting it through.
+- **Scoring features:** a plugin can add inputs to the fraud model. They apply to every
+  bank, because the shared model is trained on all of them.
+- **Notification channels:** a plugin can send a bank's events somewhere else, such as a
+  chat tool. Each bank turns a channel on and fills in its settings; secrets are stored
+  encrypted and never shown again. A channel gets the same events as webhooks, retried
+  if sending fails.
+- **Example and guide:** the example plugin has one of each, and
+  [docs/PLUGINS.md](docs/PLUGINS.md) covers them.
+- **Upgrading:** run `alembic upgrade head`. It adds the column
+  `tenant_extension.config_encrypted`.
+
 ### New: Python and TypeScript SDKs (SDK_PLAN.md P1)
 
 - **Two client libraries:** `sdks/python` (`openclear-sdk`, Python 3.11+, depends only on

@@ -88,12 +88,17 @@ _EXCEPTION_TYPE_LABELS = {
     "amount_exceeds_limit": "Over authorized amount",
     "frequency_exceeded": "Over authorized frequency",
     "sec_code_not_permitted": "SEC code not authorized",
+    "plugin_rule_failed": "A plugin's check failed (review by hand)",
 }
 
 
 def _exception_type_label(code: str) -> str:
     code = (code or "").strip()
-    return _EXCEPTION_TYPE_LABELS.get(code, code.replace("_", " ").capitalize())
+    if code in _EXCEPTION_TYPE_LABELS:
+        return _EXCEPTION_TYPE_LABELS[code]
+    from openclear import plugins  # codes matching-rule plugins add, with the names they gave
+
+    return plugins.registry.exception_type_labels.get(code, code.replace("_", " ").capitalize())
 
 
 def _exception_type_labels(codes: str | None) -> str:

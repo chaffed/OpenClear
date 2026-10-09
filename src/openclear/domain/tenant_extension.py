@@ -4,14 +4,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
 
 
 class TenantExtension(Base):
-    """A plugin's import format or decision layout a bank has turned on (PLUGIN_PLAN.md PL2;
+    """A plugin's import format, decision layout, matching rule or notification channel a
+    bank has turned on (PLUGIN_PLAN.md PL2, PL3;
     services/plugin_service.py). Built-in ones need no row; they're always on. Stored by
     the entry's label ("paid_items/fiserv_fixed"), so a row outlives the plugin being
     removed and comes back into force if it's reinstalled."""
@@ -25,3 +26,6 @@ class TenantExtension(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     enabled_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     enabled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # A notification channel's settings (a chat webhook URL, say), JSON encrypted with
+    # auth/crypto.py since they're often credentials.
+    config_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)

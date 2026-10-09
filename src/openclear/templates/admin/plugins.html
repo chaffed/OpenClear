@@ -6,8 +6,11 @@
 <p>Plugins add to what OpenClear can do: another payment network, a file format your core
   sends, a decision file your core takes back, an OCR or storage service. Whoever runs your
   OpenClear installation installs and allows them.</p>
-<p>A plugin's import formats and decision file layouts are off for your organization until
-  you turn them on here. OpenClear's own are always on.</p>
+<p>A plugin's import formats, decision file layouts, matching rules and notification
+  channels are off for your organization until you turn them on here. OpenClear's own are
+  always on.</p>
+<p>A matching rule can only add exceptions, never clear one. If a rule fails, the item is
+  flagged for review rather than let through.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -42,6 +45,31 @@
         <td><code>{{ c.label }}</code></td>
         <td>{{ c.plugin }}</td>
         <td>
+          {% if c.config_fields %}
+          {% if c.enabled %}<span class="badge badge-ok">on</span>{% endif %}
+          <form method="post" action="/ui/admin/plugins/choices">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="point" value="{{ c.point }}">
+            <input type="hidden" name="name" value="{{ c.label }}">
+            <input type="hidden" name="enabled" value="true">
+            {% for f in c.config_fields %}
+            <label>{{ f.label }}
+              <input type="{{ 'password' if f.secret else 'text' }}" name="config_{{ f.name }}" value="{{ c.config.get(f.name, '') }}"
+                     {% if f.required and not (f.secret and c.enabled) %}required{% endif %} autocomplete="off"
+                     {% if f.secret and c.enabled %}placeholder="Saved; leave blank to keep it"{% endif %}>
+            </label>
+            {% endfor %}
+            <button type="submit">{{ icon("save") if c.enabled else icon("check_circle") }}{{ "Save" if c.enabled else "Turn on" }}</button>
+          </form>
+          {% if c.enabled %}
+          <form method="post" action="/ui/admin/plugins/choices" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="point" value="{{ c.point }}">
+            <input type="hidden" name="name" value="{{ c.label }}">
+            <button type="submit" class="secondary">{{ icon("block") }}Turn off</button>
+          </form>
+          {% endif %}
+          {% else %}
           <form method="post" action="/ui/admin/plugins/choices" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="point" value="{{ c.point }}">
@@ -54,6 +82,7 @@
             <button type="submit">{{ icon("check_circle") }}Turn on</button>
             {% endif %}
           </form>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -62,7 +91,7 @@
   <p>Upload files in a plugin's format from <a href="/ui/bulk-uploads/new">Bulk uploads → Other formats</a>.
     Decision files: <code>GET /api/v1/decisions/file?layout=&lt;name&gt;</code>.</p>
   {% else %}
-  <p>No plugin here adds import formats or decision file layouts.</p>
+  <p>No plugin here adds import formats, decision file layouts, matching rules or notification channels.</p>
   {% endif %}
 </div>
 {% endblock %}

@@ -4,6 +4,8 @@
 """Admin → Plugins (PLUGIN_PLAN.md): what's loaded, from where and what each provides, and
 which plugin import formats and decision layouts this bank has turned on."""
 
+from urllib.parse import quote_plus
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -18,7 +20,10 @@ from openclear.web.security import verify_csrf
 router = APIRouter(prefix="/ui/admin/plugins", tags=["web-plugins"])
 _manage = require_web_permission("admin:manage")
 
-POINT_LABELS = {"import_formats": "Import format", "decision_layouts": "Decision file layout"}
+POINT_LABELS = {
+    "import_formats": "Import format", "decision_layouts": "Decision file layout", "matching_rules": "Matching rule",
+    "notification_channels": "Notification channel",
+}
 
 
 @router.get("")
@@ -30,18 +35,22 @@ def list_plugins(request: Request, db: Session = Depends(get_db), ctx: TenantCon
 
 
 @router.post("/choices")
-def set_choice(
-    point: str = Form(...), name: str = Form(...), enabled: bool = Form(False),
+async def set_choice(
+    request: Request, point: str = Form(...), name: str = Form(...), enabled: bool = Form(False),
     db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    form = await request.form()
+    config = {key.removeprefix("config_"): str(value) for key, value in form.items() if key.startswith("config_")}
     try:
-        changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id)
-    except ValueError:
-        return RedirectResponse("/ui/admin/plugins?flash=That+isn%27t+available.", status_code=303)
+        changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id, config=config)
+    except ValueError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/admin/plugins?flash={quote_plus(str(exc))}", status_code=303)
     if changed:
         audit_log_service.record_action(
             db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="plugin.enable" if enabled else "plugin.disable",
-            summary=f"Turned {'on' if enabled else 'off'} the {POINT_LABELS.get(point, point).lower()} {name}",
+            summary=f"Turned {'on' if enabled else 'off'} the {POINT_LABELS.get(point, point).lower()} {name}"
+                    + (" (settings saved)" if enabled and config else ""),
             resource_type="tenant_extension", metadata={"point": point, "name": name},
         )
     db.commit()

@@ -47,16 +47,22 @@ class CheckAdapter:
         )
 
         exception_types, related_id = evaluate_check_rules(inputs)
-        return MatchResult(
+        result = MatchResult(
             matched=not exception_types,
             exception_types=[e.value for e in exception_types],
             related_reference_id=related_id,
         )
+        # Matching-rule plugins the bank turned on can add exception types, never clear one.
+        from openclear.services.plugin_service import apply_matching_rules
+
+        return apply_matching_rules(session, self.code, paid_item, result)
 
     def build_features(self, session: Session, exception_item: ExceptionItem) -> dict[str, Any]:
         from openclear.networks.check.features import build_check_features
 
-        return build_check_features(session, exception_item)
+        from openclear.services.plugin_service import extra_features
+
+        return {**build_check_features(session, exception_item), **extra_features(session, self.code, exception_item)}
 
     def load_source_item(self, session: Session, source_item_id: uuid.UUID) -> PaidItem | None:
         return session.get(PaidItem, source_item_id)

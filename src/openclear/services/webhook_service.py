@@ -171,10 +171,14 @@ def _queue(session: Session, endpoint: WebhookEndpoint, event_type: str, data: d
 def emit(session: Session, tenant_id: uuid.UUID, event_type: str, data: dict) -> int:
     """Queues `event_type` for every active endpoint of this bank subscribed to it, in the
     caller's transaction. Returns how many deliveries were queued."""
+    from openclear.services.plugin_service import queue_channel_events
+
     endpoints = [e for e in _subscribers(session, tenant_id) if event_type in (e.event_types or [])]
     serializable = {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in data.items()}
     for endpoint in endpoints:
         _queue(session, endpoint, event_type, serializable)
+    # Notification channels from plugins get the same events (PLUGIN_PLAN.md PL3).
+    queue_channel_events(session, tenant_id, event_type, serializable)
     return len(endpoints)
 
 
