@@ -111,6 +111,23 @@ normal access token:
 
 `WebauthnCredentialRead`: `id`, `nickname`, `aaguid`, `created_at`, `last_used_at`.
 
+## Retrying writes safely: Idempotency-Key
+
+Send `Idempotency-Key: <a unique value of your own>` (up to 255 characters, e.g. a UUID)
+on any POST, PUT, PATCH or DELETE, and a retry after a timeout or dropped connection
+can't do the work twice:
+
+- the first request runs, and its response is kept against the key for 24 hours
+  (`OPENCLEAR_IDEMPOTENCY_KEY_HOURS`);
+- a retry with the same key and the same request gets that response again, with the header
+  `Idempotency-Replayed: true`. Error responses (4xx) are replayed too;
+- the same key with a different method, path, query or body: `422`;
+- a retry while the first is still running: `409`, so try again shortly;
+- a server error (5xx) isn't kept, so a retry runs again.
+
+Keys belong to the caller (the person, or the API client) within its bank, so two
+callers can't collide. Requests without the header behave as before.
+
 ## Paging list endpoints
 
 `GET /exceptions`, `/paid-items`, `/issued-items`, `/stop-payments`, `/ach-transactions`

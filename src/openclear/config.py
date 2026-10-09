@@ -198,6 +198,9 @@ class Settings(BaseSettings):
     # how long an access token from /api/v1/oauth/token lasts, and how many token
     # requests one address may make a minute.
     api_client_token_minutes: int = 30
+    # How long an Idempotency-Key's stored response is kept for replays (api/idempotency.py);
+    # housekeeping removes older ones.
+    idempotency_key_hours: int = 24
     oauth_token_rate_limit_per_minute: int = 30
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     rate_limit_redis_url: str = ""

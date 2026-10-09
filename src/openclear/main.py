@@ -109,6 +109,12 @@ def create_app() -> FastAPI:
     import openclear.networks.check  # noqa: F401
     import openclear.networks.ach  # noqa: F401
 
+    # Registered first, so it's the innermost: the body-size guard, rate limit and security
+    # headers below all run before it does (Starlette wraps in reverse order).
+    from openclear.api import idempotency
+
+    idempotency.install(app)
+
     @app.middleware("http")
     async def _limit_request_body_size(request: Request, call_next):
         # Fast, uniform first line of defense against oversized uploads — reads

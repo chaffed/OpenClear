@@ -228,6 +228,22 @@ which carries its security group and optional customer.</p>
 </tbody>
 </table>
 
+<h3>idempotency_record</h3>
+<p>The response to an API write sent with an <code>Idempotency-Key</code>, kept so a retry
+with the same key gets the same response instead of doing the work twice. Removed by
+housekeeping after <code>idempotency_key_hours</code> (24).</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id / user_id</td><td>UUID</td><td>no</td><td>FK; UK with key</td><td>The caller (a person or an API client's service identity).</td></tr>
+<tr><td>key</td><td>String(255)</td><td>no</td><td>UK with tenant_id, user_id</td><td>The caller's own value.</td></tr>
+<tr><td>request_hash</td><td>String(64)</td><td>no</td><td></td><td>SHA-256 of the method, path, query and body; a different request with the same key is refused.</td></tr>
+<tr><td>status_code / content_type / response_body</td><td>Integer / String / bytes</td><td>yes</td><td></td><td>Empty while the first request is still running.</td></tr>
+<tr><td>created_at</td><td>Timestamp</td><td>yes</td><td>indexed</td><td></td></tr>
+</tbody>
+</table>
+
 <h3>tenant_membership</h3>
 <p>The actual access grant — pairs a user with a tenant (and optionally one customer
 scope) and a security group. One user can hold several of these.</p>

@@ -24,6 +24,7 @@ from openclear import storage
 from openclear.config import get_settings
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadRowResult
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
+from openclear.domain.idempotency_record import IdempotencyRecord
 from openclear.domain.job import Job, JobStatus
 from openclear.domain.notification import Notification, NotificationStatus
 
@@ -62,6 +63,10 @@ def run(session: Session) -> HousekeepingResult:
         result.deleted["jobs"] = _delete_in_batches(
             session, Job, Job.status.in_([JobStatus.SUCCEEDED, JobStatus.FAILED]), Job.finished_at < cutoff
         )
+
+    if settings.idempotency_key_hours > 0:
+        cutoff = session.execute(select(func.now())).scalar_one() - timedelta(hours=settings.idempotency_key_hours)
+        result.deleted["idempotency_keys"] = _delete_in_batches(session, IdempotencyRecord, IdempotencyRecord.created_at < cutoff)
 
     if cutoff := _cutoff(session, settings.retention_notifications_days):
         result.deleted["notifications"] = _delete_in_batches(

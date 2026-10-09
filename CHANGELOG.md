@@ -19,6 +19,15 @@
 - **Upgrading:** run `alembic upgrade head` (new table `api_client`, new column
   `user.is_service_account`). Existing Admin groups get `api_client:manage`.
 
+### New: Idempotency-Key on API writes (SDK_PLAN.md P0)
+
+- Send `Idempotency-Key` on a POST, PUT, PATCH or DELETE, and a retry gets the first
+  response back (`Idempotency-Replayed: true`) instead of doing the work twice.
+- The same key with a different request is refused (422). A retry while the first is
+  still running gets 409. Server errors aren't kept, so a retry after one runs again.
+- Keys are per caller and kept 24 hours (`OPENCLEAR_IDEMPOTENCY_KEY_HOURS`); housekeeping
+  removes older ones. New table `idempotency_record`.
+
 ## 1.7.0 — 2026-10-09
 
 A scale release: OpenClear can now import large files, train on large histories and run as

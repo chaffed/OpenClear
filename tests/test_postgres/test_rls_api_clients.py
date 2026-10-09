@@ -48,3 +48,20 @@ def test_a_client_id_naming_another_bank_finds_nothing(rls_client, db_session, t
     forged = issued.client.client_id.replace(mine.id.hex, other.id.hex)  # bound to the other bank: the row isn't visible there
     resp = rls_client.post("/api/v1/oauth/token", data={"grant_type": "client_credentials", "client_id": forged, "client_secret": issued.secret})
     assert resp.status_code == 401
+
+
+def test_an_idempotent_retry_replays_under_rls(rls_client, db_session, tenant_factory):
+    tenant, account, _ = tenant_factory.make(slug="rls-apic-idem")
+    group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    issued = api_client_service.create_client(db_session, tenant.id, name="Core", security_group_id=group.id)
+    db_session.commit()
+    token = rls_client.post("/api/v1/oauth/token", data={
+        "grant_type": "client_credentials", "client_id": issued.client.client_id, "client_secret": issued.secret,
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}", "Idempotency-Key": "core-batch-42"}
+    item = {"account_id": str(account.id), "check_number": "IDEM-1", "amount": "1.00", "payee_name": "X", "issue_date": "2026-03-01"}
+
+    first = rls_client.post("/api/v1/issued-items", headers=headers, json=item)
+    retry = rls_client.post("/api/v1/issued-items", headers=headers, json=item)
+    assert first.status_code == retry.status_code == 201, first.text
+    assert retry.headers["idempotency-replayed"] == "true" and retry.json()["id"] == first.json()["id"]

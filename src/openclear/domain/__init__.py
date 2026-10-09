@@ -24,6 +24,7 @@ from openclear.domain import (  # noqa: F401
     data_export_job,
     decision,
     exception_item,
+    idempotency_record,
     issued_item,
     job,
     ml_model,

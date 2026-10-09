@@ -182,9 +182,11 @@ bank. PKCE is added as a fix ahead of this phase.
       client's customer, matched by `external_id`, and can be created on first use with a
       security group the bank picks. Decisions and audit entries carry both the user and
       the client.
-- [ ] `Idempotency-Key` on POST: stored per client for 24 hours with the request hash and
-      response; a repeat returns the stored response, and a different body with the same
-      key gets 422.
+- [x] `Idempotency-Key` on POST, PUT, PATCH and DELETE (2026-10-09; `api/idempotency.py`,
+      migration `d2f4b6c8e0a1`, RLS): per caller, 24 hours, replay with
+      `Idempotency-Replayed: true`, 422 for a different request, 409 while in flight, 5xx
+      not kept (an unhandled error clears the key). Tests: `tests/test_api/test_idempotency.py`,
+      plus a replay under RLS.
 - [ ] Decision feed: a per-bank, monotonically increasing `decision.feed_sequence`; `GET
       /api/v1/decisions?after=` (paged); `POST /api/v1/decisions/acknowledge` so a core can
       confirm what it acted on. Decision files: CSV first, with a layout per bank.
@@ -228,7 +230,8 @@ bank. PKCE is added as a fix ahead of this phase.
 - 2026-10-09 Apache Fineract (sandbox core, first adapter) and Moov (file formats) adopted.
 - 2026-10-09 Decided: first OBP reference is open source only (Mifos Mobile); the sandbox is
   free. PLUGIN_PLAN.md written; PL1 runs alongside P0.
-- 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done.
+- 2026-10-09 P0 started (branch `sdk-p0`): API clients and the token endpoint done;
+  idempotency keys done.
 - 2026-10-09 Federation phase (F) added: SAML 2.0, SCIM 2.0, back-channel logout,
   IdP-initiated sign-in, OBP sign-on profile. PKCE for the existing OIDC sign-on done as a
   fix ahead of it.
