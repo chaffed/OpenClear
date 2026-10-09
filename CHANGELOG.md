@@ -21,6 +21,8 @@
   `workers.tasks.decision_outbox_job` from cron.
 - **Upgrading:** run `alembic upgrade head`. It adds the tables `decision_outbox` and
   `decision_batch`, and fills in return codes.
+- **The `openclear` command** (in the Python SDK): `push` a file, `decisions pull`,
+  `decisions files`, and `webhooks tail`, for scripts and cron.
 
 ### New: OpenClear inside online banking (SDK_PLAN.md P2)
 

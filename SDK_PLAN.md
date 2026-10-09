@@ -231,7 +231,11 @@ bank. PKCE is added as a fix ahead of this phase.
   - The feed gains `account_name`, for the return entry's name.
 - [ ] Check returns as an X9.37 return file (Moov imagecashletter): next, if a bank needs
       it; check returns are in the CSV layout until then.
-- [ ] CLI, Fineract adapter, .NET SDK: next.
+- [x] **CLI** (2026-10-09; `openclear` in the Python SDK, `openclear_sdk/cli.py`): `push`,
+      `decisions pull` (JSONL or CSV, acknowledged), `decisions files` (SHA-256 checked,
+      acknowledged), and `webhooks tail` (verifying receiver). Exit codes are 0, 1 or 2.
+      Tested against the app.
+- [ ] Fineract adapter, .NET SDK: next.
 
 ### P2 detail (embedded experience)
 

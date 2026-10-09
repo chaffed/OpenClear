@@ -142,6 +142,25 @@ jo.exceptions.list_exceptions()
 oc.acting_as_subject("your-user-id-for-them")     # or name them by your own id for them
 ```
 
+## Command line
+
+The package installs an `openclear` command for scripts and cron jobs. It reads its credentials from `OPENCLEAR_URL`, `OPENCLEAR_CLIENT_ID` and `OPENCLEAR_CLIENT_SECRET`.
+
+```sh
+openclear push paid_items presented.csv                 # import a file, list the rows that failed
+openclear decisions pull --consumer core --format csv   # new decisions, then acknowledge them
+openclear decisions files --download ./outbox           # outbox files, SHA-256 checked, then acknowledged
+openclear webhooks tail --secret whsec_...              # receive webhooks locally, verify and print them
+```
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| 0 | Done |
+| 1 | Some rows failed, or a file didn't verify |
+| 2 | Bad usage or credentials |
+
 ## Version
 
 `openclear_sdk.API_VERSION` is the OpenClear API version the SDK was generated from. `/api/v1` only changes in ways that add to it, so newer servers keep working with this SDK.

@@ -17,6 +17,9 @@ classifiers = [
     "Topic :: Office/Business :: Financial",
 ]
 
+[project.scripts]
+openclear = "openclear_sdk.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/chaffed/OpenClear"
 Documentation = "https://github.com/chaffed/OpenClear/blob/main/API.md"
