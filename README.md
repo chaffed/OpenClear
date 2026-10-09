@@ -655,6 +655,20 @@ path without a browser. `webauthn_rp_id`/`webauthn_origin` default to `localhost
 `http://localhost:8000` — set both to your real domain before deploying, or every
 registered credential will fail verification against the wrong origin.
 
+**Single sign-on** connections can be set up for the whole bank or for one business customer.
+
+- **Protocols:** OIDC (Okta, Entra ID, Ping, Google, Keycloak) or **SAML 2.0**
+  (`auth/saml_service.py`).
+- **Group mappings:** the person's groups map to security groups at every sign-in.
+- **SCIM 2.0** at `/scim/v2` provisions and deactivates people from the bank's directory.
+- **Signing out at the identity provider:** it ends the person's OpenClear sessions, through
+  OIDC back-channel logout or SAML single logout.
+- **Sign-in started at the identity provider:** for example, a portal tile. With SAML it's
+  opt-in per connection.
+- **The online banking sign-on profile:** a *customer claim* on a bank-wide connection names
+  each person's customer. With it, the online banking platform's server can exchange a
+  person's ID token for a token acting for them (RFC 8693; see API.md).
+
 **SSO (OIDC) issuer addresses** must be public `https://` URLs. OpenClear refuses to save an
 issuer that's `http://`, `localhost`, or a private/internal IP address, and every time it
 contacts an identity provider (discovery, signing keys, token exchange) it re-checks what the

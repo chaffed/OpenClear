@@ -14,6 +14,28 @@ single sign-on your organization can configure.</p>
 own detail page, if you want a specific customer's users to authenticate through their own
 identity provider instead of a password.</p>
 
+<p>A connection uses <strong>OpenID Connect</strong> (Okta, Entra ID, Ping, Google, Keycloak)
+or <strong>SAML 2.0</strong> (ADFS, Shibboleth, and the same providers). Either way, people get
+access through the connection's group mappings, re-checked at every sign-in. Each
+connection's page lists the URLs to give your identity provider. For SAML, that includes
+its metadata URL.</p>
+<ul>
+  <li><strong>Directory provisioning (SCIM 2.0).</strong> Turn it on from the connection's page.
+    It gives you a base URL and a token for your directory. The directory can then create,
+    update and deactivate people, and push its groups. Deactivating someone there ends
+    their OpenClear sessions.</li>
+  <li><strong>Signing out at your identity provider</strong> ends the person's OpenClear
+    sessions too. This works through OIDC back-channel logout or SAML single logout.</li>
+  <li><strong>An OpenClear tile in your identity provider's portal</strong> can start sign-in.
+    For OIDC, use the connection's "initiate login" URL. For SAML, turn on "Allow sign-in
+    started at the identity provider".</li>
+  <li><strong>Your online banking platform as the identity provider.</strong> Set a
+    <em>customer claim</em> on a bank-wide connection. The claim carries each person's
+    customer number, and their session is limited to that customer. The platform's own
+    server can exchange a signed-in person's ID token for a token acting for them. To allow
+    that, link its API client to the connection.</li>
+</ul>
+
 <h2>API clients</h2>
 <p>To let one of your systems (your core, your online banking provider, your own
 middleware) use OpenClear's API, create an API client under
