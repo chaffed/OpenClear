@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Security fixes (review of this release's new features; SECURITY_REVIEW.md, 2026-10-09)
+
+- **Account takeover by an identity provider:** sign-in, token exchange and SCIM no longer
+  attach an identity provider's asserted email to an existing person who isn't already a
+  member in that connection's scope. An admin adds such a person first. New people are
+  provisioned as before.
+- **Open redirect:** `next` paths with backslashes or control characters (`/\evil.example`)
+  are refused.
+- **Embedding origins:** these can no longer inject into the Content-Security-Policy
+  header.
+- **Sandbox sign-up:** it refuses to run on an installation with real banks.
+
 ### New: developer sandbox and integration checklist (SDK_PLAN.md P4)
 
 - **Developer sandboxes:** on an installation run as a sandbox, a vendor gets a free,

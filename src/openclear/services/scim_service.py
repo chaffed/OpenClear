@@ -217,10 +217,20 @@ def _apply_user(scim_user: ScimUser, payload: dict) -> None:
         scim_user.active = _bool(payload["active"])
 
 
-def _user_for_email(session: Session, email: str) -> User:
+def _user_for_email(session: Session, connection: SsoConnection, email: str) -> User:
     user = session.execute(select(User).where(func.lower(User.email) == email)).scalar_one_or_none()
     if user is not None and user.is_service_account:
         raise ScimError(409, "That email belongs to an API client.", "uniqueness")
+    if user is not None:
+        # Only someone already a member here, in this connection's scope, is linked; anyone
+        # else (in another organization, or bank staff seen from a customer's directory) is
+        # added by an admin first, as with single sign-on (sso_service).
+        scope = (TenantMembership.customer_id == connection.customer_id) if connection.customer_id else TenantMembership.customer_id.is_(None)
+        member = session.execute(select(TenantMembership.id).where(
+            TenantMembership.user_id == user.id, TenantMembership.tenant_id == connection.tenant_id, scope)).first()
+        if member is None:
+            raise ScimError(409, "Someone with that email already uses OpenClear elsewhere. An admin adds them here first; "
+                                 "then the directory can manage them.", "uniqueness")
     if user is None:
         # Never usable for password sign-in: SCIM people sign in through the identity provider.
         user = User(email=email, hashed_password=hash_password(secrets.token_urlsafe(48)))
@@ -253,7 +263,7 @@ def create_user(session: Session, connection: SsoConnection, payload: dict) -> S
     user_name = str(payload.get("userName") or email).strip()
     if session.execute(select(ScimUser.id).where(ScimUser.connection_id == connection.id, ScimUser.user_name == user_name)).first():
         raise ScimError(409, "A user with that userName already exists.", "uniqueness")
-    user = _user_for_email(session, email)
+    user = _user_for_email(session, connection, email)
     if session.execute(select(ScimUser.id).where(ScimUser.connection_id == connection.id, ScimUser.user_id == user.id)).first():
         raise ScimError(409, "A user with that email already exists.", "uniqueness")
     scim_user = ScimUser(tenant_id=connection.tenant_id, connection_id=connection.id, user_id=user.id, user_name=user_name, active=True)

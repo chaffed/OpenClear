@@ -48,12 +48,20 @@ def _hash(code: str) -> str:
 
 def normalize_origin(value: str) -> str:
     """`https://host[:port]`, nothing else (no path, query or wildcard)."""
-    parts = urlsplit((value or "").strip())
+    try:
+        parts = urlsplit((value or "").strip())
+        port = parts.port
+    except ValueError:
+        raise EmbedError(f"{(value or '').strip()!r} isn't an https origin like https://banking.example.com") from None
     if parts.scheme != "https" or not parts.hostname or parts.path not in ("", "/") or parts.query or parts.fragment or "*" in value:
         raise EmbedError(f"{value.strip()!r} isn't an https origin like https://banking.example.com")
     if parts.username or parts.password:
         raise EmbedError(f"{value.strip()!r} mustn't contain credentials")
-    port = f":{parts.port}" if parts.port and parts.port != 443 else ""
+    # The origin goes into the Content-Security-Policy header: a host is letters, digits, dots
+    # and hyphens (punycode for international names), nothing that could end a directive.
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?", parts.hostname.lower()):
+        raise EmbedError(f"{value.strip()!r} has characters a host name can't have")
+    port = f":{port}" if port and port != 443 else ""
     return f"https://{parts.hostname.lower()}{port}"
 
 

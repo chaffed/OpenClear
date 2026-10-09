@@ -304,3 +304,59 @@ this needs no new key. Someone who can write to the artifact directory or a shar
 but not the database, can no longer get code run. A failed check leaves exceptions
 unscored and is logged. It never blocks ingestion. The upgrade migration pins existing
 files.
+
+## Update: 2026-10-09, review of the federation, SCIM, embedding and sandbox work
+
+This review covers the new attack surface added for 1.8:
+
+- SAML;
+- SCIM;
+- OIDC back-channel logout;
+- third-party initiated login;
+- token exchange and acting for a person;
+- embedding in other sites;
+- public sandbox sign-up.
+
+### Fixed
+
+| # | Finding | Fix |
+|---|---|---|
+| R1 | **Open redirect:** `safe_next_path` accepted `/\evil.example` and paths with tabs or newlines, which browsers turn into `//evil.example`. This predates 1.8, but sign-in, SAML RelayState and embed launch paths all rely on the function. | Backslashes, control characters, and anything that parses with a scheme or host are refused. |
+| R2 | **Account takeover by an identity provider:** sign-in (OIDC and SAML), token exchange and SCIM linked an asserted email to an existing person who wasn't a member in that connection's scope. A customer's own identity provider could take over the bank admin's identity within its scope, and one bank's identity provider could attach another bank's user. | Only a person already a member here, in this exact scope, is linked. Anyone else is added by an admin first, through the existing cross-organization confirmation. New people are still provisioned. |
+| R3 | **CSP header injection:** an embedding origin went into `frame-ancestors` unchecked, so `https://a;script-src …` would inject a directive. | Hosts are limited to the characters host names have (punycode for international names). Malformed origins are refused cleanly. |
+| R4 | **Sandbox sign-up on a real installation:** it could be switched on by mistake where real banks are. | Sign-up refuses unless every active organization is a sandbox or the demo. |
+
+Each fix has a regression test (`tests/test_auth/test_security_review_fixes.py`).
+
+### Checked, no change needed
+
+**SAML:**
+
+- signed assertions are required, SHA-256 or better;
+- audience, destination and validity window are checked;
+- InResponseTo must match a request bound to the browser by a signed cookie;
+- each assertion is accepted once;
+- IdP-initiated sign-in is opt-in;
+- logout requests must be signed.
+
+The tests cover tampering, an unsigned assertion, the wrong audience, expiry, someone else's request, an unsolicited answer, a wrong RelayState and a replay.
+
+**SCIM:** tokens are hashed and compared in constant time, and they bind to the bank before any read. Isolation between banks is tested under RLS.
+
+**Token exchange:** the subject token's signature, issuer, audience and expiry are verified against the provider. Each request re-checks the person's membership and intersects permissions with the client's. The token expires with the ID token.
+
+**Embedding:**
+
+- only sessions started from a single-use, one-minute launch can be framed;
+- framing is limited to the session's origin, while the bank still lists it;
+- cookies are partitioned;
+- postMessage goes only to that origin;
+- the only page any site may frame (`/ui/embed/ended`) carries no data.
+
+**Webhook probe and channels:** these use the SSRF-safe client.
+
+### Recommended
+
+**An independent review before a bank relies on SAML or embedding in production.** Run `/code-review ultra` on the branch, or bring in an outside tester.
+
+**Sandbox sign-up rate limiting:** it's per address only. Put a public sandbox behind a WAF or CAPTCHA if it's abused.

@@ -349,26 +349,25 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
     if not connection.auto_provision:
         return SsoLoginResult(outcome="not_provisioned")
 
-    if user is None:
-        user = user_service.create_user_with_membership(
-            session,
-            tenant_id,
-            email=claims.email,
-            password=_generate_unusable_password(),
-            security_group_id=resolved_group_id,
-            customer_id=scope_customer_id,
-        )
-        new_membership = [
-            m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == scope_customer_id
-        ][0]
-        return SsoLoginResult(outcome="success", user=user, membership=new_membership)
+    if user is not None:
+        # An identity provider can assert any email. Linking it to an existing person who
+        # isn't already a member here (in this connection's scope) would let one bank's, or one
+        # customer's, identity provider take over someone else's identity: refuse, and leave it
+        # to an admin to add them (which asks the person's other organizations' consent).
+        return SsoLoginResult(outcome="not_provisioned")
 
-    membership = TenantMembership(
-        user_id=user.id, tenant_id=tenant_id, customer_id=scope_customer_id, security_group_id=resolved_group_id
+    user = user_service.create_user_with_membership(
+        session,
+        tenant_id,
+        email=claims.email,
+        password=_generate_unusable_password(),
+        security_group_id=resolved_group_id,
+        customer_id=scope_customer_id,
     )
-    TenantMembershipRepository(session, tenant_id).add(membership)
-    session.flush()
-    return SsoLoginResult(outcome="success", user=user, membership=membership)
+    new_membership = [
+        m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == scope_customer_id
+    ][0]
+    return SsoLoginResult(outcome="success", user=user, membership=new_membership)
 
 
 # --- Password-login enforcement mode (per scope, guarded against lockout) ---

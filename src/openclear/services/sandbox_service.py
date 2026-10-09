@@ -46,6 +46,11 @@ def _domain(slug: str) -> str:
 def create(session: Session, *, organization: str, contact_email: str) -> NewSandbox:
     from openclear.services import api_client_service, demo_tenant_service, provisioning_service, security_group_service
 
+    # Only on an installation that holds nothing but sandboxes (and the demo): refuses if a
+    # real bank is here, in case the setting was turned on by mistake.
+    real = session.execute(select(Tenant.id).where(Tenant.is_sandbox.is_(False), Tenant.is_demo.is_(False), Tenant.is_active.is_(True))).first()
+    if real is not None:
+        raise SandboxError("Sandboxes aren't available here.")
     organization = " ".join((organization or "").split())[:100]
     contact_email = (contact_email or "").strip().lower()[:255]
     if not organization:

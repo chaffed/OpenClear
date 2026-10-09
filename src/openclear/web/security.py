@@ -2,6 +2,7 @@
 # Copyright (C) 2026 Chaffed
 
 import secrets
+from urllib.parse import urlsplit
 from datetime import datetime, timezone
 
 from fastapi import Form, HTTPException, Request, Response, status
@@ -242,6 +243,13 @@ def safe_next_path(path: str | None, *, default: str = "/ui/") -> str:
     (a single leading '/', never '//...' which browsers treat as protocol-relative to an
     external host) — otherwise login could be used to bounce a user to an attacker's site."""
     if not path or not path.startswith("/") or path.startswith("//"):
+        return default
+    # Browsers read "/\\evil.com" as "//evil.com", and strip tabs and newlines first: refuse
+    # backslashes and control characters, and anything that parses with a host or scheme.
+    if "\\" in path or any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
+        return default
+    parts = urlsplit(path)
+    if parts.scheme or parts.netloc:
         return default
     return path
 
