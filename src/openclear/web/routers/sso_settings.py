@@ -71,13 +71,26 @@ def sso_form(
     )
 
 
-def _saml_urls(request: Request, connection) -> dict | None:
-    """What the bank gives its identity provider for a SAML connection."""
-    if connection.protocol != SsoProtocol.SAML:
-        return None
+def _saml_urls(request: Request, connection) -> list[tuple[str, str]] | None:
+    """What the bank gives its identity provider for this connection, as (label, URL)."""
     from openclear.auth import saml_service
+    from openclear.config import get_settings
 
-    return saml_service.sp_urls(saml_service.base_url(str(request.base_url)), connection)
+    base = saml_service.base_url(str(request.base_url))
+    if connection.protocol == SsoProtocol.SAML:
+        urls = saml_service.sp_urls(base, connection)
+        return [
+            ("Entity ID (audience) and metadata URL", urls["entity_id"]),
+            ("Reply URL (Assertion Consumer Service, HTTP-POST)", urls["acs"]),
+            ("Single logout URL (HTTP-Redirect)", urls["slo"]),
+        ]
+    root = f"{base}/ui/sso/oidc/{connection.tenant_id}/{connection.id}"
+    callback = f"{(get_settings().public_base_url or base).rstrip('/')}/ui/login/sso/{connection.id}/callback"
+    return [
+        ("Sign-in redirect URI", callback),
+        ("Back-channel logout URI", f"{root}/backchannel-logout"),
+        ("Initiate login URI (for a portal tile)", f"{root}/initiate"),
+    ]
 
 
 def _scim_base(request: Request) -> str:

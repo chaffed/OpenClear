@@ -175,12 +175,20 @@ bank. PKCE is added as a fix ahead of this phase.
   - **Filters:** `eq` only.
   - **Tests:** Okta-style and Entra-style requests, a customer-scoped connection, linking
     an existing user, and RLS isolation.
-- [ ] **Back-channel logout** (OIDC Back-Channel Logout, and SAML single logout): signing
-      out at the identity provider ends the OpenClear session. **SAML single logout done**
-      with SAML (signed LogoutRequests only; it ends the person's sessions everywhere).
-- [ ] **IdP-initiated sign-in:** an OpenClear tile in Okta or Azure starts sign-in (OIDC
-      third-party initiated login; SAML IdP-initiated with replay protection). **SAML done**
-      (opt-in per connection, each assertion accepted once, target page kept on-site).
+- [x] **Back-channel logout** (2026-10-08): signing out at the identity provider ends the
+      person's OpenClear sessions.
+  - **OIDC Back-Channel Logout 1.0** (`web/routers/oidc_federation.py`): the logout token
+    is verified like an ID token, plus the logout event, no nonce and a recent `iat`.
+    Each `jti` is accepted once. The person is found by `sub` through `sso_identity`;
+    session-only (`sid`) logout isn't supported, since OpenClear doesn't track provider
+    sessions.
+  - **SAML single logout:** signed LogoutRequests only.
+  - Either way, the person's sessions end everywhere.
+- [x] **IdP-initiated sign-in** (2026-10-08):
+  - **OIDC third-party initiated login:** the `/initiate` URL checks `iss`, keeps
+    `target_link_uri` on this site, passes `login_hint` through, and starts a normal
+    PKCE sign-in.
+  - **SAML IdP-initiated:** opt-in per connection, and each assertion is accepted once.
 - [ ] **OBP sign-on profile** for a bank's business customers' users: the online banking
       provider is the identity provider, a user is matched to a customer by a claim, and
       the session is customer-scoped. Mifos (on Fineract) first. P2's embedded experience
@@ -333,3 +341,4 @@ bank. PKCE is added as a fix ahead of this phase.
 - Moov ACH and Image Cash Letter: https://github.com/moov-io/ach · https://github.com/moov-io/imagecashletter ·
   https://www.redhat.com/en/blog/moov-to-digital-banking-on-openshift
 - 2026-10-08 **P1 done** (branch `sdk-p1`): Python and TypeScript SDKs, generator, examples. Publishing to PyPI and npm from their own repositories waits on approval.
+- 2026-10-08 P1 merged into `main`. All three suites were green: SQLite 1338 passed, Postgres 1360, Linux 3.11 1331.

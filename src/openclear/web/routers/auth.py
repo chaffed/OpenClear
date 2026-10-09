@@ -341,6 +341,7 @@ def sso_start(
     connection_id: uuid.UUID,
     tenant_id: uuid.UUID,
     next: str | None = None,
+    login_hint: str | None = None,
     db: Session = Depends(get_db),
 ) -> Response:
     _apply_rls_tenant(db, tenant_id)
@@ -357,7 +358,8 @@ def sso_start(
     redirect_uri = _redirect_uri(request, connection.id)
     try:
         authorization_url = build_authorization_url(
-            connection, redirect_uri=redirect_uri, state=state, nonce=nonce, code_verifier=code_verifier
+            connection, redirect_uri=redirect_uri, state=state, nonce=nonce, code_verifier=code_verifier,
+            login_hint=(login_hint or "")[:255] or None,
         )
     except OidcError as exc:
         logger.warning("SSO start failed for connection %s: %s", connection.id, exc)

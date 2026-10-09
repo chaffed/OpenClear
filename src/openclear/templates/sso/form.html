@@ -95,11 +95,9 @@
 {% if saml_urls %}
 <div class="card">
   <h1>For your identity provider</h1>
-  <p>Set these up in your identity provider's SAML application, or give it the metadata URL.</p>
+  <p>Set these up in your identity provider's application for OpenClear{{ ", or give it the metadata URL" if connection.protocol.value == "saml" else "" }}.</p>
   <dl>
-    <dt>Entity ID (audience) and metadata URL</dt><dd><code>{{ saml_urls.entity_id }}</code></dd>
-    <dt>Reply URL (Assertion Consumer Service, HTTP-POST)</dt><dd><code>{{ saml_urls.acs }}</code></dd>
-    <dt>Single logout URL (HTTP-Redirect)</dt><dd><code>{{ saml_urls.slo }}</code></dd>
+    {% for label, url in saml_urls %}<dt>{{ label }}</dt><dd><code>{{ url }}</code></dd>{% endfor %}
   </dl>
 </div>
 {% endif %}

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### New: sign-out from the identity provider, and sign-in from its portal (SDK_PLAN.md phase F)
+
+- **OIDC back-channel logout:** when someone signs out at the identity provider, their
+  OpenClear sessions end. The provider posts a signed logout token, which is verified
+  and accepted only once.
+- **Sign-in from a portal tile:** a tile in the identity provider's portal (Okta,
+  Entra ID) can start OpenClear sign-in through the connection's "initiate login" URL.
+  It runs the normal sign-in with PKCE, and only lands on pages on this site.
+- **Where to find the URLs:** each connection's page lists them, along with the
+  redirect URI.
+
 ### New: SCIM 2.0 provisioning (SDK_PLAN.md phase F)
 
 - **What it does:** a bank's directory (Okta, Entra ID, ...) can create, update and

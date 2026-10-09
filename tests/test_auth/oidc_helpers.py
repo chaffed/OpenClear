@@ -80,3 +80,16 @@ def patch_provider(monkeypatch, provider: FakeOidcProvider, id_token: str) -> No
             return {"id_token": id_token}
 
     monkeypatch.setattr(oidc_service, "OAuth2Client", _FakeOAuth2Client)
+
+
+def sign_logout_token(provider: FakeOidcProvider, *, sub: str | None, jti: str = "logout-1", iat_delta_seconds: int = 0,
+                      with_event: bool = True, nonce: str | None = None, aud: str | None = None, key: RSAKey | None = None) -> str:
+    """An OpenID Connect Back-Channel Logout token, signed like the provider's ID tokens."""
+    claims = {"iss": provider.issuer, "aud": aud or provider.client_id, "iat": int(time.time()) + iat_delta_seconds, "jti": jti}
+    if sub is not None:
+        claims["sub"] = sub
+    if with_event:
+        claims["events"] = {"http://schemas.openid.net/event/backchannel-logout": {}}
+    if nonce is not None:
+        claims["nonce"] = nonce
+    return joserfc_jwt.encode({"alg": "RS256", "kid": "test-kid"}, claims, key or provider._key)

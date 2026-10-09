@@ -8,6 +8,7 @@ from openclear.web.routers.api_clients import router as api_clients_router
 from openclear.web.routers.webhooks import router as webhooks_router
 from openclear.web.routers.plugins import router as plugins_router
 from openclear.web.routers.saml import router as saml_router
+from openclear.web.routers.oidc_federation import router as oidc_federation_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
 from openclear.web.routers.ach_return_reasons import router as ach_return_reasons_router
 from openclear.web.routers.billing import customer_router as billing_customer_router
@@ -77,6 +78,7 @@ web_router.include_router(api_clients_router)
 web_router.include_router(webhooks_router)
 web_router.include_router(plugins_router)
 web_router.include_router(saml_router)
+web_router.include_router(oidc_federation_router)
 web_router.include_router(data_export_router)
 web_router.include_router(wizard_router)
 web_router.include_router(wsud_router)

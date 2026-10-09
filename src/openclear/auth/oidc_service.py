@@ -103,7 +103,9 @@ def new_code_verifier() -> str:
     return secrets.token_urlsafe(64)
 
 
-def build_authorization_url(connection: SsoConnection, *, redirect_uri: str, state: str, nonce: str, code_verifier: str) -> str:
+def build_authorization_url(
+    connection: SsoConnection, *, redirect_uri: str, state: str, nonce: str, code_verifier: str, login_hint: str | None = None,
+) -> str:
     """The provider's sign-in URL, with PKCE (S256): the code it returns is only good with
     `code_verifier`, which never leaves this server and the user's own browser, so an
     intercepted code is useless. Current OAuth guidance asks for PKCE even for a server-side
@@ -112,8 +114,9 @@ def build_authorization_url(connection: SsoConnection, *, redirect_uri: str, sta
     client = OAuth2Client(
         client_id=connection.client_id, redirect_uri=redirect_uri, scope="openid email profile", code_challenge_method="S256"
     )
+    extra = {"login_hint": login_hint} if login_hint else {}
     url, _ = client.create_authorization_url(
-        discovery["authorization_endpoint"], state=state, nonce=nonce, code_verifier=code_verifier
+        discovery["authorization_endpoint"], state=state, nonce=nonce, code_verifier=code_verifier, **extra
     )
     return url
 
@@ -129,10 +132,7 @@ def exchange_code_for_claims(
 ) -> OidcClaims:
     """Exchanges an authorization code at the provider's token endpoint, then verifies
     the returned id_token for real (signature against the provider's own published JWKS,
-    plus iss/aud/exp/nonce) — never trusts an unverified token. Extracts `email`, falling
-    back to `preferred_username` since Azure AD's v2 endpoint doesn't always populate
-    `email` without extra app-registration configuration — a real interop caveat, not an
-    oversight."""
+    plus iss/aud/exp/nonce) — never trusts an unverified token."""
     discovery = _discovery(connection)
     client_secret = decrypt_secret(connection.client_secret_encrypted)
     client = OAuth2Client(
@@ -154,26 +154,44 @@ def exchange_code_for_claims(
     if not id_token:
         raise OidcError("Identity provider did not return an id_token")
 
+    claims = verify_provider_token(connection, id_token, kind="id_token")
+    if claims.get("nonce") != expected_nonce:
+        raise OidcError("id_token nonce mismatch")
+    return claims_to_identity(connection, claims)
+
+
+def verify_provider_token(connection: SsoConnection, token: str, *, kind: str, require_exp: bool = False) -> dict[str, Any]:
+    """A JWT the identity provider signed, verified for real: signature against its own
+    published JWKS, issuer, audience (our client id) and, if present (or required), expiry.
+    Used for ID tokens at sign-in, back-channel logout tokens, and an online banking
+    provider's ID tokens in token exchange."""
+    discovery = _discovery(connection)
     try:
         jwks = _get_jwks(discovery["jwks_uri"])
     except (httpx.HTTPError, ValueError) as exc:
         raise OidcError(f"Couldn't read the provider's signing keys: {exc}") from exc
     try:
-        decoded = joserfc_jwt.decode(id_token, jwks, algorithms=["RS256"])
+        decoded = joserfc_jwt.decode(token, jwks, algorithms=["RS256"])
     except Exception as exc:
-        raise OidcError(f"id_token signature verification failed: {exc}") from exc
+        raise OidcError(f"{kind} signature verification failed: {exc}") from exc
 
     claims = decoded.claims
     expected_issuers = {discovery.get("issuer"), connection.issuer}
     if claims.get("iss") not in expected_issuers:
-        raise OidcError("id_token issuer mismatch")
+        raise OidcError(f"{kind} issuer mismatch")
     if connection.client_id not in _audience_list(claims.get("aud")):
-        raise OidcError("id_token audience mismatch")
-    if claims.get("nonce") != expected_nonce:
-        raise OidcError("id_token nonce mismatch")
+        raise OidcError(f"{kind} audience mismatch")
+    if claims.get("exp") is None and require_exp:
+        raise OidcError(f"{kind} has no expiry")
     if claims.get("exp") is not None and float(claims["exp"]) < time.time():
-        raise OidcError("id_token expired")
+        raise OidcError(f"{kind} expired")
+    return dict(claims)
 
+
+def claims_to_identity(connection: SsoConnection, claims: dict[str, Any]) -> OidcClaims:
+    """Extracts `email`, falling back to `preferred_username` since Azure AD's v2 endpoint
+    doesn't always populate `email` without extra app-registration configuration — a real
+    interop caveat, not an oversight."""
     email = claims.get("email") or claims.get("preferred_username")
     if not email:
         raise OidcError("id_token did not contain an email or preferred_username claim")
@@ -183,3 +201,28 @@ def exchange_code_for_claims(
         groups = [groups]
 
     return OidcClaims(email=email, subject=str(claims.get("sub", "")), groups=list(groups))
+
+
+BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout"
+_LOGOUT_TOKEN_MAX_AGE_SECONDS = 10 * 60
+
+
+def verify_logout_token(connection: SsoConnection, logout_token: str) -> dict[str, Any]:
+    """An OpenID Connect Back-Channel Logout 1.0 logout token: verified like an ID token,
+    plus the logout event, a `jti` (each is accepted once, by the caller), a recent `iat`,
+    no `nonce`, and a `sub` (OpenClear finds people by the provider's subject; it doesn't
+    track the provider's session ids)."""
+    claims = verify_provider_token(connection, logout_token, kind="logout_token")
+    events = claims.get("events")
+    if not isinstance(events, dict) or BACKCHANNEL_LOGOUT_EVENT not in events:
+        raise OidcError("logout_token has no back-channel logout event")
+    if "nonce" in claims:
+        raise OidcError("logout_token must not contain a nonce")
+    if not claims.get("jti"):
+        raise OidcError("logout_token has no jti")
+    iat = claims.get("iat")
+    if iat is None or abs(time.time() - float(iat)) > _LOGOUT_TOKEN_MAX_AGE_SECONDS:
+        raise OidcError("logout_token is too old or from the future")
+    if not claims.get("sub"):
+        raise OidcError("logout_token has no sub (session-only logout isn't supported)")
+    return claims
