@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### New: plugins (PLUGIN_PLAN.md PL1)
+
+- **What a plugin can add:** another payment network, OCR provider, email or SMS
+  provider, storage backend, scoring model, or bulk import format. It's a separately
+  installed package that declares an `openclear.plugins` entry point; OpenClear's code
+  doesn't change.
+- **Turning one on:** the operator allows it by name with `OPENCLEAR_PLUGINS`.
+  Installing the package alone activates nothing.
+- **When a plugin is skipped:** if it targets another plugin API version, fails to load,
+  or claims a name that's already taken. The app still starts, and the problem shows
+  under **Admin → Plugins** and in the log.
+- **The built-ins work the same way:** they now register through the same interface.
+  Nothing changes for existing installations.
+- **Scoring model:** the model is chosen by `OPENCLEAR_ML_SCORING_MODEL`. It defaults
+  to `logistic_regression`, so this doesn't change unless you set it.
+
 ### New: API clients for a bank's systems (SDK_PLAN.md P0)
 
 - **OAuth 2.0 client credentials:** a bank admin creates an API client under Admin → API

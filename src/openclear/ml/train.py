@@ -14,7 +14,6 @@ from openclear.domain.decision import Decision, DecisionOutcome
 from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 from openclear.domain.ml_model import MlModel, MlModelStatus
 from openclear.domain.tenant import MlModelSource, Tenant
-from openclear.ml.model import LogisticRegressionScoringModel
 from openclear.ml.registry import ArtifactStore, activate_model, create_model_row, get_active_model_row
 
 MIN_DECISIONS_TO_TRAIN = 10
@@ -270,7 +269,10 @@ def train_model(
     X_train, X_holdout = X[:split_index], X[split_index:]
     y_train, y_holdout = y[:split_index], y[split_index:]
 
-    model = LogisticRegressionScoringModel()
+    from openclear import plugins
+
+    algorithm = get_settings().ml_scoring_model
+    model = plugins.lookup("scoring_models", algorithm, what="scoring model")()
     model.fit(X_train, y_train)
     metrics = _evaluate(model, X_holdout, y_holdout)
 
@@ -303,7 +305,7 @@ def train_model(
         customer_id=customer_id,
         tenant_id=tenant_id,
         version=version,
-        algorithm="logistic_regression",
+        algorithm=algorithm,
         artifact_path=artifact_path,
         artifact_sha256=artifact_sha256,
         trained_from_decision_count=len(y),

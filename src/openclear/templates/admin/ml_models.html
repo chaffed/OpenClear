@@ -132,6 +132,15 @@
     OpenClear's API without a person's password.</p>
 </div>
 {% endif %}
+{% if can(ctx, "admin:manage") %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Plugins</h1>
+    <a href="/ui/admin/plugins" class="button secondary">{{ icon("tune") }}View</a>
+  </div>
+  <p>What extends this installation: payment networks, file formats, OCR and storage services.</p>
+</div>
+{% endif %}
 {% if can(ctx, "api_client:manage") %}
 <div class="card">
   <div class="toolbar">

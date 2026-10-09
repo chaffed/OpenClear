@@ -14,12 +14,9 @@ def get_sms_provider(settings: Settings | None = None) -> SmsProvider:
     if provider_name in _PROVIDER_CACHE:
         return _PROVIDER_CACHE[provider_name]
 
-    if provider_name == "twilio":
-        from openclear.notifications.sms.twilio_provider import TwilioSmsProvider
+    from openclear import plugins
 
-        provider: SmsProvider = TwilioSmsProvider()
-    else:
-        raise ValueError(f"Unknown SMS provider: {provider_name!r}")
+    provider: SmsProvider = plugins.lookup("sms_providers", provider_name, what="SMS provider")()
 
     _PROVIDER_CACHE[provider_name] = provider
     return provider

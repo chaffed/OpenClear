@@ -315,7 +315,7 @@ _CHECK_IMAGE = dict(
     resource_type="paid_item", audit_action="check_image.upload", audit_noun="Check image + paid item", creates_check_image=True
 )
 
-SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
+BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
     (BulkUploadKind.PAID_ITEMS, "tabular"): ImportSpec(_load_tabular, _paid_item_tabular, **_PAID),
     (BulkUploadKind.PAID_ITEMS, "json"): ImportSpec(_load_json, _paid_item_json, **_PAID),
     (BulkUploadKind.ISSUED_ITEMS, "tabular"): ImportSpec(_load_tabular, _issued_item_tabular, **_ISSUED),
@@ -340,8 +340,15 @@ def _loaded(spec: ImportSpec, record: BulkUploadFile) -> Iterator[LoadedFile]:
         loaded.close()
 
 
+def spec_for(kind: BulkUploadKind, file_format: str) -> ImportSpec:
+    """The import format, built in (BUILTIN_SPECS) or from a plugin (plugins/__init__.py)."""
+    from openclear import plugins
+
+    return plugins.lookup("import_formats", (kind, file_format), what="import format")
+
+
 def _spec(record: BulkUploadFile) -> ImportSpec:
-    return SPECS[(record.kind, (record.options or {}).get("format", "tabular"))]
+    return spec_for(record.kind, (record.options or {}).get("format", "tabular"))
 
 
 # --- Receiving a file ----------------------------------------------------------------------
@@ -384,7 +391,7 @@ def receive_upload(
         uploaded_by_user_id=uploaded_by_user_id, customer_id=customer_id, source=source,
     )
     record.options = {**(options or {}), "format": file_format}
-    spec = SPECS[(kind, file_format)]
+    spec = spec_for(kind, file_format)
     try:
         with _loaded(spec, record) as loaded:
             record.total_rows = len(loaded.rows)

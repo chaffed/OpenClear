@@ -24,6 +24,7 @@ or `docs/`.
 - [Data exports](#data-exports)
 - [Billing](#billing)
 - [Background work and multiple instances](#background-work-and-multiple-instances)
+- [Plugins](#plugins)
 - [Known gaps](#known-gaps)
 
 ## The big picture
@@ -155,9 +156,7 @@ Each network is a package under `networks/` (`check/`, `ach/`) that implements
 
 Shared code (`services/exception_service.py`, `ml/predict.py`,
 `api/v1/exceptions.py`, `api/v1/decisions.py`) only talks to the registry, never to a
-concrete network. Adding a network means a new `networks/<code>/` package, a
-`payment_network` row, and one import in `main.py`. It doesn't touch `exception_item`,
-`decision`, `ml/` or the exceptions API.
+concrete network. Adding a network takes two things: a package that registers its adapter as a plugin (see [Plugins](#plugins)) and a `payment_network` row. It doesn't touch `exception_item`, `decision`, `ml/` or the exceptions API.
 
 `settlement_timing` is the hook for real-time networks. Check and ACH are
 `ASYNC_REVIEWABLE`: accept the item, raise an exception, and let a person review it before
@@ -480,6 +479,43 @@ Shared between instances (SCALE_PLAN.md S6):
 
 Still per process: the OIDC discovery and key caches, and the loaded-model cache. See
 README, "Running more than one instance".
+
+## Plugins
+
+`plugins/__init__.py` holds a registry of extension points:
+
+- networks;
+- OCR providers;
+- email and SMS providers;
+- storage backends;
+- scoring models;
+- import formats.
+
+`plugins.load()` runs once at startup, from both `main.py` and `workers/run.py`, in this order:
+
+1. It registers the built-ins from `plugins/builtin.py`.
+2. It loads each entry point in the `openclear.plugins` group that `settings.plugins` allows.
+
+The factories look up names in the registry rather than importing concrete classes:
+
+- `ocr/factory.py`;
+- the email and SMS factories;
+- `storage.backend()`;
+- `ml/train.py`, through `settings.ml_scoring_model`;
+- `bulk_import_service.spec_for()`.
+
+So a built-in and a plugin are used the same way.
+
+A plugin is checked in several ways:
+
+- A plugin declares the `PLUGIN_API_VERSION` range it supports. One outside that range is marked `incompatible` and isn't called.
+- Registration is all-or-nothing. A plugin adds to a staging copy of the registry, and the copy replaces the live one only if `register()` succeeds. A plugin that raises, or claims a name that's already taken, leaves nothing behind and is marked `failed`.
+- `plugins.status()` feeds Admin → Plugins.
+
+The phases are in PLUGIN_PLAN.md:
+
+- PL2 adds per-bank enablement, decision-file layouts and an example plugin.
+- PL3 adds matching rules, scoring features and notification channels.
 
 ## Data growth
 

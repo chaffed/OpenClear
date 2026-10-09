@@ -107,3 +107,11 @@ the core adapters will be plugins.
 
 (Newest last.)
 - 2026-10-09 Plan written. Licensing decided: pure AGPL, closed vendors integrate out of process.
+- 2026-10-08 **PL1 done** (branch `plugins-pl1`). The mechanism is in place, with no change in behavior.
+  - Discovery is through entry points. `openclear.plugins` holds the registry, `PLUGIN_API_VERSION = 1` and `OPENCLEAR_PLUGINS`. Admin → Plugins shows what's loaded.
+  - The seven existing interfaces are now extension points, and the built-ins register through them (`plugins/builtin.py`): networks, OCR, email, SMS, storage, the scoring model (`OPENCLEAR_ML_SCORING_MODEL`) and import formats.
+  - A plugin's registration is all or nothing: one that fails, or claims a name already taken, leaves nothing behind.
+  - Tests use fake entry points to cover these cases: allowed, not allowed, incompatible, failing to import, failing to register, and a name already taken.
+  - Deferred to PL2:
+    - per-bank enablement;
+    - the "required plugin" setting, under which the app won't start without the plugin.

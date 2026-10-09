@@ -43,6 +43,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [MSSQL](#mssql)
 - [Running more than one instance](#running-more-than-one-instance)
 - [Background jobs](#background-jobs)
+- [Plugins](#plugins)
 - [Upgrade and downgrade support](#upgrade-and-downgrade-support)
 - [Web UI](#web-ui)
 - [Architecture at a glance](#architecture-at-a-glance)
@@ -1065,6 +1066,41 @@ the live chain carries on. A broken chain is never archived. Nothing is lost: th
 log page lists each archive for download, and "Verify" checks the archives too. The
 newest entry always stays in the table.
 
+## Plugins
+
+You can extend OpenClear without changing its code, using a separately installed Python package: another payment network, an OCR or storage service, a scoring model, or an import format for your core's files.
+
+A plugin declares an entry point in the `openclear.plugins` group:
+
+```toml
+[project.entry-points."openclear.plugins"]
+rtp = "openclear_rtp:plugin"
+```
+
+The object it points to has these:
+
+- a `name`;
+- a `version`;
+- `plugin_api`, the range of the plugin API version it supports, for example `(1, 1)`;
+- `register(registry)`.
+
+Installing a package isn't enough to turn it on. The operator also allows it by entry point name with `OPENCLEAR_PLUGINS=rtp,other`.
+
+A plugin is skipped if it:
+
+- isn't allowed;
+- needs a different plugin API version;
+- fails to load;
+- claims a name that's already taken.
+
+Each skipped plugin is reported in the log and under **Admin → Plugins**, and the app still starts. OpenClear's own networks, OCR providers, email and SMS, storage, scoring model and import formats register the same way, from `plugins/builtin.py`.
+
+Plugins run inside OpenClear with its full access. They're trusted code, so install only plugins you'd trust as much as OpenClear itself.
+
+A plugin loaded into OpenClear is part of the same program, so it's AGPL-3.0 too. A closed system should integrate through the API and webhooks instead.
+
+The plan is in [PLUGIN_PLAN.md](PLUGIN_PLAN.md).
+
 ## Upgrade and downgrade support
 
 - **Upgrading is always supported**, from any prior version straight to the latest —
@@ -1116,8 +1152,8 @@ The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs
   its `__init__.py` docstring for why this matters)
 - `networks/` — the pluggable per-payment-network layer (`check/`, `ach/`); each
   implements `networks.base.NetworkAdapter` and self-registers via
-  `networks.registry.register_adapter()`. Adding a new network (e.g. RTP) means adding a
-  new `networks/<code>/` package plus one import in `main.py` — no changes to
+  `networks.registry.register_adapter()`. Adding a new network (e.g. RTP) means a
+  plugin that registers its adapter (see [Plugins](#plugins)) — no changes to
   `exception_item`, `decision`, `ml/`, or the `/exceptions` API.
 - `ocr/` — pluggable OCR (`OCRProvider` protocol; Tesseract is the default, cloud
   providers are stubbed behind optional extras)
@@ -1129,6 +1165,7 @@ The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs
   its own admins). Customer models sit on top of either. See `ml/predict.py` for which model
   scores an exception, `services/tenant_ml_service.py` for switching, and the admin "ML
   Scoring" docs for the details a bank sees.
+- `plugins/` — the plugin registry and loader; `plugins/builtin.py` registers the built-ins
 - `api/v1/` — FastAPI routers; `exceptions.py`/`decisions.py` are network-agnostic
 - `workers/` — the scheduled jobs (ML retrain, dropbox import, notifications, disposition
   sweep, demo reset), run by an opt-in in-process APScheduler (`OPENCLEAR_ENABLE_ML_SCHEDULER`

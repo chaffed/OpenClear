@@ -103,11 +103,11 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan)
 
-    # Importing each network package triggers its register_adapter() call at import
-    # time (see networks/registry.py). Adding a new network later means adding one
-    # import here plus its own package — nothing else in this file changes.
-    import openclear.networks.check  # noqa: F401
-    import openclear.networks.ach  # noqa: F401
+    # Built-in and allowed plugins register their networks, providers and formats
+    # (plugins/__init__.py). A new payment network is a plugin package, not an edit here.
+    from openclear import plugins
+
+    plugins.load()
 
     # Registered first, so it's the innermost: the body-size guard, rate limit and security
     # headers below all run before it does (Starlette wraps in reverse order).

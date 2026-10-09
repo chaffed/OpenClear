@@ -158,7 +158,7 @@ class Settings(BaseSettings):
     # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
     # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.
     # With the key settings empty, boto3 finds credentials itself (environment, role).
-    storage_backend: Literal["local", "s3"] = "local"
+    storage_backend: str = "local"  # "local", "s3", or one a plugin provides
     s3_bucket: str = ""
     s3_prefix: str = ""
     s3_endpoint_url: str = ""
@@ -201,6 +201,9 @@ class Settings(BaseSettings):
     # How long an Idempotency-Key's stored response is kept for replays (api/idempotency.py);
     # housekeeping removes older ones.
     idempotency_key_hours: int = 24
+    # Plugins (plugins/__init__.py): the installed packages allowed to load, by entry point
+    # name, comma-separated. Installing a package alone activates nothing.
+    plugins: str = ""
     # Webhooks (services/webhook_service.py): the receiver must answer within this many
     # seconds. Webhook URLs must be public https unless webhook_allow_private_hosts is on,
     # for a single-bank install whose receivers are on its own network. Leave it off when
@@ -250,6 +253,9 @@ class Settings(BaseSettings):
     # Loaded models each process keeps in memory (one per model slot that has scored
     # something): the least recently used is dropped past this.
     ml_model_cache_size: int = 256
+    # Which scoring model training builds: "logistic_regression" (built in), or one a
+    # plugin provides (plugins/__init__.py).
+    ml_scoring_model: str = "logistic_regression"
     # Fraud-scoring model choice per bank (services/tenant_ml_service.py, FIX_PLAN.md
     # Phase 5). A newly created bank must stay on the shared model this many days before it
     # may switch to a bank-only model (banks that predate the setting aren't locked).

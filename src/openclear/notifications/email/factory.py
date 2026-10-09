@@ -14,12 +14,9 @@ def get_email_provider(settings: Settings | None = None) -> EmailProvider:
     if provider_name in _PROVIDER_CACHE:
         return _PROVIDER_CACHE[provider_name]
 
-    if provider_name == "smtp":
-        from openclear.notifications.email.smtp_provider import SmtpEmailProvider
+    from openclear import plugins
 
-        provider: EmailProvider = SmtpEmailProvider()
-    else:
-        raise ValueError(f"Unknown email provider: {provider_name!r}")
+    provider: EmailProvider = plugins.lookup("email_providers", provider_name, what="email provider")()
 
     _PROVIDER_CACHE[provider_name] = provider
     return provider

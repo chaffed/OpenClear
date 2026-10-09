@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Plugins — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About plugins{% endblock %}
+{% block help_body %}
+<p>Plugins add to what OpenClear can do: another payment network, a file format your core
+  sends, an OCR service, a storage service. They're installed and allowed by whoever runs
+  your OpenClear installation, not from this page. This page shows what's in use.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Plugins</h1>
+  <p class="text-muted">Plugin API version {{ api_version }}.</p>
+  <table>
+    <thead><tr><th>Plugin</th><th>Version</th><th>From</th><th>Status</th><th>Provides</th></tr></thead>
+    <tbody>
+      {% for p in plugins %}
+      <tr>
+        <td>{{ p.name }}</td>
+        <td>{{ p.version }}</td>
+        <td>{{ p.source }}</td>
+        <td><span class="badge {{ 'badge-ok' if p.status == 'loaded' else ('badge-danger' if p.status == 'failed' else '') }}">{{ p.status }}</span>
+          {% if p.error %}<br><span class="text-muted">{{ p.error }}</span>{% endif %}</td>
+        <td>{% if p.provides %}<ul class="compact">{% for item in p.provides %}<li><code>{{ item }}</code></li>{% endfor %}</ul>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

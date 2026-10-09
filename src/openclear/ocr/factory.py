@@ -29,20 +29,9 @@ def get_ocr_provider(settings: Settings | None = None) -> OCRProvider:
             provider_name,
         )
 
-    if provider_name == "tesseract":
-        from openclear.ocr.tesseract_provider import TesseractOCRProvider
+    from openclear import plugins
 
-        provider: OCRProvider = TesseractOCRProvider()
-    elif provider_name == "textract":
-        from openclear.ocr.textract_provider import TextractOCRProvider
-
-        provider = TextractOCRProvider()
-    elif provider_name == "azure_document_intelligence":
-        from openclear.ocr.azure_di_provider import AzureDocumentIntelligenceOCRProvider
-
-        provider = AzureDocumentIntelligenceOCRProvider()
-    else:
-        raise ValueError(f"Unknown OCR provider: {provider_name!r}")
+    provider: OCRProvider = plugins.lookup("ocr_providers", provider_name, what="OCR provider")()
 
     _PROVIDER_CACHE[provider_name] = provider
     return provider

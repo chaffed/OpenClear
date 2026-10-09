@@ -25,6 +25,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     import openclear.domain  # noqa: F401 -- registers every mapper
+    from openclear import plugins
+
+    plugins.load()  # the same networks, providers and formats as the web process
 
     engine = get_engine()
     if args.once:

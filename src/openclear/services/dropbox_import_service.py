@@ -112,7 +112,7 @@ def _bulk_upload_kind_for(kind_subpath: str) -> BulkUploadKind:
     return BulkUploadKind.CHECK_IMAGES  # checks/x937, checks/zip
 
 
-# Which import format each inbox holds (services/bulk_import_service.SPECS).
+# Which import format each inbox holds (services/bulk_import_service.BUILTIN_SPECS).
 _FORMAT_BY_SUBPATH = {
     _ISSUED_ITEMS: "tabular",
     _ACH_TABULAR: "tabular",

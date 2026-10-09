@@ -211,8 +211,16 @@ def _s3() -> S3Storage:
 
 
 def backend() -> LocalStorage | S3Storage:
-    """Where new files go."""
-    return _s3() if get_settings().storage_backend == "s3" else _local
+    """Where new files go: the backend named by `storage_backend`, "local" and "s3" built
+    in, others from plugins (plugins/__init__.py)."""
+    name = get_settings().storage_backend
+    if name == "local":
+        return _local
+    if name == "s3":
+        return _s3()
+    from openclear import plugins
+
+    return plugins.lookup("storage_backends", name, what="storage backend")()
 
 
 def for_ref(ref: str) -> LocalStorage | S3Storage:
