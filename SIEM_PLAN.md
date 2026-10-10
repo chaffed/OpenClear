@@ -46,6 +46,22 @@ The design separates two kinds of record, because they need different handling.
 | S4 | **Pull API.** `GET /api/v1/security-events?after=<id>&limit=` gives a bank's security events in order, with a cursor, like the decision feed. `GET /api/v1/audit-log?after_sequence=` gives the action log itself, each entry with its hash, previous hash and signature, so a bank's SIEM or archive can verify the chain independently (with the public key from the evidence export). Gated on `audit_log:read`; API clients welcome. The SDK gains `openclear events tail`, which follows the feed and prints JSON lines for piping into a collector. A **Splunk** example (a modular input or a scripted input using the SDK) and a **Sentinel** example (a Logic App or data connector polling the API) are included. | Pull suits banks whose SIEM can't receive from outside, or that want to verify the chain. |
 | S5 | **Controls, docs and evidence.**<br>• A new control, "Security events delivered": **FAIL** if a destination has been failing for over an hour or its backlog is growing; **WARN** if no destination is configured and the feed hasn't been read in a day; **PASS** with each destination's last success and backlog.<br>• The evidence export gains the security-event counts for the period by category, and each destination's delivery record.<br>• A guide, `docs/guides/siem.md`, with configuration for Splunk, Sentinel, QRadar, Elastic and a syslog relay. It includes suggested detections: repeated failed sign-ins, a lockout followed by a success from a new IP, an admin granting themselves permissions, a group combining duties, a key rotation, a large export, and a control turning to FAIL.<br>• A row on log management in `docs/compliance/ffiec.md`. | |
 
+## Waves
+
+The phases are built in **two waves**. **Each wave is one merge to `main`:** one run of the
+three full suites and one manual check. Within a wave, commits run only the tests they
+touch. MASTER_PLAN.md places these waves among the WAF and UX waves.
+
+| Wave | Phases | Contents | Tested by |
+|---|---|---|---|
+| **A. Events** | S1, S2, S4 | • JSON logging, built on the request context from WAF wave A.<br>• The security event catalog, the emitter, the outbox table and the hooks.<br>• The pull APIs for security events and the action log, and `openclear events tail`.<br>Pull needs no destinations, so a bank can collect events from the first release. | Unit tests per hook; the no-secrets test; isolation between banks on Postgres. A manual sign-in session (good and bad passwords, a lockout, MFA, a failed token) checked against the feed and the JSON logs. |
+| **B. Shipping** | S3, S5 | • Syslog, Splunk HEC and HTTPS destinations: the installation's from configuration, and each bank's as a tile in the control panel (UX wave 2).<br>• The "Security events delivered" control; counts in the evidence export.<br>• The guide, and the crosswalk row. | Fake receivers in the suite (TLS syslog, HEC, HTTPS) for outages, retries and catch-up. Once, against a real Splunk container and a syslog-ng relay with TLS. |
+
+**Why not ship in wave A too?** A bank's destinations are a settings screen. Built before
+the control panel, it would be one more card to rework. The installation's own destinations
+need no screen, but they share the delivery code with the banks' destinations. Building both
+at once tests that code once.
+
 ## The event record
 
 One schema for every destination and format. The JSON form is close to Elastic Common
@@ -106,6 +122,7 @@ data security requirements that apply to account data.
 | SI-D5 | Is every security event also an action-log entry? | Those that belong to a bank and change something, yes. Failed attempts and refusals go to the outbox and logs only, so a password-guessing flood can't swell the signed chain. They're still durable, counted, and in the evidence export. |
 | SI-D6 | Account data in events | Never (see "What's never in an event"). |
 | SI-D7 | How long the outbox keeps events | Delivered events are cleared by housekeeping after `security_event_retention_days` (default 30). The SIEM is the long-term store; the action log keeps what belongs in it. |
+| SI-D8 | Which waves? | A: events and pull (S1, S2, S4). B: shipping, controls and docs (S3, S5), after the control panel, so a bank's destinations are a tile. |
 
 ## Testing
 
@@ -131,3 +148,5 @@ data security requirements that apply to account data.
 (Newest last.)
 - 2026-10-09 Plan written from a review of the logging, the action log, the sign-in paths
   and the outbound integrations. Nothing built yet.
+- 2026-10-10 Reorganised into two waves (A events and pull, B shipping) to cut test cycles.
+  See MASTER_PLAN.md for the overall order.

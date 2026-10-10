@@ -110,6 +110,25 @@ each one on a real zone before anything is built.
 | W5 | **The deployment guide** (`docs/guides/edge.md`, on the docs site), with tested configurations for Cloudflare and Akamai and shorter notes for CloudFront with AWS WAF, Azure Front Door and F5. It covers:<br>• **Topology:** TLS at the edge, re-encrypted to the origin, plus origin lockdown (W2).<br>• **OpenClear settings:** `PUBLIC_BASE_URL`, `WEBAUTHN_ORIGIN`, client IP (W1), the edge secret.<br>• **WAF exclusions, path by path:** `/api/v1/bulk-uploads`, `/api/v1/mrm/replay`, `/ui/bulk-uploads`, `/ui/auth/saml/*`, `/scim/v2/*`, the webhook, SSO and embedding settings pages, `/ui/markdown-preview`. Each excludes named rules, never the whole WAF. Rules start in log-only mode for two weeks.<br>• **Bot management:** skip it for `/api/*`, `/scim/v2/*`, `/ui/auth/saml/*`, the OIDC back-channel logout, and `/health`. Optionally also skip it for API clients presenting an edge mTLS certificate.<br>• **Features to turn off:** Rocket Loader, Email Obfuscation, Zaraz and RUM injection; the "Add security headers" transform (OpenClear sends its own); Auto Minify where it's still offered.<br>• **Caching:** respect origin headers; never "cache everything" on `/ui` or `/api`.<br>• **Sizes and timeouts** per plan, and turning off edge retries for POST.<br>• **Edge rate limits** for sign-in and token endpoints.<br>• **Logs:** keep the edge's request id.<br>• **A go-live checklist** that ends with the edge check passing. | The README's proxy section shrinks to a pointer. `docs/compliance/ffiec.md` gains a WAF row. |
 | W6 | **Optional: mTLS for API clients at the edge.** Cloudflare API Shield and Akamai can require a client certificate from the bank's core and pass its fingerprint on in a header. An API client in OpenClear can then be pinned to a certificate fingerprint (trusted only from the edge, per W1), so a leaked client secret alone isn't enough. | Only if a bank asks. It's additive: clients without a pin work as today. |
 
+## Waves
+
+The phases are built in **three waves**, grouped by the code they touch and by what's needed
+to test them. **Each wave is one merge to `main`:** one run of the three full suites (SQLite,
+Postgres, Linux), and one manual check. Within a wave, commits run only the tests they touch.
+MASTER_PLAN.md places these waves among the UX and SIEM waves.
+
+| Wave | Phases | Contents | Tested by |
+|---|---|---|---|
+| **A. Request handling** | W1, W2, W3 (connections and caching) | • **Request handling:** one middleware that works out each request's context once:<br>&nbsp;&nbsp;– the client IP (from a trusted header or the hop count);<br>&nbsp;&nbsp;– the request id (the edge's, or a new one);<br>&nbsp;&nbsp;– the person or API client.<br>&nbsp;&nbsp;Everything else reads that context.<br>• **Its users:**<br>&nbsp;&nbsp;– rate limits per person or API client;<br>&nbsp;&nbsp;– the edge secret;<br>&nbsp;&nbsp;– the source IP and request id in action-log metadata;<br>&nbsp;&nbsp;– request ids on error pages.<br>• **The "Edge in front" control.**<br>• **Server settings:**<br>&nbsp;&nbsp;– uvicorn's proxy trust and keep-alive;<br>&nbsp;&nbsp;– cache headers on static files;<br>&nbsp;&nbsp;– a JSON body on a 413.<br>• **The sandbox's** `--forwarded-allow-ips='*'` is replaced. | Unit and integration tests with simulated Cloudflare and Akamai headers and peer addresses. A manual check on the Fly demo and sandbox (Fly's proxy is one hop). |
+| **B. Long requests** | W3 (jobs) | Replay, evidence export and action-log verification become jobs with a run to poll. The Controls page shows the last verification and its age, and verification also runs daily. The SDKs follow the `202` answers. | Integration tests for each job and its polling. A manual pass on Model risk, Controls and the export, using the shared busy and polling components from UX wave 0. |
+| **C. Real edges** | W0, W4, W5 (W6 if asked) | The edge check script; the deployment guide; the WAF exclusions and bot-management bypasses, confirmed against a real Cloudflare zone (and Akamai if available); fixes for anything the zone shows. | The edge check passing against the sandbox behind Cloudflare. |
+
+**W0 isn't a separate step.** Waves A and B are safe whatever a real zone shows: every new
+setting defaults to today's behaviour. So the real-zone work (W0) is done once, in wave C,
+with the edge check that W4 builds. If a test domain is available earlier, a short
+look-and-see session (no code) can run alongside wave A, and anything surprising is recorded
+here.
+
 ## Decisions
 
 | # | Question | Decision |
@@ -120,6 +139,7 @@ each one on a real zone before anything is built.
 | W-D4 | Turn long requests into jobs (W3), or ask operators to raise edge timeouts? | Jobs. Raising Cloudflare's timeout needs Enterprise, and long-held requests also tie up workers. |
 | W-D5 | Origin lockdown in the app, or at the network? | At the network (tunnel, mTLS, firewall). The shared-secret header is an extra layer the app can check and report on. |
 | W-D6 | Support a specific provider's APIs (e.g. pushing WAF rules through Cloudflare's API)? | Not now. A guide with tested settings, plus the edge check, works for every provider without holding credentials to the bank's edge account. Possibly later, as a plugin. |
+| W-D7 | Confirm on a real zone first (W0), or build first? | Build waves A and B first. Their settings default to today's behaviour, and the real-zone check happens once, in wave C, with the edge check script. |
 
 ## Testing
 
@@ -143,3 +163,5 @@ each one on a real zone before anything is built.
   caching, server settings, long requests, and how they meet Cloudflare and Akamai.
   Nothing built yet. W0 needs a Cloudflare zone on a domain we control, and, ideally,
   Akamai access.
+- 2026-10-10 Reorganised into three waves (A request handling, B long requests, C real edges)
+  to cut test cycles; W0 moves into wave C. See MASTER_PLAN.md for the overall order.

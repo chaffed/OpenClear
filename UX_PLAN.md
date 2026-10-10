@@ -69,7 +69,7 @@ later phases reuse them instead of each building and testing its own.
 
 **Each wave is one merge to `main`:** one run of the three full suites (SQLite, Postgres,
 Linux), and one manual pass over the screens it changed. Within a wave, commits run only the
-tests they touch. That's five merges in all, instead of about a dozen.
+tests they touch. That's five merges in all, instead of about a dozen. MASTER_PLAN.md places these waves among the WAF and SIEM waves.
 
 | Wave | Phases | Contents | Manual pass |
 |---|---|---|---|
