@@ -295,7 +295,10 @@ def test_approvals_badge_excludes_your_own_recommendations(client, db_session, t
     db_session.commit()
 
     _login(client, tenant, users["admin"].email)
-    assert "nav-count" not in client.get("/ui/exceptions").text
+    page = client.get("/ui/exceptions").text
+    approvals_link = page.split('href="/ui/exceptions/approvals"')[1].split("</a>")[0]
+    assert "nav-count" not in approvals_link  # not your own recommendation
+    # (The Exceptions link does count it: it still needs a decision.)
 
 
 def test_decision_deadline_helper_used_in_list(client, db_session, tenant_factory):
