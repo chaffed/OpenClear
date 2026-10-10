@@ -55,28 +55,41 @@ phases here.
 | U7 | **Bank staff: the customer hub.**<br>• The Customers list gains: items open, items due today, the nearest deadline, the last issued-file upload, and the customer's decision default at the deadline.<br>• It's sorted by "needs action" first, and filterable by "no issue file in N days" (a common sign of a customer who has stopped sending them).<br>• From a customer: send a reminder now (U3), open its uploads, its layouts (U1), its users. | |
 | U8 | **Bank-granted support access** (instead of impersonation).<br>• A bank admin grants a named platform support person access for a stated reason and period (e.g. 4 hours), read-only by default. Write access needs a second bank admin's approval (as in C1).<br>• The support person works under their own name, with a banner saying whose access they're using and until when. They can't see secrets, change users, groups or settings, or decide items.<br>• Every grant, use and expiry goes into the bank's action log and the evidence export, and is visible to the bank under Settings → Support access.<br>• Platform staff can't grant themselves access. | Needed before an operator UI (U9) can link into a bank. |
 | U9 | **Platform operator view.**<br>• A web page for the platform API key holder (or a platform admin role) showing every bank with its status, exceptions open and overdue, jobs queued and failed, the last import, the controls summary (C4), and the security-event delivery state (SIEM_PLAN S5).<br>• Provisioning a bank from the web, using the existing provisioning service and the bank's Getting Started checklist.<br>• Links into a bank only through U8. | Today these exist as platform APIs only. |
+| U10 | **Accessibility (WCAG 2.1 AA).**<br>• An audit of the main journeys (sign in, dashboard, exceptions, decide, upload, settings) with automated checks (axe) and a manual pass with VoiceOver and NVDA and keyboard only.<br>• Fixes: labels, focus order and visible focus, colour contrast in both themes, announcements of changes (the banner, upload results), tables with headers, error messages tied to fields.<br>• A published accessibility statement, and an axe check in the test suite for the main pages so they stay compliant. | Runs alongside the other phases; each new page in the other phases is built to it. |
 | U11 | **A control panel for settings.** Settings and Admin become one control panel. Today they're two long grids of form cards: Organization settings alone has twelve.<br>• **Tiles grouped into sections:** Organization; Security & access; Decisions & rules; Integrations; Data & compliance. A search box filters the tiles.<br>• **Each tile has an icon, a name and its current state**, e.g. "Dual control · On", "Segregation of duties · Warn", "SSO · 2 connections", "Controls · 1 FAIL". An admin sees how things stand without opening anything.<br>• Tiles appear only for what the person's permissions allow.<br>• **Small settings open in a modal:** branding, timeouts, dual control, contact info, messages, password policy, embedding origins, reminders (U3), the customer's decision default.<br>• **Lists and workflows open as full pages from their tile:** SSO connections, security groups, users, webhooks, API clients, decision files, the fraud model, Model risk, Controls, layouts (U1). A modal holding tables and sub-forms is worse than a page.<br>• **Every modal has its own URL** (e.g. `/ui/settings/branding`), so the Controls page, the Getting Started checklist and the docs can link straight to a setting. Without JavaScript the same URL is a plain page. It works the same in the embedded frame.<br>• **Modal behaviour:**<br>&nbsp;&nbsp;– native `<dialog>`, as the help and session dialogs already use;<br>&nbsp;&nbsp;– focus kept inside, Escape closes, focus returns to the tile;<br>&nbsp;&nbsp;– a warning before closing with unsaved changes;<br>&nbsp;&nbsp;– saving updates the tile's state in place, and errors show beside their fields;<br>&nbsp;&nbsp;– full-screen on phones.<br>• **The same pattern at three levels:**<br>&nbsp;&nbsp;– the platform operator (U9): banks, jobs, platform settings;<br>&nbsp;&nbsp;– the bank: everything above;<br>&nbsp;&nbsp;– each customer: its users, issue-file layouts, reminders, decision default, banner. | Mostly templates, CSS and a small script. The settings routes stay as they are, each answering as a full page or as a modal's content. Later phases (U1, U3, U8) add their settings as tiles rather than as more cards. |
-| U10 | **Accessibility (WCAG 2.1 AA).**<br>• An audit of the main journeys (sign in, dashboard, exceptions, decide, upload, settings) with automated checks (axe) and a manual pass with VoiceOver and NVDA and keyboard only.<br>• Fixes: labels, focus order and visible focus, colour contrast in both themes, announcements of changes (the banner, upload results), tables with headers, error messages tied to fields.<br>• A published accessibility statement, and an axe check in the test suite for the main pages so they stay compliant. | Runs alongside the other phases; each new page in U1–U9 is built to it. |
+| U12 | **Lists, navigation and shared components.**<br>• **Lists search the server.** The filter box and click-to-sort on every table only search and sort the rows on screen, while the lists are paginated on the server. So a check that's on another page looks as if it isn't there. Filtering and sorting move to the server across all rows.<br>• **Finding an item:** issued items, paid items, ACH and exceptions gain filters for check number, amount (exact or range), payee or originator, account, customer and date range. A **global search** in the header jumps to matching items by check number, trace number or amount.<br>• **Export** of the current filtered list as CSV, for issued items, paid items, ACH and exceptions. Users already has it.<br>• **Navigation by work, not data type:** Exceptions at the top, with a count badge (as Approvals has). One name for the action log, which is "Audit Log" in the nav but "action log" in the pages and docs.<br>• **Context:** page titles that name the item (e.g. "Check 1234 · $5,000.00 · Exception"). A way back to the list you came from, filters kept.<br>• **Empty states** that say what to do next, with the button for it.<br>• **Shared components**, built once and used by every later phase:<br>&nbsp;&nbsp;– a dialog (native `<dialog>`, as help and session already use);<br>&nbsp;&nbsp;– a confirmation for irreversible actions, replacing the browser's `confirm()`;<br>&nbsp;&nbsp;– a toast for a successful save;<br>&nbsp;&nbsp;– a busy state on submit that stops double submission. | Server-side list queries use the existing repositories and pagination, and work without JavaScript. |
 
-## Order
+## Waves
 
-1. U3 (reminders) and U4 (faster decisions): small, and they directly reduce missed
-   cutoffs.
-2. U11 (the control panel): mostly templates, and it gives the later phases' settings a
-   home.
-3. U1 (layouts) and U2 (fix in the browser): the largest change, and the largest cut in
-   bank support calls.
-4. U5 and U6 (decide now, mobile and embedded).
-5. U7 (customer hub).
-6. U8 then U9 (support access, then the operator view).
-7. U10 throughout: an audit early, fixes alongside each phase.
+The phases are built in **waves grouped by screen area**, not one phase at a time. Several
+phases change the same screens: U4, U5, U6 and U10 all change the exceptions list and
+detail. Building them together means each journey is tested once, by hand, on desktop, a
+phone, inside the embedded frame and with a screen reader. Shared pieces come first, so
+later phases reuse them instead of each building and testing its own.
 
-## Testing with people
+**Each wave is one merge to `main`:** one run of the three full suites (SQLite, Postgres,
+Linux), and one manual pass over the screens it changed. Within a wave, commits run only the
+tests they touch. That's five merges in all, instead of about a dozen.
 
-The analysis's first next step is right, and it can't be done in code: put the decision
-flow (U4, U5) and the layout builder (U1) in front of real AP clerks and bank operations
-staff before building them fully. Clickable prototypes of those screens come first, with
-five or so sessions each. What changes as a result is recorded here.
+| Wave | Phases | Contents | Manual pass |
+|---|---|---|---|
+| **0. Foundations** | U12; U10 (the baseline) | • Server-side list search, filters, sort and export; global search.<br>• The navigation and context changes.<br>• The shared dialog, confirmation, toast and busy-state components.<br>• **The axe accessibility check in the suite**, on the main pages, so every later wave is checked automatically.<br>• A baseline accessibility audit that records the fixes each later wave makes on its own screens. | The lists and navigation |
+| **Before wave 1** | (user testing) | One round of sessions with real AP clerks and bank operations staff, on clickable prototypes of: the decision flow (U4, U5), the control panel (U11), and the layout builder (U1). It can run alongside wave 0. What changes as a result is recorded in the progress log before waves 1–3 are built. | — |
+| **1. Deciding** | U4, U5, U6 (for these screens), U10 (fixes for these screens) | • Pay and Return buttons; a reason only on Return.<br>• The check return-reason catalogue, seeded with common reasons; its management screen comes in wave 2.<br>• Deciding several items at once.<br>• "Decide now" and the countdown banner.<br>• The exceptions list as cards on phones; the detail page reordered.<br>• All tested in the embedded frame. | The decision journey: desktop, phone (iOS Safari, Android Chrome), embedded, screen reader and keyboard |
+| **2. Settings** | U11, U3, U10 (fixes for these screens) | • The control panel at bank and customer level.<br>• Reminders before the cutoff, with their setting built directly as a tile, never as a card.<br>• The return-reason catalogue's management tile. | The control panel and its modals; reminders received by email and SMS |
+| **3. Uploads** | U1, U2, U6 and U10 (for these screens) | • Issue-file layouts and the layout builder.<br>• Fixing failed rows in the browser; drag and drop.<br>• The upload pages on phones and with a screen reader. | The upload journey, from a sample file to a corrected import |
+| **4. Bank staff and operator** | U7, U8, U9 | • The customer hub.<br>• Bank-granted support access.<br>• The operator view (using U11's control-panel pattern at the platform level). | The customer hub; granting and using support access; the operator view |
+
+### Why this order
+
+- **Wave 0** fixes the one place the UI misleads today: the page-only filter. It also gives
+  every later wave its components and automatic accessibility checks.
+- **Wave 1** directly cuts missed cutoffs. If reminders are wanted sooner, U3's sending logic
+  is backend-only and can move into wave 1; its setting still waits for wave 2's tile.
+- **Wave 2** before **wave 3**, so the layouts (U1) and their settings land in the control
+  panel rather than in another card.
+- **Wave 4** last: support access (U8) has to exist before the operator view (U9) can link
+  into a bank.
 
 ## Decisions
 
@@ -85,8 +98,9 @@ five or so sessions each. What changes as a result is recorded here.
 | U-D1 | Impersonation for platform support? | No. Bank-granted, time-boxed, audited support access (U8). |
 | U-D2 | Several decisions at once: are dual control and SoD relaxed? | No. Each item is checked as if decided alone; the batch only saves clicks. |
 | U-D3 | Check return reasons: free text or a catalogue? | A catalogue per bank, seeded with common reasons, like ACH. The API still accepts free text. |
-| U-D5 | Settings: modals for everything? | No. Modals for small settings, and full pages for lists and workflows. Every modal also has its own URL, and works as a plain page without JavaScript. |
 | U-D4 | A file fixed in the browser: replace the original? | No. The original stays as received and signed; fixes are separate, audited rows. |
+| U-D5 | Settings: modals for everything? | No. Modals for small settings, and full pages for lists and workflows. Every modal also has its own URL, and works as a plain page without JavaScript. |
+| U-D6 | Build phase by phase, or in waves? | In waves by screen area: one merge and one manual pass per wave, with shared components and the automatic accessibility check first. |
 
 ## Progress log
 
@@ -94,3 +108,5 @@ five or so sessions each. What changes as a result is recorded here.
 - 2026-10-10 Plan written from the outside UX analysis, checked against the code. Nothing
   built yet.
 - 2026-10-10 Added U11, a control panel replacing the settings and admin card grids.
+- 2026-10-10 Added U12 (lists, navigation, shared components) and reorganised the order into
+  five waves by screen area, with one round of user testing before wave 1.
