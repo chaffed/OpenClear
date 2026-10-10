@@ -182,6 +182,21 @@ class Settings(BaseSettings):
     # front of the app (usually 1) to correctly trust exactly that many entries from the
     # right end of X-Forwarded-For instead.
     trusted_proxy_count: int = 0
+    # Behind an edge network (Cloudflare, Akamai) that sends the caller's address in its own
+    # header (CF-Connecting-IP, True-Client-IP): name the header here and list the edge's
+    # address ranges in trusted_proxy_cidrs (comma-separated CIDRs). The header is trusted
+    # only when the connection comes from those ranges (web/request_context.py; WAF_PLAN.md W1).
+    client_ip_header: str | None = None
+    trusted_proxy_cidrs: str = ""
+    # Origin lockdown (WAF_PLAN.md W2): with edge_secret set, only requests carrying it in
+    # edge_secret_header are let in (apart from /health). The edge adds the header; set
+    # edge_secret_previous too while rotating. edge_attestation records any other lockdown
+    # (a Cloudflare Tunnel, mTLS from the edge, a firewall allowing only the edge), which
+    # OpenClear can't see itself; the Controls page shows it.
+    edge_secret: str | None = None
+    edge_secret_previous: str | None = None
+    edge_secret_header: str = "X-OpenClear-Edge-Secret"
+    edge_attestation: str | None = None
 
     # App-level rate limiting (web/rate_limit.py) — in-memory and per-process, matching
     # scripts/launcher.py's single uvicorn process with no workers=N; a future multi-
@@ -191,6 +206,10 @@ class Settings(BaseSettings):
     # is a stricter limit on the one endpoint reachable by anyone merely logged in (no
     # CSRF, no other permission check) and CPU-costly per call.
     rate_limit_per_minute: int = 120
+    # Signed-in people and API clients are limited per person or client rather than per IP
+    # address, so a bank behind one NAT address, an edge network, or one core system isn't
+    # throttled as a single caller (WAF_PLAN.md W1).
+    rate_limit_per_principal_per_minute: int = 600
     markdown_preview_rate_limit_per_minute: int = 30
     # "memory" counts per process (above). "redis" shares the counts between every
     # instance (pip install 'openclear[redis]'); if Redis can't be reached, requests are
@@ -407,6 +426,13 @@ class Settings(BaseSettings):
     sso_encryption_key_previous: str | None = None
     # Re-encrypt stored secrets still under an older scheme or key at startup (auth/crypto.py).
     reencrypt_secrets_at_startup: bool = True
+    # Logs (SIEM_PLAN.md S1): "text" (the default) or "json", one object per line with the
+    # request's id, client IP, bank and person (openclear/logging_config.py).
+    log_format: Literal["text", "json"] = "text"
+    log_level: str = "INFO"
+    # Security events (services/security_events.py) are kept this long for the pull API and,
+    # later, for delivery; housekeeping removes older ones.
+    security_event_retention_days: int = 30
     # How the host encrypts disks and the database (e.g. "AWS RDS storage encryption with
     # KMS key alias/openclear; EBS volumes encrypted"). OpenClear can't see this itself; the
     # Controls page (services/controls_service.py) shows the statement, or warns without one.

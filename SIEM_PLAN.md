@@ -150,3 +150,4 @@ data security requirements that apply to account data.
   and the outbound integrations. Nothing built yet.
 - 2026-10-10 Reorganised into two waves (A events and pull, B shipping) to cut test cycles.
   See MASTER_PLAN.md for the overall order.
+- 2026-10-10 Wave A built (M1): `logging_config.py` (JSON logs; httpx's outbound URLs no longer logged), `services/security_events.py` (catalog, emitter, action-log mapping, sampling), the `security_event` table, hooks for sign-in, MFA, tokens, SSO, SCIM, embed, act-as, permissions, rate limits and the edge secret, and the feeds `/api/v1/security-events`, `/api/v1/audit-log` (with `signed_text` and the public key) and `/api/v1/platform/security-events`, plus `openclear events tail`.

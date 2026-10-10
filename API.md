@@ -566,6 +566,21 @@ report.
 |---|---|---|
 | GET | `/export?start=YYYY-MM-DD&end=YYYY-MM-DD&format=json\|pdf` | `audit_log:read`, the bank's own staff. A signed evidence bundle for the period (UTC days, at most 400). It covers the system version; the rules, plugins and models in force with their digests; settings and security groups; whether the action log verifies; segregation-of-duties breaches; changes and approvals; every decision with who recommended and decided it; model-risk runs; and the control status. JSON is `{"bundle", "signature"}`, where the signature is ECDSA P-256 over the SHA-256 of the bundle as compact, key-sorted JSON, with the public key included. The PDF shows the same. Both carry `X-OpenClear-File-SHA256` and `X-OpenClear-File-Signature` (the file as sent). Each export is in the action log. See [docs/compliance](docs/compliance/README.md) |
 
+### Security events and the action log — `/api/v1/security-events`, `/api/v1/audit-log`
+
+`audit_log:read`, the bank's own staff (SIEM_PLAN.md S4). Both are feeds read oldest first
+with a cursor, like the decision feed.
+
+| method | path | notes |
+|---|---|---|
+| GET | `/security-events?after=<sequence>&limit=` | This bank's security events after `after` (0 for the start): sign-ins and their failures, lockouts, second factors, tokens, refusals, changes to who may do what. Each has `id`, `sequence`, `time`, `event` (`name`, `category`, `outcome`, `severity`, `reason`), `bank`, `actor`, `target`, `source` (`ip`, `user_agent`), `request` (`id`, `channel`, `edge_id`), `audit` (the action-log sequence, when it's also an entry) and `details`. Continue with `next_after`. Kept for 30 days by default |
+| GET | `/audit-log?after_sequence=<n>&limit=` | This bank's action log after `after_sequence`, each entry with `prev_entry_hash`, `entry_hash` (an ECDSA P-256 / SHA-256 signature, hex DER) and `signed_text` (exactly what was signed); `signature.public_key` checks them. Continue with `next_after_sequence` |
+| GET | `/platform/security-events?after=&limit=` | Platform key with the `operations` scope: every bank's events, and those belonging to no bank (e.g. a failed sign-in naming a bank that doesn't exist) |
+
+Every response carries `X-Request-ID`. A signed-in caller is rate-limited as themselves
+(`rate_limit_per_principal_per_minute`); anyone else by address. A body over the size limit
+gets `413` with a JSON `detail` under `/api`.
+
 ### Billing — `/api/v1/billing`
 
 What a bank charges its customers for positive pay. Each customer is billed either through

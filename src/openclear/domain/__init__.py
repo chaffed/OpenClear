@@ -38,6 +38,7 @@ from openclear.domain import (  # noqa: F401
     payment_network,
     platform_api_key,
     revoked_session,
+    security_event,
     security_group,
     sso_connection,
     stop_payment,

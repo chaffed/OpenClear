@@ -126,6 +126,7 @@ def record_action(
             with session.begin_nested():
                 session.add(entry)
                 session.flush()
+            _security_event(session, entry)
             return entry
         except IntegrityError:
             if attempt == _MAX_ATTEMPTS - 1:
@@ -177,12 +178,34 @@ def record_actions(session: Session, tenant_id: uuid.UUID, actions: list[Pending
             with session.begin_nested():
                 session.add_all(entries)
                 session.flush()
+            for entry in entries:
+                _security_event(session, entry)
             return entries
         except IntegrityError:
             if attempt == _MAX_ATTEMPTS - 1:
                 raise
             time.sleep(random.uniform(0.005, 0.05) * (attempt + 1))
     raise AssertionError("unreachable")
+
+
+def _security_event(session: Session, entry: AuditLogEntry) -> None:
+    """An entry whose action is security-relevant is also a security event, linked by its
+    sequence (services/security_events.py; SIEM_PLAN.md S2)."""
+    from openclear.services import security_events
+
+    security_events.from_audit_entry(session, entry)
+
+
+def _request_metadata(metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The caller's IP and the request's id, from the request context, added to the signed
+    metadata of an entry written during a request (WAF_PLAN.md W2)."""
+    from openclear.web import request_context
+
+    context = request_context.current()
+    if context is None:
+        return metadata
+    extra = {key: value for key, value in (("source_ip", context.client_ip), ("request_id", context.request_id)) if value}
+    return {**(metadata or {}), **extra} if extra else metadata
 
 
 def _chain_lock_key(tenant_id: uuid.UUID) -> int:
@@ -205,6 +228,7 @@ def _build_entry(
 ) -> AuditLogEntry:
     """`prev` is the entry this one chains onto (None for the first); read from the
     database when not given."""
+    metadata = _request_metadata(metadata)
     if prev is _READ_LATEST:
         prev = AuditLogRepository(session, tenant_id).latest()
     prev_hash = prev.entry_hash if prev else None
@@ -285,3 +309,23 @@ def verify_chain(session: Session, tenant_id: uuid.UUID) -> ChainVerificationRes
 
     walked = prev_hash is not None and prev_hash != (checkpoint.through_entry_hash if checkpoint else None)
     return ChainVerificationResult(valid=True, checked_count=index + 1 if walked else 0, broken_at_entry_id=None)
+
+
+def signed_text(entry: AuditLogEntry) -> str:
+    """Exactly what an entry's signature (`entry_hash`, ECDSA P-256 over SHA-256 with the
+    action-log key) was made over, so someone outside OpenClear can verify an entry with the
+    public key alone (GET /api/v1/audit-log)."""
+    return _canonical_fields(
+        occurred_at=entry.occurred_at, actor_user_id=entry.actor_user_id, channel=entry.channel.value, action=entry.action,
+        summary=entry.summary, resource_type=entry.resource_type, resource_id=entry.resource_id, metadata=entry.metadata_json,
+        prev_entry_hash=entry.prev_entry_hash,
+    ).decode("utf-8")
+
+
+def audit_public_key_pem() -> str:
+    from cryptography.hazmat.primitives import serialization
+
+    from openclear.auth.keys import load_public_key
+
+    key = load_public_key(get_settings().audit_log_signing_public_key_path)
+    return key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()

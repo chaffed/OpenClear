@@ -1,0 +1,308 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Chaffed
+
+"""Security events (SIEM_PLAN.md S2; MASTER_PLAN.md M1): sign-ins and their failures,
+lockouts, second factors, tokens, refusals, and changes to who may do what. Each is written
+to `security_event` in the same transaction as what it describes, and logged.
+
+Two ways in:
+- **emit()**, called where the event happens (sign-in, tokens, refusals);
+- **the action log**: an action-log entry whose action is in AUDIT_EVENTS becomes a
+  security event too, linked by its sequence, so the many places that already record
+  security-relevant changes need no second call (audit_log_service.record_action).
+
+**Never in an event:** passwords, tokens, secrets, session ids, file contents, account
+numbers, amounts or payees. An event says that something was done, by whom and from where.
+The details stay in OpenClear."""
+
+import logging
+import threading
+import time
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from openclear.domain.security_event import SecurityEvent
+
+logger = logging.getLogger("openclear.security")
+
+
+@dataclass(frozen=True)
+class EventType:
+    category: str
+    severity: str  # low, medium, high, critical
+
+
+CATALOG: dict[str, EventType] = {
+    # authentication
+    "auth.login.succeeded": EventType("authentication", "low"),
+    "auth.login.failed": EventType("authentication", "medium"),
+    "auth.lockout": EventType("authentication", "high"),
+    "auth.mfa.succeeded": EventType("authentication", "low"),
+    "auth.mfa.failed": EventType("authentication", "medium"),
+    "auth.sso.succeeded": EventType("authentication", "low"),
+    "auth.sso.failed": EventType("authentication", "medium"),
+    "auth.logout": EventType("authentication", "low"),
+    "auth.session.revoked": EventType("authentication", "medium"),
+    "auth.token.issued": EventType("authentication", "low"),
+    "auth.token.failed": EventType("authentication", "medium"),
+    "auth.token_exchange.succeeded": EventType("authentication", "low"),
+    "auth.act_as.succeeded": EventType("authentication", "low"),
+    "auth.act_as.refused": EventType("authentication", "medium"),
+    "auth.password.changed": EventType("authentication", "medium"),
+    "auth.password.reset": EventType("authentication", "medium"),
+    "scim.auth.failed": EventType("authentication", "medium"),
+    "embed.launch": EventType("authentication", "low"),
+    "embed.launch.refused": EventType("authentication", "medium"),
+    # access
+    "access.denied": EventType("access", "medium"),
+    "rate_limit.exceeded": EventType("access", "medium"),
+    "sod.violation": EventType("access", "high"),
+    "edge.secret.refused": EventType("access", "high"),
+    # identity
+    "user.created": EventType("identity", "medium"),
+    "user.deactivated": EventType("identity", "medium"),
+    "user.reactivated": EventType("identity", "medium"),
+    "user.unlocked": EventType("identity", "medium"),
+    "user.cross_tenant_access.granted": EventType("identity", "high"),
+    "membership.changed": EventType("identity", "medium"),
+    "security_group.created": EventType("identity", "medium"),
+    "security_group.changed": EventType("identity", "high"),
+    # integration
+    "api_client.created": EventType("integration", "high"),
+    "api_client.secret_rotated": EventType("integration", "medium"),
+    "api_client.revoked": EventType("integration", "medium"),
+    "sso_connection.changed": EventType("integration", "high"),
+    "sso_connection.scim_token.issued": EventType("integration", "high"),
+    "embed.origins.changed": EventType("integration", "medium"),
+    # configuration
+    "settings.changed": EventType("configuration", "medium"),
+    "sod.mode.changed": EventType("configuration", "high"),
+    "plugin.enabled": EventType("configuration", "medium"),
+    "plugin.disabled": EventType("configuration", "medium"),
+    "change_request.created": EventType("configuration", "medium"),
+    "change_request.approved": EventType("configuration", "medium"),
+    "change_request.rejected": EventType("configuration", "low"),
+    "ml_model.activated": EventType("configuration", "medium"),
+    # data
+    "audit.export": EventType("data", "medium"),
+    "data_export.started": EventType("data", "high"),
+    "data_export.downloaded": EventType("data", "high"),
+    "bulk_upload.reversed": EventType("data", "medium"),
+    # integrity
+    "anomaly_capture.failed": EventType("integrity", "high"),
+}
+
+# Action-log actions that are also security events (event name, and the setting changed for settings.*).
+AUDIT_EVENTS: dict[str, str] = {
+    "user.create": "user.created",
+    "user.deactivate": "user.deactivated",
+    "user.reactivate": "user.reactivated",
+    "user.unlock": "user.unlocked",
+    "user.grant_cross_tenant_access": "user.cross_tenant_access.granted",
+    "user.update_membership": "membership.changed",
+    "user.password_change": "auth.password.changed",
+    "user.password_reset": "auth.password.reset",
+    "user.sign_out_everywhere": "auth.session.revoked",
+    "user.sign_out_other_sessions": "auth.session.revoked",
+    "user.login_sso": "auth.sso.succeeded",
+    "user.login_embed": "auth.login.succeeded",
+    "embed.launch": "embed.launch",
+    "user.logout_sso": "auth.logout",
+    "security_group.create": "security_group.created",
+    "security_group.update": "security_group.changed",
+    "api_client.create": "api_client.created",
+    "api_client.rotate_secret": "api_client.secret_rotated",
+    "api_client.revoke": "api_client.revoked",
+    "api_client.token_exchange": "auth.token_exchange.succeeded",
+    "api_client.act_as": "auth.act_as.succeeded",
+    "sso_connection.create": "sso_connection.changed",
+    "sso_connection.update": "sso_connection.changed",
+    "sso_connection.scim_token": "sso_connection.scim_token.issued",
+    "tenant.update_embedding": "embed.origins.changed",
+    "tenant.update_settings": "settings.changed",
+    "tenant.update_session_timeout": "settings.changed",
+    "tenant.update_dual_control": "settings.changed",
+    "tenant.update_password_policy": "settings.changed",
+    "tenant.update_data_export_timeout": "settings.changed",
+    "tenant.update_decision_files": "settings.changed",
+    "customer.update_password_policy": "settings.changed",
+    "tenant.update_sod_mode": "sod.mode.changed",
+    "plugin.enable": "plugin.enabled",
+    "plugin.disable": "plugin.disabled",
+    "change_request.create": "change_request.created",
+    "change_request.approve": "change_request.approved",
+    "change_request.reject": "change_request.rejected",
+    "ml_model.activate": "ml_model.activated",
+    "audit.export": "audit.export",
+    "data_export.request": "data_export.started",
+    "data_export.download": "data_export.downloaded",
+    "sod.violation": "sod.violation",
+}
+
+
+def _context():
+    from openclear.web import request_context
+
+    return request_context.current()
+
+
+def emit(
+    session: Session,
+    name: str,
+    *,
+    tenant_id: uuid.UUID | None,
+    outcome: str = "success",
+    reason: str | None = None,
+    actor_type: str | None = None,
+    actor_id: Any = None,
+    actor_label: str | None = None,
+    target_type: str | None = None,
+    target_id: Any = None,
+    target_label: str | None = None,
+    details: dict | None = None,
+    audit_sequence: int | None = None,
+    channel: str | None = None,
+) -> SecurityEvent:
+    """Records the event in the caller's transaction (the caller commits) and logs it.
+    The request's IP, user agent, ids and channel come from the request context. Who did it
+    defaults to the request's signed-in person when not given."""
+    kind = CATALOG[name]
+    context = _context()
+    if actor_type is None and context is not None and (context.user_id or context.api_client_id):
+        actor_type = "api_client" if context.api_client_id and not context.user_id else "user"
+        actor_id = actor_id or context.user_id or context.api_client_id
+        actor_label = actor_label or context.user_email
+    event = SecurityEvent(
+        tenant_id=tenant_id, name=name, category=kind.category, outcome=outcome, severity=kind.severity,
+        reason=(reason or None) and reason[:60],
+        actor_type=actor_type, actor_id=str(actor_id) if actor_id else None, actor_label=(actor_label or None) and actor_label[:320],
+        target_type=target_type, target_id=str(target_id) if target_id else None,
+        target_label=(target_label or None) and target_label[:320],
+        source_ip=context.client_ip if context else None, user_agent=context.user_agent if context else None,
+        request_id=context.request_id if context else None, edge_id=context.edge_id if context else None,
+        channel=channel or (context.channel if context else "system"), audit_sequence=audit_sequence, details=details or None,
+    )
+    session.add(event)
+    session.flush()
+    logger.info("security event %s", name, extra={"security_event": as_record(event)})
+    return event
+
+
+def from_audit_entry(session: Session, entry) -> SecurityEvent | None:
+    """The security event for an action-log entry, if its action is one (AUDIT_EVENTS)."""
+    metadata = entry.metadata_json or {}
+    name = AUDIT_EVENTS.get(entry.action)
+    if entry.action == "mrm.anomaly_capture" and metadata.get("passed") is False:
+        name = "anomaly_capture.failed"
+    if name is None:
+        return None
+    details = {"action": entry.action, "summary": entry.summary[:300]}
+    if name == "settings.changed":
+        details["setting"] = entry.action.split(".", 1)[1].removeprefix("update_")
+    outcome = "failure" if name == "sod.violation" and metadata.get("enforced") else "success"
+    return emit(
+        session, name, tenant_id=entry.tenant_id, outcome=outcome, reason=metadata.get("rule") if name == "sod.violation" else None,
+        actor_type="user" if entry.actor_user_id else "system", actor_id=entry.actor_user_id,
+        target_type=entry.resource_type, target_id=entry.resource_id, details=details, audit_sequence=entry.sequence,
+        channel=entry.channel.value,
+    )
+
+
+# --- Sampled events (floods become one event a minute per source, with a count) -------------
+
+_samples: dict[tuple[str, str], tuple[float, int]] = {}
+_samples_lock = threading.Lock()
+SAMPLE_SECONDS = 60.0
+
+
+def _sample(name: str, key: str) -> int | None:
+    """None to skip this one; otherwise how many were skipped since the last one recorded."""
+    now = time.monotonic()
+    with _samples_lock:
+        last, skipped = _samples.get((name, key), (0.0, 0))
+        if now - last < SAMPLE_SECONDS:
+            _samples[(name, key)] = (last, skipped + 1)
+            return None
+        _samples[(name, key)] = (now, 0)
+        if len(_samples) > 10_000:  # bound memory under a flood from many sources
+            cutoff = now - SAMPLE_SECONDS
+            for k in [k for k, (t, _s) in _samples.items() if t < cutoff]:
+                del _samples[k]
+        return skipped
+
+
+def emit_sampled(session: Session, name: str, *, key: str, tenant_id: uuid.UUID | None, **kwargs) -> SecurityEvent | None:
+    skipped = _sample(name, key)
+    if skipped is None:
+        return None
+    details = dict(kwargs.pop("details", None) or {})
+    if skipped:
+        details["since_last_event"] = skipped
+    return emit(session, name, tenant_id=tenant_id, details=details, **kwargs)
+
+
+def emit_detached(name: str, *, sampled_key: str | None = None, tenant_id: uuid.UUID | None = None, **kwargs) -> None:
+    """For places with no database session of their own (middleware refusals): records the
+    event in its own short transaction. Never raises; a failure is logged."""
+    if sampled_key is not None and _sample(name, sampled_key) is None:
+        return
+    from openclear.db.session import get_session_factory
+
+    try:
+        session = (_detached_factory or get_session_factory())()
+        try:
+            emit(session, name, tenant_id=tenant_id, **kwargs)
+            session.commit()
+        finally:
+            session.close()
+    except Exception:  # noqa: BLE001 -- a refusal must never fail because its event couldn't be written
+        logger.exception("Couldn't record security event %s", name)
+
+
+_detached_factory = None  # the test suite points this at its own database
+
+
+def use_session_factory(factory) -> None:
+    global _detached_factory
+    _detached_factory = factory
+
+
+def reset_sampling_for_tests() -> None:
+    with _samples_lock:
+        _samples.clear()
+
+
+# --- Reading -------------------------------------------------------------------------------------
+
+def as_record(event: SecurityEvent, tenant_slug: str | None = None) -> dict:
+    """The event in the published schema (SIEM_PLAN.md, "The event record")."""
+    record: dict[str, Any] = {
+        "id": f"evt_{event.id}" if event.id is not None else None,
+        "sequence": event.id,
+        "time": event.occurred_at.isoformat() if event.occurred_at else None,
+        "event": {"name": event.name, "category": event.category, "outcome": event.outcome, "severity": event.severity,
+                  **({"reason": event.reason} if event.reason else {})},
+        "bank": {"id": str(event.tenant_id), **({"slug": tenant_slug} if tenant_slug else {})} if event.tenant_id else None,
+        "actor": {"type": event.actor_type, "id": event.actor_id, **({"email": event.actor_label} if event.actor_label else {})}
+        if event.actor_type else None,
+        "target": {"type": event.target_type, "id": event.target_id, **({"name": event.target_label} if event.target_label else {})}
+        if event.target_type else None,
+        "source": {"ip": event.source_ip, **({"user_agent": event.user_agent} if event.user_agent else {})} if event.source_ip else None,
+        "request": {"id": event.request_id, "channel": event.channel, **({"edge_id": event.edge_id} if event.edge_id else {})},
+        "audit": {"sequence": event.audit_sequence} if event.audit_sequence else None,
+        "details": event.details or None,
+    }
+    return {k: v for k, v in record.items() if v is not None}
+
+
+def feed(session: Session, tenant_id: uuid.UUID | None, *, after: int = 0, limit: int = 100, all_banks: bool = False) -> list[SecurityEvent]:
+    """Events after a cursor, oldest first: one bank's, or (all_banks, for the platform
+    operator) every bank's and those belonging to none."""
+    stmt = select(SecurityEvent).where(SecurityEvent.id > after)
+    if not all_banks:
+        stmt = stmt.where(SecurityEvent.tenant_id == tenant_id)
+    return list(session.execute(stmt.order_by(SecurityEvent.id).limit(max(1, min(limit, 1000)))).scalars())

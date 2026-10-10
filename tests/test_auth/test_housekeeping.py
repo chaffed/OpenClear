@@ -88,7 +88,7 @@ def test_old_operational_rows_go_and_the_rest_stay(db_session, tenant_factory):
 
 def test_zero_keeps_everything(db_session, monkeypatch):
     for name in ("retention_finished_jobs_days", "retention_notifications_days", "retention_bulk_row_results_days",
-                 "retention_data_exports_days", "idempotency_key_hours"):
+                 "retention_data_exports_days", "idempotency_key_hours", "security_event_retention_days"):
         monkeypatch.setattr(get_settings(), name, 0)
     db_session.add(Job(kind="t", status=JobStatus.SUCCEEDED, finished_at=_ago(4000), payload={}))
     db_session.commit()

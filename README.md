@@ -43,6 +43,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [Postgres](#postgres)
 - [MSSQL](#mssql)
 - [Running more than one instance](#running-more-than-one-instance)
+- [Logs and security events](#logs-and-security-events)
 - [Background jobs](#background-jobs)
 - [Plugins](#plugins)
 - [Upgrade and downgrade support](#upgrade-and-downgrade-support)
@@ -774,25 +775,52 @@ still-at-their-checked-in-default conditions, unrelated to signing keys:
 
 ## Reverse proxy / WAF deployment
 
-Every request gets a per-IP rate limit (`config.py::rate_limit_per_minute`, 120/minute by
-default; `POST /ui/markdown-preview` has a stricter one of its own on top,
-`markdown_preview_rate_limit_per_minute`, 30/minute by default; `web/rate_limit.py`).
-By default the counts are kept in memory in each process, which suits a single process
-(the launcher, the Docker image). With several processes, each keeps its own count, which
-multiplies the effective limit, unless you share the count through Redis
-(`OPENCLEAR_RATE_LIMIT_BACKEND=redis`; see "Running more than one instance" below).
+**Rate limits.** Every request is rate-limited (`web/rate_limit.py`):
+- a signed-in person or API client as themselves: `rate_limit_per_principal_per_minute`, 600 by default;
+- anyone else by IP address: `rate_limit_per_minute`, 120 by default;
+- stricter limits on a few routes (markdown preview, the OAuth token endpoint).
 
-That per-IP limiting (and the signer IP recorded on a Written Statement of Unauthorized
-Debit attestation, `web/routers/wsud.py`) both resolve "the caller's IP" via
-`web/client_ip.py::get_client_ip`, which by default trusts nothing but the direct TCP
-connection. Deployed behind a reverse proxy or WAF, every request's direct connection is
-actually the proxy's own address — set `OPENCLEAR_TRUSTED_PROXY_COUNT` to the number of
-proxy hops in front of the app (usually `1`) so it instead trusts exactly that many
-entries from the *right* end of the `X-Forwarded-For` header — the hop your own proxy
-chain appended, never a client-supplied value further left in the chain, which is
-trivially spoofable. Leaving this at its default of `0` is the safe choice for a direct,
-non-proxied deployment; setting it too high behind a thinner proxy chain than configured
-would start trusting a header value the client itself controls.
+Counts are kept in memory in each process. With several processes, share them through Redis
+(`OPENCLEAR_RATE_LIMIT_BACKEND=redis`; see "Running more than one instance").
+
+**The caller's address.** Rate limits, the action log, security events, JSON logs and a WSUD
+signer's IP all use the same address, worked out once per request (`web/request_context.py`).
+By default it's the TCP connection's own address, which a client can't fake. Behind a proxy
+or an edge network, every connection comes from the proxy, so tell OpenClear how to find
+the caller:
+
+| In front of OpenClear | Settings |
+|---|---|
+| Nothing | Leave the defaults. |
+| A reverse proxy or load balancer that appends to `X-Forwarded-For` (nginx, an AWS ALB, Fly) | `OPENCLEAR_TRUSTED_PROXY_COUNT`: the number of proxy hops, usually `1`. OpenClear takes that many entries from the *right* of the header (the ones your proxies added), never a client-supplied value further left. |
+| An edge network with its own client-IP header (Cloudflare `CF-Connecting-IP`, Akamai `True-Client-IP`) | `OPENCLEAR_CLIENT_IP_HEADER` (the header) and `OPENCLEAR_TRUSTED_PROXY_CIDRS` (the edge's address ranges, comma-separated). The header is trusted only on connections from those ranges. |
+
+**Locking the origin down.** Make sure only the edge can reach OpenClear, for example:
+- a Cloudflare Tunnel;
+- mutual TLS from the edge;
+- a firewall allowing only the edge's ranges.
+
+Then, either:
+- record how it's done in `OPENCLEAR_EDGE_ATTESTATION`; or
+- have the edge add a secret header: `OPENCLEAR_EDGE_SECRET`, with `OPENCLEAR_EDGE_SECRET_PREVIOUS`
+  while rotating, and `OPENCLEAR_EDGE_SECRET_HEADER`, default `X-OpenClear-Edge-Secret`. Requests
+  without it are refused, apart from `/health`.
+
+Admin → Controls → "Edge network set up" fails when edge headers arrive but OpenClear isn't
+set up for them, and warns without a lockdown.
+
+**Request ids.** Every response carries `X-Request-ID`: a trusted edge's own id (`CF-Ray`,
+`X-Akamai-Request-ID`) or a new one. It's also in the logs, on error pages, in the action log
+and in security events, so a WAF block or an error can be matched to the request behind it.
+
+**Keep-alive and caching.**
+- The Docker image keeps idle connections open for `OPENCLEAR_KEEPALIVE_SECONDS` (75 by
+  default). Raise it above your load balancer's or edge's idle timeout, or users see
+  sporadic 502s.
+- Versioned static files (`?v=`) are sent with a year-long immutable cache.
+- Pages and API responses are never cached (`no-store`).
+
+WAF_PLAN.md has the rest of the plan for running behind an edge.
 
 ## Docker
 
@@ -1061,6 +1089,32 @@ Everything else a request depends on (sessions, CSRF, WebAuthn challenges, the d
 idle-reset clock) lives in the database or in signed cookies, so a request can land on any
 instance. Only the OIDC discovery and signing-key caches are per process, and each instance
 simply fills its own.
+
+## Logs and security events
+
+**Logs.** `OPENCLEAR_LOG_FORMAT=json` writes one JSON object per line to stdout, with:
+- the time (UTC), level, logger and message;
+- during a request, its id, the caller's address, the bank and who is signed in;
+- an access line per request (method, path, status, duration).
+
+Request bodies, query strings, tokens and cookies are never logged. A container log
+collector (Splunk's OpenTelemetry Collector, Fluent Bit, Datadog, CloudWatch) can ship them as
+they are. The default, `text`, is unchanged.
+
+**Security events.** Sign-ins and their failures, lockouts, second factors, tokens,
+refusals (missing permissions, rate limits, segregation of duties), and changes to who may
+do what are recorded as security events (`services/security_events.py`; SIEM_PLAN.md has
+the catalog). Each one has the caller's address, the request id and who, and never a
+password, token, secret or account data. Floods (failed tokens, refusals) are sampled to one
+event a minute per source, with a count.
+
+A bank reads its own events at `GET /api/v1/security-events`, and its action log, with each
+entry's signature, at `GET /api/v1/audit-log`. Both are feeds with a cursor, and need
+`audit_log:read`. `openclear events tail --follow --cursor-file f` prints the events as JSON
+lines for a log collector. The operator reads every bank's, and those belonging to no bank,
+at `GET /api/v1/platform/security-events` (platform key, `operations` scope).
+
+Events are kept for `OPENCLEAR_SECURITY_EVENT_RETENTION_DAYS` (30).
 
 ## Background jobs
 

@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: planned, not started.**
+**Status: M1 built, not yet merged.**
 
 ## How testing is kept down
 
@@ -96,3 +96,4 @@ today's behaviour.
 (Newest last.)
 - 2026-10-10 Master plan written. The WAF, SIEM and UX plans are reorganised into waves, and
   combined here into seven stages and four releases. Nothing built yet.
+- 2026-10-10 M1 built on branch `m1-request-context`: the request context (client IP from a trusted edge header or hop count, request ids, who), per-person rate limits, the edge secret, the source IP and request id in action-log metadata, the edge control, keep-alive, static caching and a JSON 413 (WAF wave A); JSON logs, the security event catalog, emitter, `security_event` table and hooks, and the pull feeds (SIEM wave A).

@@ -118,4 +118,6 @@ def test_unexpected_api_error_returns_json_500(lenient_client):
     resp = lenient_client.get("/api/v1/__test_boom")
 
     assert resp.status_code == 500
-    assert resp.json() == {"detail": "Internal server error"}
+    body = resp.json()
+    assert body["detail"] == "Internal server error"
+    assert body["request_id"] == resp.headers["x-request-id"]  # to quote to support; no exception text

@@ -16,6 +16,7 @@ from openclear.services import api_client_service, decision_outbox_service, secu
 from tests.test_ml.test_per_customer_ml import _decide, _make_exception
 
 from openclear_sdk import cli  # noqa: E402 -- from sdks/python/src (conftest.py)
+from tests.conftest import login_headers
 
 
 def _creds(db_session, tenant, monkeypatch):
@@ -97,3 +98,15 @@ def test_audit_export_and_controls(client, db_session, tenant_factory, monkeypat
 
     code, out = _run(client, "controls")
     assert code == 0 and "Action log intact" in out and out.strip().endswith(("PASS", "WARN"))
+
+
+def test_events_tail_follows_the_feed(client, db_session, tenant_factory, monkeypatch, tmp_path):
+    tenant, _account, users = tenant_factory.make(slug="sec-cli")
+    login_headers(client, tenant.slug, users["admin"].email)
+    _creds(db_session, tenant, monkeypatch)
+    cursor = tmp_path / "cursor"
+    code, output = _run(client, "events", "tail", "--cursor-file", str(cursor))
+    names = [json.loads(line)["event"]["name"] for line in output.splitlines()]
+    assert code == 0
+    assert "auth.login.succeeded" in names and int(cursor.read_text()) > 0
+    assert "auth.login.succeeded" not in _run(client, "events", "tail", "--cursor-file", str(cursor))[1]  # carried on from the cursor

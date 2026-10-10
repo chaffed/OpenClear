@@ -96,6 +96,7 @@ class OpenClear(Transport):
     issued_items: g.IssuedItemsApi
     model_risk: g.ModelRiskApi
     paid_items: g.PaidItemsApi
+    security_events: g.SecurityEventsApi
     platform_billing: g.PlatformBillingApi
     platform_jobs: g.PlatformJobsApi
     platform_ml: g.PlatformMlApi

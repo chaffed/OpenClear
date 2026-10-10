@@ -31,6 +31,19 @@ from openclear.web.security_headers import apply_security_headers, new_csp_nonce
 _STATIC_DIR = Path(__file__).parent / "static"
 _DOCS_SCREENSHOTS_DIR = Path(__file__).parent.parent.parent / "docs" / "screenshots"
 logger = logging.getLogger(__name__)
+access_logger = logging.getLogger("openclear.access")
+
+
+def _static_cache_control(request: Request) -> str:
+    """A versioned asset (`?v=` matching the file, web/templates.py::asset_version) never
+    changes, so browsers and edges may keep it for a year; anything else, five minutes."""
+    from openclear.web.templates import _asset_version
+
+    version = request.query_params.get("v")
+    relative = request.url.path.removeprefix("/static/")
+    if version and version.isdigit() and int(version) == _asset_version(relative) != 0:
+        return "public, max-age=31536000, immutable"
+    return "public, max-age=300"
 
 
 @asynccontextmanager
@@ -119,6 +132,9 @@ def create_app() -> FastAPI:
     # the checked-in dev/test signing keys or the default SSO encryption key must never
     # even finish starting (see SECURITY_REVIEW.md and config.py::assert_production_safe).
     assert_production_safe(get_settings())
+    from openclear import logging_config
+
+    logging_config.configure()
 
     app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan)
 
@@ -148,29 +164,39 @@ def create_app() -> FastAPI:
                 declared_size = int(content_length)
             except ValueError:
                 declared_size = None
-            if declared_size is not None and declared_size > get_settings().max_request_body_bytes:
+            limit = get_settings().max_request_body_bytes
+            if declared_size is not None and declared_size > limit:
+                if request.url.path.startswith(("/api/", "/scim/")):
+                    return JSONResponse({"detail": f"Request body too large (at most {limit} bytes)"},
+                                        status_code=status.HTTP_413_CONTENT_TOO_LARGE)
                 return PlainTextResponse("Request body too large", status_code=status.HTTP_413_CONTENT_TOO_LARGE)
         return await call_next(request)
 
     @app.middleware("http")
     async def _rate_limit_global(request: Request, call_next):
-        # A blanket per-IP safety net across every route -- see web/rate_limit.py for the
-        # in-memory sliding-window design and web/client_ip.py for how the IP itself is
-        # resolved (direct connection by default; trusts X-Forwarded-For only if
-        # OPENCLEAR_TRUSTED_PROXY_COUNT says a reverse proxy/WAF is actually in front of
-        # this). Individual routes (e.g. /ui/markdown-preview) can layer a stricter limit
-        # of their own on top via web.rate_limit.rate_limit(), tracked as a separate
-        # bucket under the same client key.
-        client_ip = get_client_ip(request) or "unknown"
-        if not rate_limit.allow(client_ip, "global", limit=get_settings().rate_limit_per_minute, window_seconds=60.0):
+        # A blanket safety net across every route (web/rate_limit.py). A signed-in person or
+        # API client is limited as themselves, so a bank behind one NAT or edge address, or
+        # one core system, isn't throttled as a single caller; anyone else by IP address
+        # (web/request_context.py). Individual routes (e.g. /ui/markdown-preview, the token
+        # endpoint) can layer a stricter limit of their own on top via
+        # web.rate_limit.rate_limit().
+        settings = get_settings()
+        principal = rate_limit.principal_key(request)
+        if principal:
+            key, limit = principal, settings.rate_limit_per_principal_per_minute
+        else:
+            key, limit = get_client_ip(request) or "unknown", settings.rate_limit_per_minute
+        if not rate_limit.allow(key, "global", limit=limit, window_seconds=60.0):
+            from openclear.services import security_events
+
+            security_events.emit_detached("rate_limit.exceeded", sampled_key=key, outcome="failure", reason="global",
+                                          details={"limit_per_minute": limit, "keyed_by": "principal" if principal else "ip"})
             return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS)
         return await call_next(request)
 
     @app.middleware("http")
     async def _security_headers(request: Request, call_next):
-        # Registered last, deliberately: Starlette's middleware stack wraps in reverse
-        # registration order, so the last one registered here is outermost -- it sets
-        # request.state.csp_nonce before either middleware above (or the route handler)
+        # Sets request.state.csp_nonce before either middleware above (or the route handler)
         # ever runs, so a template rendered deep inside can always find it, and it gets
         # to add headers to whatever response comes back out -- a normal page, a 429 from
         # the rate limiter above, a 413 from the body-size guard, or an exception-handler
@@ -179,6 +205,41 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         apply_security_headers(request, response)
         return response
+
+    @app.middleware("http")
+    async def _request_context(request: Request, call_next):
+        # Registered last, so outermost: every request's context (client IP, request id;
+        # who, once authenticated) is worked out once, here, for everything inside to read
+        # (web/request_context.py). Then: the edge secret, if one is set (WAF_PLAN.md W2);
+        # the request id on the response; cache headers for static files; the access log.
+        import time
+
+        from openclear.web import request_context
+
+        context = request_context.build(request)
+        request.state.request_id = context.request_id
+        token = request_context.set_current(context)
+        started = time.perf_counter()
+        try:
+            if not request_context.edge_secret_ok(request):
+                from openclear.services import security_events
+
+                security_events.emit_detached("edge.secret.refused", sampled_key=f"edge|{context.peer_ip}", outcome="failure",
+                                              reason="missing_or_wrong_secret", details={"peer_ip": context.peer_ip})
+                response = PlainTextResponse("Forbidden", status_code=status.HTTP_403_FORBIDDEN)
+            else:
+                response = await call_next(request)
+            response.headers["X-Request-ID"] = context.request_id
+            if request.url.path.startswith("/static/") and "cache-control" not in response.headers:
+                response.headers["Cache-Control"] = _static_cache_control(request)
+            access_logger.info(
+                "%s %s %s", request.method, request.url.path, response.status_code,
+                extra={"http": {"method": request.method, "path": request.url.path, "status": response.status_code,
+                                "duration_ms": round((time.perf_counter() - started) * 1000, 1)}},
+            )
+            return response
+        finally:
+            request_context.reset(token)
 
     app.include_router(api_router)
     app.include_router(scim_router)
@@ -297,7 +358,8 @@ def create_app() -> FastAPI:
         # exception text. Being outermost, the security-headers middleware never saw this
         # response, so apply them here explicitly.
         if request.url.path.startswith("/api/"):
-            response = JSONResponse({"detail": "Internal server error"}, status_code=500)
+            response = JSONResponse({"detail": "Internal server error",
+                                     "request_id": getattr(request.state, "request_id", None)}, status_code=500)
         else:
             response = render_template(
                 request,
@@ -309,6 +371,8 @@ def create_app() -> FastAPI:
                 show_back_link=True,
             )
         apply_security_headers(request, response)
+        if getattr(request.state, "request_id", None):
+            response.headers["X-Request-ID"] = request.state.request_id
         return response
 
     @app.get("/health")

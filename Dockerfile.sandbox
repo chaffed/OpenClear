@@ -23,4 +23,6 @@ ENV OPENCLEAR_SANDBOX_SIGNUP_ENABLED=true \
     OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH=/data/keys/wsud_signing_private.pem \
     OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH=/data/keys/wsud_signing_public.pem
 
-CMD ["sh", "-c", "[ -f /data/keys/jwt_private.pem ] || python /app/scripts/generate_keys.py --output-dir /data/keys; alembic upgrade head && exec uvicorn openclear.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+# uvicorn doesn't trust forwarded headers from any address: the caller's IP comes from
+# OPENCLEAR_TRUSTED_PROXY_COUNT (fly.sandbox.toml) and public URLs from OPENCLEAR_PUBLIC_BASE_URL.
+CMD ["sh", "-c", "[ -f /data/keys/jwt_private.pem ] || python /app/scripts/generate_keys.py --output-dir /data/keys; alembic upgrade head && exec uvicorn openclear.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive ${OPENCLEAR_KEEPALIVE_SECONDS:-75}"]

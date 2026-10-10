@@ -54,6 +54,14 @@ def isolated_filesystem_settings(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _reset_security_event_sampling():
+    from openclear.services import security_events
+
+    security_events.reset_sampling_for_tests()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _reset_rate_limiter():
     """web/rate_limit.py's limiter is one process-wide singleton, shared by every test in
     this run -- and Starlette's TestClient reports the same synthetic client address for
@@ -217,7 +225,12 @@ def app(session_factory):
             session.close()
 
     app.dependency_overrides[get_db] = _override_get_db
-    return app
+    # Security events written in their own transaction (a refusal) go to the test database too.
+    from openclear.services import security_events
+
+    security_events.use_session_factory(session_factory)
+    yield app
+    security_events.use_session_factory(None)
 
 
 @pytest.fixture

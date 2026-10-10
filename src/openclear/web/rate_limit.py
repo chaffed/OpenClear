@@ -159,3 +159,27 @@ def rate_limit(bucket: str, *, limit_setting: str, window_seconds: float = 60.0)
             raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests -- please slow down.")
 
     return _check
+
+
+def principal_key(request: Request) -> str | None:
+    """Who a request is from, for the global limit, when it carries a valid access token
+    (an Authorization bearer, or the web session cookie): "user:<id>", which for an API
+    client is its own service identity. None otherwise, and the limit falls back to the IP
+    address. The signature is checked, so a made-up token can't pick its own bucket; an
+    expired or invalid one counts by IP."""
+    import jwt
+
+    from openclear.auth.security import decode_token
+    from openclear.web.security import ACCESS_COOKIE_NAME
+
+    header = request.headers.get("authorization", "")
+    token = header[7:].strip() if header.lower().startswith("bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
+    if not token or token.count(".") != 2:
+        return None
+    try:
+        claims = decode_token(token)
+    except jwt.PyJWTError:
+        return None
+    if claims.get("type") != "access" or not claims.get("sub"):
+        return None
+    return f"user:{claims['sub']}"

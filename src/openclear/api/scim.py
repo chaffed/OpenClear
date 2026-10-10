@@ -44,12 +44,25 @@ def _caller(request: Request, db: Session = Depends(get_db)) -> _Caller:
     token = header[7:].strip() if header.lower().startswith("bearer ") else ""
     ids = scim_service.parse_token(token)
     if ids is None:
+        _scim_refused(None, "no_token" if not token else "malformed_token")
         return _Caller(None, ScimError(401, "A SCIM bearer token is required."))
     bind_session_to_tenant(db, ids[0])
     try:
         return _Caller(scim_service.authenticate(db, token), None)
     except ScimError as exc:
+        if exc.status in (401, 403):
+            _scim_refused(ids[0], "invalid_token" if exc.status == 401 else "refused")
         return _Caller(None, exc)
+
+
+def _scim_refused(tenant_id, reason: str) -> None:
+    """A directory's SCIM request refused: a security event, sampled per source."""
+    from openclear.services import security_events
+    from openclear.web import request_context
+
+    context = request_context.current()
+    security_events.emit_detached("scim.auth.failed", sampled_key=f"scim|{context.client_ip if context else ''}",
+                                  tenant_id=tenant_id, outcome="failure", reason=reason, actor_type="system")
 
 
 def _run(caller: _Caller, db: Session, action: Callable[[SsoConnection], Response]) -> Response:

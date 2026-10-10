@@ -23,6 +23,9 @@ def main() -> None:
     parser.add_argument("--once", action="store_true", help="run every job that's due, then exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    from openclear import logging_config
+
+    logging_config.configure()  # JSON lines when OPENCLEAR_LOG_FORMAT=json (SIEM_PLAN.md S1)
 
     import openclear.domain  # noqa: F401 -- registers every mapper
     from openclear import plugins

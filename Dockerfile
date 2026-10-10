@@ -100,4 +100,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" || exit 1
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn openclear.main:app --host 0.0.0.0 --port 8000"]
+# Keep-alive longer than the idle timeout of whatever sits in front (a load balancer or edge
+# network reuses idle connections; if the app closes one first, users see sporadic 502/520
+# errors). 75 seconds suits most load balancers; raise OPENCLEAR_KEEPALIVE_SECONDS to match
+# your edge's origin idle timeout (WAF_PLAN.md W3).
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn openclear.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive ${OPENCLEAR_KEEPALIVE_SECONDS:-75}"]

@@ -81,9 +81,28 @@ def token(
     client = api_client_service.authenticate(db, client_id or "", client_secret or "")
     if client is None:
         db.rollback()
+        # Sampled per client id and source, so a flood of bad secrets is one event a minute.
+        from openclear.services import security_events
+        from openclear.web.client_ip import get_client_ip
+
+        security_events.emit_detached(
+            "auth.token.failed", sampled_key=f"{(client_id or '')[:100]}|{get_client_ip(request)}", outcome="failure",
+            reason="invalid_client", actor_type="api_client", actor_label=(client_id or "")[:100] or None,
+        )
         return _error("invalid_client", "Unknown client, wrong secret, or the client has been revoked.", 401)
     if grant_type == TOKEN_EXCHANGE:
-        return _exchange(db, client, subject_token, subject_token_type, requested_token_type)
+        response = _exchange(db, client, subject_token, subject_token_type, requested_token_type)
+        if response.status_code >= 400:
+            import json
+
+            from openclear.services import security_events
+
+            security_events.emit_detached(
+                "auth.token.failed", tenant_id=client.tenant_id, outcome="failure",
+                reason=json.loads(response.body).get("error", "refused"), actor_type="api_client", actor_id=client.id,
+                actor_label=client.name, details={"grant_type": "token_exchange"},
+            )
+        return response
 
     membership = db.get(TenantMembership, client.membership_id)
     user = db.get(User, client.user_id)
@@ -93,6 +112,10 @@ def token(
         customer_id=membership.customer_id, token_version=user.token_version,
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=minutes),
     )
+    from openclear.services import security_events
+
+    security_events.emit(db, "auth.token.issued", tenant_id=client.tenant_id, actor_type="api_client", actor_id=client.id,
+                         actor_label=client.name, details={"grant_type": "client_credentials", "expires_in": minutes * 60})
     db.commit()  # last_used_at
     return JSONResponse(
         {"access_token": access_token, "token_type": "Bearer", "expires_in": minutes * 60}, headers=_NO_STORE,

@@ -69,6 +69,12 @@ def run(session: Session) -> HousekeepingResult:
         cutoff = session.execute(select(func.now())).scalar_one() - timedelta(hours=settings.idempotency_key_hours)
         result.deleted["idempotency_keys"] = _delete_in_batches(session, IdempotencyRecord, IdempotencyRecord.created_at < cutoff)
 
+    # Security events past their retention (services/security_events.py; SIEM_PLAN.md SI-D7).
+    if cutoff := _cutoff(session, settings.security_event_retention_days):
+        from openclear.domain.security_event import SecurityEvent
+
+        result.deleted["security_events"] = _delete_in_batches(session, SecurityEvent, SecurityEvent.occurred_at < cutoff)
+
     # Vendor sandboxes past their lifetime (services/sandbox_service.py).
     from openclear.services import sandbox_service
 

@@ -1756,6 +1756,48 @@ class PlatformUsageApi:
         return self._c.call("GET", "/api/v1/platform/usage", query={"period_start": period_start, "period_end": period_end, "tenant_id": tenant_id, "format": format}, auth="platform")
 
 
+class SecurityEventsApi:
+    """`security events` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def list_audit_log(self, *, after_sequence: int | None = None, limit: int | None = None) -> dict[str, Any]:
+        """List Audit Log.
+
+        GET /api/v1/audit-log
+
+        This bank's action log after `after_sequence`, oldest first, each entry with what
+        it chains onto (`prev_entry_hash`), its signature (`entry_hash`: ECDSA P-256 over SHA-256)
+        and the exact text that was signed (`signed_text`). With `public_key` (the action-log
+        key), anyone can check each entry, and that each one chains onto the one before, without
+        trusting OpenClear.
+        """
+        return self._c.call("GET", "/api/v1/audit-log", query={"after_sequence": after_sequence, "limit": limit})
+
+    def platform_security_events(self, *, after: int | None = None, limit: int | None = None) -> dict[str, Any]:
+        """Platform Security Events.
+
+        GET /api/v1/platform/security-events
+
+        Every bank's security events, and those that belong to no bank (such as a failed
+        sign-in naming a bank that doesn't exist), for the installation's operator.
+        """
+        return self._c.call("GET", "/api/v1/platform/security-events", query={"after": after, "limit": limit}, auth="platform")
+
+    def list_security_events(self, *, after: int | None = None, limit: int | None = None) -> dict[str, Any]:
+        """List Security Events.
+
+        GET /api/v1/security-events
+
+        This bank's security events after `after`, oldest first: sign-ins and their failures,
+        lockouts, second factors, tokens, refusals, and changes to who may do what. Pass the last
+        `sequence` back as `after` to continue; `next_after` is the one to use next. Events are
+        kept for `security_event_retention_days` (30 by default).
+        """
+        return self._c.call("GET", "/api/v1/security-events", query={"after": after, "limit": limit})
+
+
 class StopPaymentsApi:
     """`stop-payments` endpoints."""
 
@@ -1843,6 +1885,7 @@ AREAS = {
     "platform_jobs": PlatformJobsApi,
     "platform_ml": PlatformMlApi,
     "platform_usage": PlatformUsageApi,
+    "security_events": SecurityEventsApi,
     "stop_payments": StopPaymentsApi,
     "users": UsersApi,
 }

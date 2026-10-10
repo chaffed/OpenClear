@@ -201,6 +201,43 @@ def _production_safety() -> Control:
                    {"environment": "production"})
 
 
+def _edge() -> Control:
+    """Whether an edge network (Cloudflare, Akamai, a load balancer) is in front, and whether
+    OpenClear is set up for it (WAF_PLAN.md W1–W2). Read from the request being served."""
+    from openclear.web import request_context
+
+    settings = get_settings()
+    context = request_context.current()
+    hints = list(context.edge_hints) if context else []
+    configured = bool(settings.client_ip_header) or settings.trusted_proxy_count > 0
+    lockdown = bool(settings.edge_secret) or bool(settings.edge_attestation)
+    evidence = {
+        "edge_headers_seen": hints, "client_ip_header": settings.client_ip_header, "trusted_proxy_count": settings.trusted_proxy_count,
+        "trusted_proxy_ranges": len(request_context.trusted_networks()), "edge_secret": bool(settings.edge_secret),
+        "edge_attestation": settings.edge_attestation,
+        "this_request": {"client_ip_from": context.ip_source, "edge_trusted": context.edge_trusted} if context else None,
+    }
+    title = "Edge network set up"
+    if hints and not configured:
+        return Control("edge", title, FAIL,
+                       f"An edge network is in front ({', '.join(hints)} headers arrive), but OpenClear isn't set up to read the "
+                       "caller's address from it, so every visitor looks like the edge: rate limits, the action log and security "
+                       "events see the edge's address. Set OPENCLEAR_CLIENT_IP_HEADER and OPENCLEAR_TRUSTED_PROXY_CIDRS.", evidence)
+    if settings.client_ip_header and hints and context and not context.edge_trusted:
+        return Control("edge", title, WARN,
+                       f"Edge headers arrived from {context.peer_ip}, which isn't in OPENCLEAR_TRUSTED_PROXY_CIDRS. Either the ranges "
+                       "are out of date, or something is reaching OpenClear around the edge.", evidence)
+    if not configured:
+        return Control("edge", title, PASS, "No edge network detected; the caller's address comes from the connection.", evidence)
+    if not lockdown:
+        return Control("edge", title, WARN,
+                       "OpenClear reads the caller's address from the edge, but nothing shows the origin only accepts traffic from it. "
+                       "Set OPENCLEAR_EDGE_SECRET (the edge adds it to each request), or record the tunnel, mTLS or firewall that "
+                       "does this in OPENCLEAR_EDGE_ATTESTATION.", evidence)
+    how = "a shared secret from the edge" if settings.edge_secret else f"stated by the operator: {settings.edge_attestation}"
+    return Control("edge", title, PASS, f"The caller's address comes from the edge, and the origin is locked down ({how}).", evidence)
+
+
 def _api_client_secrets(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.domain.api_client import ApiClient
 
@@ -235,6 +272,7 @@ def status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
     return [
         _field_encryption(session, tenant_id),
         _storage_encryption(),
+        _edge(),
         _audit_chain(session, tenant_id),
         _sod(session, tenant_id),
         _admin_mfa(session, tenant_id),

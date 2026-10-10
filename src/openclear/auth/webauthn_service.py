@@ -136,6 +136,35 @@ def begin_authentication(session: Session, user: User, tenant_id: uuid.UUID) -> 
 def complete_authentication(
     session: Session, user: User, tenant_id: uuid.UUID, credential: str | dict[str, Any]
 ) -> WebauthnCredential:
+    """Verifies the second factor. Each result is a security event (SIEM_PLAN.md S2): a
+    success in the caller's transaction, a failure in its own, since callers don't commit
+    after a failure."""
+    from openclear.services import security_events
+
+    actor = {"actor_type": "user", "actor_id": user.id, "actor_label": user.email}
+    try:
+        credential_row = _complete_authentication(session, user, tenant_id, credential)
+    except WebauthnError as exc:
+        security_events.emit_detached("auth.mfa.failed", tenant_id=tenant_id, outcome="failure",
+                                      reason=_mfa_failure_reason(str(exc)), **actor)
+        raise
+    security_events.emit(session, "auth.mfa.succeeded", tenant_id=tenant_id, details={"method": "webauthn"}, **actor)
+    return credential_row
+
+
+def _mfa_failure_reason(message: str) -> str:
+    if "Unrecognized" in message:
+        return "unknown_credential"
+    if "sign count" in message:
+        return "possible_cloned_credential"
+    if "challenge" in message.lower():
+        return "no_challenge"
+    return "verification_failed"
+
+
+def _complete_authentication(
+    session: Session, user: User, tenant_id: uuid.UUID, credential: str | dict[str, Any]
+) -> WebauthnCredential:
     settings = get_settings()
     expected_challenge = _consume_challenge(session, user.id, WebauthnChallengePurpose.AUTHENTICATION)
 

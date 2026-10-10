@@ -9,6 +9,7 @@
     openclear webhooks tail --secret whsec_...
     openclear audit export --start 2026-01-01 --end 2026-03-31 --format pdf > evidence.pdf
     openclear controls
+    openclear events tail --follow --cursor-file .openclear-events
 
 Credentials come from OPENCLEAR_URL, OPENCLEAR_CLIENT_ID and OPENCLEAR_CLIENT_SECRET (or
 --url, --client-id, --client-secret). Exit status: 0 done, 1 something failed (rows,
@@ -124,6 +125,31 @@ def _controls(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _events_tail(oc: OpenClear, args: argparse.Namespace, out: TextIO, *, sleep=None) -> int:
+    """Prints the bank's security events as JSON lines, from a cursor, for a log collector
+    to pick up (SIEM_PLAN.md S4). With --cursor-file, the position survives restarts; with
+    --follow, it keeps polling."""
+    import time
+
+    sleep = sleep or time.sleep
+    cursor_file = Path(args.cursor_file) if args.cursor_file else None
+    after = args.after if args.after is not None else (
+        int(cursor_file.read_text().strip() or 0) if cursor_file and cursor_file.exists() else 0)
+    while True:
+        page = oc.security_events.list_security_events(after=after, limit=500)
+        for event in page["events"]:
+            out.write(json.dumps(event) + "\n")
+        out.flush()
+        if page["next_after"] != after:
+            after = page["next_after"]
+            if cursor_file:
+                cursor_file.write_text(str(after))
+        if not args.follow:
+            return 0
+        if len(page["events"]) < 500:
+            sleep(args.interval)
+
+
 def tail_server(secret: str, port: int, out: TextIO) -> HTTPServer:
     """A local webhook receiver that verifies each event and prints it as a JSON line."""
 
@@ -182,6 +208,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("controls", help="Each control's live status (exit 1 if any fails)")
 
+    events = commands.add_parser("events", help="Security events")
+    events_which = events.add_subparsers(dest="events_command", required=True)
+    events_tail = events_which.add_parser("tail", help="Print the bank's security events as JSON lines")
+    events_tail.add_argument("--after", type=int, help="Start after this sequence (default: the cursor file, or the start)")
+    events_tail.add_argument("--cursor-file", help="Read and save the position here, so a restart carries on")
+    events_tail.add_argument("--follow", action="store_true", help="Keep polling for new events")
+    events_tail.add_argument("--interval", type=float, default=15.0, help="Seconds between polls with --follow")
+
     hooks = commands.add_parser("webhooks", help="Webhooks")
     hook_which = hooks.add_subparsers(dest="webhooks_command", required=True)
     tail = hook_which.add_parser("tail", help="Receive webhooks locally (behind a tunnel), verify and print them")
@@ -212,6 +246,8 @@ def main(argv: list[str] | None = None, *, http_client: Any = None, out: TextIO 
             return _audit_export(oc, args, out)
         if args.command == "controls":
             return _controls(oc, args, out)
+        if args.command == "events":
+            return _events_tail(oc, args, out)
         if args.decisions_command == "pull":
             return _pull(oc, args, out)
         return _files(oc, args, out)

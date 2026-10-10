@@ -1983,6 +1983,56 @@ export class PlatformUsageApi {
   }
 }
 
+/** `security events` endpoints. */
+export class SecurityEventsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * List Audit Log.
+   *
+   * GET /api/v1/audit-log
+   *
+   * This bank's action log after `after_sequence`, oldest first, each entry with what
+   * it chains onto (`prev_entry_hash`), its signature (`entry_hash`: ECDSA P-256 over SHA-256)
+   * and the exact text that was signed (`signed_text`). With `public_key` (the action-log
+   * key), anyone can check each entry, and that each one chains onto the one before, without
+   * trusting OpenClear.
+   */
+  listAuditLog(query: { after_sequence?: number; limit?: number } = {}): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/audit-log`, { query });
+  }
+
+  /**
+   * Platform Security Events.
+   *
+   * GET /api/v1/platform/security-events
+   *
+   * Every bank's security events, and those that belong to no bank (such as a failed
+   * sign-in naming a bank that doesn't exist), for the installation's operator.
+   */
+  platformSecurityEvents(query: { after?: number; limit?: number } = {}): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/platform/security-events`, { query, auth: "platform" });
+  }
+
+  /**
+   * List Security Events.
+   *
+   * GET /api/v1/security-events
+   *
+   * This bank's security events after `after`, oldest first: sign-ins and their failures,
+   * lockouts, second factors, tokens, refusals, and changes to who may do what. Pass the last
+   * `sequence` back as `after` to continue; `next_after` is the one to use next. Events are
+   * kept for `security_event_retention_days` (30 by default).
+   */
+  listSecurityEvents(query: { after?: number; limit?: number } = {}): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/security-events`, { query });
+  }
+}
+
 /** `stop-payments` endpoints. */
 export class StopPaymentsApi {
   private readonly c: Transport;
@@ -2086,6 +2136,7 @@ export const AREAS = {
   platformJobs: PlatformJobsApi,
   platformMl: PlatformMlApi,
   platformUsage: PlatformUsageApi,
+  securityEvents: SecurityEventsApi,
   stopPayments: StopPaymentsApi,
   users: UsersApi,
 } as const;

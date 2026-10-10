@@ -177,6 +177,10 @@ def logout(request: Request, db: Session = Depends(get_db), _csrf: None = Depend
             claims = {}
         if claims.get("sid") and claims.get("sub"):
             session_service.revoke_session(db, session_id=uuid.UUID(claims["sid"]), user_id=uuid.UUID(claims["sub"]))
+            from openclear.services import security_events
+
+            security_events.emit(db, "auth.logout", tenant_id=uuid.UUID(claims["tenant_id"]) if claims.get("tenant_id") else None,
+                                 actor_type="user", actor_id=claims["sub"])
             db.commit()
     embedded = bool(token and claims.get("emb"))
     response = RedirectResponse("/ui/embed/ended" if embedded else "/ui/login", status_code=303)
@@ -438,6 +442,10 @@ def sso_callback(
         # Details go to the server log, not the login page: they can describe the
         # provider's (or the network's) internals.
         logger.warning("SSO callback failed for connection %s: %s", connection.id, exc)
+        from openclear.services import security_events
+
+        security_events.emit_detached("auth.sso.failed", tenant_id=tenant_id, outcome="failure", reason="oidc_rejected",
+                                      target_type="sso_connection", target_id=connection.id, target_label=connection.display_name)
         return _error_page(_SSO_FAILED_MESSAGE)
 
     return finish_sso_login(request, db, tenant_id, connection, claims, state_claims.get("next_path"), _error_page)

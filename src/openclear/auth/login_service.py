@@ -82,19 +82,30 @@ def authenticate_password(
     after calling this, or a failed attempt's counter increment is silently lost when the
     request's session closes."""
     settings = settings or get_settings()
+    from openclear.services import security_events
+
+    def failed(reason: str, tenant_id=None, user=None, outcome=PasswordLoginOutcome.INVALID_CREDENTIALS, name="auth.login.failed"):
+        # Recorded for the bank's security team (SIEM_PLAN.md S2); the caller still learns
+        # only "invalid credentials", never which part was wrong.
+        security_events.emit(
+            session, name, tenant_id=tenant_id, outcome="failure", reason=reason,
+            actor_type="user", actor_id=user.id if user else None, actor_label=email[:320],
+        )
+        return PasswordLoginResult(outcome)
+
     tenant = session.execute(select(Tenant).where(Tenant.slug == tenant_slug)).scalar_one_or_none()
     if tenant is None or not tenant.is_active:
-        return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
+        return failed("unknown_bank")
     # The rest of login reads RLS-protected tables (memberships, security groups, keys),
     # so the session runs as this bank from here on (a no-op off Postgres).
     bind_session_to_tenant(session, tenant.id)
 
     user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
     if user is None or not user.is_active or user.is_service_account:
-        return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
+        return failed("unknown_user" if user is None else "inactive", tenant.id, user)
 
     if user.locked_until is not None and _as_utc(user.locked_until) > datetime.now(timezone.utc):
-        return PasswordLoginResult(PasswordLoginOutcome.LOCKED)
+        return failed("locked", tenant.id, user, PasswordLoginOutcome.LOCKED)
 
     if not verify_password(password, user.hashed_password):
         user.failed_login_attempts += 1
@@ -105,9 +116,10 @@ def authenticate_password(
             # every subsequent rejected attempt while already locked (that's the
             # early-return at the top of this function, above).
             notification_service.notify_account_locked(session, user)
-            return PasswordLoginResult(PasswordLoginOutcome.LOCKED)
+            failed("invalid_credentials", tenant.id, user)
+            return failed("threshold_reached", tenant.id, user, PasswordLoginOutcome.LOCKED, name="auth.lockout")
         session.flush()
-        return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
+        return failed("invalid_credentials", tenant.id, user)
 
     # Correct password proves the brute force didn't work, regardless of whether the
     # login ultimately succeeds or hits SSO_REQUIRED below.
@@ -129,14 +141,14 @@ def authenticate_password(
         if m.is_active
     ]
     if not active_memberships:
-        return PasswordLoginResult(PasswordLoginOutcome.INVALID_CREDENTIALS)
+        return failed("no_membership", tenant.id, user)
 
     # Password correctness is already confirmed above — only NOW do we distinguish
     # "no access at all" (already handled) from "access exists, but this scope requires
     # SSO," so a wrong guess never reveals which scopes require SSO for this identity.
     password_allowed_memberships = [m for m in active_memberships if _scope_allows_password_login(session, tenant, m)]
     if not password_allowed_memberships:
-        return PasswordLoginResult(PasswordLoginOutcome.SSO_REQUIRED)
+        return failed("sso_required", tenant.id, user, PasswordLoginOutcome.SSO_REQUIRED)
 
     # Login picks a default rather than asking the user to disambiguate here: the
     # tenant-wide membership if they have one (the only kind that existed before
@@ -164,6 +176,10 @@ def authenticate_password(
         membership=membership,
         mfa_required=mfa_required,
         needs_webauthn_enrollment=needs_webauthn_enrollment,
+    )
+    security_events.emit(
+        session, "auth.login.succeeded", tenant_id=tenant.id, actor_type="user", actor_id=user.id, actor_label=user.email,
+        details={"method": "password", "second_factor_required": mfa_required},
     )
     return PasswordLoginResult(PasswordLoginOutcome.SUCCESS, identity=identity)
 

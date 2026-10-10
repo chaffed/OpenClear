@@ -120,6 +120,9 @@ def get_mfa_pending_web_context(request: Request, db: Session = Depends(get_db))
 def require_web_permission(permission: str):
     def _check(ctx: TenantContext = Depends(get_web_context)) -> TenantContext:
         if permission not in ctx.permissions:
+            from openclear.auth.deps import _refused
+
+            _refused("access.denied", ctx, permission, key=permission)
             raise WebForbidden()
         return ctx
 

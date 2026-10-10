@@ -85,6 +85,13 @@ def assertion_consumer(
     except (saml_service.SamlError, sso_service.Replayed) as exc:
         logger.warning("SAML sign-in failed for connection %s: %s", connection.id, exc)
         db.rollback()
+        from openclear.services import security_events
+
+        security_events.emit_detached(
+            "auth.sso.failed", tenant_id=tenant_id, outcome="failure",
+            reason="replayed_assertion" if isinstance(exc, sso_service.Replayed) else "saml_rejected",
+            target_type="sso_connection", target_id=connection.id, target_label=connection.display_name,
+        )
         return error_page(_SSO_FAILED_MESSAGE)
     if request_id is None and RelayState.startswith("/"):
         next_path = RelayState  # an identity provider's target page; safe_next_path keeps it on this site

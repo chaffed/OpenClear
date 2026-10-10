@@ -50,6 +50,11 @@ def create_launch(
             path=payload.path, parent_origin=payload.parent_origin,
         )
     except embed_service.EmbedError as exc:
+        from openclear.services import security_events
+
+        security_events.emit_detached("embed.launch.refused", tenant_id=ctx.tenant_id, outcome="failure",
+                                      reason="refused", actor_type="user", actor_id=ctx.user_id,
+                                      details={"parent_origin": (payload.parent_origin or "")[:200]})
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="embed.launch",

@@ -3,22 +3,16 @@
 
 from fastapi import Request
 
-from openclear.config import get_settings
-
 
 def get_client_ip(request: Request) -> str | None:
-    """The real caller's IP -- the direct TCP peer by default. That's safe with nothing
-    configured: a client can send any header it likes, but can't fake its own TCP source
-    address. Behind a reverse proxy/WAF (OPENCLEAR_TRUSTED_PROXY_COUNT > 0), instead trusts
-    exactly that many entries from the *right* end of X-Forwarded-For -- the hop your own
-    proxy chain appended, never the client-supplied left end, which is trivially
-    spoofable. Leaving this at 0 (the default) never reads the header at all, so a
-    missing or misconfigured proxy can't silently start trusting a forged header."""
-    trusted_hops = get_settings().trusted_proxy_count
-    if trusted_hops > 0:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
-            if len(hops) >= trusted_hops:
-                return hops[-trusted_hops]
-    return request.client.host if request.client else None
+    """The real caller's IP, as the request context worked it out (web/request_context.py):
+    a trusted edge's client-IP header, the right end of X-Forwarded-For behind a configured
+    number of proxies, or the TCP connection's own address. With nothing configured, only
+    the connection's address is used: a client can send any header it likes, but can't fake
+    its own TCP source address."""
+    from openclear.web import request_context
+
+    context = request_context.current()
+    if context is not None:
+        return context.client_ip
+    return request_context.resolve_client_ip(request)[0]

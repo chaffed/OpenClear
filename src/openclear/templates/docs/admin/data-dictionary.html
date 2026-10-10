@@ -1106,6 +1106,28 @@ back; this row and its report are all that's kept.</p>
 </tbody>
 </table>
 
+<h3>security_event</h3>
+<p>Security events (sign-ins and failures, lockouts, second factors, tokens, refusals, and
+security-relevant changes), for a bank's SIEM: read through <code>GET /api/v1/security-events</code>.
+No passwords, tokens, secrets or account data. Kept for
+<code>security_event_retention_days</code>. No row-level security: some events belong to no bank,
+and every read filters by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>BigInteger</td><td>no</td><td>PK</td><td>Increasing; the feed's cursor (<code>sequence</code>).</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td>Null for an event belonging to no bank.</td></tr>
+<tr><td>occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>name / category / outcome / severity / reason</td><td>String</td><td>no (reason yes)</td><td></td><td>e.g. <code>auth.login.failed</code> / authentication / failure / medium / invalid_credentials.</td></tr>
+<tr><td>actor_type / actor_id / actor_label</td><td>String</td><td>yes</td><td></td><td>Who: user, api_client or system, and the email or client name.</td></tr>
+<tr><td>target_type / target_id / target_label</td><td>String</td><td>yes</td><td></td><td>What it was done to.</td></tr>
+<tr><td>source_ip / user_agent</td><td>String</td><td>yes</td><td></td><td>Where from (the caller's address as worked out per request).</td></tr>
+<tr><td>request_id / edge_id / channel</td><td>String</td><td>yes</td><td></td><td>The request, the edge's own id, web or api.</td></tr>
+<tr><td>audit_sequence</td><td>BigInteger</td><td>yes</td><td></td><td>The action-log entry this event also is.</td></tr>
+<tr><td>details</td><td>JSON</td><td>yes</td><td></td><td>Event-specific detail (never secrets or account data).</td></tr>
+</tbody>
+</table>
+
 <h3>audit_log_checkpoint</h3>
 <p>A run of the oldest audit entries moved into a signed archive file (only when the
 platform sets <code>audit_archive_after_days</code>). The first entry left in

@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+### Request context and security events (MASTER_PLAN.md M1)
+
+- **The caller's address behind an edge.**
+  - `OPENCLEAR_CLIENT_IP_HEADER` and `OPENCLEAR_TRUSTED_PROXY_CIDRS` read Cloudflare's or
+    Akamai's client-IP header, trusted only from the edge's ranges.
+  - The address is worked out once per request, and used by rate limits, the action log,
+    logs and security events.
+- **Rate limits per person.** Signed-in people and API clients are limited as themselves
+  (600 a minute by default); others by address.
+- **Origin lockdown.** An optional secret header from the edge (`OPENCLEAR_EDGE_SECRET`),
+  or a recorded attestation. There's a new control, "Edge network set up".
+- **Request ids.**
+  - `X-Request-ID` on every response: the edge's own id when trusted.
+  - It's shown on error pages and recorded in logs and security events.
+  - The action log records it, with the caller's address, in each entry's signed metadata.
+- **JSON logs** (`OPENCLEAR_LOG_FORMAT=json`), with the request's context and an access line
+  per request. Outbound HTTP URLs are no longer logged.
+- **Security events.**
+  - Recorded: sign-ins, failed sign-ins (with the reason), lockouts, second factors,
+    tokens issued and refused, SSO failures, act-as and permission refusals, rate-limit
+    refusals (sampled), and security-relevant changes from the action log.
+  - Pull feeds: `GET /api/v1/security-events`, `GET /api/v1/audit-log` (with signatures),
+    and `GET /api/v1/platform/security-events`.
+  - The CLI follows them with `openclear events tail`.
+- **Serving.**
+  - A configurable keep-alive in the Docker image (`OPENCLEAR_KEEPALIVE_SECONDS`, 75).
+  - Year-long caching for versioned static files.
+  - A JSON `413` under `/api`.
+  - The sandbox image no longer trusts forwarded headers from any address.
+
+### Upgrading
+
+- **Run `alembic upgrade head`.** It adds the `security_event` table.
+- Behind Cloudflare or Akamai, set the client-IP header and ranges (README, "Reverse proxy /
+  WAF deployment"). Until then, the new control fails, and everyone shares one rate-limit
+  bucket per edge address, as before.
+
 ## 1.9.0 — 2026-10-09
 
 A compliance release: evidence that OpenClear's controls work, for a bank's compliance

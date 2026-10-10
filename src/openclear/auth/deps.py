@@ -168,7 +168,10 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         else 0,
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
     )
+    # Who this request is for, for logs, rate limits and security events (web/request_context.py).
+    from openclear.web import request_context
 
+    request_context.note_identity(tenant_id=tenant_id, tenant_slug=branding.slug, user_id=user_id, user_email=user.email)
     return ctx
 
 
@@ -177,8 +180,35 @@ def _header_context(credentials: HTTPAuthorizationCredentials, db: Session, *, e
         return decode_and_build_context(credentials.credentials, db, expected_type=expected_type)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired") from None
-    except (jwt.InvalidTokenError, WrongTokenType, AccessRevoked):
+    except (jwt.InvalidTokenError, WrongTokenType, AccessRevoked) as exc:
+        _token_refused(type(exc).__name__)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from None
+
+
+def _token_refused(reason: str) -> None:
+    """A bearer token that isn't valid (forged, revoked, signed out): a security event,
+    sampled per source so a flood is one event a minute. Expired tokens are normal and
+    aren't recorded."""
+    from openclear.services import security_events
+    from openclear.web import request_context
+
+    context = request_context.current()
+    security_events.emit_detached(
+        "auth.token.failed", sampled_key=f"bearer|{context.client_ip if context else ''}", outcome="failure",
+        reason={"InvalidSignatureError": "invalid_signature", "WrongTokenType": "wrong_token_type",
+                "AccessRevoked": "revoked"}.get(reason, "invalid_token"),
+    )
+
+
+def _refused(name: str, ctx: TenantContext, reason: str, *, key: str) -> None:
+    """An authenticated request refused (a missing permission, an act-as the client may not
+    make): a security event, sampled per person and reason."""
+    from openclear.services import security_events
+
+    security_events.emit_detached(
+        name, sampled_key=f"{ctx.user_id}|{key}", tenant_id=ctx.tenant_id, outcome="failure", reason=reason[:60],
+        actor_type="user", actor_id=ctx.user_id,
+    )
 
 
 ACT_AS_HEADER = "openclear-act-as"
@@ -301,16 +331,26 @@ def get_current_context(
     ctx = _header_context(credentials, db, expected_type="access")
     obo = decode_token(credentials.credentials).get("obo")
     act_as, act_as_subject = request.headers.get(ACT_AS_HEADER), request.headers.get(ACT_AS_SUBJECT_HEADER)
-    if obo:
-        if act_as or act_as_subject:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "An exchanged token already acts for someone")
-        ctx = _act_for_exchange(request, db, ctx, obo)
-    elif act_as and act_as_subject:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send OpenClear-Act-As or OpenClear-Act-As-Subject, not both")
-    elif act_as:
-        ctx = _act_as(request, db, ctx, act_as)
-    elif act_as_subject:
-        ctx = _act_as_subject(request, db, ctx, act_as_subject)
+    base = ctx
+    try:
+        if obo:
+            if act_as or act_as_subject:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "An exchanged token already acts for someone")
+            ctx = _act_for_exchange(request, db, ctx, obo)
+        elif act_as and act_as_subject:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send OpenClear-Act-As or OpenClear-Act-As-Subject, not both")
+        elif act_as:
+            ctx = _act_as(request, db, ctx, act_as)
+        elif act_as_subject:
+            ctx = _act_as_subject(request, db, ctx, act_as_subject)
+    except HTTPException as exc:
+        if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
+            _refused("auth.act_as.refused", base, str(exc.detail), key="act_as")
+        raise
+    if ctx.acting_api_client_id:
+        from openclear.web import request_context
+
+        request_context.note_identity(user_id=ctx.user_id, api_client_id=ctx.acting_api_client_id)
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise HTTPException(status.HTTP_403_FORBIDDEN, DEMO_LOCKED_MESSAGE)
     if ctx.must_change_password:
@@ -338,6 +378,7 @@ def get_mfa_pending_context(
 def require_permission(permission: str):
     def _check(ctx: TenantContext = Depends(get_current_context)) -> TenantContext:
         if permission not in ctx.permissions:
+            _refused("access.denied", ctx, permission, key=permission)
             raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
         return ctx
 
