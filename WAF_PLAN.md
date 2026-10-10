@@ -121,7 +121,21 @@ MASTER_PLAN.md places these waves among the UX and SIEM waves.
 |---|---|---|---|
 | **A. Request handling** | W1, W2, W3 (connections and caching) | • **Request handling:** one middleware that works out each request's context once:<br>&nbsp;&nbsp;– the client IP (from a trusted header or the hop count);<br>&nbsp;&nbsp;– the request id (the edge's, or a new one);<br>&nbsp;&nbsp;– the person or API client.<br>&nbsp;&nbsp;Everything else reads that context.<br>• **Its users:**<br>&nbsp;&nbsp;– rate limits per person or API client;<br>&nbsp;&nbsp;– the edge secret;<br>&nbsp;&nbsp;– the source IP and request id in action-log metadata;<br>&nbsp;&nbsp;– request ids on error pages.<br>• **The "Edge in front" control.**<br>• **Server settings:**<br>&nbsp;&nbsp;– uvicorn's proxy trust and keep-alive;<br>&nbsp;&nbsp;– cache headers on static files;<br>&nbsp;&nbsp;– a JSON body on a 413.<br>• **The sandbox's** `--forwarded-allow-ips='*'` is replaced. | Unit and integration tests with simulated Cloudflare and Akamai headers and peer addresses. A manual check on the Fly demo and sandbox (Fly's proxy is one hop). |
 | **B. Long requests** | W3 (jobs) | Replay, evidence export and action-log verification become jobs with a run to poll. The Controls page shows the last verification and its age, and verification also runs daily. The SDKs follow the `202` answers. | Integration tests for each job and its polling. A manual pass on Model risk, Controls and the export, using the shared busy and polling components from UX wave 0. |
-| **C. Real edges** | W0, W4, W5 (W6 if asked) | The edge check script; the deployment guide; the WAF exclusions and bot-management bypasses, confirmed against a real Cloudflare zone (and Akamai if available); fixes for anything the zone shows. | The edge check passing against the sandbox behind Cloudflare. |
+| **C. Real edges** | W0, W4, W5 (W6 if asked); first against a **stub edge**, see below | The edge check script; the deployment guide; the WAF exclusions and bot-management bypasses, confirmed against a real Cloudflare zone (and Akamai if available); fixes for anything the zone shows. | The edge check passing against the sandbox behind Cloudflare. |
+
+**A stub edge first.** A real zone needs working DNS and a certificate for a test hostname,
+which can take a while to get right. So wave C builds and tests the edge check against a
+local stand-in: a proxy container in front of OpenClear that behaves like each edge, adding:
+- the edge's client-IP header (`CF-Connecting-IP`, or `True-Client-IP`);
+- its request id (`CF-Ray`, or `X-Akamai-Request-ID`);
+- the edge secret;
+- a cut-off for slow origins (100 seconds, or 120);
+- body-size limits, and caching by file extension;
+- optionally, the header rewrites real edges make (Cloudflare's "Add security headers").
+
+It runs in the test suite and in CI. The run against a real Cloudflare zone, and Akamai if
+available, then confirms the stub's behaviour and the guide's settings; it isn't needed to
+build anything.
 
 **W0 isn't a separate step.** Waves A and B are safe whatever a real zone shows: every new
 setting defaults to today's behaviour. So the real-zone work (W0) is done once, in wave C,
@@ -167,3 +181,4 @@ here.
   to cut test cycles; W0 moves into wave C. See MASTER_PLAN.md for the overall order.
 - 2026-10-10 Wave A built (M1): `web/request_context.py`, per-principal rate limits, the edge secret, request ids, source IP in the action log, the "Edge network set up" control, keep-alive, static cache headers, JSON 413, the sandbox's proxy setting.
 - 2026-10-10 Wave B built (M2): `services/long_runs.py` (replay over 1 MB, evidence export over 32 days, action-log verification as `control_run` jobs), status and download endpoints, daily verification, Controls reading the last verification, the CLI waiting for a queued export.
+- 2026-10-10 A real Cloudflare zone is parked: DNS for a test hostname proved fiddly, and nothing before wave C needs it. Wave C builds against a stub edge (a local proxy imitating Cloudflare and Akamai); the real-zone run becomes a final confirmation. The test certificate added on the sandbox was removed.

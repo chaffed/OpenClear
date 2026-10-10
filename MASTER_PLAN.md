@@ -44,7 +44,7 @@ waves are built together, in what order, and how each is tested.
 | **M4. Control panel, reminders and shipping** | UX 2; SIEM B | • The control panel at bank and customer level, replacing the Settings and Admin grids.<br>• Reminders before the cutoff, with their tile.<br>• The return-reason catalogue's tile.<br>• Security event destinations: the installation's from configuration, each bank's as a tile. Delivery reuses the webhook pattern (job queue, retry schedule, per-destination cursor).<br>• The "Security events delivered" control; counts in the evidence export; the SIEM guide and its crosswalk row. | Reminder settings and `security_event_destination`, in one migration | The control panel and its modals; reminders by email and SMS; adding a destination and its test event. | Splunk (container) through HEC and syslog, and a syslog-ng relay with TLS, once. |
 | **M5. Uploads** | UX 3 | • Issue-file layouts and the layout builder; their tiles.<br>• Fixing failed rows in the browser; drag and drop.<br>• The upload pages on phones, and their accessibility fixes. | Layouts and upload corrections | The upload journey: sample file, layout, import, correcting failed rows. | — |
 | **M6. Bank staff and operator** | UX 4 | • The customer hub.<br>• Bank-granted support access.<br>• The operator view, as a control panel at platform level. It shows every bank's controls, edge state and event delivery, which by now all exist. | `support_access_grant` | The customer hub; granting, using and expiring support access; the operator view. | — |
-| **M7. Real edges** | WAF C | • The edge check script.<br>• The edge deployment guide, with WAF exclusions and bot-management bypasses for every path. By now all paths exist: layouts, support access, the operator view.<br>• Fixes for anything the real zone shows. | None expected | The edge check against the sandbox behind Cloudflare, and Akamai if available. | **Cloudflare zone** (and Akamai, if available), once |
+| **M7. Edges** | WAF C | • The edge check script.<br>• The edge deployment guide, with WAF exclusions and bot-management bypasses for every path. By now all paths exist: layouts, support access, the operator view.<br>• Fixes for anything the real zone shows. | None expected | The edge check against a stub edge (a local proxy imitating Cloudflare and Akamai), in the suite and CI. | A real Cloudflare zone (and Akamai) later, to confirm; not needed to build M7 |
 
 ## Releases
 
@@ -53,7 +53,7 @@ waves are built together, in what order, and how each is tested.
 | 1.10 | M1, M2 | Security visibility, and the fix for the misleading page-only filter. Nothing here needs the user testing results. |
 | 1.11 | M3, M4 | Deciding and the control panel together: the two biggest changes users see, announced once. |
 | 1.12 | M5, M6 | Uploads, then the staff and operator tools. |
-| 1.13 | M7 | The edge guide, published once it's checked against a real zone. |
+| 1.13 | M7 | The edge check and guide, tested against a stub edge; confirmed against a real zone when one is set up. |
 
 ## Code shared across plans (built once)
 
@@ -74,13 +74,12 @@ waves are built together, in what order, and how each is tested.
 | When | What |
 |---|---|
 | During M1–M2 | **User testing:** about five sessions each with AP clerks and bank operations staff, on clickable prototypes of the decision flow, the control panel and the layout builder. I prepare the prototypes; the sessions need people. |
-| Before M7 | **A test domain on a Cloudflare zone** (the free plan is enough), and Akamai access if a partner can lend it. |
+| Whenever convenient | **A test hostname on a Cloudflare zone**, to confirm M7 against a real edge. Parked: M7 is built and tested against a stub edge without it. |
 | Each release | Approval to push, tag, release and deploy, as now. |
 
 Nothing else blocks a stage. Without user testing, M3–M5 can still be built, with the
 prototypes judged by us alone, but that's the riskiest part to guess. Without a Cloudflare
-zone, M7 waits; everything before it is unaffected, because every edge setting defaults to
-today's behaviour.
+zone, M7 is still built and tested, against a stub edge; only the final confirmation waits.
 
 ## Decisions
 
@@ -100,3 +99,4 @@ today's behaviour.
 - 2026-10-10 M1 merged into `main` at `c213b777`. All three suites were green: SQLite 1460 passed, Postgres 1485, Linux 3.11 1447.
 - 2026-10-10 M2 built on branch `m2-foundations`: server-side list search, sort and CSV export (issued items, paid items, ACH, exceptions), global search, nav by work with an Exceptions count, Action Log naming, item page titles, back to the filtered list, empty states, shared confirm/toast/busy/poll components, the axe check (0 problems after fixing pager contrast) (UX wave 0); replay, evidence export and verification as background jobs on `control_run`, daily verification, Controls reading the latest verification (WAF wave B). No migration.
 - 2026-10-10 M2 merged into `main`. The three suites at `23272e41` each had one failure, the same test (the Approvals badge test also matched the new Exceptions badge); fixed in the test at `b3847d02` and rerun green on SQLite and Postgres. SQLite 1471 passed, Postgres 1496, Linux 3.11 1457 (plus that test).
+- 2026-10-10 Real Cloudflare zone parked; M7 will use a stub edge (WAF_PLAN.md, wave C), with the real-zone run as a later confirmation.
