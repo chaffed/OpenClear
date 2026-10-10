@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Chaffed
+
+# The hosted developer sandbox (SDK_PLAN.md P4; fly.sandbox.toml): OpenClear with self-service
+# sandbox banks. Build the production image first (docker build -t openclear:latest .).
+#
+# Signing keys are generated on the machine's own volume the first time it starts, so they
+# never exist anywhere else. OPENCLEAR_SSO_ENCRYPTION_KEY comes from a deploy secret.
+
+ARG BASE_IMAGE=openclear:latest
+FROM ${BASE_IMAGE}
+
+COPY --chown=openclear:openclear scripts/generate_keys.py /app/scripts/generate_keys.py
+
+ENV OPENCLEAR_SANDBOX_SIGNUP_ENABLED=true \
+    OPENCLEAR_DATABASE_URL=sqlite:////data/openclear-sandbox.db \
+    OPENCLEAR_JWT_PRIVATE_KEY_PATH=/data/keys/jwt_private.pem \
+    OPENCLEAR_JWT_PUBLIC_KEY_PATH=/data/keys/jwt_public.pem \
+    OPENCLEAR_FILE_SIGNING_PRIVATE_KEY_PATH=/data/keys/file_signing_private.pem \
+    OPENCLEAR_FILE_SIGNING_PUBLIC_KEY_PATH=/data/keys/file_signing_public.pem \
+    OPENCLEAR_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH=/data/keys/audit_log_signing_private.pem \
+    OPENCLEAR_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH=/data/keys/audit_log_signing_public.pem \
+    OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH=/data/keys/wsud_signing_private.pem \
+    OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH=/data/keys/wsud_signing_public.pem
+
+CMD ["sh", "-c", "[ -f /data/keys/jwt_private.pem ] || python /app/scripts/generate_keys.py --output-dir /data/keys; alembic upgrade head && exec uvicorn openclear.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

@@ -90,7 +90,9 @@ def test_the_typescript_sdk_against_a_running_server(server, db_session, tenant_
         "OPENCLEAR_TEST_WEBHOOK_BODY": body,
     }
     result = subprocess.run(
-        [NODE, "--test", "--test-concurrency=1", "test/"], cwd=SDK, env=env, capture_output=True, text=True, timeout=300,
+        # The files themselves: older Node releases don't accept a directory here.
+        [NODE, "--test", "--test-concurrency=1", *sorted(str(p.relative_to(SDK)) for p in (SDK / "test").glob("*.test.ts"))],
+        cwd=SDK, env=env, capture_output=True, text=True, timeout=300,
     )
     assert result.returncode == 0, result.stdout[-6000:] + result.stderr[-3000:]
     assert "# skipped 0" in result.stdout or "ℹ skipped 0" in result.stdout, result.stdout[-3000:]

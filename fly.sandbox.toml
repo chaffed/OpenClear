@@ -1,0 +1,43 @@
+# The hosted developer sandbox (Dockerfile.sandbox, sandbox/README.md):
+#   fly deploy -c fly.sandbox.toml --local-only
+app = "openclear-sandbox"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile.sandbox"
+
+[env]
+  OPENCLEAR_TRUSTED_PROXY_COUNT = "1"
+  OPENCLEAR_PUBLIC_BASE_URL = "https://openclear-sandbox.fly.dev"
+  OPENCLEAR_WEBAUTHN_RP_ID = "openclear-sandbox.fly.dev"
+  OPENCLEAR_WEBAUTHN_ORIGIN = "https://openclear-sandbox.fly.dev"
+  OPENCLEAR_SANDBOX_LIFETIME_DAYS = "30"
+  OPENCLEAR_SANDBOX_SIGNUPS_PER_HOUR = "5"
+  # In-process background work: one machine, SQLite.
+  OPENCLEAR_WORKER_MODE = "in_process"
+  OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER = "true"
+  OPENCLEAR_ENABLE_DECISION_OUTBOX_SCHEDULER = "true"
+  OPENCLEAR_ENABLE_DISPOSITION_SCHEDULER = "true"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # One machine: SQLite and in-process rate limits.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[mounts]
+  source = "openclear_sandbox_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
