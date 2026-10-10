@@ -55,18 +55,21 @@ phases here.
 | U7 | **Bank staff: the customer hub.**<br>• The Customers list gains: items open, items due today, the nearest deadline, the last issued-file upload, and the customer's decision default at the deadline.<br>• It's sorted by "needs action" first, and filterable by "no issue file in N days" (a common sign of a customer who has stopped sending them).<br>• From a customer: send a reminder now (U3), open its uploads, its layouts (U1), its users. | |
 | U8 | **Bank-granted support access** (instead of impersonation).<br>• A bank admin grants a named platform support person access for a stated reason and period (e.g. 4 hours), read-only by default. Write access needs a second bank admin's approval (as in C1).<br>• The support person works under their own name, with a banner saying whose access they're using and until when. They can't see secrets, change users, groups or settings, or decide items.<br>• Every grant, use and expiry goes into the bank's action log and the evidence export, and is visible to the bank under Settings → Support access.<br>• Platform staff can't grant themselves access. | Needed before an operator UI (U9) can link into a bank. |
 | U9 | **Platform operator view.**<br>• A web page for the platform API key holder (or a platform admin role) showing every bank with its status, exceptions open and overdue, jobs queued and failed, the last import, the controls summary (C4), and the security-event delivery state (SIEM_PLAN S5).<br>• Provisioning a bank from the web, using the existing provisioning service and the bank's Getting Started checklist.<br>• Links into a bank only through U8. | Today these exist as platform APIs only. |
+| U11 | **A control panel for settings.** Settings and Admin become one control panel. Today they're two long grids of form cards: Organization settings alone has twelve.<br>• **Tiles grouped into sections:** Organization; Security & access; Decisions & rules; Integrations; Data & compliance. A search box filters the tiles.<br>• **Each tile has an icon, a name and its current state**, e.g. "Dual control · On", "Segregation of duties · Warn", "SSO · 2 connections", "Controls · 1 FAIL". An admin sees how things stand without opening anything.<br>• Tiles appear only for what the person's permissions allow.<br>• **Small settings open in a modal:** branding, timeouts, dual control, contact info, messages, password policy, embedding origins, reminders (U3), the customer's decision default.<br>• **Lists and workflows open as full pages from their tile:** SSO connections, security groups, users, webhooks, API clients, decision files, the fraud model, Model risk, Controls, layouts (U1). A modal holding tables and sub-forms is worse than a page.<br>• **Every modal has its own URL** (e.g. `/ui/settings/branding`), so the Controls page, the Getting Started checklist and the docs can link straight to a setting. Without JavaScript the same URL is a plain page. It works the same in the embedded frame.<br>• **Modal behaviour:**<br>&nbsp;&nbsp;– native `<dialog>`, as the help and session dialogs already use;<br>&nbsp;&nbsp;– focus kept inside, Escape closes, focus returns to the tile;<br>&nbsp;&nbsp;– a warning before closing with unsaved changes;<br>&nbsp;&nbsp;– saving updates the tile's state in place, and errors show beside their fields;<br>&nbsp;&nbsp;– full-screen on phones.<br>• **The same pattern at three levels:**<br>&nbsp;&nbsp;– the platform operator (U9): banks, jobs, platform settings;<br>&nbsp;&nbsp;– the bank: everything above;<br>&nbsp;&nbsp;– each customer: its users, issue-file layouts, reminders, decision default, banner. | Mostly templates, CSS and a small script. The settings routes stay as they are, each answering as a full page or as a modal's content. Later phases (U1, U3, U8) add their settings as tiles rather than as more cards. |
 | U10 | **Accessibility (WCAG 2.1 AA).**<br>• An audit of the main journeys (sign in, dashboard, exceptions, decide, upload, settings) with automated checks (axe) and a manual pass with VoiceOver and NVDA and keyboard only.<br>• Fixes: labels, focus order and visible focus, colour contrast in both themes, announcements of changes (the banner, upload results), tables with headers, error messages tied to fields.<br>• A published accessibility statement, and an axe check in the test suite for the main pages so they stay compliant. | Runs alongside the other phases; each new page in U1–U9 is built to it. |
 
 ## Order
 
 1. U3 (reminders) and U4 (faster decisions): small, and they directly reduce missed
    cutoffs.
-2. U1 (layouts) and U2 (fix in the browser): the largest change, and the largest cut in
+2. U11 (the control panel): mostly templates, and it gives the later phases' settings a
+   home.
+3. U1 (layouts) and U2 (fix in the browser): the largest change, and the largest cut in
    bank support calls.
-3. U5 and U6 (decide now, mobile and embedded).
-4. U7 (customer hub).
-5. U8 then U9 (support access, then the operator view).
-6. U10 throughout: an audit early, fixes alongside each phase.
+4. U5 and U6 (decide now, mobile and embedded).
+5. U7 (customer hub).
+6. U8 then U9 (support access, then the operator view).
+7. U10 throughout: an audit early, fixes alongside each phase.
 
 ## Testing with people
 
@@ -82,6 +85,7 @@ five or so sessions each. What changes as a result is recorded here.
 | U-D1 | Impersonation for platform support? | No. Bank-granted, time-boxed, audited support access (U8). |
 | U-D2 | Several decisions at once: are dual control and SoD relaxed? | No. Each item is checked as if decided alone; the batch only saves clicks. |
 | U-D3 | Check return reasons: free text or a catalogue? | A catalogue per bank, seeded with common reasons, like ACH. The API still accepts free text. |
+| U-D5 | Settings: modals for everything? | No. Modals for small settings, and full pages for lists and workflows. Every modal also has its own URL, and works as a plain page without JavaScript. |
 | U-D4 | A file fixed in the browser: replace the original? | No. The original stays as received and signed; fixes are separate, audited rows. |
 
 ## Progress log
@@ -89,3 +93,4 @@ five or so sessions each. What changes as a result is recorded here.
 (Newest last.)
 - 2026-10-10 Plan written from the outside UX analysis, checked against the code. Nothing
   built yet.
+- 2026-10-10 Added U11, a control panel replacing the settings and admin card grids.
