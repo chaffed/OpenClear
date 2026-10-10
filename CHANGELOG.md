@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 1.9.0 — 2026-10-09
+
+A compliance release: evidence that OpenClear's controls work, for a bank's compliance
+staff, auditors and examiners. It brings:
+
+- segregation of duties, with two-person changes to rules and models;
+- model risk tests: replaying past files through today's rules, and synthetic fraud
+  capture;
+- continuous control monitoring (Admin → Controls);
+- a signed evidence export;
+- AES-256-GCM for secrets stored in the database;
+- crosswalks to FFIEC, Nacha, SR 11-7 and third-party risk guidance.
 
 ### Segregation of duties (COMPLIANCE_PLAN.md C1)
 
@@ -56,7 +67,7 @@
   2023 interagency third-party risk guidance, with a due-diligence pack. They're also on
   the docs site.
 
-### Upgrading
+### Upgrading from 1.8.0
 
 - **Run `alembic upgrade head`.** It adds `tenant.sod_mode`, and the `change_request` and
   `control_run` tables.
