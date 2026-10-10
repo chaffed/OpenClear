@@ -86,6 +86,8 @@ def _rewrite(text: str, source: Path, placed: Path, sites: dict[Path, Path]) -> 
 
 
 def build(serve: bool = False, out: Path = ROOT / "site") -> int:
+    # MkDocs resolves site_dir against its config file, which lives in a temporary directory.
+    out = Path(out).resolve()
     sites = {Path(src): Path(dest) for src, dest, _ in PAGES}
     with tempfile.TemporaryDirectory() as tmp:
         docs = Path(tmp) / "docs"
