@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}ACH Transaction — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}{{ txn.originator_name }} · {{ txn.amount | currency }} · ACH {{ txn.trace_number }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this transaction{% endblock %}
 {% block help_body %}
 <p>A snapshot of the matching decision made the moment this transaction was
@@ -7,6 +7,7 @@
   Exceptions queue — this page itself is read-only.</p>
 {% endblock %}
 {% block content %}
+<p class="back-link"><a href="{{ list_return(request, '/ui/ach/transactions') }}">Back to ACH transactions</a></p>
 <div class="card">
   <h1>ACH transaction</h1>
   <p>Originator: {{ txn.originator_name }} ({{ txn.originator_id }})</p>

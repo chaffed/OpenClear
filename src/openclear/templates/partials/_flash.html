@@ -1,4 +1,4 @@
 {% set flash = request.query_params.get("flash") %}
 {% set error = request.query_params.get("error") %}
-{% if flash %}<div class="flash flash-ok">{{ flash }}</div>{% endif %}
-{% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+{% if flash %}<div class="flash flash-ok" data-toast role="status">{{ flash }}</div>{% endif %}
+{% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}

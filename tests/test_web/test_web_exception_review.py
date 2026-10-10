@@ -308,5 +308,5 @@ def test_decision_deadline_helper_used_in_list(client, db_session, tenant_factor
 
     page = client.get("/ui/exceptions").text
 
-    assert "<th>Decide by</th>" in page and "data-relative-time" in page
+    assert ">Decide by</a></th>" in page and "data-relative-time" in page  # a sortable column
     assert "<th>Customer</th>" in page and "Customer DL-2" in page

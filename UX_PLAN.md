@@ -110,3 +110,4 @@ tests they touch. That's five merges in all, instead of about a dozen. MASTER_PL
 - 2026-10-10 Added U11, a control panel replacing the settings and admin card grids.
 - 2026-10-10 Added U12 (lists, navigation, shared components) and reorganised the order into
   five waves by screen area, with one round of user testing before wave 1.
+- 2026-10-10 Wave 0 built (M2): U12 in full for issued items, paid items, ACH and exceptions (other paginated tables say "Filter this page only"); the axe check covers ten main pages, baseline 0 after fixing pager contrast. The manual screen-reader and keyboard pass is still to do, by a person.

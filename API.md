@@ -549,7 +549,7 @@ report.
 
 | method | path | notes |
 |---|---|---|
-| POST | `/replay` | multipart `file`: a historical X9.37 cash letter or NACHA file (up to 50 MB). Answers `201` with the run: `report` has `items`, `compared_with_history`, `match_rate` (today's rules flag an item exactly when they did then), `false_positive_rate` (flagged, but the bank paid it), `missed_return_rate` (not flagged, but returned), `unhandled_rate`, `exception_types`, and `variances` listing the items that differ. `422` for a file that can't be read |
+| POST | `/replay` | multipart `file`: a historical X9.37 cash letter or NACHA file (up to 50 MB). A file over `long_request_sync_bytes` (1 MB) is replayed in the background: `202` with the run, `state` queued; poll `GET /runs/{id}` until `state` is done (or failed). Otherwise `201` with the finished run: `report` has `items`, `compared_with_history`, `match_rate` (today's rules flag an item exactly when they did then), `false_positive_rate` (flagged, but the bank paid it), `missed_return_rate` (not flagged, but returned), `unhandled_rate`, `exception_types`, and `variances` listing the items that differ. `422` for a file that can't be read |
 | POST | `/anomaly-capture` | runs the synthetic anomaly-capture test now. `passed` only if every injected fraud vector was caught and the clean items weren't flagged; `report.probes` has each one |
 | GET | `/runs` | the latest runs; `?kind=mrm_replay` or `anomaly_capture` |
 | GET | `/runs/{run_id}` | one run |
@@ -564,7 +564,9 @@ report.
 
 | method | path | notes |
 |---|---|---|
-| GET | `/export?start=YYYY-MM-DD&end=YYYY-MM-DD&format=json\|pdf` | `audit_log:read`, the bank's own staff. A signed evidence bundle for the period (UTC days, at most 400). It covers the system version; the rules, plugins and models in force with their digests; settings and security groups; whether the action log verifies; segregation-of-duties breaches; changes and approvals; every decision with who recommended and decided it; model-risk runs; and the control status. JSON is `{"bundle", "signature"}`, where the signature is ECDSA P-256 over the SHA-256 of the bundle as compact, key-sorted JSON, with the public key included. The PDF shows the same. Both carry `X-OpenClear-File-SHA256` and `X-OpenClear-File-Signature` (the file as sent). Each export is in the action log. See [docs/compliance](docs/compliance/README.md) |
+| GET | `/export?start=YYYY-MM-DD&end=YYYY-MM-DD&format=json\|pdf` | `audit_log:read`, the bank's own staff. A signed evidence bundle for the period (UTC days, at most 400). It covers the system version; the rules, plugins and models in force with their digests; settings and security groups; whether the action log verifies; segregation-of-duties breaches; changes and approvals; every decision with who recommended and decided it; model-risk runs; and the control status. JSON is `{"bundle", "signature"}`, where the signature is ECDSA P-256 over the SHA-256 of the bundle as compact, key-sorted JSON, with the public key included. The PDF shows the same. Both carry `X-OpenClear-File-SHA256` and `X-OpenClear-File-Signature` (the file as sent). Each export is in the action log. A period longer than `long_request_sync_days` (32) is exported in the background: `202` with JSON `status_url`. See [docs/compliance](docs/compliance/README.md) |
+| GET | `/export/runs/{run_id}` | A background export's `state` (queued, running, done, failed); `download_url` when done |
+| GET | `/export/runs/{run_id}/file` | The finished export, with the same `X-OpenClear-*` headers. `409` until it's done |
 
 ### Security events and the action log — `/api/v1/security-events`, `/api/v1/audit-log`
 

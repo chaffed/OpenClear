@@ -881,10 +881,30 @@ public sealed partial class AuditApi
     /// control status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256
     /// of the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and
     /// both carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in
-    /// the action log.
+    /// the action log. A period longer than `long_request_sync_days` (32) is exported in the
+    /// background: the answer is `202` with `status_url`, and `download_url` once it's done.
     /// </summary>
     public Task<byte[]> ExportAsync(string? start = null, string? end = null, string? format = null, CancellationToken cancellationToken = default) =>
         _c.CallRawAsync("GET", "/api/v1/audit/export", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["format"] = format }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Export Status.
+    ///
+    /// GET /api/v1/audit/export/runs/{run_id}
+    ///
+    /// A long export's progress: `state` is queued, running, done or failed; when done,
+    /// `download_url` gives the signed file.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> ExportStatusAsync(string runId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", $"/api/v1/audit/export/runs/{Uri.EscapeDataString(runId.ToString()!)}", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Export File.
+    ///
+    /// GET /api/v1/audit/export/runs/{run_id}/file
+    /// </summary>
+    public Task<byte[]> ExportFileAsync(string runId, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", $"/api/v1/audit/export/runs/{Uri.EscapeDataString(runId.ToString()!)}/file", cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -1621,7 +1641,8 @@ public sealed partial class ModelRiskApi
     /// compares each item with what happened to it then: `match_rate` (today's rules flag it
     /// exactly when they did then), `false_positive_rate` (flagged, but the bank paid it),
     /// `missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the
-    /// items that differ.
+    /// items that differ. A file over `long_request_sync_bytes` (1 MB) is replayed in the
+    /// background: the answer is `202` with the run, `state` queued; poll the run.
     /// </summary>
     public Task<IReadOnlyDictionary<string, JsonElement>> ReplayAsync(FilePart file, CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("POST", "/api/v1/mrm/replay", form: new Dictionary<string, object?> { ["file"] = file }, cancellationToken: cancellationToken);

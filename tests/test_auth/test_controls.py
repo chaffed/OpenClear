@@ -51,6 +51,11 @@ def test_controls_move_to_pass_and_fail(db_session, tenant_factory, monkeypatch)
     entry = db_session.query(AuditLogEntry).filter(AuditLogEntry.tenant_id == tenant.id).first()
     entry.summary = entry.summary + " (edited)"
     db_session.commit()
+    # The control shows the latest verification (services/long_runs.py); the next one finds the edit.
+    from openclear.services import long_runs
+
+    long_runs.verify_now(db_session, tenant.id)
+    db_session.commit()
     controls = _by_key(db_session, tenant)
     assert controls["anomaly_capture"].status == "WARN"
     assert controls["audit_chain"].status == "FAIL"

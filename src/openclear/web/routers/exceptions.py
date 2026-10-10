@@ -119,7 +119,7 @@ def list_exceptions(
     page: int = 1,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:read")),
-) -> HTMLResponse:
+):
     """Defaults to what still needs a person (open, or awaiting approval), oldest first:
     a work queue. Choosing a decided status, or "All", shows newest first instead."""
     if status == _ALL_STATUSES:
@@ -130,15 +130,20 @@ def list_exceptions(
     else:
         status, statuses, oldest_first = "", exception_service.NEEDS_ATTENTION, True
 
+    from openclear.web import list_search
+
     filters = dict(network_code=network_code or None, statuses=statuses, customer_id=ctx.customer_id)
-    page_obj = paginate(
-        page=page,
-        count_fn=lambda: exception_service.count_exceptions(db, ctx.tenant_id, **filters),
-        list_fn=lambda **kw: exception_service.list_exceptions(
-            db, ctx.tenant_id, **filters,
-            order_by=ExceptionItem.created_at.asc() if oldest_first else ExceptionItem.created_at.desc(), **kw,
-        ),
+    search = list_search.parse(request, extra=("status", "network_code"))
+    spec = list_search.exceptions_spec()
+    # A work queue (open or awaiting approval) is oldest first, unless another sort is chosen.
+    spec.default_order = lambda: [ExceptionItem.created_at.asc() if oldest_first else ExceptionItem.created_at.desc()]
+    page_obj = list_search.page_or_export(
+        request=request, db=db, ctx=ctx, search=search, spec=spec, page=page, list_name="exceptions",
+        count=lambda where: exception_service.count_exceptions(db, ctx.tenant_id, **filters, where=where),
+        fetch=lambda **kw: exception_service.list_exceptions(db, ctx.tenant_id, **filters, **kw),
     )
+    if not hasattr(page_obj, "items"):
+        return page_obj
     # Per-row enrichment only ever runs over the current page's rows.
     sources = _load_sources(db, page_obj.items)
     accounts, customers = _names_for_page(db, ctx, page_obj.items, sources)
@@ -156,7 +161,7 @@ def list_exceptions(
         )
     return render_template(
         request, "exceptions/list.html", ctx=ctx, rows=rows, page_obj=page_obj, network_filter=network_code,
-        status_filter=status, statuses=[s.value for s in ExceptionStatus],
+        status_filter=status, statuses=[s.value for s in ExceptionStatus], search=search,
         show_scores=any(r["exception"].ml_score is not None for r in rows),
         show_deadlines=any(r["exception"].decision_deadline is not None for r in rows),
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),

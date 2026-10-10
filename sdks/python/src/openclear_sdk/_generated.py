@@ -858,9 +858,27 @@ class AuditApi:
         control status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256
         of the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and
         both carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in
-        the action log.
+        the action log. A period longer than `long_request_sync_days` (32) is exported in the
+        background: the answer is `202` with `status_url`, and `download_url` once it's done.
         """
         return self._c.call("GET", "/api/v1/audit/export", query={"start": start, "end": end, "format": format}, raw=True)
+
+    def export_status(self, run_id: str) -> dict[str, Any]:
+        """Export Status.
+
+        GET /api/v1/audit/export/runs/{run_id}
+
+        A long export's progress: `state` is queued, running, done or failed; when done,
+        `download_url` gives the signed file.
+        """
+        return self._c.call("GET", f"/api/v1/audit/export/runs/{_path(run_id)}")
+
+    def export_file(self, run_id: str) -> bytes:
+        """Export File.
+
+        GET /api/v1/audit/export/runs/{run_id}/file
+        """
+        return self._c.call("GET", f"/api/v1/audit/export/runs/{_path(run_id)}/file", raw=True)
 
 
 class BillingApi:
@@ -1510,7 +1528,8 @@ class ModelRiskApi:
         compares each item with what happened to it then: `match_rate` (today's rules flag it
         exactly when they did then), `false_positive_rate` (flagged, but the bank paid it),
         `missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the
-        items that differ.
+        items that differ. A file over `long_request_sync_bytes` (1 MB) is replayed in the
+        background: the answer is `202` with the run, `state` queued; poll the run.
         """
         return self._c.call("POST", "/api/v1/mrm/replay", files={"file": file})
 

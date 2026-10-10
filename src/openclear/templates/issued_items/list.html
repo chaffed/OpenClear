@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
+{% import "_macros/list_search.html" as ls %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Issued Items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About issued items{% endblock %}
@@ -27,7 +28,10 @@
     </div>
     {% endif %}
   </div>
-  <form method="get" action="/ui/issued-items">
+  {{ ls.search_form("/ui/issued-items", search, number_label="Check number", date_label="Issue date",
+                     q_hint="Check number, payee or amount", hidden={"status": status_filter.value if status_filter else ""}) }}
+  <form method="get" action="/ui/issued-items" class="list-filter">
+    {% for name, value in search.values.items() %}{% if value and name != "status" %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
     <label style="max-width:220px;">Status
       <select name="status" data-auto-submit>
         <option value="">All</option>
@@ -36,14 +40,21 @@
         {% endfor %}
       </select>
     </label>
+    {{ ls.export_link("/ui/issued-items", search, page_obj.total_count) }}
   </form>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Check #</th><th data-type="number">Amount</th><th>Payee</th><th>Issue date</th><th>Status</th></tr></thead>
+  <table data-server-list>
+    <thead><tr>
+      {{ ls.sort_th("Check #", "number", search, "/ui/issued-items") }}
+      {{ ls.sort_th("Amount", "amount", search, "/ui/issued-items", numeric=True) }}
+      {{ ls.sort_th("Payee", "payee", search, "/ui/issued-items") }}
+      {{ ls.sort_th("Issue date", "date", search, "/ui/issued-items") }}
+      {{ ls.sort_th("Status", "status", search, "/ui/issued-items") }}
+    </tr></thead>
     <tbody>
       {% for item in page_obj.items %}
       <tr>
-        <td><a href="/ui/issued-items/{{ item.id }}">{{ item.check_number }}</a></td>
+        <td><a href="/ui/issued-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a></td>
         <td>{{ item.amount | currency }}</td>
         <td>{{ item.payee_name }}</td>
         <td>{{ item.issue_date }}</td>
@@ -54,7 +65,9 @@
   </table>
   {{ pg.pager(page_obj, request) }}
   {% else %}
-  <p>No issued items yet.</p>
+  {{ ls.empty_state(search.active or status_filter, "No issued checks yet. Upload your issue file, or add a check by hand.",
+                    [("/ui/issued-items/bulk", "Upload an issue file", "upload_file"), ("/ui/issued-items/new", "Add a check", "add")]
+                    if can(ctx, "issued_item:write") else []) }}
   {% endif %}
 </div>
 {% endblock %}

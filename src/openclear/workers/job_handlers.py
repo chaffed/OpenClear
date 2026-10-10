@@ -90,3 +90,10 @@ def _retrain_model_slot(session: Session, job: Job) -> None:
         label=payload.get("label", "shared"),
         force_activate_reason=payload.get("force_activate_reason"),
     )
+
+
+@handler("control_run.execute")  # services/long_runs.JOB_KIND
+def _execute_control_run(session: Session, job: Job) -> None:
+    from openclear.services import long_runs
+
+    long_runs.execute(session, uuid.UUID(job.payload["run_id"]))

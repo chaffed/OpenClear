@@ -1,18 +1,18 @@
 {% macro pager(page_obj, request) %}
 {% if page_obj.total_count > 0 %}
-<div class="pagination">
+<div class="pagination" data-pages="{{ page_obj.total_pages }}">
   <span>Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.total_count }}</span>
   <div class="pagination-links">
     {% if page_obj.has_prev %}
     <a class="button secondary" href="{{ pager_href(request, page_obj.page - 1) }}">Prev</a>
     {% else %}
-    <span class="button-disabled">Prev</span>
+    <span class="button-disabled" aria-disabled="true">Prev</span>
     {% endif %}
     <span>Page {{ page_obj.page }} of {{ page_obj.total_pages }}</span>
     {% if page_obj.has_next %}
     <a class="button secondary" href="{{ pager_href(request, page_obj.page + 1) }}">Next</a>
     {% else %}
-    <span class="button-disabled">Next</span>
+    <span class="button-disabled" aria-disabled="true">Next</span>
     {% endif %}
   </div>
 </div>

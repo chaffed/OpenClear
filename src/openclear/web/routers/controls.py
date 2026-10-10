@@ -3,6 +3,7 @@
 
 """Admin → Controls (services/controls_service.py; COMPLIANCE_PLAN.md C4)."""
 
+import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -21,9 +22,18 @@ router = APIRouter(tags=["web-controls"])
 @router.get("/ui/admin/controls")
 def controls_page(request: Request, db: Session = Depends(get_db),
                   ctx: TenantContext = Depends(require_web_permission("audit_log:read"))) -> HTMLResponse:
+    from openclear.services import long_runs
+
     today = datetime.now(timezone.utc).date()  # export periods are UTC days
+    export_run = None
+    if export_id := request.query_params.get("export"):
+        try:
+            export_run = long_runs.get_run(db, ctx.tenant_id, uuid.UUID(export_id), long_runs.EVIDENCE)
+        except ValueError:
+            export_run = None
     return render_template(request, "admin/controls.html", ctx=ctx, result=controls_service.summary(controls_service.status(db, ctx.tenant_id)),
-                           default_start=today.replace(day=1).isoformat(), default_end=today.isoformat())
+                           default_start=today.replace(day=1).isoformat(), default_end=today.isoformat(),
+                           export_run=export_run, export_state=long_runs.state(export_run) if export_run else None)
 
 
 @router.post("/ui/admin/controls/evidence")
@@ -33,7 +43,31 @@ def export_evidence(start: date = Form(...), end: date = Form(...), format: str 
 
     from openclear.api.v1.audit import export_response
 
+    from openclear.services import evidence_service, long_runs
+    from openclear.workers.jobs import jobs_queued
+
+    fmt = "json" if format == "json" else "pdf"
     try:
-        return export_response(db, ctx, start, end, "json" if format == "json" else "pdf", "web")
+        if long_runs.evidence_runs_inline(start, end):
+            return export_response(db, ctx, start, end, fmt, "web")
+        run = long_runs.start_evidence_export(db, ctx.tenant_id, start=start, end=end, fmt=fmt, user_id=ctx.user_id, channel="web")
     except HTTPException as exc:
         return RedirectResponse(f"/ui/admin/controls?error={quote(str(exc.detail))}", status_code=303)
+    except evidence_service.EvidenceError as exc:
+        return RedirectResponse(f"/ui/admin/controls?error={quote(str(exc))}", status_code=303)
+    db.commit()
+    jobs_queued(db.get_bind())
+    return RedirectResponse(f"/ui/admin/controls?export={run.id}", status_code=303)
+
+
+@router.get("/ui/admin/controls/evidence/{run_id}")
+def download_evidence(run_id: uuid.UUID, db: Session = Depends(get_db),
+                      ctx: TenantContext = Depends(require_web_permission("audit_log:read"))) -> Response:
+    from openclear.services import long_runs
+    from openclear.web.deps import WebNotFound
+
+    run = long_runs.get_run(db, ctx.tenant_id, run_id, long_runs.EVIDENCE)
+    if run is None or long_runs.state(run) != "done":
+        raise WebNotFound()
+    body, headers = long_runs.evidence_file(run)
+    return Response(body, media_type="application/pdf" if run.report["format"] == "pdf" else "application/json", headers=headers)

@@ -470,3 +470,39 @@ input[type="color"] { width: 3.5rem; height: 2.25rem; padding: 0.15rem; cursor: 
 body.embedded .app-shell { display: block; }
 body.embedded .page { max-width: none; margin: 0; padding: 1rem; }
 body.embedded .app-footer { margin-top: 1rem; font-size: 0.75rem; }
+
+/* Server-side list search (web/list_search.py, _macros/list_search.html). */
+.list-search { margin: 0.75rem 0; }
+.list-search-main { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; }
+.list-search-main label { flex: 1 1 18rem; margin: 0; }
+.list-search-more { margin-top: 0.5rem; }
+.list-search-more summary { cursor: pointer; color: var(--accent); }
+.list-search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.5rem 1rem; margin-top: 0.5rem; }
+.list-search-grid label { margin: 0; }
+.list-tools { margin: 0.25rem 0 0.75rem; }
+.list-filter { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+th a.sort-link { color: inherit; text-decoration: none; white-space: nowrap; }
+th a.sort-link::after { content: " \2195"; opacity: 0.35; }
+th a.sort-link.sort-asc::after { content: " \2191"; opacity: 1; }
+th a.sort-link.sort-desc::after { content: " \2193"; opacity: 1; }
+th a.sort-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.empty-state { padding: 1.5rem 0; }
+.empty-state .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.back-link { margin: 0 0 0.75rem; }
+.back-link a::before { content: "\2190  "; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.nav-search { margin: 0 0 0.75rem; }
+.nav-search input { width: 100%; }
+.search-results { list-style: none; padding: 0; margin: 0; }
+.search-results li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+
+/* Shared components: confirmation dialog, toasts, busy buttons (UX_PLAN.md U12). */
+.confirm-dialog { border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; max-width: 28rem; background: var(--bg); color: var(--text); }
+.confirm-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+.confirm-dialog h2 { margin-top: 0; }
+.confirm-dialog .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.toast-region { position: fixed; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 1000; max-width: min(24rem, calc(100vw - 2rem)); }
+.toast { background: var(--badge-ok-bg); color: var(--badge-ok-fg); border: 1px solid var(--ok); border-radius: 6px; padding: 0.6rem 2.2rem 0.6rem 0.9rem; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.toast-close { position: absolute; top: 0.2rem; right: 0.3rem; background: none; border: none; color: inherit; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
+form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }

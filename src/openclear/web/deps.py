@@ -91,6 +91,13 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
         raise WebAuthRequired(next_path=_return_path(request)) from None
     if ctx.must_change_password and request.url.path != PASSWORD_CHANGE_PATH:
         raise WebPasswordChangeRequired()
+    if "exception:read" in ctx.permissions:
+        import dataclasses
+
+        from openclear.services import exception_service
+
+        ctx = dataclasses.replace(ctx, needs_attention_count=exception_service.count_exceptions(
+            db, ctx.tenant_id, statuses=exception_service.NEEDS_ATTENTION, customer_id=ctx.customer_id))
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise WebForbidden(DEMO_LOCKED_MESSAGE, title="Turned off in the demo")
     if ctx.embed_parent_origin:

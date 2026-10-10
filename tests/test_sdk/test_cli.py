@@ -110,3 +110,18 @@ def test_events_tail_follows_the_feed(client, db_session, tenant_factory, monkey
     assert code == 0
     assert "auth.login.succeeded" in names and int(cursor.read_text()) > 0
     assert "auth.login.succeeded" not in _run(client, "events", "tail", "--cursor-file", str(cursor))[1]  # carried on from the cursor
+
+
+def test_audit_export_of_a_long_period_waits_for_the_job(client, db_session, tenant_factory, monkeypatch, tmp_path):
+    from datetime import date, timedelta
+
+    from openclear.config import get_settings
+    from openclear.services import evidence_service
+
+    tenant, _account, _users = tenant_factory.make(slug="cli-evidence-long")
+    _creds(db_session, tenant, monkeypatch)
+    monkeypatch.setattr(get_settings(), "long_request_sync_days", 1)  # anything longer runs as a job
+    target = tmp_path / "evidence.json"
+    today = date.today()
+    code, _out = _run(client, "audit", "export", "--start", str(today - timedelta(days=10)), "--end", str(today), "-o", str(target))
+    assert code == 0 and evidence_service.verify(json.loads(target.read_bytes()))

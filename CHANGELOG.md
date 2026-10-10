@@ -32,6 +32,42 @@
   - A JSON `413` under `/api`.
   - The sandbox image no longer trusts forwarded headers from any address.
 
+### Lists, search and shared components (M2: UX wave 0)
+
+- **The main lists search the server, across every row.**
+  - Issued items, paid items, ACH transactions and exceptions. Until now, the filter box
+    searched only the rows on the page, so an item on another page looked as if it wasn't
+    there.
+  - Search by check or trace number, payee or originator, amount (exact or a range), date
+    range and account number.
+  - Sort any column across every row.
+  - Export what's listed as CSV. Each export is in the action log, and is a security event.
+  - Other paginated tables now say "Filter this page only".
+- **Search everywhere** from the navigation: checks, ACH entries and exceptions, among what
+  the person may see.
+- **Navigation by work:**
+  - Exceptions first, with a count of those needing attention.
+  - "Action Log" throughout, where both "Audit Log" and "action log" were used.
+- **Detail pages:**
+  - Page titles name the item (e.g. "Check 1234 · $5,000.00 · Exception").
+  - "Back" returns to the list you came from, with its filters.
+- **Empty lists** say what to do next, with the button for it.
+- **Shared components:**
+  - a confirmation dialog in place of the browser's `confirm()`;
+  - toasts for "saved";
+  - submit buttons that can't be pressed twice while a form is being sent.
+- **An accessibility check in the test suite.** axe-core in a browser checks ten main pages
+  against WCAG 2.1 AA; the two problems it found (pager contrast) are fixed.
+
+### Long requests as background jobs (M2: WAF wave B)
+
+- **A replay** of a file over 1 MB, and **an evidence export** of more than 32 days, run in
+  the background: `202` with a run to poll, then a download. Smaller ones answer at once as
+  before. `openclear audit export` waits for the job.
+- **Verifying the action log** runs in the background, and daily with the control tests.
+  The Controls page shows the latest result and its age, instead of walking the whole log
+  on every view.
+
 ### Upgrading
 
 - **Run `alembic upgrade head`.** It adds the `security_event` table.

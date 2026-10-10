@@ -34,7 +34,17 @@
   </form>
 </div>
 
-{% if shown %}
+{% if shown and shown_state in ("queued", "running") %}
+<div class="card" data-poll-seconds="3" aria-busy="true">
+  <h1>Replay</h1>
+  <p>{{ shown.summary }}. This page refreshes until the report is ready; you can leave and come back from Recent runs.</p>
+</div>
+{% elif shown and shown_state == "failed" %}
+<div class="card">
+  <h1>Replay</h1>
+  <p class="flash flash-error" role="alert">{{ shown.summary }}</p>
+</div>
+{% elif shown %}
 <div class="card">
   <h1>{{ "Replay" if shown.kind == "mrm_replay" else "Anomaly capture" }}</h1>
   <p>{{ shown.summary }}</p>

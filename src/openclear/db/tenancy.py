@@ -98,6 +98,10 @@ class TenantContext:
     # their maker, in this session's scope. Only computed for sessions that can approve
     # (exception:decide), so it's 0 for everyone else.
     pending_approval_count: int = 0
+    # For base.html's "Exceptions" nav badge: exceptions needing a decision (open or
+    # awaiting approval), in this session's scope. Web pages only (web/deps.py), and only
+    # for those who can see exceptions.
+    needs_attention_count: int = 0
 
     # The login session this request belongs to (auth/security.py::create_session_tokens):
     # `session_id` is what logout revokes; the two expiry times drive base.html's

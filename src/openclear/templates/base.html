@@ -47,7 +47,16 @@
       {# While an admin-issued temporary password must be replaced, every other page just
          redirects back to the change form (web/deps.py), so don't offer links to them. #}
       {% if not ctx.must_change_password %}
+      <form method="get" action="/ui/search" role="search" class="nav-search">
+        <label class="visually-hidden" for="nav-search-input">Search checks, ACH and exceptions</label>
+        <input id="nav-search-input" type="search" name="q" placeholder="Search…" autocomplete="off">
+      </form>
       <div class="nav-links">
+        <p class="nav-section">Review</p>
+        {% if can(ctx, "exception:read") %}{{ nav_link("/ui/exceptions", "Exceptions", "flag", badge=ctx.needs_attention_count) }}{% endif %}
+        {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
+        {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
+
         <p class="nav-section">Positive Pay</p>
         {{ nav_link("/ui/accounts", "Accounts", "account_balance") }}
         {{ nav_link("/ui/issued-items", "Issued Items", "receipt_long") }}
@@ -60,10 +69,9 @@
         {{ nav_link("/ui/ach/transactions", "ACH Transactions", "sync_alt") }}
         {% if show_ach_return_reasons %}{{ nav_link("/ui/ach-return-reasons", "ACH Return Reasons", "assignment_return") }}{% endif %}
 
-        <p class="nav-section">Review</p>
-        {{ nav_link("/ui/exceptions", "Exceptions", "flag") }}
-        {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
-        {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
+        {% if show_customer_banner or (ctx.customer_id is not none and can(ctx, "billing:read")) or can(ctx, "ml_training_example:write") %}
+        <p class="nav-section">More</p>
+        {% endif %}
         {% if show_customer_banner %}{{ nav_link("/ui/customers/" ~ ctx.customer_id ~ "/banner", "Banner Message", "campaign") }}{% endif %}
         {% if ctx.customer_id is not none and can(ctx, "billing:read") %}{{ nav_link("/ui/billing/statement", "Billing Statement", "request_quote") }}{% endif %}
         {% if can(ctx, "ml_training_example:write") %}{{ nav_link("/ui/ml-training/fraud-examples", "Fraud Training Data", "model_training") }}{% endif %}
@@ -75,7 +83,7 @@
         {% if can(ctx, "security_group:manage") %}{{ nav_link("/ui/security-groups", "Security Groups", "admin_panel_settings") }}{% endif %}
         {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/wizard/bank", "Getting Started", "checklist") }}{% endif %}
         {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
-        {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Audit Log", "history") }}{% endif %}
+        {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Action Log", "history") }}{% endif %}
         {% if can(ctx, "billing:read") and ctx.customer_id is none %}{{ nav_link("/ui/billing", "Billing", "request_quote") }}{% endif %}
         {% if can(ctx, "admin:manage") or can(ctx, "tenant:manage") %}{{ nav_link("/ui/admin", "Admin", "tune") }}{% endif %}
         {% endif %}
@@ -141,6 +149,18 @@
       </footer>
     </div>
   </div>
+
+  {# Shared components (UX_PLAN.md U12; static/js/app.js): the confirmation dialog every
+     data-confirm form and button uses, and where short "saved" messages appear. #}
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+    <h2 id="confirm-dialog-title">Are you sure?</h2>
+    <p id="confirm-dialog-message" data-confirm-message></p>
+    <div class="actions">
+      <button type="button" data-confirm-yes>Continue</button>
+      <button type="button" class="secondary" data-confirm-no>Cancel</button>
+    </div>
+  </dialog>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
 
   {% if ctx and ctx.access_expires_at %}
   <dialog id="session-dialog" class="session-dialog" aria-labelledby="session-dialog-title" aria-describedby="session-dialog-message">

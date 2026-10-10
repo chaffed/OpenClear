@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
+{% import "_macros/list_search.html" as ls %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Paid Items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About paid items{% endblock %}
@@ -22,13 +23,21 @@
     {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/new" class="button">{{ icon("send") }}Submit paid item</a>{% endif %}
     {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
   </div>
+  {{ ls.search_form("/ui/paid-items", search, number_label="Check number", date_label="Presented", q_hint="Check number or amount") }}
+  <p class="list-tools">{{ ls.export_link("/ui/paid-items", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Check #</th><th data-type="number">Presented amount</th><th>Presented date</th><th>Match status</th><th>Settlement</th></tr></thead>
+  <table data-server-list>
+    <thead><tr>
+      {{ ls.sort_th("Check #", "number", search, "/ui/paid-items") }}
+      {{ ls.sort_th("Presented amount", "amount", search, "/ui/paid-items", numeric=True) }}
+      {{ ls.sort_th("Presented date", "date", search, "/ui/paid-items") }}
+      {{ ls.sort_th("Match status", "match", search, "/ui/paid-items") }}
+      {{ ls.sort_th("Settlement", "settlement", search, "/ui/paid-items") }}
+    </tr></thead>
     <tbody>
       {% for item in page_obj.items %}
       <tr>
-        <td><a href="/ui/paid-items/{{ item.id }}">{{ item.check_number }}</a></td>
+        <td><a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a></td>
         <td>{{ item.presented_amount | currency }}</td>
         <td>{{ item.presented_date }}</td>
         <td><span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span></td>
@@ -39,7 +48,8 @@
   </table>
   {{ pg.pager(page_obj, request) }}
   {% else %}
-  <p>No paid items yet.</p>
+  {{ ls.empty_state(search.active, "No checks have been presented yet. They arrive from the bank's core, or as a file.",
+                    [("/ui/paid-items/bulk", "Upload presented checks", "upload_file")] if can(ctx, "paid_item:write") else []) }}
   {% endif %}
 </div>
 {% endblock %}

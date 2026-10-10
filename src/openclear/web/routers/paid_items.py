@@ -13,13 +13,11 @@ from sqlalchemy.orm import Session
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
-from openclear.domain.paid_item import PaidItem
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
 from openclear.repositories.paid_item_repo import PaidItemRepository
 from openclear.services import account_service, audit_log_service
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
 
@@ -30,10 +28,18 @@ router = APIRouter(prefix="/ui/paid-items", tags=["web-paid-items"])
 def list_paid_items(
     request: Request, page: int = 1, db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("paid_item:read")),
-) -> HTMLResponse:
+):
+    from openclear.web import list_search
+
+    search = list_search.parse(request)
     repo = PaidItemRepository(db, ctx.tenant_id, ctx.customer_id)
-    page_obj = paginate(page=page, count_fn=repo.count, list_fn=lambda **kw: repo.list(order_by=PaidItem.created_at.desc(), **kw))
-    return render_template(request, "paid_items/list.html", ctx=ctx, page_obj=page_obj)
+    result = list_search.page_or_export(
+        request=request, db=db, ctx=ctx, search=search, spec=list_search.paid_items_spec(), page=page, list_name="paid_items",
+        count=lambda where: repo.count(where=where), fetch=lambda **kw: repo.list(**kw),
+    )
+    if not hasattr(result, "items"):
+        return result
+    return render_template(request, "paid_items/list.html", ctx=ctx, page_obj=result, search=search)
 
 
 @router.get("/new")

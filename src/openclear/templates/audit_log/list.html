@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Audit Log — {{ ctx.tenant_name }}{% endblock %}
-{% block help_title %}About the audit log{% endblock %}
+{% block title %}Action Log — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About the action log{% endblock %}
 {% block help_body %}
 <p>Every state-changing action, through either the web UI or the API, is recorded here
   — one entry per row created even for a bulk upload, not one entry for the whole
@@ -18,9 +18,14 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Audit log</h1>
+    <h1>Action log</h1>
     <a href="/ui/audit-log/verify" class="button secondary">{{ icon("verified") }}Verify chain</a>
   </div>
+  {% if verification_state in ("queued", "running") %}
+  <p data-poll-seconds="3" aria-busy="true"><span class="badge">Verifying every signature and link…</span> This page refreshes until it's done.</p>
+  {% elif verification_state == "failed" %}
+  <p class="flash flash-error" role="alert">The verification couldn't finish. Try again; if it keeps failing, contact support.</p>
+  {% endif %}
   {% if verification %}
   <p>
     {% if verification.valid %}

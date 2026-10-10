@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Paid Item {{ item.check_number }} — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Check {{ item.check_number }} · {{ item.presented_amount | currency }} · Paid item — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this paid item{% endblock %}
 {% block help_body %}
 <p>A snapshot of the matching decision made the moment this check was presented.
@@ -7,6 +7,7 @@
   this page itself is read-only.</p>
 {% endblock %}
 {% block content %}
+<p class="back-link"><a href="{{ list_return(request, '/ui/paid-items') }}">Back to paid items</a></p>
 <div class="card">
   <h1>Paid item #{{ item.check_number }}</h1>
   <p>Presented amount: {{ item.presented_amount }}</p>

@@ -820,6 +820,12 @@ and in security events, so a WAF block or an error can be matched to the request
 - Versioned static files (`?v=`) are sent with a year-long immutable cache.
 - Pages and API responses are never cached (`no-store`).
 
+**Long requests.** Edges give up on a slow origin after about 100 seconds (Cloudflare) or
+120 (Akamai). So these run as background jobs, with a run to poll and a download:
+- a replay of a file over `OPENCLEAR_LONG_REQUEST_SYNC_BYTES` (1 MB);
+- an evidence export longer than `OPENCLEAR_LONG_REQUEST_SYNC_DAYS` (32);
+- verifying the action log.
+
 WAF_PLAN.md has the rest of the plan for running behind an edge.
 
 ## Docker

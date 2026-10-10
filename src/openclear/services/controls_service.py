@@ -124,19 +124,28 @@ def _parser_hardening() -> Control:
 
 
 def _audit_chain(session: Session, tenant_id: uuid.UUID) -> Control:
-    from openclear.services import audit_archive_service, audit_log_service
+    """From the latest verification run (services/long_runs.py), which runs daily and on
+    demand, rather than walking the whole log on every view. The first time, it's verified
+    now and kept."""
+    from openclear.services import long_runs
 
-    chain = audit_log_service.verify_chain(session, tenant_id)
-    archives = audit_archive_service.verify_archives(session, tenant_id)
-    evidence = {"live_entries_checked": chain.checked_count, "archives_checked": archives.checked_archives,
-                "archived_entries_checked": archives.checked_entries}
-    if not chain.valid:
-        return Control("audit_chain", "Action log intact", FAIL, f"The action log doesn't verify at entry {chain.broken_at_entry_id}.",
-                       {**evidence, "broken_at_entry_id": str(chain.broken_at_entry_id)})
-    if not archives.valid:
-        return Control("audit_chain", "Action log intact", FAIL, archives.problem or "An archive doesn't verify.", evidence)
-    return Control("audit_chain", "Action log intact", PASS,
-                   f"Every signature and link verifies ({chain.checked_count} live entries, plus archives).", evidence)
+    run = long_runs.latest_verification(session, tenant_id) or long_runs.verify_now(session, tenant_id)
+    report = run.report or {}
+    evidence = {"live_entries_checked": report.get("checked_count"), "archives_checked": report.get("archives_checked"),
+                "archived_entries_checked": report.get("archived_entries_checked"), "verified_at": _iso(run.started_at),
+                "run_id": str(run.id)}
+    if not run.passed:
+        return Control("audit_chain", "Action log intact", FAIL, run.summary,
+                       {**evidence, "broken_at_entry_id": report.get("broken_at_entry_id")})
+    if _aware(run.started_at) < _now() - long_runs.VERIFICATION_MAX_AGE:
+        return Control("audit_chain", "Action log intact", WARN,
+                       f"The last verification passed, but it's more than a day old ({run.summary}). Verify it again from the "
+                       "Action Log, or turn on the daily schedule.", evidence)
+    return Control("audit_chain", "Action log intact", PASS, f"{run.summary}.", evidence)
+
+
+def _iso(value):
+    return _aware(value).isoformat() if value else None
 
 
 def _sod(session: Session, tenant_id: uuid.UUID) -> Control:

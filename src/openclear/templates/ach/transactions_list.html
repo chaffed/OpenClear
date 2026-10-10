@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/list_search.html" as ls %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}ACH Transactions — {{ ctx.tenant_name }}{% endblock %}
@@ -20,13 +21,22 @@
     </div>
     {% endif %}
   </div>
+  {{ ls.search_form("/ui/ach/transactions", search, number_label="Trace number", date_label="Effective",
+                     q_hint="Trace number, originator or amount") }}
+  <p class="list-tools">{{ ls.export_link("/ui/ach/transactions", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Originator</th><th>Type</th><th data-type="number">Amount</th><th>Effective date</th><th>Match status</th></tr></thead>
+  <table data-server-list>
+    <thead><tr>
+      {{ ls.sort_th("Originator", "originator", search, "/ui/ach/transactions") }}
+      <th>Type</th>
+      {{ ls.sort_th("Amount", "amount", search, "/ui/ach/transactions", numeric=True) }}
+      {{ ls.sort_th("Effective date", "date", search, "/ui/ach/transactions") }}
+      {{ ls.sort_th("Match status", "match", search, "/ui/ach/transactions") }}
+    </tr></thead>
     <tbody>
       {% for txn in page_obj.items %}
       <tr>
-        <td><a href="/ui/ach/transactions/{{ txn.id }}">{{ txn.originator_name }}</a></td>
+        <td><a href="/ui/ach/transactions/{{ txn.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ txn.originator_name }}</a></td>
         <td>{{ txn.transaction_type.value }}</td>
         <td>{{ txn.amount | currency }}</td>
         <td>{{ txn.effective_date }}</td>
@@ -37,7 +47,8 @@
   </table>
   {{ pg.pager(page_obj, request) }}
   {% else %}
-  <p>No ACH transactions yet.</p>
+  {{ ls.empty_state(search.active, "No ACH transactions yet. They arrive from the bank's core, or as a NACHA file.",
+                    [("/ui/ach/transactions/bulk", "Upload a NACHA file", "upload_file")] if can(ctx, "ach_transaction:write") else []) }}
   {% endif %}
 </div>
 {% endblock %}

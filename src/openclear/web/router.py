@@ -13,6 +13,7 @@ from openclear.web.routers.embed import router as embed_router
 from openclear.web.routers.sandbox import router as sandbox_router
 from openclear.web.routers.conformance import router as conformance_router
 from openclear.web.routers.changes import router as changes_router
+from openclear.web.routers.search import router as search_router
 from openclear.web.routers.model_risk import router as model_risk_router
 from openclear.web.routers.controls import router as controls_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
@@ -89,6 +90,7 @@ web_router.include_router(embed_router)
 web_router.include_router(sandbox_router)
 web_router.include_router(conformance_router)
 web_router.include_router(changes_router)
+web_router.include_router(search_router)
 web_router.include_router(model_risk_router)
 web_router.include_router(controls_router)
 web_router.include_router(data_export_router)

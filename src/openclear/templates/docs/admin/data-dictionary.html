@@ -1097,7 +1097,7 @@ back; this row and its report are all that's kept.</p>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>kind</td><td>String(40)</td><td>no</td><td></td><td>mrm_replay or anomaly_capture.</td></tr>
+<tr><td>kind</td><td>String(40)</td><td>no</td><td></td><td>mrm_replay, anomaly_capture, evidence_export or audit_verification. The last two, and a large replay, run in the background: <code>report.state</code> is queued, running, done or failed.</td></tr>
 <tr><td>started_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
 <tr><td>passed</td><td>Boolean</td><td>yes</td><td></td><td>For anomaly capture, whether every anomaly was caught and clean items weren't flagged. Null for a replay.</td></tr>
 <tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td></td></tr>

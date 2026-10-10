@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/list_search.html" as ls %}
 {% import "_macros/pagination.html" as pg %}
 {% block title %}Exceptions — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About the exceptions queue{% endblock %}
@@ -37,22 +38,27 @@
         <option value="all" {{ "selected" if status_filter == "all" else "" }}>All</option>
       </select>
     </label>
+    {% for name, value in search.values.items() %}{% if value and name not in ("status", "network_code") %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
   </form>
+  {{ ls.search_form("/ui/exceptions", search, number_label="Check or trace number", date_label="Presented or effective",
+                     q_hint="Check or trace number, originator or amount",
+                     hidden={"status": status_filter, "network_code": network_filter}) }}
+  <p class="list-tools">{{ ls.export_link("/ui/exceptions", search, page_obj.total_count) }}</p>
 
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
+  <table data-server-list>
     <thead><tr>
       <th>Item</th><th>Account</th>{% if show_customers %}<th>Customer</th>{% endif %}
       <th data-type="number">Amount</th><th>Date</th><th>Why it's here</th>
-      {% if show_scores %}<th>Fraud risk</th>{% endif %}
-      {% if show_deadlines %}<th>Decide by</th>{% endif %}
-      <th>Status</th>
+      {% if show_scores %}{{ ls.sort_th("Fraud risk", "score", search, "/ui/exceptions") }}{% endif %}
+      {% if show_deadlines %}{{ ls.sort_th("Decide by", "deadline", search, "/ui/exceptions") }}{% endif %}
+      {{ ls.sort_th("Status", "status", search, "/ui/exceptions") }}
     </tr></thead>
     <tbody>
       {% for row in rows %}
       {% set risk = fraud_risk(row.exception.ml_score) %}
       <tr>
-        <td><a href="/ui/exceptions/{{ row.exception.id }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span></td>
+        <td><a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span></td>
         <td>{{ row.account }}</td>
         {% if show_customers %}<td>{{ row.customer }}</td>{% endif %}
         <td>{{ row.summary.amount | currency }}</td>
@@ -66,6 +72,8 @@
     </tbody>
   </table>
   {{ pg.pager(page_obj, request) }}
+  {% elif search.active %}
+  {{ ls.empty_state(True, "") }}
   {% elif not status_filter %}
   <p>Nothing needs attention right now. <a href="/ui/exceptions?status=all">See all exceptions</a>.</p>
   {% else %}

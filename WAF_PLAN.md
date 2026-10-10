@@ -166,3 +166,4 @@ here.
 - 2026-10-10 Reorganised into three waves (A request handling, B long requests, C real edges)
   to cut test cycles; W0 moves into wave C. See MASTER_PLAN.md for the overall order.
 - 2026-10-10 Wave A built (M1): `web/request_context.py`, per-principal rate limits, the edge secret, request ids, source IP in the action log, the "Edge network set up" control, keep-alive, static cache headers, JSON 413, the sandbox's proxy setting.
+- 2026-10-10 Wave B built (M2): `services/long_runs.py` (replay over 1 MB, evidence export over 32 days, action-log verification as `control_run` jobs), status and download endpoints, daily verification, Controls reading the last verification, the CLI waiting for a queued export.

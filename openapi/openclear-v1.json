@@ -4949,7 +4949,7 @@
     },
     "/api/v1/audit/export": {
       "get": {
-        "description": "A signed evidence bundle for the period, for an examiner or auditor: the system version;\nthe rules, plugins and models in force with their digests; settings and security groups;\nwhether the action log verifies; segregation-of-duties breaches; changes and approvals;\nevery decision with who recommended and decided it; model-risk test runs; and the live\ncontrol status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256\nof the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and\nboth carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in\nthe action log.",
+        "description": "A signed evidence bundle for the period, for an examiner or auditor: the system version;\nthe rules, plugins and models in force with their digests; settings and security groups;\nwhether the action log verifies; segregation-of-duties breaches; changes and approvals;\nevery decision with who recommended and decided it; model-risk test runs; and the live\ncontrol status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256\nof the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and\nboth carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in\nthe action log. A period longer than `long_request_sync_days` (32) is exported in the\nbackground: the answer is `202` with `status_url`, and `download_url` once it's done.",
         "operationId": "export_api_v1_audit_export_get",
         "parameters": [
           {
@@ -5003,6 +5003,9 @@
             },
             "description": "The signed evidence: JSON (application/json) or PDF (application/pdf)"
           },
+          "202": {
+            "description": "A long period: the export runs in the background. The body is JSON with `status_url`; poll it, then download from `download_url`."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5020,6 +5023,106 @@
           }
         ],
         "summary": "Export",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/v1/audit/export/runs/{run_id}": {
+      "get": {
+        "description": "A long export's progress: `state` is queued, running, done or failed; when done,\n`download_url` gives the signed file.",
+        "operationId": "export_status_api_v1_audit_export_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Export Status Api V1 Audit Export Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Status",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/v1/audit/export/runs/{run_id}/file": {
+      "get": {
+        "operationId": "export_file_api_v1_audit_export_runs__run_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The signed evidence: JSON or PDF"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export File",
         "tags": [
           "audit"
         ]
@@ -8365,7 +8468,7 @@
     },
     "/api/v1/mrm/replay": {
       "post": {
-        "description": "Runs the file through today's rules in a dry run (nothing is kept but the report) and\ncompares each item with what happened to it then: `match_rate` (today's rules flag it\nexactly when they did then), `false_positive_rate` (flagged, but the bank paid it),\n`missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the\nitems that differ.",
+        "description": "Runs the file through today's rules in a dry run (nothing is kept but the report) and\ncompares each item with what happened to it then: `match_rate` (today's rules flag it\nexactly when they did then), `false_positive_rate` (flagged, but the bank paid it),\n`missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the\nitems that differ. A file over `long_request_sync_bytes` (1 MB) is replayed in the\nbackground: the answer is `202` with the run, `state` queued; poll the run.",
         "operationId": "replay_api_v1_mrm_replay_post",
         "requestBody": {
           "content": {
@@ -8389,6 +8492,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "description": "A large file: the replay runs in the background. Poll `GET /api/v1/mrm/runs/{id}` until `state` is done."
           },
           "422": {
             "content": {

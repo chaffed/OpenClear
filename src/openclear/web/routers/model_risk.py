@@ -29,7 +29,11 @@ def model_risk_page(request: Request, run: uuid.UUID | None = None, db: Session 
     shown = db.get(ControlRun, run) if run else None
     if shown is not None and shown.tenant_id != ctx.tenant_id:
         shown = None
-    return render_template(request, "admin/model_risk.html", ctx=ctx, runs=mrm_service.recent_runs(db, ctx.tenant_id), shown=shown,
+    from openclear.services import long_runs
+
+    runs = [r for r in mrm_service.recent_runs(db, ctx.tenant_id, limit=40) if r.kind in (mrm_service.REPLAY, mrm_service.ANOMALY_CAPTURE)][:20]
+    return render_template(request, "admin/model_risk.html", ctx=ctx, runs=runs, shown=shown,
+                           shown_state=long_runs.state(shown) if shown else None,
                            latest_capture=mrm_service.latest(db, ctx.tenant_id, mrm_service.ANOMALY_CAPTURE))
 
 
@@ -39,12 +43,17 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
     content = file.file.read(MAX_REPLAY_BYTES + 1)
     if len(content) > MAX_REPLAY_BYTES:
         return RedirectResponse(f"/ui/admin/model-risk?error={quote('That file is too large to replay.')}", status_code=303)
+    from openclear.services import long_runs
+    from openclear.workers.jobs import jobs_queued
+
     try:
-        run = mrm_service.replay(db, ctx.tenant_id, filename=file.filename or "replay", content=content, user_id=ctx.user_id, channel="web")
+        run = long_runs.start_replay(db, ctx.tenant_id, filename=file.filename or "replay", content=content, user_id=ctx.user_id,
+                                     channel="web")
     except mrm_service.ReplayError as exc:
         db.rollback()
         return RedirectResponse(f"/ui/admin/model-risk?error={quote(str(exc))}", status_code=303)
     db.commit()
+    jobs_queued(db.get_bind())
     return RedirectResponse(f"/ui/admin/model-risk?run={run.id}", status_code=303)
 
 

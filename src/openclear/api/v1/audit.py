@@ -3,6 +3,7 @@
 
 """The evidence export (COMPLIANCE_PLAN.md C3; services/evidence_service.py)."""
 
+import uuid
 from datetime import date
 from typing import Literal
 
@@ -51,7 +52,14 @@ def export_response(db: Session, ctx: TenantContext, start: date, end: date, fmt
     })
 
 
-@router.get("/export", **file_response("application/octet-stream", "The signed evidence: JSON (application/json) or PDF (application/pdf)"))
+_EXPORT = file_response("application/octet-stream", "The signed evidence: JSON (application/json) or PDF (application/pdf)")
+# A 202 (a long period, run in the background) is JSON with `status_url`; declared without a
+# body type so generated SDKs still treat the answer as a file (the CLI looks for the JSON).
+_EXPORT["responses"][202] = {"description": "A long period: the export runs in the background. The body is JSON with `status_url`; "
+                                            "poll it, then download from `download_url`."}
+
+
+@router.get("/export", **_EXPORT)
 def export(start: date = Query(..., description="First day, YYYY-MM-DD (UTC)"), end: date = Query(..., description="Last day, inclusive"),
            format: Literal["json", "pdf"] = "json", db: Session = Depends(get_db),
            ctx: TenantContext = Depends(require_permission("audit_log:read"))) -> Response:
@@ -62,7 +70,61 @@ def export(start: date = Query(..., description="First day, YYYY-MM-DD (UTC)"), 
     control status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256
     of the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and
     both carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in
-    the action log."""
+    the action log. A period longer than `long_request_sync_days` (32) is exported in the
+    background: the answer is `202` with `status_url`, and `download_url` once it's done."""
     if ctx.customer_id is not None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Evidence exports are for the bank's own staff.")
-    return export_response(db, ctx, start, end, format, "api")
+    from openclear.services import long_runs
+
+    if long_runs.evidence_runs_inline(start, end):
+        return export_response(db, ctx, start, end, format, "api")
+    return _queued_export(db, ctx, start, end, format, "api")
+
+
+def _queued_export(db: Session, ctx: TenantContext, start: date, end: date, fmt: str, channel: str):
+    from fastapi.responses import JSONResponse
+
+    from openclear.services import evidence_service, long_runs
+    from openclear.workers.jobs import jobs_queued
+
+    try:
+        run = long_runs.start_evidence_export(db, ctx.tenant_id, start=start, end=end, fmt=fmt, user_id=ctx.user_id, channel=channel)
+    except evidence_service.EvidenceError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    db.commit()
+    jobs_queued(db.get_bind())
+    db.refresh(run)
+    return JSONResponse(long_runs.as_status(run, "/api/v1/audit/export/runs"), status_code=status.HTTP_202_ACCEPTED)
+
+
+def _export_run(db: Session, ctx: TenantContext, run_id):
+    from openclear.services import long_runs
+
+    if ctx.customer_id is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Evidence exports are for the bank's own staff.")
+    run = long_runs.get_run(db, ctx.tenant_id, run_id, long_runs.EVIDENCE)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Export not found")
+    return run
+
+
+@router.get("/export/runs/{run_id}")
+def export_status(run_id: uuid.UUID, db: Session = Depends(get_db),
+                  ctx: TenantContext = Depends(require_permission("audit_log:read"))) -> dict:
+    """A long export's progress: `state` is queued, running, done or failed; when done,
+    `download_url` gives the signed file."""
+    from openclear.services import long_runs
+
+    return long_runs.as_status(_export_run(db, ctx, run_id), "/api/v1/audit/export/runs")
+
+
+@router.get("/export/runs/{run_id}/file", **file_response("application/octet-stream", "The signed evidence: JSON or PDF"))
+def export_file(run_id: uuid.UUID, db: Session = Depends(get_db),
+                ctx: TenantContext = Depends(require_permission("audit_log:read"))) -> Response:
+    from openclear.services import long_runs
+
+    run = _export_run(db, ctx, run_id)
+    if long_runs.state(run) != "done":
+        raise HTTPException(status.HTTP_409_CONFLICT, "The export isn't ready yet.")
+    body, headers = long_runs.evidence_file(run)
+    return Response(body, media_type="application/pdf" if run.report["format"] == "pdf" else "application/json", headers=headers)

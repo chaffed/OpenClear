@@ -32,13 +32,17 @@ def list_exceptions(
     status: ExceptionStatus | None = None,
     statuses: tuple[ExceptionStatus, ...] | None = None,
     customer_id: uuid.UUID | None = None,
+    where: Any = None,
     limit: int | None = None,
     offset: int | None = None,
     order_by: Any = None,
 ) -> list[ExceptionItem]:
-    """`status` filters to one status; `statuses` to any of several (e.g. NEEDS_ATTENTION)."""
+    """`status` filters to one status; `statuses` to any of several (e.g. NEEDS_ATTENTION).
+    `where`: further conditions (a search, web/list_search.py)."""
     stmt = _query(session, tenant_id, network_code=network_code, statuses=statuses or ((status,) if status else None),
                   customer_id=customer_id)
+    for condition in where or ():
+        stmt = stmt.where(condition)
     if order_by is not None:
         stmt = stmt.order_by(*order_by) if isinstance(order_by, (list, tuple)) else stmt.order_by(order_by)
     if offset is not None:
@@ -55,8 +59,11 @@ def count_exceptions(
     network_code: str | None = None,
     statuses: tuple[ExceptionStatus, ...] | None = None,
     customer_id: uuid.UUID | None = None,
+    where: Any = None,
 ) -> int:
     stmt = _query(session, tenant_id, network_code=network_code, statuses=statuses, customer_id=customer_id)
+    for condition in where or ():
+        stmt = stmt.where(condition)
     return session.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
 
 

@@ -11,12 +11,11 @@ from sqlalchemy.orm import Session
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
-from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
+from openclear.domain.issued_item import IssuedItemStatus
 from openclear.repositories.issued_item_repo import IssuedItemRepository
 from openclear.services import account_service, audit_log_service, issued_item_service
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
 
@@ -30,15 +29,19 @@ def list_issued_items(
     page: int = 1,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("issued_item:read")),
-) -> HTMLResponse:
-    page_obj = paginate(
-        page=page,
-        count_fn=lambda: IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id).count(status=status),
-        list_fn=lambda **kw: issued_item_service.list_issued_items(
-            db, ctx.tenant_id, status=status, customer_id=ctx.customer_id, order_by=IssuedItem.created_at.desc(), **kw
-        ),
+):
+    from openclear.web import list_search
+
+    search = list_search.parse(request, extra=("status",))
+    repo = IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id)
+    result = list_search.page_or_export(
+        request=request, db=db, ctx=ctx, search=search, spec=list_search.issued_items_spec(), page=page, list_name="issued_items",
+        count=lambda where: repo.count(status=status, where=where),
+        fetch=lambda **kw: repo.list(status=status, **kw),
     )
-    return render_template(request, "issued_items/list.html", ctx=ctx, page_obj=page_obj, status_filter=status)
+    if not hasattr(result, "items"):
+        return result
+    return render_template(request, "issued_items/list.html", ctx=ctx, page_obj=result, status_filter=status, search=search)
 
 
 @router.get("/new")

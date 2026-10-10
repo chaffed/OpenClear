@@ -92,6 +92,7 @@ CATALOG: dict[str, EventType] = {
     "data_export.started": EventType("data", "high"),
     "data_export.downloaded": EventType("data", "high"),
     "bulk_upload.reversed": EventType("data", "medium"),
+    "list.exported": EventType("data", "medium"),
     # integrity
     "anomaly_capture.failed": EventType("integrity", "high"),
 }
@@ -140,6 +141,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "audit.export": "audit.export",
     "data_export.request": "data_export.started",
     "data_export.download": "data_export.downloaded",
+    "list.export": "list.exported",
     "sod.violation": "sod.violation",
 }
 

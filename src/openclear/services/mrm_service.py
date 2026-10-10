@@ -230,8 +230,9 @@ def _variance_report(network: str, outcomes: list[_Outcome]) -> dict:
 
 
 def replay(session: Session, tenant_id: uuid.UUID, *, filename: str, content: bytes, user_id: uuid.UUID | None,
-           channel: str = "api") -> ControlRun:
-    """Replays the file in a dry run and keeps the report. The caller commits."""
+           channel: str = "api", run: ControlRun | None = None) -> ControlRun:
+    """Replays the file in a dry run and keeps the report: in a new run, or in `run` (one
+    queued by services/long_runs.py). The caller commits."""
     from openclear.services import audit_log_service
 
     if not content:
@@ -243,8 +244,10 @@ def replay(session: Session, tenant_id: uuid.UUID, *, filename: str, content: by
     match_rate = report["match_rate"]
     summary = (f"Replayed {report['items']} {'ACH entries' if network == 'ach' else 'checks'} from {filename[:120]}: "
                + (f"{match_rate:.1%} agree with history" if match_rate is not None else "none found in history"))
-    run = ControlRun(tenant_id=tenant_id, kind=REPLAY, passed=None, summary=summary[:500], report=report, requested_by_user_id=user_id)
-    session.add(run)
+    if run is None:
+        run = ControlRun(tenant_id=tenant_id, kind=REPLAY, passed=None, requested_by_user_id=user_id)
+        session.add(run)
+    run.summary, run.report = summary[:500], {**report, "state": "done"}
     session.flush()
     audit_log_service.record_action(session, tenant_id, actor_user_id=user_id, channel=channel, action="mrm.replay", summary=summary[:500],
                                     resource_type="control_run", resource_id=run.id,

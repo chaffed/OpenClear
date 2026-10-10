@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Issued Item {{ item.check_number }} — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Check {{ item.check_number }} · {{ item.amount | currency }} · Issued item — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this issued item{% endblock %}
 {% block help_body %}
 <p>This is one check you told the bank to expect. Voiding it is one-way — there's no
@@ -8,6 +8,7 @@
   that's already been paid can't be voided from here).</p>
 {% endblock %}
 {% block content %}
+<p class="back-link"><a href="{{ list_return(request, '/ui/issued-items') }}">Back to issued items</a></p>
 <div class="card">
   <h1>Issued item #{{ item.check_number }}</h1>
   <p>Amount: {{ item.amount }}</p>

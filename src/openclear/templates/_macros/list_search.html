@@ -1,0 +1,45 @@
+{# Server-side search, sorting and export for the main lists (web/list_search.py). #}
+{% from "_macros/icon.html" import icon %}
+
+{% macro search_form(action, search, number_label="Check number", date_label="Date", q_hint="Check number, payee or amount", hidden={}) %}
+<form method="get" action="{{ action }}" class="list-search" role="search">
+  {% for name, value in hidden.items() %}{% if value %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
+  {% if search.get("sort") %}<input type="hidden" name="sort" value="{{ search.get('sort') }}"><input type="hidden" name="dir" value="{{ search.get('dir') }}">{% endif %}
+  <div class="list-search-main">
+    <label>Search <input type="search" name="q" value="{{ search.get('q') }}" placeholder="{{ q_hint }}"></label>
+    <button type="submit">{{ icon("search") }}Search</button>
+    {% if search.active %}<a class="button secondary" href="{{ action }}?{{ search.query_string(q=None, number=None, amount_min=None, amount_max=None, date_from=None, date_to=None, account=None, page=None) }}">Clear</a>{% endif %}
+  </div>
+  <details class="list-search-more" {{ "open" if search.get("number") or search.get("amount_min") or search.get("amount_max") or search.get("date_from") or search.get("date_to") or search.get("account") else "" }}>
+    <summary>More filters</summary>
+    <div class="list-search-grid">
+      <label>{{ number_label }} <input type="text" name="number" value="{{ search.get('number') }}"></label>
+      <label>Amount from <input type="text" inputmode="decimal" name="amount_min" value="{{ search.get('amount_min') }}"></label>
+      <label>Amount to <input type="text" inputmode="decimal" name="amount_max" value="{{ search.get('amount_max') }}"></label>
+      <label>{{ date_label }} from <input type="date" name="date_from" value="{{ search.get('date_from') }}"></label>
+      <label>{{ date_label }} to <input type="date" name="date_to" value="{{ search.get('date_to') }}"></label>
+      <label>Account number <input type="text" name="account" value="{{ search.get('account') }}"></label>
+    </div>
+  </details>
+</form>
+{% endmacro %}
+
+{% macro sort_th(label, column, search, action, numeric=False) %}
+{%- set state = search.sort_state(column) -%}
+<th{% if numeric %} data-type="number"{% endif %}{% if state %} aria-sort="{{ state }}"{% endif %}><a class="sort-link{{ ' sort-' ~ ('desc' if state == 'descending' else 'asc') if state else '' }}" href="{{ action }}?{{ search.sort_link(column) }}">{{ label }}</a></th>
+{%- endmacro %}
+
+{% macro export_link(action, search, total) %}
+{% if total %}<a class="button secondary" href="{{ action }}?{{ search.query_string(export='csv', page=None) }}">{{ icon("download") }}Export CSV</a>{% endif %}
+{% endmacro %}
+
+{% macro empty_state(searching, message, actions=[]) %}
+<div class="empty-state">
+  {% if searching %}
+  <p>Nothing matches these filters. Try fewer filters, or search for part of a name.</p>
+  {% else %}
+  <p>{{ message }}</p>
+  {% if actions %}<p class="actions">{% for href, label, ic in actions %}<a href="{{ href }}" class="button{{ ' secondary' if not loop.first else '' }}">{{ icon(ic) }}{{ label }}</a>{% endfor %}</p>{% endif %}
+  {% endif %}
+</div>
+{% endmacro %}

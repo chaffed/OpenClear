@@ -409,3 +409,11 @@ def anomaly_capture_job() -> None:
                 logger.exception("Anomaly capture errored for tenant %s", tenant_id)
     finally:
         session.close()
+
+
+def verify_action_logs_job() -> None:
+    """Daily: verify every bank's action log (services/long_runs.py), so the Controls page
+    can show a recent result without walking the whole log on each load."""
+    from openclear.services import long_runs
+
+    long_runs.verify_all_banks_job()

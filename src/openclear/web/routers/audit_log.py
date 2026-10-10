@@ -48,16 +48,39 @@ def list_audit_log(
 
 @router.get("/verify")
 def verify_audit_log(
-    request: Request, page: int = 1, db: Session = Depends(get_db),
+    request: Request, page: int = 1, run: uuid.UUID | None = None, db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("audit_log:read")),
-) -> HTMLResponse:
-    result = audit_log_service.verify_chain(db, ctx.tenant_id)
-    checkpoints = audit_archive_service.list_checkpoints(db, ctx.tenant_id)
-    archives = audit_archive_service.verify_archives(db, ctx.tenant_id) if checkpoints else None
+):
+    """Verifying a long log takes a while, so it runs in the background (services/long_runs.py):
+    this starts one (or finds the one already going) and shows it, refreshing until done."""
+    from types import SimpleNamespace
+
+    from fastapi.responses import RedirectResponse
+
+    from openclear.services import long_runs
+    from openclear.workers.jobs import jobs_queued
+
+    if run is None:
+        started = long_runs.start_verification(db, ctx.tenant_id, user_id=ctx.user_id)
+        db.commit()
+        jobs_queued(db.get_bind())
+        return RedirectResponse(f"/ui/audit-log/verify?run={started.id}", status_code=303)
+    shown = long_runs.get_run(db, ctx.tenant_id, run, long_runs.VERIFICATION)
+    if shown is None:
+        raise WebNotFound()
+    state = long_runs.state(shown)
+    verification = archives = None
+    if state == "done":
+        report = shown.report
+        verification = SimpleNamespace(valid=report["chain_valid"], checked_count=report["checked_count"],
+                                       broken_at_entry_id=report.get("broken_at_entry_id"))
+        if report.get("archives_checked"):
+            archives = SimpleNamespace(valid=report["archives_valid"], checked_archives=report["archives_checked"],
+                                       checked_entries=report.get("archived_entries_checked"), problem=report.get("archive_problem"))
     rows, page_obj = _rows_for_page(db, ctx.tenant_id, page)
     return render_template(
-        request, "audit_log/list.html", ctx=ctx, rows=rows, page_obj=page_obj, verification=result,
-        checkpoints=checkpoints, archive_check=archives,
+        request, "audit_log/list.html", ctx=ctx, rows=rows, page_obj=page_obj, verification=verification,
+        verification_state=state, checkpoints=audit_archive_service.list_checkpoints(db, ctx.tenant_id), archive_check=archives,
     )
 
 

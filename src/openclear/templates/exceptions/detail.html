@@ -31,7 +31,7 @@
   {% endif %}
   <label>Notes <input type="text" name="notes" value="{{ item.recommended_notes or '' }}"></label>
 {% endmacro %}
-{% block title %}Exception — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}{% if summary %}{{ summary.label }}{% if summary.amount is not none %} · {{ summary.amount | currency }}{% endif %} · {% endif %}Exception — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About deciding this exception{% endblock %}
 {% block help_body %}
 <p>Compare what was expected with what was presented. Fields that don't match are
@@ -52,7 +52,7 @@
       <span class="badge badge-warn">{{ "Correction of a prior decision" if item.is_correction else "Training example" }}</span>
       {% endif %}
     </h1>
-    <a href="/ui/exceptions">Back to exceptions</a>
+    <a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a>
   </div>
   {% if not summary %}<p class="flash flash-error">The underlying item couldn't be found.</p>{% endif %}
 

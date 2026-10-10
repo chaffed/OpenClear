@@ -232,3 +232,19 @@ def _pager_href(request, page: int) -> str:
 
 
 templates.env.globals["pager_href"] = _pager_href
+
+
+def _list_return(request, list_path: str) -> str:
+    """Exposed to templates as `list_return(request, "/ui/issued-items")`: where "Back to
+    the list" goes from a detail page. The list's own link passes `from` (its path and
+    filters); it's used only if it's a safe path on that same list, so a crafted link can't
+    send anyone elsewhere."""
+    from openclear.web.security import safe_next_path
+
+    candidate = safe_next_path(request.query_params.get("from"), default="")
+    if candidate == list_path or candidate.startswith(list_path + "?"):
+        return candidate
+    return list_path
+
+
+templates.env.globals["list_return"] = _list_return

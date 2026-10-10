@@ -39,11 +39,15 @@ class TenantScopedRepository(Generic[ModelT]):
             return []
         return list(self.session.execute(self.query().where(self.model.id.in_(ids))).scalars().all())
 
-    def _filtered_query(self, **equality_filters: Any) -> Select:
+    def _filtered_query(self, *, where: Any = None, **equality_filters: Any) -> Select:
+        """Equality filters by column name, plus `where`: any further SQL conditions (a
+        search from web/list_search.py, say), all still inside this repository's scope."""
         stmt = self.query()
         for column_name, value in equality_filters.items():
             if value is not None:
                 stmt = stmt.where(getattr(self.model, column_name) == value)
+        for condition in where or ():
+            stmt = stmt.where(condition)
         return stmt
 
     def list(

@@ -10,13 +10,10 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.appendChild(table);
   });
 
-  document.querySelectorAll("[data-confirm]").forEach((el) => {
-    el.addEventListener("submit", (event) => {
-      if (!window.confirm(el.dataset.confirm)) {
-        event.preventDefault();
-      }
-    });
-  });
+  initConfirmations();
+  initBusyForms();
+  initToasts();
+  initPolling();
 
   // A link with data-history-back returns to the previous page (e.g. error.html's "Go
   // back", so a rejected form's typed values are still there) — wired up here rather
@@ -38,8 +35,13 @@ document.addEventListener("DOMContentLoaded", () => {
     select.addEventListener("change", sync);
     sync();
     form.addEventListener("submit", (event) => {
-      if (select.value === "pay" && form.dataset.confirmPay && !window.confirm(form.dataset.confirmPay)) {
+      if (form.dataset.confirmed === "1") return;
+      if (select.value === "pay" && form.dataset.confirmPay) {
         event.preventDefault();
+        event.stopImmediatePropagation();
+        askToConfirm(form.dataset.confirmPay, { title: "Pay a high-risk item?", yes: "Pay it" }).then((ok) => {
+          if (ok) submitConfirmed(form, event.submitter);
+        });
       }
     });
   });
@@ -198,11 +200,16 @@ function initSortableTables() {
     if (!tbody) return;
     const rows = Array.from(tbody.rows);
 
+    // On a list with more than one page, the rows here are only this page's: say so, so
+    // nobody concludes an item doesn't exist because it isn't on this page. (The main
+    // lists search the server instead; see web/list_search.py.)
+    const pager = table.parentNode.querySelector(".pagination[data-pages]");
+    const pageOnly = pager && parseInt(pager.dataset.pages, 10) > 1;
     const search = document.createElement("input");
     search.type = "search";
     search.className = "table-search";
-    search.placeholder = "Filter...";
-    search.setAttribute("aria-label", "Filter table rows");
+    search.placeholder = pageOnly ? "Filter this page only..." : "Filter...";
+    search.setAttribute("aria-label", pageOnly ? "Filter the rows on this page only" : "Filter table rows");
     table.parentNode.insertBefore(search, table);
 
     search.addEventListener("input", () => {
@@ -299,3 +306,134 @@ document.querySelectorAll("select[data-toggle-protocol]").forEach((select) => {
     post(event, match ? { exceptionId: match[1] } : {});
   }
 })();
+
+
+// --- Shared components (UX_PLAN.md U12) ------------------------------------------------------
+
+// askToConfirm(message) opens the page's confirmation dialog (base.html) and resolves to
+// true or false. Falls back to the browser's own confirm() where <dialog> isn't supported.
+function askToConfirm(message, options = {}) {
+  const dialog = document.getElementById("confirm-dialog");
+  if (!dialog || typeof dialog.showModal !== "function") return Promise.resolve(window.confirm(message));
+  dialog.querySelector("#confirm-dialog-title").textContent = options.title || "Are you sure?";
+  dialog.querySelector("[data-confirm-message]").textContent = message;
+  const yes = dialog.querySelector("[data-confirm-yes]");
+  const no = dialog.querySelector("[data-confirm-no]");
+  yes.textContent = options.yes || "Continue";
+  yes.classList.toggle("danger", !!options.danger);
+  const opener = document.activeElement;
+  return new Promise((resolve) => {
+    const finish = (answer) => {
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+      dialog.removeEventListener("close", onClose);
+      if (dialog.open) dialog.close();
+      if (opener && opener.focus) opener.focus();
+      resolve(answer);
+    };
+    const onYes = () => finish(true);
+    const onNo = () => finish(false);
+    const onClose = () => finish(false); // Escape
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+    dialog.addEventListener("close", onClose);
+    dialog.showModal();
+    no.focus(); // the safe choice has focus first
+  });
+}
+
+// Submits a form once confirmed, keeping which button was pressed (its name and value).
+function submitConfirmed(form, submitter) {
+  form.dataset.confirmed = "1";
+  if (typeof form.requestSubmit === "function") {
+    form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
+  } else {
+    form.submit();
+  }
+}
+
+// A form (or a submit button) with data-confirm="message" asks first. Add
+// data-confirm-yes="Void it" for the button's text and data-confirm-danger for a destructive one.
+function initConfirmations() {
+  document.querySelectorAll("form").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.confirmed === "1") return;
+      const source = event.submitter && event.submitter.dataset.confirm ? event.submitter : form;
+      const message = source.dataset.confirm;
+      if (!message) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      askToConfirm(message, {
+        title: source.dataset.confirmTitle, yes: source.dataset.confirmYes, danger: source.hasAttribute("data-confirm-danger"),
+      }).then((ok) => {
+        if (ok) submitConfirmed(form, event.submitter);
+      });
+    }, true);
+  });
+}
+
+// While a form is being sent, its submit buttons are disabled and say so, so a slow
+// upload or export can't be sent twice. Opt out with data-no-busy. A page shown again from
+// the back/forward cache gets its buttons back.
+function initBusyForms() {
+  document.querySelectorAll("form").forEach((form) => {
+    if (form.hasAttribute("data-no-busy") || (form.method || "get").toLowerCase() !== "post") return;
+    form.addEventListener("submit", (event) => {
+      if (event.defaultPrevented) return;
+      form.setAttribute("aria-busy", "true");
+      form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach((button) => {
+        // Disabled after this tick, so the pressed button's name and value are still sent.
+        setTimeout(() => {
+          button.disabled = true;
+          if (button.tagName === "BUTTON" && !button.dataset.idleLabel) {
+            button.dataset.idleLabel = button.innerHTML;
+            button.textContent = button.dataset.busyLabel || "Working…";
+          }
+        }, 0);
+      });
+    });
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    document.querySelectorAll("form[aria-busy]").forEach((form) => {
+      form.removeAttribute("aria-busy");
+      form.dataset.confirmed = "";
+      form.querySelectorAll("button[data-idle-label]").forEach((button) => {
+        button.innerHTML = button.dataset.idleLabel;
+        delete button.dataset.idleLabel;
+        button.disabled = false;
+      });
+    });
+  });
+}
+
+// A "saved" message (data-toast) moves to the corner, is announced politely, and fades
+// after a few seconds. Errors stay where they are.
+function initToasts() {
+  const region = document.getElementById("toast-region");
+  if (!region) return;
+  document.querySelectorAll("[data-toast]").forEach((el) => {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = el.textContent.trim();
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "toast-close";
+    close.setAttribute("aria-label", "Dismiss");
+    close.textContent = "×";
+    close.addEventListener("click", () => toast.remove());
+    toast.appendChild(close);
+    region.appendChild(toast);
+    el.remove();
+    setTimeout(() => toast.remove(), 8000);
+  });
+}
+
+// An element with data-poll-seconds (a job still running) reloads the page until the
+// server stops rendering it, i.e. when the job is done.
+function initPolling() {
+  const el = document.querySelector("[data-poll-seconds]");
+  if (!el) return;
+  const seconds = Math.max(2, parseInt(el.dataset.pollSeconds, 10) || 3);
+  setTimeout(() => window.location.reload(), seconds * 1000);
+}

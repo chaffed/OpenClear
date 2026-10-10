@@ -27,30 +27,46 @@ def _bank_staff(ctx: TenantContext) -> None:
 
 
 def run_read(run: ControlRun) -> dict:
-    return {"id": str(run.id), "kind": run.kind, "started_at": run.started_at.isoformat() if run.started_at else None,
-            "passed": run.passed, "summary": run.summary, "report": run.report,
+    from openclear.services import long_runs
+
+    return {"id": str(run.id), "kind": run.kind, "state": long_runs.state(run),
+            "started_at": run.started_at.isoformat() if run.started_at else None,
+            "passed": run.passed, "summary": run.summary,
+            "report": {k: v for k, v in (run.report or {}).items() if k not in ("input_ref", "file_ref")},
             "requested_by_user_id": str(run.requested_by_user_id) if run.requested_by_user_id else None}
 
 
-@router.post("/replay", status_code=status.HTTP_201_CREATED)
+@router.post("/replay", status_code=status.HTTP_201_CREATED, responses={202: {
+    "description": "A large file: the replay runs in the background. Poll `GET /api/v1/mrm/runs/{id}` until `state` is done."}})
 def replay(file: UploadFile = File(..., description="A historical X9.37 cash letter or NACHA file"),
            db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> dict:
     """Runs the file through today's rules in a dry run (nothing is kept but the report) and
     compares each item with what happened to it then: `match_rate` (today's rules flag it
     exactly when they did then), `false_positive_rate` (flagged, but the bank paid it),
     `missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the
-    items that differ."""
+    items that differ. A file over `long_request_sync_bytes` (1 MB) is replayed in the
+    background: the answer is `202` with the run, `state` queued; poll the run."""
     _bank_staff(ctx)
     content = file.file.read(MAX_REPLAY_BYTES + 1)
     if len(content) > MAX_REPLAY_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, f"At most {MAX_REPLAY_BYTES // (1024 * 1024)} MB per replay.")
+    from fastapi.responses import JSONResponse
+
+    from openclear.services import long_runs
+    from openclear.workers.jobs import jobs_queued
+
     try:
-        run = mrm_service.replay(db, ctx.tenant_id, filename=file.filename or "replay", content=content, user_id=ctx.user_id)
+        run = long_runs.start_replay(db, ctx.tenant_id, filename=file.filename or "replay", content=content, user_id=ctx.user_id,
+                                     channel="api")
     except mrm_service.ReplayError as exc:
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     db.commit()
-    return run_read(run)
+    if long_runs.state(run) == "done":
+        return run_read(run)
+    jobs_queued(db.get_bind())
+    db.refresh(run)
+    return JSONResponse(run_read(run), status_code=status.HTTP_202_ACCEPTED if long_runs.state(run) != "done" else status.HTTP_201_CREATED)
 
 
 @router.post("/anomaly-capture", status_code=status.HTTP_201_CREATED)

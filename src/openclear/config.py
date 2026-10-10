@@ -433,6 +433,11 @@ class Settings(BaseSettings):
     # Security events (services/security_events.py) are kept this long for the pull API and,
     # later, for delivery; housekeeping removes older ones.
     security_event_retention_days: int = 30
+    # Long requests run as background jobs (services/long_runs.py; WAF_PLAN.md W3): a replay
+    # larger than this many bytes, and an evidence export longer than this many days.
+    # Smaller ones still answer at once.
+    long_request_sync_bytes: int = 1_000_000
+    long_request_sync_days: int = 32
     # How the host encrypts disks and the database (e.g. "AWS RDS storage encryption with
     # KMS key alias/openclear; EBS volumes encrypted"). OpenClear can't see this itself; the
     # Controls page (services/controls_service.py) shows the statement, or warns without one.

@@ -105,8 +105,22 @@ def _files(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
     return 1 if failed else 0
 
 
-def _audit_export(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
+def _audit_export(oc: OpenClear, args: argparse.Namespace, out: TextIO, *, sleep=None) -> int:
+    import time
+
+    sleep = sleep or time.sleep
     content = oc.audit.export(start=args.start, end=args.end, format=args.format)
+    if content[:1] == b"{" and b'"status_url"' in content[:2000]:
+        # A long period is exported in the background: wait for it, then download it.
+        run = json.loads(content)
+        print(f"Export queued ({run['id']}); waiting for it...", file=sys.stderr)
+        while run["state"] in ("queued", "running"):
+            sleep(5)
+            run = oc.audit.export_status(run["id"])
+        if run["state"] != "done":
+            print(f"Export failed: {run.get('error') or run['summary']}", file=sys.stderr)
+            return 1
+        content = oc.audit.export_file(run["id"])
     if args.output:
         Path(args.output).write_bytes(content)
         print(f"{args.output} ({len(content)} bytes)", file=sys.stderr)

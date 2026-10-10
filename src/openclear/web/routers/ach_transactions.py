@@ -13,14 +13,13 @@ from sqlalchemy.orm import Session
 
 from openclear.db.tenancy import TenantContext
 from openclear.db.session import get_db
-from openclear.domain.ach_transaction import AchTransaction, AchTransactionType
+from openclear.domain.ach_transaction import AchTransactionType
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
 from openclear.repositories.ach_transaction_repo import AchTransactionRepository
 from openclear.services import account_service, audit_log_service
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
 
@@ -31,10 +30,18 @@ router = APIRouter(prefix="/ui/ach/transactions", tags=["web-ach-transactions"])
 def list_transactions(
     request: Request, page: int = 1, db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("ach_transaction:read")),
-) -> HTMLResponse:
+):
+    from openclear.web import list_search
+
+    search = list_search.parse(request)
     repo = AchTransactionRepository(db, ctx.tenant_id, ctx.customer_id)
-    page_obj = paginate(page=page, count_fn=repo.count, list_fn=lambda **kw: repo.list(order_by=AchTransaction.created_at.desc(), **kw))
-    return render_template(request, "ach/transactions_list.html", ctx=ctx, page_obj=page_obj)
+    result = list_search.page_or_export(
+        request=request, db=db, ctx=ctx, search=search, spec=list_search.ach_transactions_spec(), page=page,
+        list_name="ach_transactions", count=lambda where: repo.count(where=where), fetch=lambda **kw: repo.list(**kw),
+    )
+    if not hasattr(result, "items"):
+        return result
+    return render_template(request, "ach/transactions_list.html", ctx=ctx, page_obj=result, search=search)
 
 
 @router.get("/new")
