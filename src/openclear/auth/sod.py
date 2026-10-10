@@ -121,12 +121,10 @@ def presented_by(session: Session, tenant_id: uuid.UUID, source_item_id: uuid.UU
 
 
 def check_decision(session: Session, tenant_id: uuid.UUID, ctx, exception, *, channel: str) -> None:
-    """Before a pay/return decision: the person mustn't hold both sides of a rule, nor have
-    presented the item themselves."""
-    for rule in group_conflicts(ctx.permissions):
-        if "exception:decide" in rule.right:
-            breach(session, tenant_id, ctx.user_id, Violation(rule.key, f"{rule.title}: this person can also submit items"),
-                   channel=channel, resource_type="exception_item", resource_id=exception.id)
+    """Before a pay/return decision: the person mustn't have presented the item themselves.
+    (A group combining submitting and deciding is caught when the group is saved, and shown
+    on the Controls page, rather than logged again on each decision: under enforce such a
+    group can't exist, and under warn it would log every decision its members make.)"""
     presenter = presented_by(session, tenant_id, exception.source_item_id)
     if presenter is not None and presenter == ctx.user_id:
         breach(session, tenant_id, ctx.user_id, Violation("presenter_decides", "Whoever presented an item can't decide its exception"),

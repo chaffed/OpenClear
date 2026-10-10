@@ -65,9 +65,9 @@ def _system(session: Session) -> dict:
     except PackageNotFoundError:
         installed = "unknown"
     try:
-        revision = session.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        with session.begin_nested():
+            revision = session.execute(text("SELECT version_num FROM alembic_version")).scalar()
     except Exception:  # noqa: BLE001 -- a database made without Alembic (the test suite)
-        session.rollback()
         revision = None
     return {"openclear_version": installed, "database_revision": revision}
 
