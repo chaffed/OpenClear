@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: M1 merged; M2 built, not yet merged.**
+**Status: M1 and M2 merged to `main` (not pushed). Next: M3, after the user-testing round if it happens in time.**
 
 ## How testing is kept down
 
@@ -99,3 +99,4 @@ today's behaviour.
 - 2026-10-10 M1 built on branch `m1-request-context`: the request context (client IP from a trusted edge header or hop count, request ids, who), per-person rate limits, the edge secret, the source IP and request id in action-log metadata, the edge control, keep-alive, static caching and a JSON 413 (WAF wave A); JSON logs, the security event catalog, emitter, `security_event` table and hooks, and the pull feeds (SIEM wave A).
 - 2026-10-10 M1 merged into `main` at `c213b777`. All three suites were green: SQLite 1460 passed, Postgres 1485, Linux 3.11 1447.
 - 2026-10-10 M2 built on branch `m2-foundations`: server-side list search, sort and CSV export (issued items, paid items, ACH, exceptions), global search, nav by work with an Exceptions count, Action Log naming, item page titles, back to the filtered list, empty states, shared confirm/toast/busy/poll components, the axe check (0 problems after fixing pager contrast) (UX wave 0); replay, evidence export and verification as background jobs on `control_run`, daily verification, Controls reading the latest verification (WAF wave B). No migration.
+- 2026-10-10 M2 merged into `main`. The three suites at `23272e41` each had one failure, the same test (the Approvals badge test also matched the new Exceptions badge); fixed in the test at `b3847d02` and rerun green on SQLite and Postgres. SQLite 1471 passed, Postgres 1496, Linux 3.11 1457 (plus that test).
