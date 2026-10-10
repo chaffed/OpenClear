@@ -27,6 +27,9 @@ from openclear.api.v1.accounts import router as accounts_router
 from openclear.api.v1.decision_feed import router as decision_feed_router
 from openclear.api.v1.embed import router as embed_router
 from openclear.api.v1.conformance import router as conformance_router
+from openclear.api.v1.mrm import router as mrm_router
+from openclear.api.v1.controls import router as controls_router
+from openclear.api.v1.audit import router as audit_router
 from openclear.api.v1.decision_batches import router as decision_batches_router
 from openclear.api.v1.api_clients import router as api_clients_router
 from openclear.api.v1.bulk_uploads import router as bulk_uploads_router
@@ -52,6 +55,9 @@ api_router.include_router(accounts_router)
 api_router.include_router(decision_feed_router)
 api_router.include_router(embed_router)
 api_router.include_router(conformance_router)
+api_router.include_router(mrm_router)
+api_router.include_router(controls_router)
+api_router.include_router(audit_router)
 api_router.include_router(decision_batches_router)
 api_router.include_router(api_clients_router)
 api_router.include_router(bulk_uploads_router)

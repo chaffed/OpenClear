@@ -124,6 +124,7 @@ erDiagram
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td>Display name, shown throughout the app and on the login page.</td></tr>
 <tr><td>slug</td><td>String(100)</td><td>no</td><td>UK</td><td>URL-safe identifier used in slug-based login links and branding URLs.</td></tr>
 <tr><td>require_dual_control</td><td>Boolean</td><td>no</td><td></td><td>If true, a different person must finalize an exception decision than whoever recommended it.</td></tr>
+<tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
 <tr><td>stale_date_threshold_days</td><td>Integer</td><td>no</td><td></td><td>Days after which an outstanding issued item is considered stale.</td></tr>
 <tr><td>access_token_expire_minutes</td><td>Integer</td><td>yes</td><td></td><td>Overrides the platform-default access token lifetime; null = use the default.</td></tr>
@@ -1066,6 +1067,42 @@ erDiagram
 <tr><td>prev_entry_hash</td><td>String(200)</td><td>yes</td><td></td><td>Null only for the very first entry in the chain.</td></tr>
 <tr><td>entry_hash</td><td>String(200)</td><td>no</td><td></td><td>Covers this entry's own fields plus prev_entry_hash — the hash chain "Verify chain" recomputes from scratch.</td></tr>
 <tr><td>sequence</td><td>BigInteger</td><td>no</td><td>UK (with tenant_id)</td><td>The entry's position in the organization's chain (1, 2, 3…). Unique, so two simultaneous writers can't both chain onto the same entry.</td></tr>
+</tbody>
+</table>
+
+<h3>change_request</h3>
+<p>A change to how items are judged (turning a matching rule on or off, activating a scoring
+model) waiting for a second admin, under segregation of duties in enforce mode. Whoever asked
+can't approve it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>kind</td><td>String(60)</td><td>no</td><td></td><td>matching_rule.set or ml_model.activate.</td></tr>
+<tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td>What the change does, as shown to the approver.</td></tr>
+<tr><td>payload</td><td>JSON</td><td>no</td><td></td><td>What to apply on approval (the rule and its settings, or the model).</td></tr>
+<tr><td>status</td><td>String(20)</td><td>no</td><td></td><td>pending / approved / rejected.</td></tr>
+<tr><td>requested_by_user_id / decided_by_user_id</td><td>UUID</td><td>no / yes</td><td>FK → user.id</td><td>Who asked, and who approved or rejected it (never the same person).</td></tr>
+<tr><td>requested_at / decided_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>control_run</h3>
+<p>One run of a control test: a past file replayed through today's rules (mrm_replay), or
+the synthetic anomaly-capture test (anomaly_capture). Both run in a dry run that's rolled
+back; this row and its report are all that's kept.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>kind</td><td>String(40)</td><td>no</td><td></td><td>mrm_replay or anomaly_capture.</td></tr>
+<tr><td>started_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+<tr><td>passed</td><td>Boolean</td><td>yes</td><td></td><td>For anomaly capture, whether every anomaly was caught and clean items weren't flagged. Null for a replay.</td></tr>
+<tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td></td></tr>
+<tr><td>report</td><td>JSON</td><td>no</td><td></td><td>The variance report (rates and differing items) or each probe's result.</td></tr>
+<tr><td>requested_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Null for the daily scheduled run.</td></tr>
 </tbody>
 </table>
 

@@ -387,3 +387,25 @@ def housekeeping_job() -> None:
         housekeeping_service.run(session)
     finally:
         session.close()
+
+
+def anomaly_capture_job() -> None:
+    """Daily: the synthetic anomaly-capture test for every bank (services/mrm_service.py),
+    each in its own transaction so one bank's failure doesn't stop the rest."""
+    from openclear.services import mrm_service
+
+    session = get_session_factory()()
+    try:
+        tenant_ids = list(session.execute(select(Tenant.id).where(Tenant.is_active.is_(True))).scalars())
+        for tenant_id in tenant_ids:
+            bind_session_to_tenant(session, tenant_id)
+            try:
+                run = mrm_service.anomaly_capture(session, tenant_id, user_id=None, channel="api")  # no actor: the schedule
+                session.commit()
+                if not run.passed:
+                    logger.warning("Anomaly capture failed for tenant %s: %s", tenant_id, run.summary)
+            except Exception:  # noqa: BLE001 -- one bank's failure mustn't stop the rest
+                session.rollback()
+                logger.exception("Anomaly capture errored for tenant %s", tenant_id)
+    finally:
+        session.close()

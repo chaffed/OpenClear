@@ -11,6 +11,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from openclear.config import get_settings
 from openclear.workers.leader_lock import run_exclusively
 from openclear.workers.tasks import (
+    anomaly_capture_job,
     demo_reset_job,
     dropbox_import_job,
     housekeeping_job,
@@ -42,6 +43,8 @@ def start_scheduler() -> BackgroundScheduler:
         _add_job(_scheduler, "decision_outbox_job", decision_outbox_job, IntervalTrigger(seconds=settings.decision_outbox_tick_seconds))
     if settings.enable_housekeeping_scheduler:
         _add_job(_scheduler, "housekeeping_job", housekeeping_job, CronTrigger(hour=settings.housekeeping_cron_hour, minute=30))
+    if settings.enable_control_test_scheduler:
+        _add_job(_scheduler, "anomaly_capture_job", anomaly_capture_job, CronTrigger(hour=settings.control_test_cron_hour, minute=15))
     if demo_reset_enabled(settings):
         _add_job(_scheduler, "demo_reset_job", demo_reset_job, IntervalTrigger(minutes=settings.demo_tenant_reset_interval_minutes))
     _scheduler.start()

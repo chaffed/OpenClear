@@ -529,7 +529,7 @@ below), or a **bank-only model** trained on its own decisions, which these endpo
 | POST | `/ml/retrain?network_code=...` | retrain this organization's **bank-only** model → `RetrainResponse`; `403` for an organization on the shared model; `409` if there isn't enough training data yet, or it was retrained moments ago. The new version is activated only if it scores at least as well as the active one on the same recent decisions and was trained on enough of the bank's own decisions (`ml_bank_model_min_decisions`, default 200); the reason is in `metrics_json.evaluation.reason` |
 | GET | `/ml/models` | this organization's own model versions (bank-only and customer models); optional `?network_code=` filter |
 | GET | `/ml/shared-model` | the shared model's active version per network, with counts only → `list[SharedModelSummaryRead]` (`network_code`, `version`, `activated_at`, `trained_from_decision_count`, `contributing_bank_count`) |
-| PATCH | `/ml/models/{model_id}/activate` | activate one of this organization's bank-only models; `404` for any other model |
+| PATCH | `/ml/models/{model_id}/activate` | activate one of this organization's bank-only models; `404` for any other model. With segregation of duties enforced, answers `202` with `{"status": "pending", "change_request_id"}`: a second admin approves it in Admin → Changes |
 
 `MlModelRead`: `id`, `network_code`, `version`, `algorithm`,
 `trained_from_decision_count`, `metrics_json`, `status` (`training` / `active` /
@@ -539,6 +539,32 @@ below), or a **bank-only model** trained on its own decisions, which these endpo
 `model` (`MlModelRead`).
 
 Retrain and activate are written to the organization's audit log.
+
+### Model risk — `/api/v1/mrm`
+
+Gated on `admin:manage`, for the bank's own staff (COMPLIANCE_PLAN.md C2;
+[docs/compliance/sr-11-7.md](docs/compliance/sr-11-7.md)). Both tests are dry runs: the real
+rules run, with the bank's settings and plugins, and everything is rolled back except the
+report.
+
+| method | path | notes |
+|---|---|---|
+| POST | `/replay` | multipart `file`: a historical X9.37 cash letter or NACHA file (up to 50 MB). Answers `201` with the run: `report` has `items`, `compared_with_history`, `match_rate` (today's rules flag an item exactly when they did then), `false_positive_rate` (flagged, but the bank paid it), `missed_return_rate` (not flagged, but returned), `unhandled_rate`, `exception_types`, and `variances` listing the items that differ. `422` for a file that can't be read |
+| POST | `/anomaly-capture` | runs the synthetic anomaly-capture test now. `passed` only if every injected fraud vector was caught and the clean items weren't flagged; `report.probes` has each one |
+| GET | `/runs` | the latest runs; `?kind=mrm_replay` or `anomaly_capture` |
+| GET | `/runs/{run_id}` | one run |
+
+### Controls — `/api/v1/controls`
+
+| method | path | notes |
+|---|---|---|
+| GET | `/status` | `audit_log:read`. Each control's live status, `PASS` / `WARN` / `FAIL`, with `detail` and `evidence`, and `overall` (the worst). The controls are: secrets encrypted in the database; disk and database encryption (as the operator states it); the action log's integrity; segregation of duties; admins' second factor; the anomaly-capture test; malformed files refused; decisions and imports on time; integration secret age; production settings |
+
+### Evidence export — `/api/v1/audit`
+
+| method | path | notes |
+|---|---|---|
+| GET | `/export?start=YYYY-MM-DD&end=YYYY-MM-DD&format=json\|pdf` | `audit_log:read`, the bank's own staff. A signed evidence bundle for the period (UTC days, at most 400). It covers the system version; the rules, plugins and models in force with their digests; settings and security groups; whether the action log verifies; segregation-of-duties breaches; changes and approvals; every decision with who recommended and decided it; model-risk runs; and the control status. JSON is `{"bundle", "signature"}`, where the signature is ECDSA P-256 over the SHA-256 of the bundle as compact, key-sorted JSON, with the public key included. The PDF shows the same. Both carry `X-OpenClear-File-SHA256` and `X-OpenClear-File-Signature` (the file as sent). Each export is in the action log. See [docs/compliance](docs/compliance/README.md) |
 
 ### Billing — `/api/v1/billing`
 

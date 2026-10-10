@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Segregation of duties — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Segregation of duties</h1>
+  <p>Duties one person mustn't hold together, checked by OpenClear itself. Every breach attempt
+    is written to the action log. <strong>Warn</strong> lets it through; <strong>enforce</strong>
+    refuses it, and changes to matching rules and scoring models then need a second admin.</p>
+  <ul>
+    {% for r in rules %}<li><strong>{{ r.title }}.</strong> {{ r.why }}</li>{% endfor %}
+    <li><strong>Whoever presented an item can't decide its exception.</strong></li>
+    <li><strong>Whoever asks for a change to rules or models can't approve it.</strong></li>
+  </ul>
+  {% if conflicts %}
+  <h2>Groups that combine separate duties</h2>
+  <table>
+    <thead><tr><th>Group</th><th>Breaks</th></tr></thead>
+    <tbody>
+      {% for g, rules_broken in conflicts %}
+      <tr><td><a href="/ui/security-groups/{{ g.id }}/edit">{{ g.name }}</a></td><td>{{ rules_broken | map(attribute="title") | join("; ") }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>Change these groups before turning on enforcement.</p>
+  {% endif %}
+  <form method="post" action="/ui/settings/segregation-of-duties">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="radio" name="mode" value="warn" {{ "checked" if mode == "warn" else "" }}> Warn (log breaches, allow them)</label>
+    <label><input type="radio" name="mode" value="enforce" {{ "checked" if mode == "enforce" else "" }}> Enforce (log and refuse)</label>
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+</div>
+{% endblock %}

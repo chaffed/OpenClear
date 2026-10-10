@@ -832,6 +832,21 @@
         "title": "BillingMethod",
         "type": "string"
       },
+      "Body_replay_api_v1_mrm_replay_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "A historical X9.37 cash letter or NACHA file",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_replay_api_v1_mrm_replay_post",
+        "type": "object"
+      },
       "Body_token_api_v1_oauth_token_post": {
         "properties": {
           "client_id": {
@@ -4668,7 +4683,7 @@
     },
     "/api/v1/admin/ml/models/{model_id}/activate": {
       "patch": {
-        "description": "Activates one of this organization's bank-only models (404 for any other model).",
+        "description": "Activates one of this organization's bank-only models (404 for any other model). With\nsegregation of duties enforced, it answers `202` with `{\"status\": \"pending\",\n\"change_request_id\"}` instead: a second admin approves it in Admin \u2192 Changes.",
         "operationId": "activate_ml_model_api_v1_admin_ml_models__model_id__activate_patch",
         "parameters": [
           {
@@ -4692,6 +4707,18 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "change_request_id": "\u2026",
+                  "detail": "\u2026",
+                  "status": "pending"
+                }
+              }
+            },
+            "description": "Segregation of duties is enforced: the activation waits for a second admin (Admin \u2192 Changes)"
           },
           "422": {
             "content": {
@@ -4851,6 +4878,84 @@
         "summary": "List Api Clients",
         "tags": [
           "api-clients"
+        ]
+      }
+    },
+    "/api/v1/audit/export": {
+      "get": {
+        "description": "A signed evidence bundle for the period, for an examiner or auditor: the system version;\nthe rules, plugins and models in force with their digests; settings and security groups;\nwhether the action log verifies; segregation-of-duties breaches; changes and approvals;\nevery decision with who recommended and decided it; model-risk test runs; and the live\ncontrol status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256\nof the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and\nboth carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in\nthe action log.",
+        "operationId": "export_api_v1_audit_export_get",
+        "parameters": [
+          {
+            "description": "First day, YYYY-MM-DD (UTC)",
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "description": "First day, YYYY-MM-DD (UTC)",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive",
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "description": "Last day, inclusive",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "pdf"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The signed evidence: JSON (application/json) or PDF (application/pdf)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export",
+        "tags": [
+          "audit"
         ]
       }
     },
@@ -6432,6 +6537,35 @@
         "summary": "Webhook Probe",
         "tags": [
           "conformance"
+        ]
+      }
+    },
+    "/api/v1/controls/status": {
+      "get": {
+        "description": "Each control's live status (`PASS`, `WARN` or `FAIL`) with its evidence, and `overall`\n(the worst of them): secrets and storage encryption, the action log's integrity,\nsegregation of duties, admins' second factor, the anomaly-capture test, malformed-file\nhandling, decision and import timeliness, integration secret age, production settings.",
+        "operationId": "control_status_api_v1_controls_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Control Status Api V1 Controls Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Control Status",
+        "tags": [
+          "controls"
         ]
       }
     },
@@ -8131,6 +8265,194 @@
         "summary": "Retract Fraud Example Api",
         "tags": [
           "fraud-training"
+        ]
+      }
+    },
+    "/api/v1/mrm/anomaly-capture": {
+      "post": {
+        "description": "Runs the synthetic anomaly-capture test now, against this bank's live rules (dry run).\n`passed` only if every injected anomaly was caught and the clean items weren't flagged.",
+        "operationId": "anomaly_capture_api_v1_mrm_anomaly_capture_post",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Anomaly Capture Api V1 Mrm Anomaly Capture Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Anomaly Capture",
+        "tags": [
+          "model risk"
+        ]
+      }
+    },
+    "/api/v1/mrm/replay": {
+      "post": {
+        "description": "Runs the file through today's rules in a dry run (nothing is kept but the report) and\ncompares each item with what happened to it then: `match_rate` (today's rules flag it\nexactly when they did then), `false_positive_rate` (flagged, but the bank paid it),\n`missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the\nitems that differ.",
+        "operationId": "replay_api_v1_mrm_replay_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_replay_api_v1_mrm_replay_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Replay Api V1 Mrm Replay Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replay",
+        "tags": [
+          "model risk"
+        ]
+      }
+    },
+    "/api/v1/mrm/runs": {
+      "get": {
+        "description": "The latest replays and anomaly-capture runs (`kind`: `mrm_replay` or `anomaly_capture`).",
+        "operationId": "list_runs_api_v1_mrm_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Runs Api V1 Mrm Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Runs",
+        "tags": [
+          "model risk"
+        ]
+      }
+    },
+    "/api/v1/mrm/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_mrm_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Run Api V1 Mrm Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Run",
+        "tags": [
+          "model risk"
         ]
       }
     },

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Changes awaiting approval — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About approvals{% endblock %}
+{% block help_body %}
+<p>With segregation of duties enforced, changes to how items are judged (turning a matching
+  rule on or off, activating a scoring model) need a second admin. The person who asked for a
+  change can't approve it. Every request, approval and rejection is in the action log.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Changes awaiting approval</h1>
+  {% if changes %}
+  <table>
+    <thead><tr><th>Change</th><th>Asked</th><th></th></tr></thead>
+    <tbody>
+      {% for c in changes %}
+      <tr>
+        <td>{{ c.summary }}</td>
+        <td>{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}</td>
+        <td>
+          <form method="post" action="/ui/admin/changes/{{ c.id }}/approve" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">{{ icon("check_circle") }}Approve</button>
+          </form>
+          <form method="post" action="/ui/admin/changes/{{ c.id }}/reject" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary">{{ icon("block") }}Reject</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nothing is waiting.</p>
+  {% endif %}
+</div>
+{% endblock %}

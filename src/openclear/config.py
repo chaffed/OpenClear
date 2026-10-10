@@ -330,6 +330,12 @@ class Settings(BaseSettings):
     # (checks, ACH, exceptions, decisions) and its audit log are never touched here.
     enable_housekeeping_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
     housekeeping_cron_hour: int = 3
+    # The daily anomaly-capture test (services/mrm_service.py, COMPLIANCE_PLAN.md C2): runs
+    # synthetic fraud vectors through every bank's live rules in a dry run at
+    # control_test_cron_hour when enabled (or call workers.tasks.anomaly_capture_job from cron).
+    # The Controls page warns when a bank's last run is more than a day old.
+    enable_control_test_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
+    control_test_cron_hour: int = 4
     retention_finished_jobs_days: int = 30
     retention_notifications_days: int = 180
     retention_bulk_row_results_days: int = 365
@@ -389,13 +395,22 @@ class Settings(BaseSettings):
     twilio_auth_token: str | None = None
     twilio_from_number: str | None = None
 
-    # Federated login (auth/oidc_service.py, services/sso_service.py) — fed through a KDF
-    # into a valid Fernet key (auth/crypto.py), so this stays a plain string like every
-    # other *_secret_key setting rather than a hand-generated base64 Fernet key. This is
-    # ENCRYPTION (of stored SSO client secrets), not signing, so it deliberately doesn't
+    # Encrypts secrets stored in the database (SSO client secrets, the SAML signing key,
+    # webhook secrets, secret plugin settings) with AES-256-GCM, through HKDF (auth/crypto.py),
+    # so this stays a plain string like every other *_secret_key setting. This is
+    # ENCRYPTION, not signing, so it deliberately doesn't
     # move to a key pair like jwt/file_signing/audit_log_signing above — but it still
     # needs a real random value in production, enforced below.
     sso_encryption_key: str = "dev-secret-change-me-32-bytes-minimum-for-sso"
+    # Rotating the key: move the old value here and set a new sso_encryption_key. Values
+    # under either decrypt, and startup re-encrypts them under the new one (auth/crypto.py).
+    sso_encryption_key_previous: str | None = None
+    # Re-encrypt stored secrets still under an older scheme or key at startup (auth/crypto.py).
+    reencrypt_secrets_at_startup: bool = True
+    # How the host encrypts disks and the database (e.g. "AWS RDS storage encryption with
+    # KMS key alias/openclear; EBS volumes encrypted"). OpenClear can't see this itself; the
+    # Controls page (services/controls_service.py) shows the statement, or warns without one.
+    storage_encryption_attestation: str | None = None
     oidc_http_timeout_seconds: float = 10.0
     # Lets SSO connections point at http:// and private/loopback addresses (a local test
     # identity provider such as a Keycloak container on localhost). Off by default, and

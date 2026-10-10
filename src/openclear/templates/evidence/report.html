@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Evidence — {{ b.bank.name }} — {{ b.period.start }} to {{ b.period.end }}</title>
+<style>
+  @page { size: letter; margin: 0.7in 0.6in; @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 8pt; color: #555; } }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9.5pt; color: #111; line-height: 1.35; }
+  h1 { font-size: 18pt; margin: 0 0 4pt; }
+  h2 { font-size: 12.5pt; margin: 18pt 0 6pt; border-bottom: 1px solid #999; padding-bottom: 2pt; page-break-after: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt; }
+  th, td { text-align: left; vertical-align: top; padding: 2.5pt 4pt; border-bottom: 0.5pt solid #ccc; }
+  th { background: #f0f0f0; font-weight: 600; }
+  tr { page-break-inside: avoid; }
+  .muted { color: #555; }
+  .mono { font-family: "Courier New", monospace; font-size: 7.5pt; word-break: break-all; }
+  .PASS { color: #0a6b2e; font-weight: 700; } .WARN { color: #8a5a00; font-weight: 700; } .FAIL { color: #a3121a; font-weight: 700; }
+  .small { font-size: 8pt; }
+</style>
+</head>
+<body>
+<h1>Control evidence</h1>
+<p><strong>{{ b.bank.name }}</strong> · {{ b.period.start }} to {{ b.period.end }}<br>
+  <span class="muted">Generated {{ b.generated_at[:19]|replace("T", " ") }} UTC by OpenClear {{ b.system.openclear_version }}
+  (database revision {{ b.system.database_revision or "—" }}).</span></p>
+
+<h2>Controls at the time of export</h2>
+<p>Overall: <span class="{{ b.controls.overall }}">{{ b.controls.overall }}</span></p>
+<table>
+  <thead><tr><th>Control</th><th>Status</th><th>Detail</th></tr></thead>
+  <tbody>{% for c in b.controls.controls %}<tr><td>{{ c.title }}</td><td class="{{ c.status }}">{{ c.status }}</td><td>{{ c.detail }}</td></tr>{% endfor %}</tbody>
+</table>
+
+<h2>Action log</h2>
+<table>
+  <tr><th>Chain verifies</th><td>{{ "Yes" if b.audit.chain_verifies else "NO, broken at entry " ~ b.audit.broken_at_entry_id }} ({{ b.audit.live_entries_checked }} live entries checked)</td></tr>
+  <tr><th>Archives verify</th><td>{{ "Yes" if b.audit.archives_verify else "NO: " ~ b.audit.archive_problem }} ({{ b.audit.archives_checked }} archives)</td></tr>
+  <tr><th>Entries in the period</th><td>{{ b.audit.entries_in_period }}</td></tr>
+</table>
+
+<h2>Segregation of duties</h2>
+<p>Mode: <strong>{{ b.settings.segregation_of_duties }}</strong>. Dual control on decisions: <strong>{{ "on" if b.settings.require_dual_control else "off" }}</strong>.</p>
+{% if b.audit.sod_violations %}
+<table>
+  <thead><tr><th>When</th><th>What</th><th>Refused</th></tr></thead>
+  <tbody>{% for v in b.audit.sod_violations %}<tr><td>{{ v.occurred_at[:16]|replace("T", " ") }}</td><td>{{ v.summary }}</td><td>{{ "yes" if (v.metadata or {}).get("enforced") else "no (warn)" }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No breaches or attempts in the period.</p>{% endif %}
+<table>
+  <thead><tr><th>Security group</th><th>Permissions</th><th>Conflicts</th></tr></thead>
+  <tbody>{% for g in b.settings.security_groups %}<tr><td>{{ g.name }}</td><td class="small">{{ g.permissions|join(", ") }}</td><td>{{ g.conflicts|join(", ") or "—" }}</td></tr>{% endfor %}</tbody>
+</table>
+
+<h2>Changes to rules, models, groups and settings</h2>
+{% if b.audit.changes %}
+<table>
+  <thead><tr><th>When</th><th>Action</th><th>What</th></tr></thead>
+  <tbody>{% for c in b.audit.changes %}<tr><td>{{ c.occurred_at[:16]|replace("T", " ") }}</td><td>{{ c.action }}</td><td>{{ c.summary }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>None in the period.</p>{% endif %}
+
+<h2>Rules, plugins and models in force</h2>
+<table>
+  <thead><tr><th>Rule code</th><th>Network</th><th>SHA-256</th></tr></thead>
+  <tbody>
+    {% for r in b.rules.built_in %}<tr><td>{{ r.module }}</td><td>{{ r.network }}</td><td class="mono">{{ r.sha256 }}</td></tr>{% endfor %}
+    {% for r in b.rules.plugin_matching_rules %}<tr><td>{{ r.name }} (plugin, {{ "on" if r.enabled else "off" }})</td><td>{{ r.network }}</td><td class="mono">{{ r.sha256 }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% if b.rules.plugins %}
+<table>
+  <thead><tr><th>Plugin</th><th>Version</th><th>From</th><th>Status</th></tr></thead>
+  <tbody>{% for p in b.rules.plugins %}<tr><td>{{ p.name }}</td><td>{{ p.version }}</td><td>{{ p.source }}</td><td>{{ p.status }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+<table>
+  <thead><tr><th>Scoring model</th><th>Scope</th><th>Trained on</th><th>Artifact SHA-256</th></tr></thead>
+  <tbody>{% for m in b.models %}<tr><td>{{ m.network }} {{ m.version }} ({{ m.algorithm }})</td><td>{{ m.scope }}</td><td>{{ m.trained_from_decisions }} decisions</td><td class="mono">{{ m.artifact_sha256 or "—" }}</td></tr>
+  {% else %}<tr><td colspan="4">No active scoring models.</td></tr>{% endfor %}</tbody>
+</table>
+
+<h2>Model risk tests</h2>
+{% if b.control_runs %}
+<table>
+  <thead><tr><th>When</th><th>Test</th><th>Result</th></tr></thead>
+  <tbody>{% for r in b.control_runs %}<tr><td>{{ r.started_at[:16]|replace("T", " ") }}</td><td>{{ "Replay" if r.kind == "mrm_replay" else "Anomaly capture" }}{{ " (daily)" if r.scheduled }}</td><td>{{ r.summary }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>None in the period.</p>{% endif %}
+
+<h2>Decisions</h2>
+<p>{{ b.decisions.count }} decisions in the period{% for k, v in b.decisions.by_outcome.items() %}{{ ": " if loop.first else ", " }}{{ v }} {{ k }}{% endfor %}.
+  {% if b.decisions.truncated %}<strong>Only the first {{ b.decisions.count }} are listed; export a shorter period for the rest.</strong>{% endif %}</p>
+{% if b.decisions["items"] %}
+<table class="small">
+  <thead><tr><th>Decided</th><th>Network</th><th>Exception</th><th>Outcome</th><th>Recommended by</th><th>Decided by</th></tr></thead>
+  <tbody>{% for d in b.decisions["items"] %}<tr><td>{{ d.decided_at[:16]|replace("T", " ") }}</td><td>{{ d.network }}</td><td>{{ d.exception_types }}</td>
+    <td>{{ d.outcome }} ({{ d.reason_code }})</td><td>{{ d.recommended_by or "—" }}</td><td>{{ d.decided_by or (d.source ~ "") }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+
+<h2>Signature</h2>
+<p>This report is rendered from a signed evidence bundle. Export the same period as JSON to
+  check it: the bundle's SHA-256 below must match, and the signature must verify with the
+  installation's public key.</p>
+<table>
+  <tr><th>Algorithm</th><td>{{ sig.algorithm }}</td></tr>
+  <tr><th>Bundle SHA-256</th><td class="mono">{{ sig.sha256 }}</td></tr>
+  <tr><th>Signature</th><td class="mono">{{ sig.value }}</td></tr>
+  <tr><th>Public key</th><td class="mono">{{ sig.public_key }}</td></tr>
+</table>
+</body>
+</html>

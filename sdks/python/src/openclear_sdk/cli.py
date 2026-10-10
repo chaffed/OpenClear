@@ -7,6 +7,8 @@
     openclear decisions pull --consumer core --format csv > decisions.csv
     openclear decisions files --download ./outbox
     openclear webhooks tail --secret whsec_...
+    openclear audit export --start 2026-01-01 --end 2026-03-31 --format pdf > evidence.pdf
+    openclear controls
 
 Credentials come from OPENCLEAR_URL, OPENCLEAR_CLIENT_ID and OPENCLEAR_CLIENT_SECRET (or
 --url, --client-id, --client-secret). Exit status: 0 done, 1 something failed (rows,
@@ -102,6 +104,26 @@ def _files(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
     return 1 if failed else 0
 
 
+def _audit_export(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
+    content = oc.audit.export(start=args.start, end=args.end, format=args.format)
+    if args.output:
+        Path(args.output).write_bytes(content)
+        print(f"{args.output} ({len(content)} bytes)", file=sys.stderr)
+    else:
+        stream = getattr(out, "buffer", None)
+        stream.write(content) if stream is not None else out.write(content.decode("utf-8", errors="replace"))
+    return 0
+
+
+def _controls(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
+    """Each control's status; exit 1 if any fails (for a monitoring check)."""
+    result = oc.controls.control_status()
+    for control in result["controls"]:
+        print(f"{control['status']:4}  {control['title']}: {control['detail']}", file=out)
+    print(f"Overall: {result['overall']}", file=out)
+    return 1 if result["overall"] == "FAIL" else 0
+
+
 def tail_server(secret: str, port: int, out: TextIO) -> HTTPServer:
     """A local webhook receiver that verifies each event and prints it as a JSON line."""
 
@@ -150,6 +172,16 @@ def build_parser() -> argparse.ArgumentParser:
     files.add_argument("--download", default=".", help="Directory to write them to")
     files.add_argument("--no-ack", action="store_true")
 
+    audit = commands.add_parser("audit", help="Evidence for examiners and auditors")
+    audit_which = audit.add_subparsers(dest="audit_command", required=True)
+    export = audit_which.add_parser("export", help="A signed evidence bundle for a period (JSON or PDF)")
+    export.add_argument("--start", required=True, help="First day, YYYY-MM-DD (UTC)")
+    export.add_argument("--end", required=True, help="Last day, inclusive")
+    export.add_argument("--format", choices=["json", "pdf"], default="json")
+    export.add_argument("--output", "-o", help="Write to this file instead of standard output")
+
+    commands.add_parser("controls", help="Each control's live status (exit 1 if any fails)")
+
     hooks = commands.add_parser("webhooks", help="Webhooks")
     hook_which = hooks.add_subparsers(dest="webhooks_command", required=True)
     tail = hook_which.add_parser("tail", help="Receive webhooks locally (behind a tunnel), verify and print them")
@@ -176,6 +208,10 @@ def main(argv: list[str] | None = None, *, http_client: Any = None, out: TextIO 
         oc = _client(args, http_client)
         if args.command == "push":
             return _push(oc, args, out)
+        if args.command == "audit":
+            return _audit_export(oc, args, out)
+        if args.command == "controls":
+            return _controls(oc, args, out)
         if args.decisions_command == "pull":
             return _pull(oc, args, out)
         return _files(oc, args, out)

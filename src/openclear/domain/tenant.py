@@ -67,6 +67,9 @@ class Tenant(Base):
     # tenant. Gates the reactive reset-on-idle check in the login flow and the manual
     # "reset now" admin action; never affects any other tenant's behavior.
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Segregation of duties (auth/sod.py, COMPLIANCE_PLAN.md C1): "warn" logs a breach and lets it
+    # through; "enforce" refuses it (403 ERR_SOD_VIOLATION). Logged either way.
+    sod_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="warn", server_default="warn")
     # A vendor's self-service sandbox (SDK_PLAN.md P4; services/sandbox_service.py): who asked
     # for it, and when it's wiped.
     is_sandbox: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

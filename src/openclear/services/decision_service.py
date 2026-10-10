@@ -120,6 +120,7 @@ def decide(
     reason_code: str,
     notes: str | None,
     ach_return_reason_id: uuid.UUID | None = None,
+    channel: str = "api",
 ) -> ServiceResult:
     """Records the final pay/return decision — this is the ML feedback point. Under
     dual-control tenants, requires a prior recommend() from a *different* user (maker !=
@@ -137,6 +138,11 @@ def decide(
         return ServiceResult(None, None, DecisionError.WITHDRAWN)
     if exception.status in (ExceptionStatus.PAY, ExceptionStatus.RETURN):
         return ServiceResult(None, None, DecisionError.ALREADY_DECIDED)
+
+    # Segregation of duties (auth/sod.py): raises SodViolation in enforce mode, logs either way.
+    from openclear.auth import sod
+
+    sod.check_decision(session, tenant_id, ctx, exception, channel=channel)
 
     submitted_by_user_id: uuid.UUID | None = None
     if tenant.require_dual_control:

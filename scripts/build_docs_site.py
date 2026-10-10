@@ -35,6 +35,11 @@ PAGES = [
     ("docs/guides/embedding.md", "guides/embedding.md", "Embedding in online banking"),
     ("integrations/fineract/README.md", "guides/fineract.md", "Apache Fineract adapter"),
     ("docs/PLUGINS.md", "guides/plugins.md", "Writing a plugin"),
+    ("docs/compliance/README.md", "compliance/index.md", "Compliance"),
+    ("docs/compliance/ffiec.md", "compliance/ffiec.md", "FFIEC IT Handbook"),
+    ("docs/compliance/nacha.md", "compliance/nacha.md", "Nacha Operating Rules"),
+    ("docs/compliance/sr-11-7.md", "compliance/sr-11-7.md", "Model risk (SR 11-7)"),
+    ("docs/compliance/tprm.md", "compliance/tprm.md", "Third-party risk"),
     ("docs/ARCHITECTURE.md", "reference/architecture.md", "Architecture"),
     ("CHANGELOG.md", "reference/changelog.md", "Changelog"),
     ("SDK_PLAN.md", "reference/sdk-plan.md", "SDK plan"),
@@ -57,6 +62,12 @@ NAV = """nav:
       - Embedding in online banking: guides/embedding.md
       - Apache Fineract adapter: guides/fineract.md
       - Writing a plugin: guides/plugins.md
+  - Compliance:
+      - compliance/index.md
+      - FFIEC IT Handbook: compliance/ffiec.md
+      - Nacha Operating Rules: compliance/nacha.md
+      - Model risk (SR 11-7): compliance/sr-11-7.md
+      - Third-party risk: compliance/tprm.md
   - Reference:
       - Architecture: reference/architecture.md
       - Changelog: reference/changelog.md

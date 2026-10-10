@@ -314,7 +314,7 @@ def decide(
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}", status_code=303)
     result = decision_service.decide(
         db, ctx.tenant_id, exception_id, ctx, outcome=outcome, reason_code=reason_code, notes=notes or None,
-        ach_return_reason_id=_parse_optional_uuid(ach_return_reason_id),
+        ach_return_reason_id=_parse_optional_uuid(ach_return_reason_id), channel="web",
     )
     if result.error is None:
         audit_log_service.record_action(

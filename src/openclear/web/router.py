@@ -12,6 +12,9 @@ from openclear.web.routers.oidc_federation import router as oidc_federation_rout
 from openclear.web.routers.embed import router as embed_router
 from openclear.web.routers.sandbox import router as sandbox_router
 from openclear.web.routers.conformance import router as conformance_router
+from openclear.web.routers.changes import router as changes_router
+from openclear.web.routers.model_risk import router as model_risk_router
+from openclear.web.routers.controls import router as controls_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
 from openclear.web.routers.ach_return_reasons import router as ach_return_reasons_router
 from openclear.web.routers.billing import customer_router as billing_customer_router
@@ -85,6 +88,9 @@ web_router.include_router(oidc_federation_router)
 web_router.include_router(embed_router)
 web_router.include_router(sandbox_router)
 web_router.include_router(conformance_router)
+web_router.include_router(changes_router)
+web_router.include_router(model_risk_router)
+web_router.include_router(controls_router)
 web_router.include_router(data_export_router)
 web_router.include_router(wizard_router)
 web_router.include_router(wsud_router)

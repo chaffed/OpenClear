@@ -788,12 +788,14 @@ class AdminApi:
         """
         return self._c.call("GET", "/api/v1/admin/ml/models", query={"network_code": network_code})
 
-    def activate_ml_model(self, model_id: str) -> MlModelRead:
+    def activate_ml_model(self, model_id: str) -> MlModelRead | Any:
         """Activate Ml Model.
 
         PATCH /api/v1/admin/ml/models/{model_id}/activate
 
-        Activates one of this organization's bank-only models (404 for any other model).
+        Activates one of this organization's bank-only models (404 for any other model). With
+        segregation of duties enforced, it answers `202` with `{"status": "pending",
+        "change_request_id"}` instead: a second admin approves it in Admin → Changes.
         """
         return self._c.call("PATCH", f"/api/v1/admin/ml/models/{_path(model_id)}/activate")
 
@@ -836,6 +838,29 @@ class ApiClientsApi:
         GET /api/v1/api-clients
         """
         return self._c.call("GET", "/api/v1/api-clients")
+
+
+class AuditApi:
+    """`audit` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def export(self, *, start: str | None = None, end: str | None = None, format: Literal["json", "pdf"] | None = None) -> bytes:
+        """Export.
+
+        GET /api/v1/audit/export
+
+        A signed evidence bundle for the period, for an examiner or auditor: the system version;
+        the rules, plugins and models in force with their digests; settings and security groups;
+        whether the action log verifies; segregation-of-duties breaches; changes and approvals;
+        every decision with who recommended and decided it; model-risk test runs; and the live
+        control status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256
+        of the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and
+        both carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in
+        the action log.
+        """
+        return self._c.call("GET", "/api/v1/audit/export", query={"start": start, "end": end, "format": format}, raw=True)
 
 
 class BillingApi:
@@ -1087,6 +1112,25 @@ class ConformanceApi:
         forged one (it must reject it), and records the result.
         """
         return self._c.call("POST", "/api/v1/conformance/webhook-probe")
+
+
+class ControlsApi:
+    """`controls` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def control_status(self) -> dict[str, Any]:
+        """Control Status.
+
+        GET /api/v1/controls/status
+
+        Each control's live status (`PASS`, `WARN` or `FAIL`) with its evidence, and `overall`
+        (the worst of them): secrets and storage encryption, the action log's integrity,
+        segregation of duties, admins' second factor, the anomaly-capture test, malformed-file
+        handling, decision and import timeliness, integration secret age, production settings.
+        """
+        return self._c.call("GET", "/api/v1/controls/status")
 
 
 class CustomersApi:
@@ -1441,6 +1485,52 @@ class IssuedItemsApi:
         return self._c.call("PATCH", f"/api/v1/issued-items/{_path(item_id)}/void", json=body)
 
 
+class ModelRiskApi:
+    """`model risk` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def anomaly_capture(self) -> dict[str, Any]:
+        """Anomaly Capture.
+
+        POST /api/v1/mrm/anomaly-capture
+
+        Runs the synthetic anomaly-capture test now, against this bank's live rules (dry run).
+        `passed` only if every injected anomaly was caught and the clean items weren't flagged.
+        """
+        return self._c.call("POST", "/api/v1/mrm/anomaly-capture")
+
+    def replay(self, file: FileInput) -> dict[str, Any]:
+        """Replay.
+
+        POST /api/v1/mrm/replay
+
+        Runs the file through today's rules in a dry run (nothing is kept but the report) and
+        compares each item with what happened to it then: `match_rate` (today's rules flag it
+        exactly when they did then), `false_positive_rate` (flagged, but the bank paid it),
+        `missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the
+        items that differ.
+        """
+        return self._c.call("POST", "/api/v1/mrm/replay", files={"file": file})
+
+    def list_runs(self, *, kind: str | None = None) -> list[dict[str, Any]]:
+        """List Runs.
+
+        GET /api/v1/mrm/runs
+
+        The latest replays and anomaly-capture runs (`kind`: `mrm_replay` or `anomaly_capture`).
+        """
+        return self._c.call("GET", "/api/v1/mrm/runs", query={"kind": kind})
+
+    def get_run(self, run_id: str) -> dict[str, Any]:
+        """Get Run.
+
+        GET /api/v1/mrm/runs/{run_id}
+        """
+        return self._c.call("GET", f"/api/v1/mrm/runs/{_path(run_id)}")
+
+
 class PaidItemsApi:
     """`paid-items` endpoints."""
 
@@ -1732,10 +1822,12 @@ AREAS = {
     "ach_transactions": AchTransactionsApi,
     "admin": AdminApi,
     "api_clients": ApiClientsApi,
+    "audit": AuditApi,
     "billing": BillingApi,
     "bulk_uploads": BulkUploadsApi,
     "check_images": CheckImagesApi,
     "conformance": ConformanceApi,
+    "controls": ControlsApi,
     "customers": CustomersApi,
     "decision_batches": DecisionBatchesApi,
     "decision_feed": DecisionFeedApi,
@@ -1745,6 +1837,7 @@ AREAS = {
     "exceptions": ExceptionsApi,
     "fraud_training": FraudTrainingApi,
     "issued_items": IssuedItemsApi,
+    "model_risk": ModelRiskApi,
     "paid_items": PaidItemsApi,
     "platform_billing": PlatformBillingApi,
     "platform_jobs": PlatformJobsApi,

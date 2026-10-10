@@ -807,10 +807,12 @@ public sealed partial class AdminApi
     ///
     /// PATCH /api/v1/admin/ml/models/{model_id}/activate
     ///
-    /// Activates one of this organization's bank-only models (404 for any other model).
+    /// Activates one of this organization's bank-only models (404 for any other model). With
+    /// segregation of duties enforced, it answers `202` with `{"status": "pending",
+    /// "change_request_id"}` instead: a second admin approves it in Admin → Changes.
     /// </summary>
-    public Task<MlModelRead> ActivateMlModelAsync(string modelId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<MlModelRead>("PATCH", $"/api/v1/admin/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", cancellationToken: cancellationToken);
+    public Task<JsonElement> ActivateMlModelAsync(string modelId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<JsonElement>("PATCH", $"/api/v1/admin/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", cancellationToken: cancellationToken);
 
     /// <summary>
     /// Retrain.
@@ -857,6 +859,32 @@ public sealed partial class ApiClientsApi
     /// </summary>
     public Task<IReadOnlyList<ApiClientRead>> ListApiClientsAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<ApiClientRead>>("GET", "/api/v1/api-clients", cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// audit endpoints.
+/// </summary>
+public sealed partial class AuditApi
+{
+    private readonly ITransport _c;
+    public AuditApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Export.
+    ///
+    /// GET /api/v1/audit/export
+    ///
+    /// A signed evidence bundle for the period, for an examiner or auditor: the system version;
+    /// the rules, plugins and models in force with their digests; settings and security groups;
+    /// whether the action log verifies; segregation-of-duties breaches; changes and approvals;
+    /// every decision with who recommended and decided it; model-risk test runs; and the live
+    /// control status. JSON carries `bundle` and its `signature` (ECDSA P-256 over the SHA-256
+    /// of the bundle as compact, key-sorted JSON) with the public key; a PDF shows the same, and
+    /// both carry the file's own signature in `X-OpenClear-File-Signature`. Each export is in
+    /// the action log.
+    /// </summary>
+    public Task<byte[]> ExportAsync(string? start = null, string? end = null, string? format = null, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/audit/export", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["format"] = format }, cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -1141,6 +1169,28 @@ public sealed partial class ConformanceApi
     /// </summary>
     public Task<IReadOnlyDictionary<string, JsonElement>> WebhookProbeAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("POST", "/api/v1/conformance/webhook-probe", cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// controls endpoints.
+/// </summary>
+public sealed partial class ControlsApi
+{
+    private readonly ITransport _c;
+    public ControlsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Control Status.
+    ///
+    /// GET /api/v1/controls/status
+    ///
+    /// Each control's live status (`PASS`, `WARN` or `FAIL`) with its evidence, and `overall`
+    /// (the worst of them): secrets and storage encryption, the action log's integrity,
+    /// segregation of duties, admins' second factor, the anomaly-capture test, malformed-file
+    /// handling, decision and import timeliness, integration secret age, production settings.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> ControlStatusAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/controls/status", cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -1544,6 +1594,58 @@ public sealed partial class IssuedItemsApi
 }
 
 /// <summary>
+/// model risk endpoints.
+/// </summary>
+public sealed partial class ModelRiskApi
+{
+    private readonly ITransport _c;
+    public ModelRiskApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Anomaly Capture.
+    ///
+    /// POST /api/v1/mrm/anomaly-capture
+    ///
+    /// Runs the synthetic anomaly-capture test now, against this bank's live rules (dry run).
+    /// `passed` only if every injected anomaly was caught and the clean items weren't flagged.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> AnomalyCaptureAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("POST", "/api/v1/mrm/anomaly-capture", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Replay.
+    ///
+    /// POST /api/v1/mrm/replay
+    ///
+    /// Runs the file through today's rules in a dry run (nothing is kept but the report) and
+    /// compares each item with what happened to it then: `match_rate` (today's rules flag it
+    /// exactly when they did then), `false_positive_rate` (flagged, but the bank paid it),
+    /// `missed_return_rate` (not flagged, but the bank returned it), `unhandled_rate`, and the
+    /// items that differ.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> ReplayAsync(FilePart file, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("POST", "/api/v1/mrm/replay", form: new Dictionary<string, object?> { ["file"] = file }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// List Runs.
+    ///
+    /// GET /api/v1/mrm/runs
+    ///
+    /// The latest replays and anomaly-capture runs (`kind`: `mrm_replay` or `anomaly_capture`).
+    /// </summary>
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> ListRunsAsync(string? kind = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/mrm/runs", query: new Dictionary<string, object?> { ["kind"] = kind }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Run.
+    ///
+    /// GET /api/v1/mrm/runs/{run_id}
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> GetRunAsync(string runId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", $"/api/v1/mrm/runs/{Uri.EscapeDataString(runId.ToString()!)}", cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// paid-items endpoints.
 /// </summary>
 public sealed partial class PaidItemsApi
@@ -1876,10 +1978,12 @@ public partial class OpenClearClient
     public AchTransactionsApi AchTransactions { get; private set; } = default!;
     public AdminApi Admin { get; private set; } = default!;
     public ApiClientsApi ApiClients { get; private set; } = default!;
+    public AuditApi Audit { get; private set; } = default!;
     public BillingApi Billing { get; private set; } = default!;
     public BulkUploadsApi BulkUploads { get; private set; } = default!;
     public CheckImagesApi CheckImages { get; private set; } = default!;
     public ConformanceApi Conformance { get; private set; } = default!;
+    public ControlsApi Controls { get; private set; } = default!;
     public CustomersApi Customers { get; private set; } = default!;
     public DecisionBatchesApi DecisionBatches { get; private set; } = default!;
     public DecisionFeedApi DecisionFeed { get; private set; } = default!;
@@ -1889,6 +1993,7 @@ public partial class OpenClearClient
     public ExceptionsApi Exceptions { get; private set; } = default!;
     public FraudTrainingApi FraudTraining { get; private set; } = default!;
     public IssuedItemsApi IssuedItems { get; private set; } = default!;
+    public ModelRiskApi ModelRisk { get; private set; } = default!;
     public PaidItemsApi PaidItems { get; private set; } = default!;
     public PlatformBillingApi PlatformBilling { get; private set; } = default!;
     public PlatformJobsApi PlatformJobs { get; private set; } = default!;
@@ -1904,10 +2009,12 @@ public partial class OpenClearClient
         AchTransactions = new AchTransactionsApi(this);
         Admin = new AdminApi(this);
         ApiClients = new ApiClientsApi(this);
+        Audit = new AuditApi(this);
         Billing = new BillingApi(this);
         BulkUploads = new BulkUploadsApi(this);
         CheckImages = new CheckImagesApi(this);
         Conformance = new ConformanceApi(this);
+        Controls = new ControlsApi(this);
         Customers = new CustomersApi(this);
         DecisionBatches = new DecisionBatchesApi(this);
         DecisionFeed = new DecisionFeedApi(this);
@@ -1917,6 +2024,7 @@ public partial class OpenClearClient
         Exceptions = new ExceptionsApi(this);
         FraudTraining = new FraudTrainingApi(this);
         IssuedItems = new IssuedItemsApi(this);
+        ModelRisk = new ModelRiskApi(this);
         PaidItems = new PaidItemsApi(this);
         PlatformBilling = new PlatformBillingApi(this);
         PlatformJobs = new PlatformJobsApi(this);

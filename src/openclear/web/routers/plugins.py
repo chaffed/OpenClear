@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from openclear import plugins
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.services import audit_log_service, plugin_service
+from openclear.services import audit_log_service, change_request_service, plugin_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
 
@@ -41,6 +41,13 @@ async def set_choice(
 ) -> RedirectResponse:
     form = await request.form()
     config = {key.removeprefix("config_"): str(value) for key, value in form.items() if key.startswith("config_")}
+    if point == "matching_rules" and change_request_service.needs_approval(db, ctx.tenant_id):
+        # Changes to how items are judged need a second admin under segregation of duties.
+        change_request_service.request_change(db, ctx.tenant_id, kind="matching_rule.set",
+                                              summary=f"Turn {'on' if enabled else 'off'} the matching rule {name}",
+                                              payload={"name": name, "enabled": enabled, "config": config}, user_id=ctx.user_id)
+        db.commit()
+        return RedirectResponse("/ui/admin/plugins?flash=" + quote_plus("Waiting for a second admin to approve."), status_code=303)
     try:
         changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id, config=config)
     except ValueError as exc:

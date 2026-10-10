@@ -87,13 +87,31 @@ def shared_model_summary(
     return [SharedModelSummaryRead.model_validate(s, from_attributes=True) for s in tenant_ml_service.shared_model_summaries(db)]
 
 
-@router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead)
+@router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead, responses={202: {
+    "description": "Segregation of duties is enforced: the activation waits for a second admin (Admin → Changes)",
+    "content": {"application/json": {"example": {"status": "pending", "change_request_id": "…", "detail": "…"}}}}})
 def activate_ml_model(
     model_id: uuid.UUID,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("admin:manage")),
-) -> MlModelRead:
-    """Activates one of this organization's bank-only models (404 for any other model)."""
+):
+    """Activates one of this organization's bank-only models (404 for any other model). With
+    segregation of duties enforced, it answers `202` with `{"status": "pending",
+    "change_request_id"}` instead: a second admin approves it in Admin → Changes."""
+    from fastapi.responses import JSONResponse
+
+    from openclear.services import change_request_service
+
+    if change_request_service.needs_approval(db, ctx.tenant_id):
+        try:
+            change = change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id,
+                                                                     channel="api")
+        except change_request_service.ChangeRequestError:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Model not found") from None
+        db.commit()
+        return JSONResponse({"status": "pending", "change_request_id": str(change.id),
+                             "detail": "Segregation of duties is enforced: a second admin must approve this (Admin → Changes)."},
+                            status_code=status.HTTP_202_ACCEPTED)
     try:
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)
     except ValueError:

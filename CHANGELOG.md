@@ -1,5 +1,68 @@
 # Changelog
 
+## Unreleased
+
+### Segregation of duties (COMPLIANCE_PLAN.md C1)
+
+- **Conflicting duties.** Two rules apply to every bank:
+  - whoever submits items (paid items, issued items, ACH, check images) can't decide exceptions;
+  - whoever manages users can't also define what security groups grant.
+- **Per transaction.** The person who presented an item can't decide its exception, even after
+  moving to another group.
+- **Warn or enforce**, chosen in Settings → Segregation of duties.
+  - Every bank starts in **warn**: breaches are allowed and each one is logged as `sod.violation`.
+  - **Enforce** refuses a breach with `403` and `ERR_SOD_VIOLATION`, and still logs it. It can only
+    be turned on once no security group combines conflicting duties. The default Admin and
+    Bookkeeper groups do, so they need splitting first.
+- **Two-person changes** under enforce: turning a matching rule on or off, and activating an ML
+  model, wait in Admin → Changes for a second admin. Nobody can approve their own change.
+
+  The API's model activation follows the same rule: under enforce it answers `202` with a
+  pending change.
+
+### Model risk management (C2)
+
+- **Replay** (Admin → Model risk, `POST /api/v1/mrm/replay`) runs a past X9.37 or NACHA file
+  through today's rules in a dry run. It reports how they compare with what actually happened
+  to each item: agreement, false positives, missed returns, unhandled items, and the items
+  that differ.
+- **Anomaly capture** (`POST /api/v1/mrm/anomaly-capture`) checks that the live rules catch
+  synthetic fraud and refuse malformed files: a duplicate check, an altered amount, the wrong
+  account, an ACH debit over its limit or from an unknown originator. It can run daily
+  (`OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER`).
+- Both are dry runs: nothing they create is kept except the report.
+
+### Evidence export (C3)
+
+- `GET /api/v1/audit/export?start&end&format=json|pdf`, Admin → Controls → Export evidence,
+  and `openclear audit export` give a signed evidence bundle for a period. It covers: the
+  system version; rules, plugins and models with their digests; security groups; whether the
+  action log verifies; segregation-of-duties breaches; changes and approvals; every decision
+  with who made it; model-risk runs; and the control status.
+
+### Continuous control monitoring (C4)
+
+- **Admin → Controls**, `GET /api/v1/controls/status` and `openclear controls` show each
+  control's live status, PASS / WARN / FAIL, with evidence.
+- **Secrets in the database are now AES-256-GCM** (they were Fernet, AES-128), with key ids.
+  Existing values are re-encrypted at startup. Rotate the key by moving the old value to
+  `OPENCLEAR_SSO_ENCRYPTION_KEY_PREVIOUS` and setting a new `OPENCLEAR_SSO_ENCRYPTION_KEY`.
+- `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION` records how the host encrypts disks and the
+  database, which OpenClear can't see itself.
+
+### Compliance crosswalks (C5)
+
+- `docs/compliance/`: FFIEC IT Handbook, Nacha Operating Rules, SR 11-7 model risk, and
+  2023 interagency third-party risk guidance, with a due-diligence pack. They're also on
+  the docs site.
+
+### Upgrading
+
+- **Run `alembic upgrade head`.** It adds `tenant.sod_mode`, and the `change_request` and
+  `control_run` tables.
+- Stored secrets move to AES-256-GCM on the first start. To keep a rollback to 1.8.0
+  possible, back up the database first: 1.8.0 can't read the new format.
+
 ## 1.8.0 — 2026-10-09
 
 An integration release: cores, online banking providers and identity systems can now

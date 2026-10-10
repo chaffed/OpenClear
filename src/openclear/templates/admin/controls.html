@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Controls — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About controls{% endblock %}
+{% block help_body %}
+<p>Each control is checked live, from what this installation is actually doing, each time
+  this page opens. <strong>PASS</strong> means it holds, <strong>WARN</strong> that it needs
+  attention, <strong>FAIL</strong> that it doesn't hold.</p>
+<p>A control reports only what OpenClear can see. Disk and database encryption are your
+  host's job: verify them with your provider and have your operator record how they're done.</p>
+<p>The same results are at <code>GET /api/v1/controls/status</code> and in the evidence export.</p>
+<p><strong>Evidence export</strong> bundles, for a period, the system version, the rules and
+  models in force with their digests, security groups, whether the action log verifies,
+  segregation-of-duties breaches, changes and approvals, every decision with who made it,
+  model-risk tests and these controls. It's signed with this installation's key; the JSON
+  export carries the public key to check it with.</p>
+{% endblock %}
+{% block content %}
+{% set badge = {"PASS": "badge-ok", "WARN": "badge-warn", "FAIL": "badge-danger"} %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Controls</h1>
+    <span class="badge {{ badge[result.overall] }}">{{ result.overall }}</span>
+  </div>
+  <p>{{ result.counts.PASS }} pass, {{ result.counts.WARN }} need attention, {{ result.counts.FAIL }} fail.
+    Checked {{ result.checked_at[:16]|replace("T", " ") }} UTC.</p>
+  <table>
+    <thead><tr><th>Control</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+      {% for c in result.controls %}
+      <tr>
+        <td>{{ c.title }}</td>
+        <td><span class="badge {{ badge[c.status] }}">{{ c.status }}</span></td>
+        <td>{{ c.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h1>Export evidence</h1>
+  <form method="post" action="/ui/admin/controls/evidence">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="ev-start">From</label><input id="ev-start" type="date" name="start" required value="{{ default_start }}">
+    <label for="ev-end">To</label><input id="ev-end" type="date" name="end" required value="{{ default_end }}">
+    <label for="ev-format">Format</label>
+    <select id="ev-format" name="format"><option value="pdf">PDF</option><option value="json">JSON (signed, machine-readable)</option></select>
+    <button type="submit">{{ icon("download") }}Export</button>
+  </form>
+</div>
+{% endblock %}

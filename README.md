@@ -33,6 +33,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [Customers: segregating a tenant's own business clients](#customers-segregating-a-tenants-own-business-clients)
 - [Per-tenant branding](#per-tenant-branding)
 - [Immutable action log](#immutable-action-log)
+- [Compliance and control testing](#compliance-and-control-testing)
 - [Billing](#billing)
 - [Authentication](#authentication)
 - [Signing keys](#signing-keys)
@@ -595,6 +596,35 @@ right after the mutating service call succeeds and before that request's `db.com
 so the audit entry and the business change commit together atomically, and every route
 already has the actor/tenant/channel it needs without any shared service function having
 to take on a new required parameter.
+
+## Compliance and control testing
+
+For a bank's compliance staff, auditors and examiners (COMPLIANCE_PLAN.md;
+[docs/compliance](docs/compliance/README.md) maps these onto FFIEC, Nacha, SR 11-7 and
+third-party risk guidance):
+
+- **Segregation of duties** (Settings → Segregation of duties). Whoever submits items can't
+  decide them, and whoever manages users can't define what groups grant. This is checked on
+  groups and per item: the person who presented an item can't decide it.
+  - In *warn* mode (where every bank starts) a breach is allowed and logged.
+  - In *enforce* mode it's refused with `ERR_SOD_VIOLATION`.
+  - Under enforce, turning a matching rule on or off and activating a model wait for a second
+    admin (Admin → Changes).
+- **Model risk** (Admin → Model risk):
+  - *replay* runs a past X9.37 or NACHA file through today's rules and compares the result
+    with what happened;
+  - *anomaly capture* checks that synthetic fraud is caught.
+
+  Both are dry runs, rolled back. Turn on the daily anomaly capture with
+  `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true`.
+- **Controls** (Admin → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
+  control's live PASS / WARN / FAIL with its evidence. Record how the host encrypts disks and
+  the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`.
+- **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
+  PDF bundle for a period.
+- **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to
+  `OPENCLEAR_SSO_ENCRYPTION_KEY_PREVIOUS`, set a new `OPENCLEAR_SSO_ENCRYPTION_KEY` and
+  restart: stored values are re-encrypted at startup.
 
 ## Billing
 

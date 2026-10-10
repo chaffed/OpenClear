@@ -80,3 +80,20 @@ def test_webhooks_tail_verifies_and_prints():
     server.shutdown()
     [line] = out.getvalue().splitlines()
     assert json.loads(line)["type"] == "exception.created" and json.loads(line)["id"] == "msg_1"
+
+
+def test_audit_export_and_controls(client, db_session, tenant_factory, monkeypatch, tmp_path):
+    from datetime import datetime, timezone
+
+    from openclear.services import evidence_service
+
+    tenant, _account, _users = tenant_factory.make(slug="cli-evidence")
+    _creds(db_session, tenant, monkeypatch)
+    today = datetime.now(timezone.utc).date().isoformat()
+    target = tmp_path / "evidence.json"
+    code, _out = _run(client, "audit", "export", "--start", today, "--end", today, "-o", str(target))
+    signed = json.loads(target.read_bytes())
+    assert code == 0 and signed["bundle"]["bank"]["slug"] == "cli-evidence" and evidence_service.verify(signed)
+
+    code, out = _run(client, "controls")
+    assert code == 0 and "Action log intact" in out and out.strip().endswith(("PASS", "WARN"))

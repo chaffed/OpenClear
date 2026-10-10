@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from openclear.auth.permissions import PERMISSION_CATALOG
+from openclear.auth import sod
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.security_group import SecurityGroup
@@ -38,14 +39,27 @@ def list_security_groups(
     )
 
 
-def _form_with_error(request: Request, ctx: TenantContext, group, name: str, permissions: list[str]) -> HTMLResponse:
+def _form_with_error(request: Request, ctx: TenantContext, group, name: str, permissions: list[str], error: str | None = None,
+                     status_code: int = 400) -> HTMLResponse:
     """Re-shows the form with what was typed when the name is already taken (the
-    database's uniqueness constraint on (tenant, name))."""
+    database's uniqueness constraint on (tenant, name)), or the group breaks segregation of
+    duties (auth/sod.py)."""
     return render_template(
         request, "security_groups/form.html", ctx=ctx, catalog=PERMISSION_CATALOG, group=group,
-        selected=set(permissions), typed_name=name, status_code=400,
-        error="A security group with that name already exists. Choose a different name.",
+        selected=set(permissions), typed_name=name, status_code=status_code,
+        error=error or "A security group with that name already exists. Choose a different name.",
     )
+
+
+def _sod_refusal(request: Request, db: Session, ctx: TenantContext, group, name: str, permissions: list[str]) -> HTMLResponse | None:
+    """Segregation of duties: refused in enforce mode (and logged); allowed with a logged
+    warning in warn mode."""
+    try:
+        sod.check_group(db, ctx.tenant_id, ctx.user_id, permissions, group_name=name)
+    except sod.SodViolation as exc:
+        return _form_with_error(request, ctx, group, name, permissions, status_code=403,
+                                error=f"{exc.violation.message}. Segregation of duties is enforced for this organization.")
+    return None
 
 
 @router.get("/new")
@@ -66,6 +80,8 @@ def create_security_group(
     ctx: TenantContext = Depends(require_web_permission("security_group:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    if refused := _sod_refusal(request, db, ctx, None, name, permissions):
+        return refused
     try:
         group = security_group_service.create_security_group(
             db, ctx.tenant_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions)
@@ -112,6 +128,8 @@ def update_security_group(
     ctx: TenantContext = Depends(require_web_permission("security_group:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    if refused := _sod_refusal(request, db, ctx, security_group_service.get_security_group(db, ctx.tenant_id, group_id), name, permissions):
+        return refused
     try:
         group = security_group_service.update_security_group(
             db, ctx.tenant_id, group_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions)

@@ -13,6 +13,7 @@ os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
 # Background jobs run right after whatever queued them (workers/jobs.py), so a test sees
 # a job's effect as soon as its request returns.
 os.environ.setdefault("OPENCLEAR_WORKER_MODE", "inline")
+os.environ.setdefault("OPENCLEAR_REENCRYPT_SECRETS_AT_STARTUP", "false")  # tests call reencrypt_all themselves
 
 import uuid
 from collections.abc import Generator

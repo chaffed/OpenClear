@@ -323,3 +323,25 @@ def test_audit_sequence_migration_numbers_entries_by_chain_links_not_timestamps(
     order = [row[0] for row in conn.execute("SELECT summary FROM audit_log_entry ORDER BY sequence")]
     conn.close()
     assert order == ["first", "second", "third"]
+
+
+def test_downgrading_past_aes_gcm_leaves_secrets_readable(scratch_db):
+    """1.9 stores secrets as AES-256-GCM (auth/crypto.py); 1.8.0 reads only Fernet, so the
+    downgrade converts them back."""
+    from openclear.auth import crypto
+
+    command.upgrade(_alembic_config(), "head")
+    conn = _connect(scratch_db)
+    tenant_id, endpoint_id = uuid.uuid4().hex, uuid.uuid4().hex
+    conn.execute("INSERT INTO tenant (id, name, slug, require_dual_control, stale_date_threshold_days, is_active, is_demo, sod_mode) "
+                 "VALUES (?, 'Bank', 'bank', 0, 180, 1, 0, 'warn')", (tenant_id,))
+    conn.execute("INSERT INTO webhook_endpoint (id, tenant_id, url, event_types, secret_encrypted, is_active) VALUES (?, ?, ?, '[]', ?, 1)",
+                 (endpoint_id, tenant_id, "https://hooks.example.com", crypto.encrypt_secret("whsec_test")))
+    conn.commit()
+    conn.close()
+
+    command.downgrade(_alembic_config(), "e6a8c0e2a4c7")  # 1.8.0
+    conn = _connect(scratch_db)
+    [value] = conn.execute("SELECT secret_encrypted FROM webhook_endpoint").fetchone()
+    conn.close()
+    assert not value.startswith("v2:") and crypto._fernet(get_settings().sso_encryption_key).decrypt(value.encode()) == b"whsec_test"

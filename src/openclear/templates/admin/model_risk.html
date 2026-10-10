@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Model risk — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About model risk tests{% endblock %}
+{% block help_body %}
+<p><strong>Replay</strong> runs a past X9.37 cash letter or NACHA file through today's rules and
+  compares each item with what happened to it then. Use it before and after changing a rule,
+  to see what the change would have done.</p>
+<p><strong>Anomaly capture</strong> presents synthetic items with known fraud (a duplicate
+  check, an altered amount, the wrong account, an ACH debit over its limit or from an unknown
+  originator, malformed files) and checks every one is caught, and that clean items aren't.</p>
+<p>Both are dry runs. The real rules run, with your settings and plugins, and then everything
+  is rolled back: no items, exceptions, notifications or webhooks are kept, only the report.
+  Each run is in the action log.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Model risk</h1>
+  <form method="post" action="/ui/admin/model-risk/replay" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="replay-file">Replay a past file (X9.37 or NACHA)</label>
+    <input id="replay-file" type="file" name="file" required>
+    <button type="submit">{{ icon("history") }}Replay</button>
+  </form>
+  <form method="post" action="/ui/admin/model-risk/anomaly-capture">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p>
+      {% if latest_capture %}
+      Last anomaly capture: <strong>{{ "Passed" if latest_capture.passed else "Failed" }}</strong>,
+      {{ latest_capture.started_at.strftime("%Y-%m-%d %H:%M") if latest_capture.started_at else "" }}.
+      {% else %}Anomaly capture hasn't run yet.{% endif %}
+    </p>
+    <button type="submit" class="secondary">{{ icon("checklist") }}Run anomaly capture now</button>
+  </form>
+</div>
+
+{% if shown %}
+<div class="card">
+  <h1>{{ "Replay" if shown.kind == "mrm_replay" else "Anomaly capture" }}</h1>
+  <p>{{ shown.summary }}</p>
+  {% set r = shown.report %}
+  {% if shown.kind == "mrm_replay" %}
+  <table>
+    <tbody>
+      <tr><th>Items</th><td>{{ r["items"] }} ({{ r["compared_with_history"] }} found in history)</td></tr>
+      <tr><th>Agree with history</th><td>{{ "%.1f%%"|format(r["match_rate"] * 100) if r["match_rate"] is not none else "—" }}</td></tr>
+      <tr><th>False positives (flagged, but paid)</th><td>{{ "%.1f%%"|format(r["false_positive_rate"] * 100) if r["false_positive_rate"] is not none else "—" }}</td></tr>
+      <tr><th>Missed returns (not flagged, but returned)</th><td>{{ "%.1f%%"|format(r["missed_return_rate"] * 100) if r["missed_return_rate"] is not none else "—" }}</td></tr>
+      <tr><th>Couldn't be handled</th><td>{{ "%.1f%%"|format(r["unhandled_rate"] * 100) if r["unhandled_rate"] is not none else "—" }}</td></tr>
+    </tbody>
+  </table>
+  {% for key, title in [("newly_flagged", "Flagged now, not then"), ("no_longer_flagged", "Flagged then, not now"),
+                        ("missed_returns", "Missed returns"), ("unhandled", "Couldn't be handled")] %}
+  {% if r["variances"][key] %}
+  <h2>{{ title }}</h2>
+  <ul>{% for v in r["variances"][key] %}<li>{{ v["item"] }}{% if v["exception_types"] %}: {{ v["exception_types"]|join(", ") }}{% endif %}{% if v.get("error") %} ({{ v["error"] }}){% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endfor %}
+  {% for note in r.get("notes", []) %}<p class="muted">{{ note }}</p>{% endfor %}
+  {% else %}
+  <table>
+    <thead><tr><th>Probe</th><th>Expected</th><th>Got</th><th></th></tr></thead>
+    <tbody>
+      {% for p in r["probes"] %}
+      <tr><td>{{ p["title"] }}</td><td>{{ p["expected"] }}</td><td>{{ p["got"] }}</td>
+        <td>{{ icon("check_circle") if p["caught"] else icon("block") }}{{ "Caught" if p["caught"] else "Missed" }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h1>Recent runs</h1>
+  {% if runs %}
+  <table>
+    <thead><tr><th>When</th><th>Test</th><th>Result</th><th></th></tr></thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.started_at.strftime("%Y-%m-%d %H:%M") if run.started_at else "" }}</td>
+        <td>{{ "Replay" if run.kind == "mrm_replay" else "Anomaly capture" }}{% if not run.requested_by_user_id %} (daily){% endif %}</td>
+        <td>{{ run.summary }}</td>
+        <td><a href="/ui/admin/model-risk?run={{ run.id }}">Report</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No runs yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

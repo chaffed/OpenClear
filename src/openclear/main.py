@@ -23,6 +23,7 @@ from openclear.web.deps import (
     WebPasswordChangeRequired,
     render_template,
 )
+from openclear.auth.sod import SodViolation
 from openclear.web import rate_limit
 from openclear.web.router import web_router
 from openclear.web.security_headers import apply_security_headers, new_csp_nonce
@@ -47,6 +48,23 @@ async def _lifespan(app: FastAPI):
         from openclear.workers.scheduler import start_scheduler, stop_scheduler
 
         scheduler = start_scheduler()
+
+    if settings.reencrypt_secrets_at_startup:
+        # Stored secrets still under Fernet or a rotated-out key move to AES-256-GCM under the
+        # current key (auth/crypto.py). Best-effort, like the demo seeding below.
+        from openclear.auth.crypto import reencrypt_all
+        from openclear.db.session import get_session_factory
+
+        session = get_session_factory()()
+        try:
+            if changed := reencrypt_all(session):
+                logger.info("Re-encrypted %d stored secrets under the current key", changed)
+            session.commit()
+        except Exception:  # noqa: BLE001 -- never stops the app starting
+            session.rollback()
+            logger.exception("Couldn't re-encrypt stored secrets at startup")
+        finally:
+            session.close()
 
     if settings.demo_tenant_enabled:
         # Idempotent -- a safe no-op on every restart after the first. Best-effort: a
@@ -194,6 +212,17 @@ def create_app() -> FastAPI:
     @app.exception_handler(WebPasswordChangeRequired)
     def _handle_web_password_change_required(request: Request, exc: WebPasswordChangeRequired) -> RedirectResponse:
         return RedirectResponse(f"{PASSWORD_CHANGE_PATH}?required=1", status_code=status.HTTP_303_SEE_OTHER)
+
+    @app.exception_handler(SodViolation)
+    def _handle_sod_violation(request: Request, exc: SodViolation):
+        # Segregation of duties, enforce mode (auth/sod.py): already logged by the time this runs.
+        if request.url.path.startswith("/api/"):
+            return JSONResponse({"detail": exc.body()}, status_code=status.HTTP_403_FORBIDDEN)
+        return render_template(
+            request, "error.html", status_code=status.HTTP_403_FORBIDDEN, status_code_display=403,
+            message=f"{exc.violation.message}. Segregation of duties is enforced for this organization; someone else must do this.",
+            title="Not allowed: segregation of duties", show_back_link=True,
+        )
 
     @app.exception_handler(WebForbidden)
     def _handle_web_forbidden(request: Request, exc: WebForbidden):

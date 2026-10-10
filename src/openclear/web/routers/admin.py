@@ -19,6 +19,7 @@ from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 from openclear.domain.ml_model import MlModel
 from openclear.domain.tenant import MlModelSource, Tenant
 from openclear.ml.registry import activate_model
+from openclear.services import change_request_service
 from openclear.ml.train import InsufficientTrainingData, RetrainCooldownActive, train_model
 from openclear.networks.registry import registered_codes
 from openclear.services import (
@@ -164,6 +165,14 @@ def activate(
     ctx: TenantContext = Depends(require_web_permission("admin:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    if change_request_service.needs_approval(db, ctx.tenant_id):
+        try:
+            change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id)
+        except change_request_service.ChangeRequestError:
+            db.rollback()
+            return RedirectResponse("/ui/admin?error=" + quote("That model couldn't be found."), status_code=303)
+        db.commit()
+        return RedirectResponse("/ui/admin?flash=" + quote("Waiting for a second admin to approve (Admin → Changes awaiting approval)."), status_code=303)
     try:
         # Confined to this bank's own bank-only models (ml/registry.py::activate_model).
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)
@@ -282,6 +291,14 @@ def activate_customer_model(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    if change_request_service.needs_approval(db, ctx.tenant_id):
+        try:
+            change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=customer_id, user_id=ctx.user_id)
+        except change_request_service.ChangeRequestError as exc:
+            db.rollback()
+            return RedirectResponse(f"/ui/admin/customers/{customer_id}/ml?error={quote(str(exc))}", status_code=303)
+        db.commit()
+        return RedirectResponse(f"/ui/admin/customers/{customer_id}/ml?flash=" + quote("Waiting for a second admin to approve."), status_code=303)
     try:
         activate_model(db, model_id, expected_customer_id=customer_id)
     except ValueError as exc:

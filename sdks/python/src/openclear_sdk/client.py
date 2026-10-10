@@ -80,9 +80,11 @@ class OpenClear(Transport):
     ach_transactions: g.AchTransactionsApi
     admin: g.AdminApi
     api_clients: g.ApiClientsApi
+    audit: g.AuditApi
     billing: g.BillingApi
     bulk_uploads: g.BulkUploadsApi
     check_images: g.CheckImagesApi
+    controls: g.ControlsApi
     customers: g.CustomersApi
     decision_batches: g.DecisionBatchesApi
     decision_feed: DecisionFeedApi
@@ -92,6 +94,7 @@ class OpenClear(Transport):
     exceptions: g.ExceptionsApi
     fraud_training: g.FraudTrainingApi
     issued_items: g.IssuedItemsApi
+    model_risk: g.ModelRiskApi
     paid_items: g.PaidItemsApi
     platform_billing: g.PlatformBillingApi
     platform_jobs: g.PlatformJobsApi
