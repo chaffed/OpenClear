@@ -38,8 +38,17 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="needs Node 22.18+ (runs Ty
 
 
 @pytest.fixture
-def server(app):
+def server(app, monkeypatch):
     import uvicorn
+
+    # The suite's in-memory SQLite is one shared connection. With a real server in a thread,
+    # a security event written in its own transaction (services/security_events.emit_detached,
+    # e.g. a refused token) would commit on that same connection in the middle of a request's
+    # transaction. In production each session has its own connection. Events aren't what this
+    # test is about, so those writes are skipped here.
+    from openclear.services import security_events
+
+    monkeypatch.setattr(security_events, "emit_detached", lambda *a, **k: None)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning", lifespan="off")
     srv = uvicorn.Server(config)
