@@ -36,6 +36,7 @@ PAGES = [
     ("settings", "/ui/settings", True),
     ("controls", "/ui/admin/controls", True),
     ("action_log", "/ui/audit-log", True),
+    ("not_found", "/ui/no-such-page", True),
 ]
 
 

@@ -220,12 +220,21 @@ def set_csrf_cookie_if_new(request: Request, response: Response, token: str) -> 
     )
 
 
-def verify_csrf(request: Request, csrf_token: str = Form(...)) -> None:
+class CsrfFailed(HTTPException):
+    """The form's security token is missing or doesn't match: almost always a form left open
+    so long that its token expired, or a page opened before signing in again. main.py shows
+    a page that says so."""
+
+    def __init__(self) -> None:
+        super().__init__(status.HTTP_403_FORBIDDEN, "Invalid or missing CSRF token")
+
+
+def verify_csrf(request: Request, csrf_token: str = Form("")) -> None:
     """Dependency for classic HTML-form /ui/* POST routes. Compares the submitted hidden
     field against the cookie value using a constant-time comparison."""
     cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
-    if not cookie_value or not secrets.compare_digest(cookie_value, csrf_token):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Invalid or missing CSRF token")
+    if not cookie_value or not csrf_token or not secrets.compare_digest(cookie_value, csrf_token):
+        raise CsrfFailed()
 
 
 def verify_csrf_header(request: Request) -> None:
@@ -235,7 +244,7 @@ def verify_csrf_header(request: Request) -> None:
     cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
     header_value = request.headers.get(CSRF_HEADER_NAME)
     if not cookie_value or not header_value or not secrets.compare_digest(cookie_value, header_value):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Invalid or missing CSRF token")
+        raise CsrfFailed()
 
 
 def safe_next_path(path: str | None, *, default: str = "/ui/") -> str:

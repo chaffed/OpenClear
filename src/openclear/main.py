@@ -34,6 +34,54 @@ logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("openclear.access")
 
 
+_API_PREFIXES = ("/api/", "/scim/")
+_STATIC_ERRORS_DIR = Path(__file__).parent / "static" / "errors"
+
+# What a person sees for each error on a web page (templates/error.html). The API gets JSON.
+_WEB_ERRORS = {
+    400: ("That request couldn't be used", "Something in it wasn't valid. Go back, check what you entered, and try again."),
+    401: ("Please sign in", "Sign in to see this page."),
+    403: ("You don't have access to this", "Your account can't open this page. If you need it, ask an administrator."),
+    404: ("Page not found", "There's no page at this address. It may have moved, or the link may be mistyped."),
+    405: ("That link only works from a button", "This address is for a form or button, not for opening directly. Go back and use the "
+                                                "button on the page."),
+    413: ("That file is too large", "Files can be up to {limit}. Split it into smaller files, or compress it, and try again."),
+    422: ("Part of that address or form wasn't valid", "Go back and try again. If you followed a link, it may be incomplete."),
+    429: ("Too many requests", "You've made a lot of requests in a short time. Wait a minute, then try again."),
+}
+
+
+def _wants_json(request: Request) -> bool:
+    return request.url.path.startswith(_API_PREFIXES)
+
+
+def _web_error(request: Request, code: int, *, title: str | None = None, message: str | None = None,
+               headers: dict | None = None, show_search: bool = False):
+    """The branded error page (templates/error.html) for a web path."""
+    default_title, default_message = _WEB_ERRORS.get(code, ("Something went wrong", "Go back and try again."))
+    response = render_template(
+        request, "error.html", status_code=code, status_code_display=code, title=title or default_title,
+        message=message or default_message, show_back_link=True, show_search=show_search,
+    )
+    for key, value in (headers or {}).items():
+        response.headers[key] = value
+    return response
+
+
+def _unavailable(request: Request, retry_after: int = 30):
+    """503: the database can't be reached (or the app is starting or migrating). The page is
+    static/errors/503.html, which needs nothing from the database to show."""
+    headers = {"Retry-After": str(retry_after), "Cache-Control": "no-store"}
+    if _wants_json(request):
+        return JSONResponse({"detail": "Temporarily unavailable; try again shortly",
+                             "request_id": getattr(request.state, "request_id", None)},
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=headers)
+    from fastapi.responses import HTMLResponse
+
+    return HTMLResponse((_STATIC_ERRORS_DIR / "503.html").read_text(), status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        headers=headers)
+
+
 def _static_cache_control(request: Request) -> str:
     """A versioned asset (`?v=` matching the file, web/templates.py::asset_version) never
     changes, so browsers and edges may keep it for a year; anything else, five minutes."""
@@ -166,10 +214,11 @@ def create_app() -> FastAPI:
                 declared_size = None
             limit = get_settings().max_request_body_bytes
             if declared_size is not None and declared_size > limit:
-                if request.url.path.startswith(("/api/", "/scim/")):
+                if request.url.path.startswith(_API_PREFIXES):
                     return JSONResponse({"detail": f"Request body too large (at most {limit} bytes)"},
                                         status_code=status.HTTP_413_CONTENT_TOO_LARGE)
-                return PlainTextResponse("Request body too large", status_code=status.HTTP_413_CONTENT_TOO_LARGE)
+                size = f"{limit // (1024 * 1024)} MB" if limit >= 1024 * 1024 else f"{limit:,} bytes"
+                return _web_error(request, 413, message=_WEB_ERRORS[413][1].format(limit=size))
         return await call_next(request)
 
     @app.middleware("http")
@@ -191,7 +240,13 @@ def create_app() -> FastAPI:
 
             security_events.emit_detached("rate_limit.exceeded", sampled_key=key, outcome="failure", reason="global",
                                           details={"limit_per_minute": limit, "keyed_by": "principal" if principal else "ip"})
-            return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+            if request.url.path.startswith(_API_PREFIXES):
+                return JSONResponse({"detail": "Too many requests; try again in a minute"},
+                                    status_code=status.HTTP_429_TOO_MANY_REQUESTS, headers={"Retry-After": "60"})
+            if request.url.path.startswith("/static/") or request.url.path == "/health":
+                return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                                         headers={"Retry-After": "60"})
+            return _web_error(request, 429, headers={"Retry-After": "60"})
         return await call_next(request)
 
     @app.middleware("http")
@@ -255,6 +310,43 @@ def create_app() -> FastAPI:
         name="docs_screenshots",
     )
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+    from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+    from fastapi.exceptions import RequestValidationError
+    from sqlalchemy.exc import InterfaceError, OperationalError
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    from openclear.web.security import CsrfFailed
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _handle_http_error(request: Request, exc: StarletteHTTPException):
+        # Every HTTP error raised for a web page (an unknown address, a method a page doesn't
+        # take, a refusal) gets the branded page; the API and static files keep their usual
+        # answers.
+        if _wants_json(request) or request.url.path.startswith("/static/"):
+            return await http_exception_handler(request, exc)
+        if isinstance(exc, CsrfFailed):
+            return _web_error(
+                request, 403, title="This form expired",
+                message="It was open long enough that its security check ran out, or you signed in again in another tab. "
+                        "Nothing was saved. Reload the page, then enter it again.",
+            )
+        return _web_error(request, exc.status_code, headers=getattr(exc, "headers", None) or None,
+                          show_search=exc.status_code == 404)
+
+    @app.exception_handler(RequestValidationError)
+    async def _handle_validation_error(request: Request, exc: RequestValidationError):
+        if _wants_json(request):
+            return await request_validation_exception_handler(request, exc)
+        return _web_error(request, 422)
+
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(InterfaceError)
+    def _handle_database_unavailable(request: Request, exc: Exception):
+        # The database can't be reached, or is locked or being migrated: temporary, so 503
+        # with Retry-After rather than a 500. get_db's cleanup rolls back.
+        logger.error("Database unavailable on %s %s: %s", request.method, request.url.path, exc)
+        return _unavailable(request)
 
     @app.exception_handler(WebAuthRequired)
     def _handle_web_auth_required(request: Request, exc: WebAuthRequired) -> RedirectResponse:
@@ -375,8 +467,23 @@ def create_app() -> FastAPI:
             response.headers["X-Request-ID"] = request.state.request_id
         return response
 
+    from fastapi import Depends
+    from sqlalchemy.orm import Session
+
+    from openclear.db.session import get_db
+
     @app.get("/health")
-    def health() -> dict[str, str]:
+    def health(db: Session = Depends(get_db)):
+        """For load balancers and uptime checks: "ok" only when the database answers, so a
+        load balancer stops sending traffic to an instance that can't reach it."""
+        from sqlalchemy import text
+
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception:  # noqa: BLE001 -- any failure means not ready
+            logger.exception("Health check: the database didn't answer")
+            return JSONResponse({"status": "unavailable", "database": "unreachable"}, status_code=503,
+                                headers={"Retry-After": "30", "Cache-Control": "no-store"})
         return {"status": "ok"}
 
     return app

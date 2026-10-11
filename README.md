@@ -827,6 +827,21 @@ and in security events, so a WAF block or an error can be matched to the request
 - an evidence export longer than `OPENCLEAR_LONG_REQUEST_SYNC_DAYS` (32);
 - verifying the action log.
 
+**Error pages.** Every error on a web page gets OpenClear's own page, with a message that
+fits it, a way back and a reference to quote to support: 404, 405, an expired form (403),
+a broken address (422), a file over the size limit (413), too many requests (429, with
+`Retry-After`). The API answers JSON for all of them. When the database can't be reached,
+OpenClear answers **503** with `Retry-After`, and `/health` answers 503 too, so a load
+balancer stops sending it traffic.
+
+When OpenClear can't answer at all (restarting, overloaded), whatever is in front of it
+shows its own page. `src/openclear/static/errors/` has self-contained 502, 503 and 504 pages
+for it to show instead: no scripts or other files, so they work from anywhere. They're
+also served at `/static/errors/503.html`, and so on.
+- **Cloudflare:** custom error pages.
+- **Akamai:** a failover page.
+- **nginx:** `error_page 502 503 504`.
+
 WAF_PLAN.md has the rest of the plan for running behind an edge.
 
 ## Docker

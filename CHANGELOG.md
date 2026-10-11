@@ -68,6 +68,22 @@
   The Controls page shows the latest result and its age, instead of walking the whole log
   on every view.
 
+### Error pages
+
+- **Branded pages for every error on a web page.** Each has a message that fits it, a way
+  back and a reference to quote to support. They replace raw JSON or plain text for:
+  - an unknown address (404, with search);
+  - a method a page doesn't take (405);
+  - an expired form (403, "This form expired… reload the page");
+  - a broken address or form (422);
+  - a file over the size limit (413, stating the limit);
+  - too many requests (429, with `Retry-After`).
+- **The API answers JSON for all of them.** 413 and 429 were plain text.
+- **A database that can't be reached is a 503 with `Retry-After`**, not a 500. `/health`
+  checks the database and answers 503 when it doesn't answer.
+- **Self-contained 502, 503 and 504 pages** (`static/errors/`) for a load balancer or edge
+  to show when OpenClear can't answer at all.
+
 ### Upgrading
 
 - **Run `alembic upgrade head`.** It adds the `security_event` table.
