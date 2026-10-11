@@ -38,17 +38,36 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="needs Node 22.18+ (runs Ty
 
 
 @pytest.fixture
-def server(app, monkeypatch):
+def engine(engine, tmp_path):
+    """A real server handles each request on its own thread, and the SDK's requests can
+    overlap. The suite's in-memory SQLite is a single shared connection, which overlapping
+    transactions break ("cannot commit - no transaction is active"). So here it's a SQLite
+    file with an ordinary connection pool, as in production: each thread its own connection.
+    Postgres runs already pool connections."""
+    if engine.dialect.name != "sqlite":
+        yield engine
+        return
+    from sqlalchemy import create_engine, event
+
+    from openclear.db.base import Base
+    from tests.conftest import _seed_payment_networks
+
+    pooled = create_engine(f"sqlite:///{tmp_path / 'sdk.db'}", connect_args={"check_same_thread": False, "timeout": 30})
+
+    @event.listens_for(pooled, "connect")
+    def _fk_pragma(dbapi_connection, _):
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+        dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+    Base.metadata.create_all(pooled)
+    _seed_payment_networks(pooled)
+    yield pooled
+    pooled.dispose()
+
+
+@pytest.fixture
+def server(app):
     import uvicorn
-
-    # The suite's in-memory SQLite is one shared connection. With a real server in a thread,
-    # a security event written in its own transaction (services/security_events.emit_detached,
-    # e.g. a refused token) would commit on that same connection in the middle of a request's
-    # transaction. In production each session has its own connection. Events aren't what this
-    # test is about, so those writes are skipped here.
-    from openclear.services import security_events
-
-    monkeypatch.setattr(security_events, "emit_detached", lambda *a, **k: None)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning", lifespan="off")
     srv = uvicorn.Server(config)
