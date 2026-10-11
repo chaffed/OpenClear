@@ -61,6 +61,7 @@ pdf = ["weasyprint>=62"]
 dev = [
   "pytest>=8.2",
   "pytest-cov>=5.0",
+  "pytest-xdist>=3.6",  # tests in parallel: pytest -n auto (tests/conftest.py gives each worker its own Postgres database)
   "factory-boy>=3.3",
   # scripts/generate_screenshots.py only — also needs `playwright install chromium`
   # once, to fetch the browser binary itself (not a pip package).

@@ -40,7 +40,7 @@ jobs:
         run: pip install -e ".[dev,pdf]"
 
       - name: Run tests
-        run: pytest
+        run: pytest -n auto
 
   test-postgres:
     # The same suite against a real Postgres (tests/conftest.py's OPENCLEAR_TEST_DATABASE_URL):
@@ -83,4 +83,4 @@ jobs:
         run: pip install -e ".[dev,pdf,postgres]"
 
       - name: Run tests against Postgres
-        run: pytest
+        run: pytest -n auto

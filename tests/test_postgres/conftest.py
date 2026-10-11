@@ -20,6 +20,9 @@ _APP_ROLE = "openclear_rls_app"
 @pytest.fixture
 def app_engine(engine):
     with engine.begin() as conn:
+        # Roles belong to the whole server: parallel workers (each with its own database)
+        # take turns creating it.
+        conn.execute(text("SELECT pg_advisory_xact_lock(7300199)"))
         conn.execute(text(
             f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{_APP_ROLE}') THEN "
             f"CREATE ROLE {_APP_ROLE} LOGIN PASSWORD '{_APP_ROLE}' NOSUPERUSER NOBYPASSRLS; END IF; END $$"

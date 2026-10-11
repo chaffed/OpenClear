@@ -79,7 +79,31 @@ def _reset_rate_limiter():
 # to run the suite against Postgres instead of in-memory SQLite. The database is WIPED:
 # its public schema is dropped and rebuilt with `alembic upgrade head` once per run, so the
 # migrations themselves are what's under test, and every test starts from empty tables.
-TEST_DATABASE_URL = os.environ.get("OPENCLEAR_TEST_DATABASE_URL") or os.environ.get("POSPAY_TEST_DATABASE_URL")  # the pre-1.6 name
+_BASE_TEST_DATABASE_URL = os.environ.get("OPENCLEAR_TEST_DATABASE_URL") or os.environ.get("POSPAY_TEST_DATABASE_URL")  # the pre-1.6 name
+
+
+def _per_worker(url: str | None) -> str | None:
+    """Run in parallel (pytest -n, pytest-xdist), each worker gets its own Postgres database,
+    `<name>_gw0`, `<name>_gw1` and so on, created on first use, since each run wipes and
+    rebuilds the schema of the database it uses."""
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if not url or not worker:
+        return url
+    from sqlalchemy.engine import make_url
+
+    base = make_url(url)
+    name = f"{base.database}_{worker}"
+    admin = create_engine(base.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as conn:
+            if not conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": name}).scalar():
+                conn.execute(text(f'CREATE DATABASE "{name}"'))
+    finally:
+        admin.dispose()
+    return base.set(database=name).render_as_string(hide_password=False)
+
+
+TEST_DATABASE_URL = _per_worker(_BASE_TEST_DATABASE_URL)
 
 
 def _seed_payment_networks(engine) -> None:
