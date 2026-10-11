@@ -6,30 +6,40 @@
   {%- elif kind == "date" and v is not string -%}{{ v.strftime("%Y-%m-%d") }}
   {%- else -%}{{ v }}{%- endif -%}
 {%- endmacro %}
-{% macro outcome_select(item, preselect) %}
-  <label>Outcome
-    <select name="outcome" required data-outcome-select>
-      <option value="" {{ "selected" if not preselect else "" }}>— Choose —</option>
-      <option value="pay" {{ "selected" if preselect == "pay" else "" }}>Pay</option>
-      <option value="return" {{ "selected" if preselect == "return" else "" }}>Return</option>
-    </select>
-  </label>
-{% endmacro %}
-{% macro reason_fields(item, ach_return_reasons, recommended_ach_return_reason_id) %}
-  {% if item.network_code == "ach" %}
-  <label data-show-for-outcome="return">Return reason
-    <select name="ach_return_reason_id">
-      <option value="">— Choose a return reason —</option>
-      {% for reason in ach_return_reasons %}
-      <option value="{{ reason.id }}" {{ "selected" if reason.id == recommended_ach_return_reason_id else "" }}>{{ reason.reason_text }}{% if reason.transaction_code %} (trancode {{ reason.transaction_code }}){% endif %}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label data-show-for-outcome="pay">Reason for paying <input type="text" name="reason_code" value="{{ item.recommended_reason_code or '' }}"></label>
-  {% else %}
-  <label>Reason <input type="text" name="reason_code" value="{{ item.recommended_reason_code or '' }}" required></label>
-  {% endif %}
-  <label>Notes <input type="text" name="notes" value="{{ item.recommended_notes or '' }}"></label>
+{# The decision panel (UX_PLAN.md U4): Pay and Return as two buttons. Pay needs no reason;
+   Return opens the bank's list of reasons for this kind of item. `mode` is decide,
+   recommend or approve (approving a recommendation, where the recommended choice is marked). #}
+{% macro decision_panel(item, action, mode, return_reasons, preselect_reason, pay_confirm) %}
+{% set recommended = item.recommended_outcome if mode == "approve" else None %}
+<div class="decision-panel" data-decision-panel>
+  <form method="post" action="{{ action }}" class="decision-pay"{% if pay_confirm %} data-confirm="{{ pay_confirm }}" data-confirm-title="Pay a high-risk item?" data-confirm-yes="Pay it"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="outcome" value="pay">
+    <button type="submit" class="button-pay" data-key="p">{{ icon("check_circle") }}{{ "Recommend paying" if mode == "recommend" else "Pay" }}{% if recommended == "pay" %} <span class="recommended-tag">recommended</span>{% endif %}</button>
+    <details class="decision-note"><summary>Add a note</summary>
+      <label>Note (optional) <input type="text" name="notes" maxlength="500"></label>
+    </details>
+  </form>
+  <details class="decision-return"{% if recommended == "return" %} open{% endif %}>
+    <summary class="button button-return" data-key="r">{{ icon("block") }}{{ "Recommend returning" if mode == "recommend" else "Return" }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</summary>
+    <form method="post" action="{{ action }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="outcome" value="return">
+      {% if return_reasons %}
+      <fieldset class="reason-list">
+        <legend>Why is it being returned?</legend>
+        {% for reason in return_reasons %}
+        <label><input type="radio" name="return_reason_id" value="{{ reason.id }}" required {{ "checked" if reason.id == preselect_reason else "" }}> {{ reason.reason_text }}</label>
+        {% endfor %}
+      </fieldset>
+      {% else %}
+      <label>Why is it being returned? <input type="text" name="reason_code" required maxlength="64" value="{{ item.recommended_reason_code or '' if recommended == 'return' else '' }}"></label>
+      {% endif %}
+      <label>Note (optional) <input type="text" name="notes" maxlength="500" value="{{ item.recommended_notes or '' if recommended == 'return' else '' }}"></label>
+      <button type="submit" class="button-return">{{ "Recommend returning it" if mode == "recommend" else "Return it" }}</button>
+    </form>
+  </details>
+</div>
 {% endmacro %}
 {% block title %}{% if summary %}{{ summary.label }}{% if summary.amount is not none %} · {{ summary.amount | currency }}{% endif %} · {% endif %}Exception — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About deciding this exception{% endblock %}
@@ -44,6 +54,8 @@
 {% endblock %}
 {% block content %}
 {% set risk = fraud_risk(item.ml_score) %}
+{% set actionable = item.status.value in ["open", "pending_approval"] %}
+<p class="back-link"><a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a></p>
 <div class="card">
   <div class="toolbar">
     <h1>{{ summary.label if summary else "Exception" }}
@@ -52,10 +64,104 @@
       <span class="badge badge-warn">{{ "Correction of a prior decision" if item.is_correction else "Training example" }}</span>
       {% endif %}
     </h1>
-    <a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a>
+    {% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }} fraud risk</span>{% endif %}
   </div>
   {% if not summary %}<p class="flash flash-error">The underlying item couldn't be found.</p>{% endif %}
+  <p class="why-here"><strong>{{ item.exception_types | exception_types }}.</strong>
+    {% if evidence and evidence.deadline and actionable %}
+    Decide by <time datetime="{{ evidence.deadline | iso_utc }}" data-local-time data-relative-time>{{ evidence.deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% if evidence.deadline_outcome %}; after that, {{ evidence.deadline_outcome }}{% endif %}.
+    {% endif %}
+  </p>
+  {% if item.status.value == "withdrawn" %}
+  <p>This exception was withdrawn because its underlying item was backed out by a bulk upload reversal.</p>
+  {% endif %}
+  {% if item.recommended_outcome %}
+  <p class="recommendation">Recommended by <strong>{{ recommended_by.email if recommended_by else "someone no longer on this account" }}</strong>:
+    <strong>{{ item.recommended_outcome | capitalize }}</strong> ({{ item.recommended_reason_code }}{% if item.recommended_return_transaction_code %}, code {{ item.recommended_return_transaction_code }}{% endif %}){% if item.recommended_notes %}. {{ item.recommended_notes }}{% endif %}</p>
+  {% endif %}
+  {% if decision %}
+  <p class="recommendation">Decision: <strong>{{ decision.outcome.value | capitalize }}</strong> ({{ decision.reason_code }}{% if decision.return_transaction_code %}, code {{ decision.return_transaction_code }}{% endif %}){% if decision.notes %}. {{ decision.notes }}{% endif %}, decided {{ decision.decided_at.strftime("%Y-%m-%d %H:%M") }}</p>
+  {% endif %}
+</div>
 
+<div class="decide-layout{{ ' has-image' if evidence and evidence.check_image and can(ctx, 'check_image:read') else '' }}">
+  <div class="decide-main">
+    {% if evidence %}
+    <div class="card">
+      <h2>What was expected vs. what was presented</h2>
+      <table class="evidence">
+        <thead><tr><th></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th><th></th></tr></thead>
+        <tbody>
+          {% for row in evidence.rows %}
+          <tr class="{{ 'mismatch' if row.mismatch else '' }}">
+            <th scope="row">{{ row.label }}</th>
+            <td>{{ value(row.expected, row.kind) }}</td>
+            <td>{{ value(row.presented, row.kind) }}</td>
+            <td>{% if row.mismatch %}<span class="badge badge-danger">Doesn't match</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% for note in evidence.notes %}<p class="flash flash-warn">{{ note }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if actionable %}
+    {% set is_own_recommendation = require_dual_control and item.status.value == "pending_approval" and item.recommended_by_user_id == ctx.user_id %}
+    {% set needs_recommendation_first = require_dual_control and item.status.value == "open" %}
+    {% set pay_confirm = "The fraud risk for this item is High (" ~ risk.return_percent ~ "% estimated chance it should be returned). Pay it anyway?" if risk and risk.level == "High" else "" %}
+    {# Recommend is the maker's step: needed under dual control, or by someone who can't decide. #}
+    {% set show_recommend = can(ctx, "exception:recommend") and (require_dual_control or not can(ctx, "exception:decide")) %}
+
+    {% if show_recommend %}
+    <div class="card decision-card">
+      <h2>{{ "Revise recommendation" if item.status.value == "pending_approval" else "Recommend a decision" }}</h2>
+      {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/recommend", "recommend", return_reasons,
+                        recommended_return_reason_id if item.status.value == "pending_approval" else None, pay_confirm) }}
+    </div>
+    {% endif %}
+
+    {% if can(ctx, "exception:decide") %}
+      {% if needs_recommendation_first %}
+        {% if not show_recommend %}
+        <div class="card"><p class="text-muted">This exception needs a recommendation from a preparer before it can be decided under dual control.</p></div>
+        {% endif %}
+      {% elif is_own_recommendation %}
+      <div class="card">
+        <p class="text-muted">You submitted this recommendation. Under dual control,
+          a different approver must finalize it. It'll be waiting on someone else's
+          <a href="/ui/exceptions/approvals">Approvals</a> queue.</p>
+      </div>
+      {% else %}
+      <div class="card decision-card">
+        <h2>{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
+        {% if item.status.value != "pending_approval" %}<p class="hint">Pay releases it as if it had matched; Return sends it back unpaid. A decision can't be changed afterwards.</p>{% endif %}
+        {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decide", "approve" if item.status.value == "pending_approval" else "decide",
+                          return_reasons, recommended_return_reason_id, pay_confirm) }}
+      </div>
+      {% endif %}
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {% if evidence and evidence.check_image and can(ctx, "check_image:read") %}
+  <div class="decide-image card">
+    <h2>Check image</h2>
+    <div class="check-images">
+      <a href="/ui/check-images/{{ evidence.check_image.id }}/front" target="_blank" rel="noopener">
+        <img src="/ui/check-images/{{ evidence.check_image.id }}/front" alt="Front of the check" loading="lazy"></a>
+      {% if evidence.check_image.back_image_path %}
+      <a href="/ui/check-images/{{ evidence.check_image.id }}/back" target="_blank" rel="noopener">
+        <img src="/ui/check-images/{{ evidence.check_image.id }}/back" alt="Back of the check" loading="lazy"></a>
+      {% endif %}
+    </div>
+    <p class="hint">Select an image to open it full size. <a href="/ui/check-images/{{ evidence.check_image.id }}">Image details</a>{% if evidence.check_image.ocr_extracted_amount is not none %}; amount read from the image: {{ evidence.check_image.ocr_extracted_amount | currency }}{% endif %}.</p>
+  </div>
+  {% endif %}
+</div>
+
+<details class="card more-details">
+  <summary><h2>More about this exception</h2></summary>
   <div class="fact-grid">
     <div><span class="fact-label">Status</span>
       <span class="badge {{ 'badge-ok' if item.status.value == 'pay' else 'badge-danger' if item.status.value in ['return','escalated'] else '' if item.status.value == 'withdrawn' else 'badge-warn' }}">{{ item.status | exception_status }}</span></div>
@@ -66,109 +172,11 @@
       {% else %}<span class="text-muted">Not scored yet (not enough decision history)</span>{% endif %}</div>
     {% if evidence and evidence.account_label %}<div><span class="fact-label">Account</span> {{ evidence.account_label }}</div>{% endif %}
     {% if evidence and evidence.customer_name %}<div><span class="fact-label">Customer</span> {{ evidence.customer_name }}</div>{% endif %}
-    {% if evidence and evidence.deadline and item.status.value in ["open", "pending_approval"] %}
-    <div><span class="fact-label">Decide by</span>
-      <time datetime="{{ evidence.deadline.isoformat() }}" data-local-time data-relative-time>{{ evidence.deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% if evidence.deadline_outcome %}; after that, {{ evidence.deadline_outcome }}{% endif %}</div>
-    {% endif %}
   </div>
-
-  {% if item.status.value == "withdrawn" %}
-  <p>This exception was withdrawn because its underlying item was backed out by a bulk upload reversal.</p>
-  {% endif %}
-  {% if item.recommended_outcome %}
-  <p class="recommendation">Recommended by <strong>{{ recommended_by.email if recommended_by else "someone no longer on this account" }}</strong>:
-    <strong>{{ item.recommended_outcome | capitalize }}</strong> ({{ item.recommended_reason_code }}{% if item.recommended_return_transaction_code %}, trancode {{ item.recommended_return_transaction_code }}{% endif %}){% if item.recommended_notes %}. {{ item.recommended_notes }}{% endif %}</p>
-  {% endif %}
-  {% if decision %}
-  <p class="recommendation">Decision: <strong>{{ decision.outcome.value | capitalize }}</strong> ({{ decision.reason_code }}{% if decision.return_transaction_code %}, trancode {{ decision.return_transaction_code }}{% endif %}){% if decision.notes %}. {{ decision.notes }}{% endif %}, decided {{ decision.decided_at.strftime("%Y-%m-%d %H:%M") }}</p>
-  {% endif %}
-</div>
-
-{% if evidence %}
-<div class="card">
-  <h2>What was expected vs. what was presented</h2>
-  <table class="evidence">
-    <thead><tr><th></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th><th></th></tr></thead>
-    <tbody>
-      {% for row in evidence.rows %}
-      <tr class="{{ 'mismatch' if row.mismatch else '' }}">
-        <th scope="row">{{ row.label }}</th>
-        <td>{{ value(row.expected, row.kind) }}</td>
-        <td>{{ value(row.presented, row.kind) }}</td>
-        <td>{% if row.mismatch %}<span class="badge badge-danger">Doesn't match</span>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% for note in evidence.notes %}<p class="flash flash-warn">{{ note }}</p>{% endfor %}
-
-  {% if evidence.check_image and can(ctx, "check_image:read") %}
-  <h3>Check image</h3>
-  <div class="check-images">
-    <a href="/ui/check-images/{{ evidence.check_image.id }}/front" target="_blank" rel="noopener">
-      <img src="/ui/check-images/{{ evidence.check_image.id }}/front" alt="Front of the check" loading="lazy"></a>
-    {% if evidence.check_image.back_image_path %}
-    <a href="/ui/check-images/{{ evidence.check_image.id }}/back" target="_blank" rel="noopener">
-      <img src="/ui/check-images/{{ evidence.check_image.id }}/back" alt="Back of the check" loading="lazy"></a>
-    {% endif %}
-  </div>
-  <p class="hint">Select an image to open it full size. <a href="/ui/check-images/{{ evidence.check_image.id }}">Image details</a>{% if evidence.check_image.ocr_extracted_amount is not none %}; amount read from the image: {{ evidence.check_image.ocr_extracted_amount | currency }}{% endif %}.</p>
-  {% elif item.network_code == "check" %}
-  <p class="hint">No check image has been uploaded for this item.</p>
-  {% endif %}
-  {% if evidence.paid_item_id and can(ctx, "paid_item:read") %}<p><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
+  {% if item.network_code == "check" and not (evidence and evidence.check_image) %}<p class="hint">No check image has been uploaded for this item.</p>{% endif %}
+  {% if evidence and evidence.paid_item_id and can(ctx, "paid_item:read") %}<p><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
   {% if item.network_code == "ach" and can(ctx, "ach_authorization:write") %}
   <p><a href="/ui/ach/authorizations/new?from_exception={{ item.id }}">Add this originator to the ACH allow list</a>. This authorizes future matching transactions; it doesn't decide this one.</p>
   {% endif %}
-</div>
-{% endif %}
-
-{% if item.status.value in ["open", "pending_approval"] %}
-{% set is_own_recommendation = require_dual_control and item.status.value == "pending_approval" and item.recommended_by_user_id == ctx.user_id %}
-{% set needs_recommendation_first = require_dual_control and item.status.value == "open" %}
-{% set pay_confirm = "The fraud risk for this item is High (" ~ risk.return_percent ~ "% estimated chance it should be returned). Pay it anyway?" if risk and risk.level == "High" else "" %}
-{# Recommend is the maker's step: needed under dual control, or by someone who can't decide. #}
-{% set show_recommend = can(ctx, "exception:recommend") and (require_dual_control or not can(ctx, "exception:decide")) %}
-
-{% if show_recommend %}
-<div class="card card-narrow">
-  <h2>{{ "Revise recommendation" if item.status.value == "pending_approval" else "Recommend a decision" }}</h2>
-  <form method="post" action="/ui/exceptions/{{ item.id }}/recommend" data-decision-form {% if pay_confirm %}data-confirm-pay="{{ pay_confirm }}"{% endif %}>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {# Revising starts on the current recommendation; a new one starts empty. #}
-    {{ outcome_select(item, item.recommended_outcome if item.status.value == "pending_approval" else None) }}
-    {{ reason_fields(item, ach_return_reasons, recommended_ach_return_reason_id) }}
-    <button type="submit">{{ icon("send") }}Submit recommendation</button>
-  </form>
-</div>
-{% endif %}
-
-{% if can(ctx, "exception:decide") %}
-  {% if needs_recommendation_first %}
-    {% if not show_recommend %}
-    <div class="card card-narrow">
-      <p class="text-muted">This exception needs a recommendation from a preparer before it can be decided under dual control.</p>
-    </div>
-    {% endif %}
-  {% elif is_own_recommendation %}
-  <div class="card card-narrow">
-    <p class="text-muted">You submitted this recommendation. Under dual control,
-      a different approver must finalize it. It'll be waiting on someone else's
-      <a href="/ui/exceptions/approvals">Approvals</a> queue.</p>
-  </div>
-  {% else %}
-  <div class="card card-narrow">
-    <h2>{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
-    <form method="post" action="/ui/exceptions/{{ item.id }}/decide" data-decision-form {% if pay_confirm %}data-confirm-pay="{{ pay_confirm }}"{% endif %}>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      {# Approving starts on the maker's choice (that's what's being approved); a fresh decision starts empty. #}
-      {{ outcome_select(item, item.recommended_outcome if item.status.value == "pending_approval" else None) }}
-      {{ reason_fields(item, ach_return_reasons, recommended_ach_return_reason_id) }}
-      <button type="submit">{{ icon("send") }}Submit decision</button>
-    </form>
-  </div>
-  {% endif %}
-{% endif %}
-
-{% endif %}
+</details>
 {% endblock %}

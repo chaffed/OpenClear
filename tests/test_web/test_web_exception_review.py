@@ -166,7 +166,7 @@ def test_fraud_risk_is_shown_as_risk_not_a_raw_score(client, db_session, tenant_
 
     assert ">High<" in page and "90% estimated chance it should be returned" in page
     assert "0.100" not in page
-    assert "data-confirm-pay=" in page  # paying a High-risk item asks for confirmation
+    assert 'data-confirm-title="Pay a high-risk item?"' in page  # paying a High-risk item asks first
 
 
 def test_template_helper_levels():
@@ -187,8 +187,9 @@ def test_outcome_starts_unchosen_and_is_required(client, db_session, tenant_fact
     _login(client, tenant, users["admin"].email)
 
     page = client.get(f"/ui/exceptions/{exception.id}").text
-    assert '<option value="" selected>— Choose —</option>' in page
-    assert 'value="pay" selected' not in page
+    # Two buttons, neither chosen for you; Return's reasons stay closed until asked for.
+    assert 'name="outcome" value="pay"' in page and 'name="outcome" value="return"' in page
+    assert '<details class="decision-return" open' not in page and "recommended-tag" not in page
 
     resp = client.post(f"/ui/exceptions/{exception.id}/decide",
                        data={"csrf_token": client.cookies.get("csrf_token"), "outcome": "", "reason_code": "x"},
@@ -269,7 +270,7 @@ def test_recommended_ach_return_reason_is_stored_and_preselected(client, db_sess
 
     _login(client, tenant, users["approver"].email)
     page = client.get(f"/ui/exceptions/{exception.id}").text
-    assert f'<option value="{reason.id}" selected>' in page
+    assert f'value="{reason.id}" required checked' in page
 
 
 def test_approvals_nav_shows_how_many_are_waiting_on_someone_else(client, db_session, tenant_factory):

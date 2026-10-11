@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: M1 and M2 merged to `main` (not pushed). Next: M3, after the user-testing round if it happens in time.**
+**Status: M1, M2 and the error pages merged; M3 built, not yet merged.**
 
 ## How testing is kept down
 
@@ -101,3 +101,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-10 M2 merged into `main`. The three suites at `23272e41` each had one failure, the same test (the Approvals badge test also matched the new Exceptions badge); fixed in the test at `b3847d02` and rerun green on SQLite and Postgres. SQLite 1471 passed, Postgres 1496, Linux 3.11 1457 (plus that test).
 - 2026-10-10 Real Cloudflare zone parked; M7 will use a stub edge (WAF_PLAN.md, wave C), with the real-zone run as a later confirmation.
 - 2026-10-11 Before M3: error pages for every HTTP error on web pages, 503 for database outages, `/health` checking the database (`e6d6338b`; SQLite 1479, Postgres 1504, Linux 1465). Tests now run in parallel (pytest-xdist, a Postgres database per worker) with live logs via `scripts/run_tests.sh`; Colima raised to 6 CPUs and 10 GB. All three suites running side by side: SQLite 10 min, Postgres 13 min, Linux 9 min (they took 22–26 min each, one at a time).
+- 2026-10-11 M3 built on branch `m3-deciding` (the prototype's designs accepted as they stand, before user testing): Pay/Return buttons, check return reasons (`check_return_reason`, seeded), deciding several at once (`POST /ui/exceptions/bulk`, per-item rules and transactions), decide-now landing and banner for customer users, the exception page reordered, P/R/J/K keys, cards and a sticky decision bar on phones, WCAG-passing button colours; fixed UTC times from SQLite in the browser.

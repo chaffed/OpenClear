@@ -46,8 +46,9 @@
   <p class="list-tools">{{ ls.export_link("/ui/exceptions", search, page_obj.total_count) }}</p>
 
   {% if page_obj.total_count > 0 %}
-  <table data-server-list>
+  <table data-server-list class="exception-table">
     <thead><tr>
+      {% if can_act %}<th class="select-col"><input type="checkbox" data-select-all aria-label="Select every item on this page that can be decided"></th>{% endif %}
       <th>Item</th><th>Account</th>{% if show_customers %}<th>Customer</th>{% endif %}
       <th data-type="number">Amount</th><th>Date</th><th>Why it's here</th>
       {% if show_scores %}{{ ls.sort_th("Fraud risk", "score", search, "/ui/exceptions") }}{% endif %}
@@ -57,20 +58,45 @@
     <tbody>
       {% for row in rows %}
       {% set risk = fraud_risk(row.exception.ml_score) %}
-      <tr>
-        <td><a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span></td>
-        <td>{{ row.account }}</td>
-        {% if show_customers %}<td>{{ row.customer }}</td>{% endif %}
-        <td>{{ row.summary.amount | currency }}</td>
-        <td>{{ row.summary.date }}</td>
-        <td>{{ row.exception.exception_types | exception_types }}</td>
-        {% if show_scores %}<td>{% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endif %}
-        {% if show_deadlines %}<td>{% if row.exception.decision_deadline and row.exception.status.value in ["open", "pending_approval"] %}<time datetime="{{ row.exception.decision_deadline.isoformat() }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}</td>{% endif %}
-        <td><span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value in ['return','escalated'] else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span></td>
+      {% set decidable = row.exception.status.value in ["open", "pending_approval"] %}
+      <tr data-row-link>
+        {% if can_act %}<td class="select-col" data-label="Select">{% if decidable %}<input type="checkbox" name="exception_ids" value="{{ row.exception.id }}" form="bulk-form" data-amount="{{ row.summary.amount or 0 }}" aria-label="Select {{ row.summary.label }}">{% endif %}</td>{% endif %}
+        <td data-label="Item"><a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span></td>
+        <td data-label="Account">{{ row.account }}</td>
+        {% if show_customers %}<td data-label="Customer">{{ row.customer }}</td>{% endif %}
+        <td data-label="Amount">{{ row.summary.amount | currency }}</td>
+        <td data-label="Date">{{ row.summary.date }}</td>
+        <td data-label="Why it's here">{{ row.exception.exception_types | exception_types }}</td>
+        {% if show_scores %}<td data-label="Fraud risk">{% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endif %}
+        {% if show_deadlines %}<td data-label="Decide by">{% if row.exception.decision_deadline and row.exception.status.value in ["open", "pending_approval"] %}<time datetime="{{ row.exception.decision_deadline | iso_utc }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}</td>{% endif %}
+        <td data-label="Status"><span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value in ['return','escalated'] else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% if can_act %}
+  {# Several at once (UX_PLAN.md U4): the boxes above belong to this form. Each item is still
+     decided (or recommended) exactly as on its own page. #}
+  <form method="post" action="/ui/exceptions/bulk" id="bulk-form" class="bulk-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="{{ request.url.path }}{{ ('?' ~ request.url.query) if request.url.query else '' }}">
+    <div class="bulk-bar" data-bulk-bar hidden>
+      <strong data-bulk-count></strong>
+      <button type="submit" name="outcome" value="pay" class="button-pay" data-bulk-outcome="pay">{{ icon("check_circle") }}Pay selected</button>
+      <details class="bulk-return">
+        <summary class="button button-return">{{ icon("block") }}Return selected…</summary>
+        <div class="bulk-return-body">
+          {% if bulk_check_reasons %}<label>Reason for checks
+            <select name="check_return_reason_id"><option value="">— Choose —</option>{% for r in bulk_check_reasons %}<option value="{{ r.id }}">{{ r.reason_text }}</option>{% endfor %}</select></label>{% endif %}
+          {% if bulk_ach_reasons %}<label>Reason for ACH
+            <select name="ach_return_reason_id"><option value="">— Choose —</option>{% for r in bulk_ach_reasons %}<option value="{{ r.id }}">{{ r.reason_text }}</option>{% endfor %}</select></label>{% endif %}
+          <label>Note (optional) <input type="text" name="notes" maxlength="500"></label>
+          <button type="submit" name="outcome" value="return" class="button-return" data-bulk-outcome="return">Return selected</button>
+        </div>
+      </details>
+    </div>
+  </form>
+  {% endif %}
   {{ pg.pager(page_obj, request) }}
   {% elif search.active %}
   {{ ls.empty_state(True, "") }}

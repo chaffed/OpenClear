@@ -214,6 +214,9 @@ class TenantFactory:
 
         groups = security_group_service.seed_default_security_groups(self.session, tenant.id)
         ach_return_reason_service.seed_default_ach_return_reasons(self.session, tenant.id)
+        from openclear.services import check_return_reason_service
+
+        check_return_reason_service.seed_default_check_return_reasons(self.session, tenant.id)
 
         users = {}
         for group_name, group in groups.items():

@@ -72,3 +72,13 @@ def get_exception(
 ) -> ExceptionItem | None:
     repo = ExceptionRepository(session, tenant_id, customer_id)
     return repo.get(exception_id)
+
+
+def attention_summary(session: Session, tenant_id: uuid.UUID, *, customer_id: uuid.UUID | None = None):
+    """(how many need a decision, the soonest deadline among them), in one query."""
+    stmt = select(func.count(ExceptionItem.id), func.min(ExceptionItem.decision_deadline)).where(
+        ExceptionItem.tenant_id == tenant_id, ExceptionItem.status.in_(list(NEEDS_ATTENTION)))
+    if customer_id is not None:
+        stmt = stmt.where(ExceptionItem.customer_id == customer_id)
+    count, nearest = session.execute(stmt).one()
+    return count or 0, nearest

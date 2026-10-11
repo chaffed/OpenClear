@@ -411,6 +411,9 @@ def reset_demo_tenant(session: Session) -> Tenant:
 
     groups = security_group_service.seed_default_security_groups(session, tenant.id)
     ach_return_reason_service.seed_default_ach_return_reasons(session, tenant.id)
+    from openclear.services import check_return_reason_service
+
+    check_return_reason_service.seed_default_check_return_reasons(session, tenant.id)
     admin_user = user_service.create_user_with_membership(
         session, tenant.id, email=DEMO_ADMIN_EMAIL, password=settings.demo_tenant_password,
         security_group_id=groups["Admin"].id,

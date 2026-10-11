@@ -345,3 +345,17 @@ def test_downgrading_past_aes_gcm_leaves_secrets_readable(scratch_db):
     [value] = conn.execute("SELECT secret_encrypted FROM webhook_endpoint").fetchone()
     conn.close()
     assert not value.startswith("v2:") and crypto._fernet(get_settings().sso_encryption_key).decrypt(value.encode()) == b"whsec_test"
+
+
+def test_existing_banks_get_check_return_reasons(scratch_db):
+    command.upgrade(_alembic_config(), "b9d1f3a5c7e0")  # just before the check return reasons
+    conn = _connect(scratch_db)
+    conn.execute("INSERT INTO tenant (id, name, slug, require_dual_control, stale_date_threshold_days, is_active, is_demo, sod_mode) "
+                 "VALUES (?, 'Bank', 'bank', 0, 180, 1, 0, 'warn')", (uuid.uuid4().hex,))
+    conn.commit()
+    conn.close()
+    command.upgrade(_alembic_config(), "head")
+    conn = _connect(scratch_db)
+    rows = conn.execute("SELECT reason_text, return_code FROM check_return_reason").fetchall()
+    conn.close()
+    assert len(rows) == 7 and ("Altered or fictitious item", "N") in rows

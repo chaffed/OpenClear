@@ -146,9 +146,9 @@ def test_detail_page_shows_prefilled_decide_form_for_a_different_approver(client
     csrf = _login(client, tenant.slug, users["approver"].email)
     detail = client.get(f"/ui/exceptions/{exception_id}")
     assert "Approve recommendation" in detail.text
-    assert 'value="fraud"' in detail.text
-    assert 'value="flagged"' in detail.text
-    assert '<option value="return" selected>Return</option>' in detail.text
+    assert "<strong>Return</strong> (fraud)" in detail.text  # what was recommended
+    assert 'value="flagged"' in detail.text  # the maker's note, carried into the return form
+    assert '<details class="decision-return" open>' in detail.text  # the recommended choice, opened
 
     # And actually approving it (a different user than the recommender) still works end to end.
     resp = client.post(
@@ -176,7 +176,7 @@ def test_detail_page_prefills_ach_return_reason_for_approver(client, db_session,
 
     _login(client, tenant.slug, users["approver"].email)
     detail = client.get(f"/ui/exceptions/{exception_id}")
-    assert f'value="{reason.id}" selected' in detail.text
+    assert f'value="{reason.id}" required checked' in detail.text
 
 
 def test_single_control_tenant_still_allows_deciding_your_own_recommendation(client, tenant_factory):

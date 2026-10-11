@@ -506,3 +506,62 @@ button.danger { background: var(--danger); border-color: var(--danger); color: #
 .toast { background: var(--badge-ok-bg); color: var(--badge-ok-fg); border: 1px solid var(--ok); border-radius: 6px; padding: 0.6rem 2.2rem 0.6rem 0.9rem; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 .toast-close { position: absolute; top: 0.2rem; right: 0.3rem; background: none; border: none; color: inherit; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
 form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
+
+/* "Decide now" banner (UX_PLAN.md U5): calm, soon (under 2 hours), urgent (under 30 minutes). */
+.decide-banner { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; justify-content: space-between; padding: .6rem 1rem; border-radius: 8px; margin-bottom: 1rem; }
+.decide-banner a { font-weight: 600; }
+.decide-banner-calm { background: var(--bg-muted); }
+.decide-banner-soon { background: var(--badge-warn-bg); color: var(--badge-warn-fg); }
+.decide-banner-urgent { background: var(--badge-danger-bg); color: var(--badge-danger-fg); }
+.decide-banner-soon a, .decide-banner-urgent a { color: inherit; }
+
+/* Deciding (UX_PLAN.md U4–U6): Pay and Return, never colour alone (each has a word and an icon). */
+.button-pay, .button-return { display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; border-radius: 6px; cursor: pointer; padding: .7rem 1.2rem; }
+/* Solid, darker than the badge colours, so white text passes WCAG AA (4.5:1) in both themes. */
+.button-pay { background: #15803d; border: 1px solid #15803d; color: #fff; }
+.button-return { background: #b91c1c; border: 1px solid #b91c1c; color: #fff; }
+.button-pay:hover, .button-return:hover { filter: brightness(1.08); }
+.button-pay:focus-visible, .button-return:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.recommended-tag { font-size: .75rem; font-weight: 600; background: rgba(255,255,255,.25); border-radius: 999px; padding: 0 .45rem; }
+.decision-panel { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-start; }
+.decision-pay { display: grid; gap: .5rem; }
+.decision-note summary, .more-details > summary { cursor: pointer; color: var(--accent); }
+.decision-return { flex: 1 1 18rem; }
+.decision-return > summary { list-style: none; }
+.decision-return > summary::-webkit-details-marker { display: none; }
+.decision-return[open] > summary { margin-bottom: .75rem; }
+.decision-return form { display: grid; gap: .6rem; border: 1px solid var(--border); border-radius: 8px; padding: .75rem; }
+.reason-list { border: 0; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.reason-list legend { font-weight: 600; margin-bottom: .25rem; }
+.reason-list label { display: flex; gap: .5rem; align-items: center; font-weight: 400; }
+.reason-list input { width: auto; }
+.why-here { margin: .25rem 0 .5rem; }
+.decide-layout { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); margin-bottom: 1rem; }
+.decide-layout.has-image { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.decide-layout .card { margin-bottom: 0; }
+.decide-main { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+.decide-image img { max-width: 100%; height: auto; }
+.more-details > summary h2 { display: inline; font-size: 1rem; }
+.select-col { width: 2.5rem; }
+.select-col input { width: 1.15rem; height: 1.15rem; }
+tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bulk-form { position: sticky; bottom: 0; z-index: 5; }
+.bulk-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; background: var(--text); color: var(--bg); border-radius: 8px; padding: .6rem .8rem; margin: .5rem 0; }
+.bulk-return-body { display: grid; gap: .5rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .75rem; margin-top: .5rem; min-width: min(22rem, 80vw); }
+.bulk-return > summary { list-style: none; }
+
+/* Phones and narrow embedded frames (UX_PLAN.md U6): the list becomes cards, and the
+   decision buttons are full-width and stay in reach at the bottom of the screen. */
+@media (max-width: 720px) {
+  .decide-layout.has-image { grid-template-columns: minmax(0, 1fr); }
+  table.exception-table thead { display: none; }
+  table.exception-table, table.exception-table tbody, table.exception-table tr, table.exception-table td { display: block; width: 100%; }
+  table.exception-table tr { border: 1px solid var(--border); border-radius: 8px; padding: .5rem .75rem; margin-bottom: .6rem; position: relative; }
+  table.exception-table td { border: 0; padding: .15rem 0; }
+  table.exception-table td[data-label]:not([data-label="Item"]):not(.select-col)::before { content: attr(data-label) ": "; color: var(--text-faint); font-size: .85rem; }
+  table.exception-table td.select-col { position: absolute; top: .55rem; right: .6rem; width: auto; }
+  table.exception-table td[data-label="Item"] { font-size: 1.05rem; font-weight: 600; padding-right: 2.5rem; }
+  .decision-card { position: sticky; bottom: 0; z-index: 4; box-shadow: 0 -4px 14px rgba(0,0,0,.12); }
+  .decision-panel > form, .decision-return { flex: 1 1 100%; }
+  .button-pay, .button-return { width: 100%; justify-content: center; padding-block: .9rem; font-size: 1.05rem; }
+}

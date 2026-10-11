@@ -68,6 +68,30 @@
   The Controls page shows the latest result and its age, instead of walking the whole log
   on every view.
 
+### Deciding (M3: UX wave 1)
+
+- **Pay and Return are two buttons.**
+  - Paying needs no reason, and can take an optional note.
+  - Returning asks why, from the bank's list for that kind of item.
+  - Checks now have a list too: altered or fictitious, not authorized, stop payment,
+    duplicate presentment, refer to maker, stale dated, signature irregular. Each has its
+    X9.100-188 code, which goes with the decision to the core.
+  - Paying a high-risk item still asks first.
+- **Several at once.** Tick items on the exceptions list, then Pay or Return them together,
+  with a confirmation of how many and how much. Each is decided, or recommended under dual
+  control, exactly as from its own page; anything that can't be done is listed.
+- **Decide now.** A customer's people with checks waiting land on them after signing in,
+  and every page shows how many are waiting and the soonest deadline. It's amber within two
+  hours and red within 30 minutes. The navigation's Dashboard link still opens the
+  dashboard.
+- **The exception page** leads with what differs, the decision and the check image. The
+  rest is under "More about this exception". Keys: P to pay, R to return; J and K move
+  through the list.
+- **On phones** the list is cards, and the decision buttons are full width and stay in
+  reach. The Pay and Return colours pass WCAG AA contrast.
+- **Fixed:** "decide by" times read from SQLite showed hours out in the browser. They lacked
+  a time zone, so the browser took them for local time.
+
 ### Error pages
 
 - **Branded pages for every error on a web page.** Each has a message that fits it, a way
@@ -86,7 +110,8 @@
 
 ### Upgrading
 
-- **Run `alembic upgrade head`.** It adds the `security_event` table.
+- **Run `alembic upgrade head`.** It adds the `security_event` and `check_return_reason` tables, and gives every
+  existing bank the default check return reasons.
 - Behind Cloudflare or Akamai, set the client-IP header and ranges (README, "Reverse proxy /
   WAF deployment"). Until then, the new control fails, and everyone shares one rate-limit
   bucket per edge address, as before.

@@ -51,7 +51,15 @@ def _attention_summary(db: Session, ctx: TenantContext) -> dict:
 
 
 @router.get("/")
-def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)) -> HTMLResponse:
+def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)):
+    # "Decide now" (UX_PLAN.md U5): a customer's people with checks waiting for their
+    # decision land on those, not on the dashboard. The navigation's own Dashboard link
+    # (?home=1) still opens it.
+    if (ctx.customer_id is not None and ctx.needs_attention_count and not request.query_params.get("home")
+            and ({"exception:decide", "exception:recommend"} & set(ctx.permissions))):
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse("/ui/exceptions", status_code=303)
     # Only bank-wide admins can act on the bank wizard's steps, and customer-scoped
     # sessions don't have a single tenant-wide "getting started" state to show anyway.
     show_getting_started = (

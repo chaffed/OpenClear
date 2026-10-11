@@ -27,6 +27,7 @@ from openclear.services import (
     exception_evidence,
     exception_service,
 )
+from openclear.services import check_return_reason_service
 from openclear.services.decision_service import DecisionError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
@@ -60,6 +61,22 @@ def _parse_outcome(raw: str) -> DecisionOutcome | None:
 
 def _parse_optional_uuid(raw: str) -> uuid.UUID | None:
     return uuid.UUID(raw) if raw else None
+
+
+PAY_REASON = "Reviewed and paid"
+_CHOOSE_RETURN_REASON = "Choose why it's being returned."
+
+
+def _reason_for(db: Session, ctx: TenantContext, exception_id: uuid.UUID, outcome: DecisionOutcome, reason_code: str,
+                raw_reason_id: str) -> tuple[uuid.UUID | None, str, str | None]:
+    """(return reason id, reason text, problem). Paying needs no reason (UX_PLAN.md U4);
+    returning from a web page needs one from the bank's list for the item's network."""
+    reason_id = _parse_optional_uuid(raw_reason_id)
+    if outcome == DecisionOutcome.PAY:
+        return None, reason_code.strip() or PAY_REASON, None
+    if reason_id is None and not reason_code.strip():
+        return None, reason_code, _CHOOSE_RETURN_REASON
+    return reason_id, reason_code.strip(), None
 
 
 def _summarize_source_item(network_code: str, source_item: Any) -> dict[str, Any]:
@@ -162,6 +179,9 @@ def list_exceptions(
     return render_template(
         request, "exceptions/list.html", ctx=ctx, rows=rows, page_obj=page_obj, network_filter=network_code,
         status_filter=status, statuses=[s.value for s in ExceptionStatus], search=search,
+        can_act=bool({"exception:decide", "exception:recommend"} & set(ctx.permissions)),
+        bulk_check_reasons=check_return_reason_service.list_check_return_reasons(db, ctx.tenant_id),
+        bulk_ach_reasons=ach_return_reason_service.list_ach_return_reasons(db, ctx.tenant_id, active_only=True),
         show_scores=any(r["exception"].ml_score is not None for r in rows),
         show_deadlines=any(r["exception"].decision_deadline is not None for r in rows),
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),
@@ -242,6 +262,9 @@ def exception_detail(
         if item.network_code == "ach"
         else []
     )
+    # The bank's reasons for returning this kind of item (UX_PLAN.md U4).
+    return_reasons = ach_return_reasons if item.network_code == "ach" else (
+        check_return_reason_service.list_check_return_reasons(db, ctx.tenant_id) if item.network_code == "check" else [])
     recommended_by = db.get(User, item.recommended_by_user_id) if item.recommended_by_user_id else None
     # Lets the "Approve"/"Revise recommendation" forms pre-select the return reason the
     # maker chose. Recommendations made before the id was stored fall back to matching the
@@ -264,7 +287,96 @@ def exception_detail(
         recommended_by=recommended_by,
         recommended_ach_return_reason_id=recommended_ach_return_reason_id,
         require_dual_control=tenant.require_dual_control if tenant else False,
+        return_reasons=return_reasons,
+        recommended_return_reason_id=recommended_ach_return_reason_id or next(
+            (r.id for r in return_reasons if r.reason_text == item.recommended_reason_code), None),
     )
+
+
+@router.post("/bulk")
+def decide_several(
+    request: Request,
+    exception_ids: list[uuid.UUID] = Form(default_factory=list),
+    outcome: str = Form(""),
+    check_return_reason_id: str = Form(""),
+    ach_return_reason_id: str = Form(""),
+    notes: str = Form(""),
+    back: str = Form("/ui/exceptions"),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("exception:read")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Several exceptions at once (UX_PLAN.md U4, decision U-D2): each is decided, or
+    recommended, exactly as it would be from its own page, by the same rules (dual
+    control, segregation of duties, return reasons), in its own transaction. Whatever can't
+    be done is listed afterwards; nothing is relaxed for doing them together."""
+    from openclear.auth.sod import SodViolation
+    from openclear.web.security import safe_next_path
+
+    back = safe_next_path(back, default="/ui/exceptions")
+    if not back.startswith("/ui/exceptions"):
+        back = "/ui/exceptions"
+    joiner = "&" if "?" in back else "?"
+    choice = _parse_outcome(outcome)
+    if choice is None or not exception_ids:
+        return RedirectResponse(f"{back}{joiner}error={quote('Select one or more items, then Pay or Return.')}", status_code=303)
+    if len(exception_ids) > 200:
+        return RedirectResponse(f"{back}{joiner}error={quote('At most 200 items at once.')}", status_code=303)
+    dual = db.get(Tenant, ctx.tenant_id).require_dual_control
+    can_decide, can_recommend = "exception:decide" in ctx.permissions, "exception:recommend" in ctx.permissions
+    done, problems = 0, []
+    for exception_id in exception_ids:
+        item = exception_service.get_exception(db, ctx.tenant_id, exception_id, customer_id=ctx.customer_id)
+        label = f"item {str(exception_id)[:8]}" if item is None else _short_label(db, item)
+        if item is None:
+            problems.append(f"{label}: not found")
+            continue
+        recommend_instead = can_recommend and (not can_decide or (dual and item.status == ExceptionStatus.OPEN))
+        if not can_decide and not recommend_instead:
+            problems.append(f"{label}: you can't decide or recommend items")
+            continue
+        raw = check_return_reason_id if item.network_code == "check" else ach_return_reason_id
+        reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, choice, "", raw)
+        if problem:
+            problems.append(f"{label}: {problem[0].lower() + problem[1:]}")
+            continue
+        try:
+            if recommend_instead:
+                result = decision_service.submit_recommendation(
+                    db, ctx.tenant_id, exception_id, ctx, outcome=choice, reason_code=reason_code, notes=notes or None,
+                    ach_return_reason_id=reason_id, check_return_reason_id=reason_id)
+            else:
+                result = decision_service.decide(
+                    db, ctx.tenant_id, exception_id, ctx, outcome=choice, reason_code=reason_code, notes=notes or None,
+                    ach_return_reason_id=reason_id, check_return_reason_id=reason_id, channel="web")
+        except SodViolation as exc:
+            problems.append(f"{label}: {exc.violation.message.lower()}")
+            continue
+        if result.error is not None:
+            db.rollback()
+            problems.append(f"{label}: {_DECISION_ERROR_MESSAGES[result.error].rstrip('.').lower()}")
+            continue
+        verb = "Recommended" if recommend_instead else "Decided"
+        audit_log_service.record_action(
+            db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
+            action="exception.recommend" if recommend_instead else "exception.decide",
+            summary=f"{verb} {choice.value} on exception ({reason_code}), with others at once",
+            resource_type="exception_item", resource_id=exception_id,
+        )
+        db.commit()
+        done += 1
+    word = "Paid" if choice == DecisionOutcome.PAY else "Returned"
+    message = f"{word} {done} {'item' if done == 1 else 'items'}." if done else ""
+    if problems:
+        shown = "; ".join(problems[:5]) + (f"; and {len(problems) - 5} more" if len(problems) > 5 else "")
+        error = f"{len(problems)} couldn't be done: {shown}."
+        return RedirectResponse(f"{back}{joiner}{'flash=' + quote(message) + '&' if message else ''}error={quote(error)}", status_code=303)
+    return RedirectResponse(f"{back}{joiner}flash={quote(message)}&event=exception-decided", status_code=303)
+
+
+def _short_label(db: Session, item) -> str:
+    source = _load_sources(db, [item]).get(item.id)
+    return _summarize_source_item(item.network_code, source)["label"] if source else f"item {str(item.id)[:8]}"
 
 
 @router.post("/{exception_id}/recommend")
@@ -274,6 +386,7 @@ def recommend(
     reason_code: str = Form(""),
     notes: str = Form(""),
     ach_return_reason_id: str = Form(""),
+    return_reason_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:recommend")),
     _csrf: None = Depends(verify_csrf),
@@ -281,9 +394,12 @@ def recommend(
     outcome = _parse_outcome(outcome)
     if outcome is None:
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}", status_code=303)
+    reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, outcome, reason_code, return_reason_id or ach_return_reason_id)
+    if problem:
+        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(problem)}", status_code=303)
     result = decision_service.submit_recommendation(
         db, ctx.tenant_id, exception_id, ctx, outcome=outcome, reason_code=reason_code, notes=notes or None,
-        ach_return_reason_id=_parse_optional_uuid(ach_return_reason_id),
+        ach_return_reason_id=reason_id, check_return_reason_id=reason_id,
     )
     if result.error is None:
         audit_log_service.record_action(
@@ -310,6 +426,7 @@ def decide(
     reason_code: str = Form(""),
     notes: str = Form(""),
     ach_return_reason_id: str = Form(""),
+    return_reason_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:decide")),
     _csrf: None = Depends(verify_csrf),
@@ -317,9 +434,12 @@ def decide(
     outcome = _parse_outcome(outcome)
     if outcome is None:
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}", status_code=303)
+    reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, outcome, reason_code, return_reason_id or ach_return_reason_id)
+    if problem:
+        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(problem)}", status_code=303)
     result = decision_service.decide(
         db, ctx.tenant_id, exception_id, ctx, outcome=outcome, reason_code=reason_code, notes=notes or None,
-        ach_return_reason_id=_parse_optional_uuid(ach_return_reason_id), channel="web",
+        ach_return_reason_id=reason_id, check_return_reason_id=reason_id, channel="web",
     )
     if result.error is None:
         audit_log_service.record_action(

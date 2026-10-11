@@ -19,32 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // back", so a rejected form's typed values are still there) — wired up here rather
   // than as a javascript: href, which the strict script-src CSP blocks. Its real href is
   // the no-JS / no-history fallback.
-  // Exception decision forms (exceptions/detail.html): show only the reason field that
-  // fits the chosen outcome (e.g. the ACH return-reason list only for Return), and ask
-  // for confirmation before paying an item whose fraud risk is High. The server still
-  // enforces everything that matters; this only keeps the form uncluttered and slows
-  // down an accidental click.
-  document.querySelectorAll("[data-decision-form]").forEach((form) => {
-    const select = form.querySelector("[data-outcome-select]");
-    if (!select) return;
-    const sync = () => {
-      form.querySelectorAll("[data-show-for-outcome]").forEach((field) => {
-        field.hidden = field.dataset.showForOutcome !== select.value;
-      });
-    };
-    select.addEventListener("change", sync);
-    sync();
-    form.addEventListener("submit", (event) => {
-      if (form.dataset.confirmed === "1") return;
-      if (select.value === "pay" && form.dataset.confirmPay) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        askToConfirm(form.dataset.confirmPay, { title: "Pay a high-risk item?", yes: "Pay it" }).then((ok) => {
-          if (ok) submitConfirmed(form, event.submitter);
-        });
-      }
-    });
-  });
+  initDecisionKeys();
+  initBulkDecisions();
 
   // <time datetime="..." data-local-time> shows the reviewer's own local time instead of
   // the server's UTC fallback text; data-relative-time adds "in 2h 13m" / "overdue".
@@ -436,4 +412,71 @@ function initPolling() {
   if (!el) return;
   const seconds = Math.max(2, parseInt(el.dataset.pollSeconds, 10) || 3);
   setTimeout(() => window.location.reload(), seconds * 1000);
+}
+
+
+// --- Deciding exceptions (UX_PLAN.md U4) -------------------------------------------------------
+
+function typingInField(event) {
+  const el = event.target;
+  return el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) && el.type !== "checkbox";
+}
+
+// Keys: on an exception's page, P pays (asking first where it would anyway) and R opens
+// the return reasons; on the list, J and K move between rows and Enter opens one.
+function initDecisionKeys() {
+  const panel = document.querySelector("[data-decision-panel]");
+  const rows = Array.from(document.querySelectorAll("tr[data-row-link]"));
+  if (!panel && !rows.length) return;
+  let current = -1;
+  document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || typingInField(event) || document.querySelector("dialog[open]")) return;
+    const key = event.key.toLowerCase();
+    if (panel && key === "p") {
+      const pay = panel.querySelector('[data-key="p"]');
+      if (pay) { event.preventDefault(); pay.click(); }
+    } else if (panel && key === "r") {
+      const ret = panel.querySelector("details.decision-return");
+      if (ret) {
+        event.preventDefault();
+        ret.open = true;
+        const first = ret.querySelector('input[type="radio"], input[type="text"]');
+        if (first) first.focus();
+      }
+    } else if (rows.length && (key === "j" || key === "k")) {
+      event.preventDefault();
+      current = Math.max(0, Math.min(rows.length - 1, current + (key === "j" ? 1 : -1)));
+      rows.forEach((row, i) => row.classList.toggle("row-focused", i === current));
+      const link = rows[current].querySelector("a[href]");
+      if (link) link.focus();
+    }
+  });
+}
+
+// The exceptions list: tick items, then Pay or Return them together. The bar says how
+// many and how much, and the confirmation repeats it.
+function initBulkDecisions() {
+  const form = document.getElementById("bulk-form");
+  if (!form) return;
+  const boxes = Array.from(document.querySelectorAll('input[name="exception_ids"][form="bulk-form"]'));
+  const bar = form.querySelector("[data-bulk-bar]");
+  const all = document.querySelector("[data-select-all]");
+  const money = (n) => n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  const update = () => {
+    const chosen = boxes.filter((b) => b.checked);
+    const total = chosen.reduce((sum, b) => sum + (parseFloat(b.dataset.amount) || 0), 0);
+    bar.hidden = chosen.length === 0;
+    form.querySelector("[data-bulk-count]").textContent = `${chosen.length} selected · ${money(total)}`;
+    const noun = chosen.length === 1 ? "item" : "items";
+    form.querySelectorAll('[data-bulk-outcome]').forEach((button) => {
+      const verb = button.dataset.bulkOutcome === "pay" ? "Pay" : "Return";
+      button.dataset.confirm = `${verb} ${chosen.length} ${noun}, ${money(total)} in all? Each is decided exactly as it would be on its own page.`;
+      button.dataset.confirmTitle = `${verb} these ${noun}?`;
+      button.dataset.confirmYes = `${verb} ${chosen.length}`;
+    });
+    if (all) all.checked = chosen.length === boxes.length && boxes.length > 0;
+  };
+  boxes.forEach((b) => b.addEventListener("change", update));
+  if (all) all.addEventListener("change", () => { boxes.forEach((b) => (b.checked = all.checked)); update(); });
+  update();
 }

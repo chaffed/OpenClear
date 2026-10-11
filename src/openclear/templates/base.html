@@ -35,7 +35,7 @@
     {% set show_admin_docs = can(ctx, "admin_documentation:read") %}
     <nav class="sidenav">
       <div class="sidenav-header">
-        <a href="/ui/" class="brand">
+        <a href="/ui/?home=1" class="brand">
           {% if ctx.has_logo %}<img src="/ui/branding/{{ ctx.tenant_slug }}/logo" alt="{{ ctx.tenant_name }}" class="brand-logo">{% else %}{{ ctx.tenant_name }}{% endif %}
         </a>
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="sidenav-panel">
@@ -106,6 +106,19 @@
     {% endif %}
 
     <div class="page" id="main-content">
+      {# "Decide now" (UX_PLAN.md U5): while items wait for this person's decision, on every page. #}
+      {% if ctx and ctx.customer_id and ctx.needs_attention_count and (can(ctx, "exception:decide") or can(ctx, "exception:recommend")) %}
+      {% set mins = minutes_until(ctx.nearest_deadline) %}
+      {% set urgency = "urgent" if mins is not none and mins <= 30 else "soon" if mins is not none and mins <= 120 else "calm" %}
+      <div class="decide-banner decide-banner-{{ urgency }}" role="status">
+        <span>
+          {% if urgency == "urgent" %}<strong>Due very soon:</strong>{% elif urgency == "soon" %}<strong>Due soon:</strong>{% endif %}
+          {{ ctx.needs_attention_count }} {{ "item" if ctx.needs_attention_count == 1 else "items" }} to decide{% if ctx.nearest_deadline %}
+          · the first by <time datetime="{{ ctx.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ ctx.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}
+        </span>
+        {% if not request.url.path.startswith("/ui/exceptions") or request.url.path.startswith("/ui/exceptions/") %}<a href="/ui/exceptions">Decide now</a>{% endif %}
+      </div>
+      {% endif %}
       {% if ctx and ctx.is_demo %}
       <p class="flash flash-warn demo-notice" role="note"><strong>Public demo.</strong> Everyone
         shares this organization, and it resets every hour. A few settings that could lock other

@@ -50,6 +50,9 @@ def create_tenant_with_admin(
 
     groups = security_group_service.seed_default_security_groups(session, tenant.id)
     ach_return_reason_service.seed_default_ach_return_reasons(session, tenant.id)
+    from openclear.services import check_return_reason_service
+
+    check_return_reason_service.seed_default_check_return_reasons(session, tenant.id)
 
     admin_user = user_service.create_user_with_membership(
         session, tenant.id, email=admin_email, password=admin_password, security_group_id=groups["Admin"].id

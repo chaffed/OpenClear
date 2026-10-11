@@ -53,12 +53,23 @@ def _resolve_ach_return_reason(
     outcome: DecisionOutcome,
     reason_code: str,
     ach_return_reason_id: uuid.UUID | None,
+    check_return_reason_id: uuid.UUID | None = None,
 ) -> tuple[_ResolvedReason, DecisionError | None]:
     """An ACH exception being finalized as RETURN must select from the tenant's own
     AchReturnReason catalog rather than freeform text — see
     services/ach_return_reason_service.py. Every other network/outcome combination
     passes the given reason_code straight through unchanged, exactly as before this
     catalog existed."""
+    if network_code == "check" and outcome == DecisionOutcome.RETURN and check_return_reason_id is not None:
+        # A check returned from a web page names one of the bank's check return reasons
+        # (domain/check_return_reason.py); its code goes where an ACH reason's would. The
+        # API may still send free text, as before.
+        from openclear.services import check_return_reason_service
+
+        check_reason = check_return_reason_service.get_check_return_reason(session, tenant_id, check_return_reason_id)
+        if check_reason is None or not check_reason.is_active:
+            return _ResolvedReason(reason_code=reason_code, transaction_code=None), DecisionError.INVALID_RETURN_REASON
+        return _ResolvedReason(reason_code=check_reason.reason_text, transaction_code=check_reason.return_code), None
     if network_code != "ach" or outcome != DecisionOutcome.RETURN:
         return _ResolvedReason(reason_code=reason_code, transaction_code=None), None
     if ach_return_reason_id is None:
@@ -79,6 +90,7 @@ def submit_recommendation(
     reason_code: str,
     notes: str | None,
     ach_return_reason_id: uuid.UUID | None = None,
+    check_return_reason_id: uuid.UUID | None = None,
 ) -> ServiceResult:
     repo = ExceptionRepository(session, tenant_id, ctx.customer_id)
     exception = repo.get(exception_id)
@@ -91,7 +103,7 @@ def submit_recommendation(
 
     resolved, error = _resolve_ach_return_reason(
         session, tenant_id, network_code=exception.network_code, outcome=outcome, reason_code=reason_code,
-        ach_return_reason_id=ach_return_reason_id,
+        ach_return_reason_id=ach_return_reason_id, check_return_reason_id=check_return_reason_id,
     )
     if error is not None:
         return ServiceResult(None, None, error)
@@ -120,6 +132,7 @@ def decide(
     reason_code: str,
     notes: str | None,
     ach_return_reason_id: uuid.UUID | None = None,
+    check_return_reason_id: uuid.UUID | None = None,
     channel: str = "api",
 ) -> ServiceResult:
     """Records the final pay/return decision — this is the ML feedback point. Under
@@ -154,7 +167,7 @@ def decide(
 
     resolved, error = _resolve_ach_return_reason(
         session, tenant_id, network_code=exception.network_code, outcome=outcome, reason_code=reason_code,
-        ach_return_reason_id=ach_return_reason_id,
+        ach_return_reason_id=ach_return_reason_id, check_return_reason_id=check_return_reason_id,
     )
     if error is not None:
         return ServiceResult(None, None, error)

@@ -248,3 +248,35 @@ def _list_return(request, list_path: str) -> str:
 
 
 templates.env.globals["list_return"] = _list_return
+
+
+def _minutes_until(when) -> int | None:
+    """Exposed to templates as `minutes_until(dt)`: whole minutes from now (negative once
+    past), for the "decide now" banner's urgency."""
+    if when is None:
+        return None
+    from datetime import datetime, timezone
+
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return int((when - datetime.now(timezone.utc)).total_seconds() // 60)
+
+
+templates.env.globals["minutes_until"] = _minutes_until
+
+
+def _iso_utc(value) -> str:
+    """Exposed as the `iso_utc` filter: a datetime as ISO 8601 with its UTC offset, for
+    <time datetime> elements the browser shows in the reader's own time zone. SQLite hands
+    back times without a zone (always UTC here); without the offset a browser would read
+    them as local time and be hours out."""
+    if value is None:
+        return ""
+    from datetime import timezone
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
+
+
+templates.env.filters["iso_utc"] = _iso_utc

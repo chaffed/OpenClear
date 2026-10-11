@@ -660,6 +660,21 @@ erDiagram
 </tbody>
 </table>
 
+<h3>check_return_reason</h3>
+<p>The bank's reasons for returning a check: returning one from a web page means choosing
+one. Seeded with common reasons; never deleted, only retired.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>reason_text</td><td>String(255)</td><td>no</td><td></td><td>Shown to the person returning, and recorded on the decision.</td></tr>
+<tr><td>return_code</td><td>String(4)</td><td>yes</td><td></td><td>The return reason code for the core (ANSI X9.100-188, e.g. N for an altered or fictitious item); recorded as the decision's return_transaction_code.</td></tr>
+<tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td>Retired reasons stay for past decisions.</td></tr>
+<tr><td>created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
 <h3>ach_return_reason</h3>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>

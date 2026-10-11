@@ -102,6 +102,8 @@ class TenantContext:
     # awaiting approval), in this session's scope. Web pages only (web/deps.py), and only
     # for those who can see exceptions.
     needs_attention_count: int = 0
+    # The soonest decision deadline among them (base.html's "decide now" banner).
+    nearest_deadline: datetime | None = None
 
     # The login session this request belongs to (auth/security.py::create_session_tokens):
     # `session_id` is what logout revokes; the two expiry times drive base.html's
