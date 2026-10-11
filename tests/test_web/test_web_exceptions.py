@@ -43,7 +43,7 @@ def test_ach_exception_detail_shows_return_reason_select(client, db_session, ten
 
     detail = client.get(f"/ui/exceptions/{exception_id}")
     assert detail.status_code == 200
-    assert "ach_return_reason_id" in detail.text
+    assert 'name="return_reason_id"' in detail.text  # the ACH list, as radio choices
     assert "Insufficient Funds" in detail.text
 
 
