@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 1.10.0 — 2026-10-11
+
+A release for running OpenClear in production, and for deciding faster. It brings:
+
+- the real caller's address and per-person rate limits behind Cloudflare, Akamai or a load
+  balancer;
+- security events (sign-ins, failures, lockouts and more) with pull feeds for a bank's SIEM,
+  and optional JSON logs;
+- lists that search and export across every row, search everywhere, and clearer navigation;
+- Pay and Return buttons, check return reasons, deciding several items at once, and "decide
+  now" for a customer's people;
+- branded pages for every error, and 503s that load balancers understand;
+- long replays and evidence exports as background jobs.
 
 ### Request context and security events (MASTER_PLAN.md M1)
 
@@ -108,7 +120,7 @@
 - **Self-contained 502, 503 and 504 pages** (`static/errors/`) for a load balancer or edge
   to show when OpenClear can't answer at all.
 
-### Upgrading
+### Upgrading from 1.9.0
 
 - **Run `alembic upgrade head`.** It adds the `security_event` and `check_return_reason` tables, and gives every
   existing bank the default check return reasons.
