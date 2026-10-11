@@ -1,4 +1,5 @@
 <p align="center"><img src="docs/brand/openclear-banner.svg" alt="OpenClear" width="500"></p>
+<p align="center"><a href="https://openclear-sandbox.fly.dev/ui/sandbox"><img src="docs/brand/try-the-sandbox.svg" alt="Try OpenClear in a free sandbox: your own bank in about a minute, with sample checks, ACH payments and exceptions, and an API client. Start a sandbox bank at openclear-sandbox.fly.dev" width="760"></a></p>
 
 # OpenClear
 
@@ -1171,6 +1172,8 @@ log page lists each archive for download, and "Verify" checks the archives too. 
 newest entry always stays in the table.
 
 ## Plugins
+
+> **Try it first:** [start a free sandbox bank](https://openclear-sandbox.fly.dev/ui/sandbox), your own bank in about a minute with sample checks, ACH and exceptions, to see what a plugin would extend.
 
 You can extend OpenClear without changing its code, using a separately installed Python package: another payment network, an OCR or storage service, a scoring model, or an import format for your core's files.
 

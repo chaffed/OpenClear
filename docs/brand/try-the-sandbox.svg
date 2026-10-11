@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 150" width="880" height="150" role="img" aria-labelledby="t d">
+  <title id="t">Try OpenClear in a free sandbox</title>
+  <desc id="d">Your own bank in about a minute, with sample checks, ACH payments and exceptions, and an API client to build against. Nothing to install. Start a sandbox bank at openclear-sandbox.fly.dev.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B132B"/>
+      <stop offset="100%" stop-color="#1C2541"/>
+    </linearGradient>
+    <linearGradient id="go" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4CC9F0"/>
+      <stop offset="100%" stop-color="#4ADE80"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4361EE"/>
+      <stop offset="100%" stop-color="#3A0CA3"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="880" height="150" rx="16" fill="url(#bg)"/>
+  <!-- a check, the subject of positive pay, with a pass mark -->
+  <g transform="translate(32 37)">
+    <rect width="104" height="60" rx="8" fill="#E9EEF7"/>
+    <rect x="10" y="12" width="44" height="6" rx="3" fill="#8D99AE"/>
+    <rect x="10" y="26" width="64" height="5" rx="2.5" fill="#C3CBD9"/>
+    <rect x="10" y="38" width="30" height="5" rx="2.5" fill="#C3CBD9"/>
+    <rect x="62" y="36" width="32" height="12" rx="3" fill="#FFFFFF" stroke="#C3CBD9"/>
+    <circle cx="96" cy="58" r="20" fill="url(#mark)" stroke="#0B132B" stroke-width="3"/>
+    <path d="M 86 58 L 93 65 L 106 51" fill="none" stroke="url(#go)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="172" y="58" fill="#FFFFFF" font-size="29" font-weight="700">Try OpenClear in a free sandbox</text>
+    <text x="172" y="92" fill="#C9D1E0" font-size="15">Your own bank in about a minute: sample checks,</text>
+    <text x="172" y="113" fill="#C9D1E0" font-size="15">ACH payments and exceptions, and an API client.</text>
+    <text x="172" y="134" fill="#C9D1E0" font-size="15">Nothing to install.</text>
+
+    <rect x="616" y="46" width="236" height="48" rx="24" fill="url(#go)"/>
+    <text x="734" y="76" fill="#0B132B" font-size="17" font-weight="700" text-anchor="middle">Start a sandbox bank →</text>
+    <text x="734" y="118" fill="#8D99AE" font-size="13" text-anchor="middle">openclear-sandbox.fly.dev</text>
+  </g>
+</svg>
