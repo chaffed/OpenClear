@@ -472,6 +472,12 @@ def create_app() -> FastAPI:
 
     from openclear.db.session import get_db
 
+    @app.get("/", include_in_schema=False)
+    def front_door():
+        """The bare address goes somewhere useful: on the developer sandbox, its sign-up page;
+        anywhere else, the app (which asks to sign in first)."""
+        return RedirectResponse("/ui/sandbox" if get_settings().sandbox_signup_enabled else "/ui/", status_code=status.HTTP_303_SEE_OTHER)
+
     @app.get("/health")
     def health(db: Session = Depends(get_db)):
         """For load balancers and uptime checks: "ok" only when the database answers, so a

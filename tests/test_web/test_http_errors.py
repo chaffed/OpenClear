@@ -125,3 +125,9 @@ def test_the_static_pages_need_nothing_else():
     for code in ("502", "503", "504"):
         html = (folder / f"{code}.html").read_text()
         assert f"Error {code}" in html and "<script" not in html and "<link" not in html and "src=" not in html
+
+
+def test_the_bare_address_goes_somewhere_useful(client, monkeypatch):
+    assert client.get("/", follow_redirects=False).headers["location"] == "/ui/"
+    monkeypatch.setattr(get_settings(), "sandbox_signup_enabled", True)
+    assert client.get("/", follow_redirects=False).headers["location"] == "/ui/sandbox"  # the developer sandbox
