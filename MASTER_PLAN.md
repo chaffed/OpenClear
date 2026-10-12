@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: M1–M3 and the error pages merged to `main`. Next: M4 (control panel, reminders, event shipping).**
+**Status: 1.10.0 released (M1–M3, error pages). Next: M4 (control panel, reminders, event shipping).**
 
 ## How testing is kept down
 
@@ -50,10 +50,10 @@ waves are built together, in what order, and how each is tested.
 
 | Release | Stages | Why there |
 |---|---|---|
-| 1.10 | M1, M2 | Security visibility, and the fix for the misleading page-only filter. Nothing here needs the user testing results. |
-| 1.11 | M3, M4 | Deciding and the control panel together: the two biggest changes users see, announced once. |
-| 1.12 | M5, M6 | Uploads, then the staff and operator tools. |
-| 1.13 | M7 | The edge check and guide, tested against a stub edge; confirmed against a real zone when one is set up. |
+| 1.10 | M1, M2, M3 | Security visibility, the fix for the misleading page-only filter, and the decision screens (M3 joined 1.10 since it was ready; released 2026-10-11). |
+| 1.11 | M4, M5 | The control panel, reminders and event shipping, then uploads. |
+| 1.12 | M6, M7 | The staff and operator tools, and the edge check and guide. |
+
 
 ## Code shared across plans (built once)
 
@@ -103,3 +103,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-11 Before M3: error pages for every HTTP error on web pages, 503 for database outages, `/health` checking the database (`e6d6338b`; SQLite 1479, Postgres 1504, Linux 1465). Tests now run in parallel (pytest-xdist, a Postgres database per worker) with live logs via `scripts/run_tests.sh`; Colima raised to 6 CPUs and 10 GB. All three suites running side by side: SQLite 10 min, Postgres 13 min, Linux 9 min (they took 22–26 min each, one at a time).
 - 2026-10-11 M3 built on branch `m3-deciding` (the prototype's designs accepted as they stand, before user testing): Pay/Return buttons, check return reasons (`check_return_reason`, seeded), deciding several at once (`POST /ui/exceptions/bulk`, per-item rules and transactions), decide-now landing and banner for customer users, the exception page reordered, P/R/J/K keys, cards and a sticky decision bar on phones, WCAG-passing button colours; fixed UTC times from SQLite in the browser.
 - 2026-10-11 M3 merged into `main`. Suites at `8ff9f556`: SQLite 1486 passed, Postgres 1511, Linux 3.11 1472, each with the same one failure (a test checking the ACH page's old dropdown), fixed at `e9b2d06e` and rerun green on SQLite and Postgres. Also merged: the bare address redirects (to the sandbox sign-up on the sandbox), deployed to the sandbox as a hotfix on 1.9.0.
+- 2026-10-11 Released 1.10.0 (M1, M2, M3, error pages, faster tests, the front-door redirect) at `060df6f1`, after two CI fixes to the TypeScript SDK test (its live server now uses a pooled SQLite file). Deployed to the sandbox; migrations ran. Releases renumbered: 1.11 = M4+M5, 1.12 = M6+M7.
