@@ -1,31 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.11.0 — 2026-10-12
 
-### Uploads (MASTER_PLAN.md M5)
+Settings you can see at a glance, reminders before the cutoff, security events delivered to
+a bank's SIEM, and uploads in a customer's own format. It brings:
 
-- **Issue-file layouts.** A customer's issued-check files in their own format: delimited (any
-  delimiter, with or without a header, columns by name or position), fixed-width (start and
-  length per field, a record prefix, header and trailer lines skipped) or Excel. Amounts
-  with a decimal point, implied cents or a separate cents column; named date formats; a void
-  flag (a void line voids the check already issued); leading zeros dropped if asked.
-  - Built from a sample in Settings → Issue-file layouts: choose what each column holds above
-    the sample's first rows, or select a fixed-width field's characters; preview what would
-    be imported, errors included, before saving. A short library of common shapes to start
-    from. Bank-wide or per customer, with a default.
-  - Used by the upload page, the API (`format=layout`, `layout_id`;
-    `GET /api/v1/bulk-uploads/layouts`) and the drop folder (the default). Each upload keeps
-    a copy of the layout it used.
-  - A file whose columns don't match offers "Save these settings as a layout", starting from it.
-- **Fixing failed rows in the browser.** Each failed row names the field at fault. "Fix
-  failed rows" shows them editable, with the error beside the field; only the ticked rows are
-  imported, each recorded as a correction with who made it, in the action log, and reversed
-  by backing the upload out. The uploaded file never changes.
-- **Drag and drop** onto every upload page's file input.
-- **Fixes**: a wide table inside a form, or a visually hidden label in a table header, no
-  longer widens the page on a phone.
-- **Migration** `e2a4c6e8a0b3`: `import_layout`, `bulk_upload_correction`, and the failed
-  field on row results.
+- one control panel for Settings and Admin, at bank and customer level;
+- email and text reminders before each cutoff, with bank timing and a customer override;
+- security events delivered to syslog, Splunk HEC or HTTPS, checked against a real Splunk
+  and syslog-ng, with a control that fails when delivery falls behind;
+- issue-file layouts built from a sample file, and failed rows fixed in the browser;
+- drag and drop on every upload page, and fixes for pages that scrolled sideways on phones.
 
 ### Control panel, reminders and event shipping (MASTER_PLAN.md M4)
 
@@ -70,6 +55,31 @@
   - The scheduler now starts when only the decision outbox or control tests are turned on.
 - **Migration** `d1f3b5d7f9a2`: reminder timing on banks and customers,
   `deadline_reminder`, and `security_event_destination`.
+
+### Uploads (MASTER_PLAN.md M5)
+
+- **Issue-file layouts.** A customer's issued-check files in their own format: delimited (any
+  delimiter, with or without a header, columns by name or position), fixed-width (start and
+  length per field, a record prefix, header and trailer lines skipped) or Excel. Amounts
+  with a decimal point, implied cents or a separate cents column; named date formats; a void
+  flag (a void line voids the check already issued); leading zeros dropped if asked.
+  - Built from a sample in Settings → Issue-file layouts: choose what each column holds above
+    the sample's first rows, or select a fixed-width field's characters; preview what would
+    be imported, errors included, before saving. A short library of common shapes to start
+    from. Bank-wide or per customer, with a default.
+  - Used by the upload page, the API (`format=layout`, `layout_id`;
+    `GET /api/v1/bulk-uploads/layouts`) and the drop folder (the default). Each upload keeps
+    a copy of the layout it used.
+  - A file whose columns don't match offers "Save these settings as a layout", starting from it.
+- **Fixing failed rows in the browser.** Each failed row names the field at fault. "Fix
+  failed rows" shows them editable, with the error beside the field; only the ticked rows are
+  imported, each recorded as a correction with who made it, in the action log, and reversed
+  by backing the upload out. The uploaded file never changes.
+- **Drag and drop** onto every upload page's file input.
+- **Fixes**: a wide table inside a form, or a visually hidden label in a table header, no
+  longer widens the page on a phone.
+- **Migration** `e2a4c6e8a0b3`: `import_layout`, `bulk_upload_correction`, and the failed
+  field on row results.
 
 ## 1.10.0 — 2026-10-11
 
