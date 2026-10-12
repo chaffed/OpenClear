@@ -1,5 +1,6 @@
 // Loaded only on pages with a templates/_macros/markdown_editor.html instance (currently
-// settings/form.html's Messages card and customers/banner.html) -- kept out of app.js so
+// Settings → Messages and customers/banner.html; the control panel calls initMarkdownEditor
+// for a dialog it opens) -- kept out of app.js so
 // it never loads on every other page. Wires up each [data-markdown-editor]'s formatting
 // toolbar, image insert, and live preview. No build step / vendored library: this is a
 // small enough need (wrap-selection-in-markdown-syntax) that a real editor library would

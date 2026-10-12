@@ -221,7 +221,7 @@ the post-login banner above, just scoped to .card-narrow's own width. */
 .text-muted { color: var(--text-muted); }
 
 /* templates/_macros/markdown_editor.html -- a toolbar + textarea + live preview, used
-by settings/form.html's Messages card and customers/banner.html. */
+by Settings → Messages (settings/sections/messages.html) and customers/banner.html. */
 .md-editor { margin-bottom: 0.9rem; }
 .md-editor-toolbar { display: flex; gap: 0.3rem; margin-top: 0.3rem; margin-bottom: 0.3rem; }
 .md-editor-btn {
@@ -405,9 +405,6 @@ public-demo notice, the tenant banner), which otherwise ran underneath page-cont
   white-space: pre-wrap; font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.8rem; max-height: 70vh; overflow-y: auto; margin: 0;
 }
-
-/* Settings page (templates/settings/form.html) -- full-width grid of focused cards
-   instead of one narrow centered card. */
 
 /* Mermaid ER diagrams with pan/zoom (templates/_macros/mermaid_diagram.html,
    templates/docs/admin/data-dictionary.html) */
