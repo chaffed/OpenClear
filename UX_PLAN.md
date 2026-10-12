@@ -6,7 +6,7 @@ products in general, so about half of it describes things OpenClear already has;
 listed below so they aren't rebuilt. The rest, plus a few gaps the analysis missed, are the
 phases here.
 
-**Status: planned, not started.**
+**Status: waves 1 (M3) and 2 (M4) built; waves 3 and 4 to come.**
 
 ## Who uses OpenClear, and what matters most to each
 
@@ -113,3 +113,5 @@ tests they touch. That's five merges in all, instead of about a dozen. MASTER_PL
 - 2026-10-10 Wave 0 built (M2): U12 in full for issued items, paid items, ACH and exceptions (other paginated tables say "Filter this page only"); the axe check covers ten main pages, baseline 0 after fixing pager contrast. The manual screen-reader and keyboard pass is still to do, by a person.
 - 2026-10-10 Clickable prototypes for the user-testing round (decision flow, control panel, layout builder, session guide): https://claude.ai/artifact/79s6chjETNh5qjaAEV43m6. From review: a page opened from a control-panel tile returns to the panel with the browser's Back button (added to U11).
 - 2026-10-11 Wave 1 built (M3) from the prototype as it stood, without the user-testing round (accepted by the product owner). Findings from sessions, when they happen, come back as follow-ups. The decide-now banner is for customer users only; bank staff have the Exceptions count in the navigation.
+- 2026-10-11 Wave 2 built (M4): the control panel at bank and customer level (U11; `web/control_panel.py`, `templates/settings/panel.html`, `static/js/control-panel.js`), replacing the Settings and Admin grids; each small setting at `/ui/settings/<key>` as a page or, with `?partial=1`, a dialog's content; saving in the background (JSON for the script, a redirect otherwise). Reminders before the cutoff (U3; `services/reminder_service.py`, a `deadline_reminder` log, bank timing with a customer override). The check return-reason catalogue's page. A real-browser test covers the dialog's URL, Back, Escape with unsaved changes, saving in place and errors. axe found `aria-sort` on `role="button"` in every sortable table header; fixed for all tables.
+

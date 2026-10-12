@@ -83,9 +83,23 @@
 {% if b.control_runs %}
 <table>
   <thead><tr><th>When</th><th>Test</th><th>Result</th></tr></thead>
-  <tbody>{% for r in b.control_runs %}<tr><td>{{ r.started_at[:16]|replace("T", " ") }}</td><td>{{ "Replay" if r.kind == "mrm_replay" else "Anomaly capture" }}{{ " (daily)" if r.scheduled }}</td><td>{{ r.summary }}</td></tr>{% endfor %}</tbody>
+  <tbody>{% for r in b.control_runs %}<tr><td>{{ r.started_at[:16]|replace("T", " ") }}</td><td>{{ {"mrm_replay": "Replay", "anomaly_capture": "Anomaly capture", "audit_verification": "Action log verification", "evidence_export": "Evidence export"}.get(r.kind, r.kind) }}{{ " (daily)" if r.scheduled }}</td><td>{{ r.summary }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}<p>None in the period.</p>{% endif %}
+
+{% if b.security_events %}
+<h2>Security events</h2>
+<p>{{ b.security_events.total }} security events in the period{% for k, v in b.security_events.counts_by_category.items() %}{{ ": " if loop.first else ", " }}{{ v }} {{ k }}{% endfor %}.
+  {% if b.security_events.feed_last_read_at %}Last read through the API {{ b.security_events.feed_last_read_at[:16]|replace("T", " ") }} UTC.{% endif %}</p>
+{% if b.security_events.destinations %}
+<table>
+  <thead><tr><th>Delivered to</th><th>Delivered (all time)</th><th>Last delivered</th><th>Waiting</th><th>Status</th></tr></thead>
+  <tbody>{% for d in b.security_events.destinations %}<tr><td>{{ d.destination }} ({{ d.receives }})</td><td>{{ d.delivered_total }}</td>
+    <td>{{ (d.last_success_at or "—")[:16]|replace("T", " ") }}</td><td>{{ d.waiting }}</td>
+    <td>{% if d.failing_since %}Failing since {{ d.failing_since[:16]|replace("T", " ") }}: {{ d.last_error }}{% else %}OK{% endif %}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No SIEM destination is configured; events are available through the pull API.</p>{% endif %}
+{% endif %}
 
 <h2>Decisions</h2>
 <p>{{ b.decisions.count }} decisions in the period{% for k, v in b.decisions.by_outcome.items() %}{{ ": " if loop.first else ", " }}{{ v }} {{ k }}{% endfor %}.

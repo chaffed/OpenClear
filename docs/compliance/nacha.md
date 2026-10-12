@@ -38,5 +38,5 @@ period:
 - changes and their approvals;
 - whether the action log verifies.
 
-The replay test (Admin → Model risk) shows how the bank's current filters would have treated
+The replay test (Settings → Model risk) shows how the bank's current filters would have treated
 a past NACHA file, compared with what actually happened.

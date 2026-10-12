@@ -8,7 +8,8 @@ It holds what the installation is running (its version and database revision, th
 plugins and models in force with digests of each), the bank's settings and security
 groups, whether the action log verifies, segregation-of-duties breaches, changes and their
 approvals, every decision in the period with who recommended and who decided it, the
-model-risk test runs, and a live snapshot of the controls (services/controls_service.py).
+model-risk test runs, security event counts and their delivery, and a live snapshot of the
+controls (services/controls_service.py).
 
 The bundle is canonical JSON, signed with the installation's file-signing key (ECDSA P-256,
 SHA-256). The JSON export carries the signature and the public key to check it with; the PDF
@@ -189,6 +190,27 @@ def _control_runs(session: Session, tenant_id: uuid.UUID, start: datetime, end: 
              "scheduled": r.requested_by_user_id is None} for r in rows]
 
 
+def _security_events(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> dict:
+    """How many security events the bank had in the period, by category, and where they
+    were delivered (SIEM_PLAN.md S5). Event counts cover what's still kept
+    (security_event_retention_days); the SIEM holds the rest."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services.siem import delivery
+
+    counts = delivery.counts_by_category(session, tenant_id, start, end)
+    tenant = session.get(Tenant, tenant_id)
+    return {
+        "counts_by_category": counts, "total": sum(counts.values()),
+        "feed_last_read_at": _iso(tenant.security_event_feed_read_at),
+        "destinations": [{
+            "receives": "this bank's events" if s.destination.tenant_id else "every bank's events (the installation's)",
+            "destination": delivery.describe(s.destination), "delivered_total": s.destination.delivered_count,
+            "last_success_at": _iso(s.destination.last_success_at), "failing_since": _iso(s.destination.failing_since),
+            "last_error": s.destination.last_error, "waiting": s.backlog,
+        } for s in delivery.status_for_bank(session, tenant_id)],
+    }
+
+
 def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, generated_by_user_id: uuid.UUID | None) -> dict:
     from openclear.domain.tenant import Tenant
     from openclear.services import controls_service
@@ -209,6 +231,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "audit": _audit(session, tenant_id, period_start, period_end),
         "decisions": _decisions(session, tenant_id, period_start, period_end),
         "control_runs": _control_runs(session, tenant_id, period_start, period_end),
+        "security_events": _security_events(session, tenant_id, period_start, period_end),
         "controls": controls,
     }
 

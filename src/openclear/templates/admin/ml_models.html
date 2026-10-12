@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Admin — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}ML models — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ML models{% endblock %}
 {% block help_body %}
 <p>ML scoring estimates how likely an exception is to be paid or returned. It's advisory:
@@ -14,18 +14,6 @@
   least {{ min_bank_decisions }} of your own. You can always activate an older version by hand.</p>
 {% endblock %}
 {% block content %}
-{% if can(ctx, "admin:manage") %}
-{% if is_demo_tenant %}
-<div class="card card-narrow">
-  <h1>Demo data</h1>
-  <p>This is the public demo organization. It resets to its original data every hour, and
-    whenever someone signs in after it has been idle. You can also reset it now.</p>
-  <form method="post" action="/ui/admin/demo/reset" data-confirm="Reset all demo data now? You will be signed out and need to log back in.">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="danger">{{ icon("restart_alt") }}Reset demo data now</button>
-  </form>
-</div>
-{% endif %}
 <div class="card">
   <h1>ML Models</h1>
   <table>
@@ -108,81 +96,4 @@
   {% endif %}
   {% endif %}
 </div>
-{% endif %}
-{% if can(ctx, "tenant:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Single Sign-On</h1>
-    <a href="/ui/admin/sso" class="button secondary">{{ icon("tune") }}Manage</a>
-  </div>
-  {% if sso_connection_count %}
-  <p>{{ sso_connection_count }} SSO connection{{ "s" if sso_connection_count != 1 else "" }} configured for bank staff.</p>
-  {% else %}
-  <p>No SSO connections configured — bank staff sign in with a password.</p>
-  {% endif %}
-</div>
-{% endif %}
-{% if can(ctx, "api_client:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>API clients</h1>
-    <a href="/ui/admin/api-clients" class="button secondary">{{ icon("tune") }}Manage</a>
-  </div>
-  <p>Credentials for your own systems (your core, your online banking provider) to call
-    OpenClear's API without a person's password.</p>
-</div>
-{% endif %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Changes awaiting approval</h1>
-    <a href="/ui/admin/changes" class="button secondary">{{ icon("fact_check") }}View</a>
-  </div>
-  <p>Changes to matching rules and scoring models waiting for a second admin (segregation of duties).</p>
-</div>
-{% if can(ctx, "api_client:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Integration checklist</h1>
-    <a href="/ui/admin/integration" class="button secondary">{{ icon("checklist") }}View</a>
-  </div>
-  <p>What your core or online banking integration has shown it does: sync, items, decisions, webhooks.</p>
-</div>
-{% endif %}
-{% if can(ctx, "audit_log:read") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Controls</h1>
-    <a href="/ui/admin/controls" class="button secondary">{{ icon("checklist") }}View</a>
-  </div>
-  <p>Each control's live status, with its evidence: encryption, the action log, segregation of duties, second factors, synthetic fraud, timeliness.</p>
-</div>
-{% endif %}
-{% if can(ctx, "admin:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Model risk</h1>
-    <a href="/ui/admin/model-risk" class="button secondary">{{ icon("checklist") }}View</a>
-  </div>
-  <p>Replay a past file through today's rules, and check that synthetic fraud is caught.</p>
-</div>
-{% endif %}
-{% if can(ctx, "admin:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Plugins</h1>
-    <a href="/ui/admin/plugins" class="button secondary">{{ icon("tune") }}View</a>
-  </div>
-  <p>What extends this installation: payment networks, file formats, OCR and storage services.</p>
-</div>
-{% endif %}
-{% if can(ctx, "api_client:manage") %}
-<div class="card">
-  <div class="toolbar">
-    <h1>Webhooks</h1>
-    <a href="/ui/admin/webhooks" class="button secondary">{{ icon("tune") }}Manage</a>
-  </div>
-  <p>Tell your own systems the moment an exception is raised, a decision is made or an upload
-    finishes.</p>
-</div>
-{% endif %}
 {% endblock %}

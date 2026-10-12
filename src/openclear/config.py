@@ -338,6 +338,11 @@ class Settings(BaseSettings):
     # The exception.deadline_approaching webhook goes out this many hours before an open
     # exception's decision deadline (checked by the same sweep).
     webhook_deadline_warning_hours: int = 4
+    # Reminders before the cutoff (services/reminder_service.py; UX_PLAN.md U3): sent this
+    # many minutes before each open exception's decision deadline, comma-separated, by the
+    # same sweep. A bank sets its own in Settings → Reminders; this is the default for banks
+    # that haven't. Empty: no reminders unless a bank turns them on.
+    reminder_offsets_minutes: str = "120,30"
     # Decision outbox (services/decision_outbox_service.py, SDK_PLAN.md P3): writes each
     # bank's new decisions to a file on the bank's own schedule. This tick checks who's due.
     enable_decision_outbox_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
@@ -433,6 +438,30 @@ class Settings(BaseSettings):
     # Security events (services/security_events.py) are kept this long for the pull API and,
     # later, for delivery; housekeeping removes older ones.
     security_event_retention_days: int = 30
+    # Security event delivery (services/siem/; SIEM_PLAN.md S3). The installation's own
+    # destination, which receives every bank's events: siem_kind is "syslog", "splunk_hec"
+    # or "https" (empty: none). Syslog takes host, port, transport (tls, tcp or udp; udp only
+    # for a relay on the same host) and format (json, cef or leef). Splunk HEC and HTTPS take
+    # a URL and a token. siem_tls_ca_file trusts a private CA (syslog over TLS, HEC, HTTPS). Each bank
+    # can add its own destination in Settings; those must be public addresses unless
+    # siem_allow_private_hosts is on (same reasoning as webhook_allow_private_hosts).
+    siem_kind: str = ""
+    siem_host: str = ""
+    siem_port: int = 6514
+    siem_transport: Literal["tls", "tcp", "udp"] = "tls"
+    siem_format: Literal["json", "cef", "leef"] = "json"
+    siem_url: str = ""
+    siem_token: str = ""
+    siem_splunk_index: str = ""
+    siem_splunk_sourcetype: str = ""
+    siem_tls_ca_file: str = ""
+    siem_tls_verify: bool = True
+    siem_timeout_seconds: int = 10
+    siem_batch_size: int = 500
+    siem_settle_seconds: int = 5
+    siem_allow_private_hosts: bool = False
+    enable_security_event_delivery_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
+    security_event_delivery_tick_seconds: int = 15
     # Long requests run as background jobs (services/long_runs.py; WAF_PLAN.md W3): a replay
     # larger than this many bytes, and an evidence export longer than this many days.
     # Smaller ones still answer at once.

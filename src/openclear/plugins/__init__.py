@@ -19,7 +19,7 @@ The operator allows it with `OPENCLEAR_PLUGINS=rtp` (a comma-separated list of e
 names; installing a package alone activates nothing), or `OPENCLEAR_PLUGINS_REQUIRED=rtp`
 to also refuse to start without it. A plugin that isn't allowed, needs
 another plugin API version, fails to load, or claims a name something else already has is
-reported (Admin → Plugins, and the log) and skipped; the app still starts. OpenClear's own
+reported (Settings → Plugins, and the log) and skipped; the app still starts. OpenClear's own
 built-in network, OCR, notification, storage, scoring and import-format code registers
 the same way (plugins/builtin.py).
 
@@ -53,7 +53,7 @@ EXTENSION_POINTS = (
 )
 BUILTIN_NAME = "openclear"
 # Extension points where using a plugin's entry is each bank's choice: a bank admin turns it
-# on under Admin → Plugins (services/plugin_service.py). The rest are the operator's choice,
+# on under Settings → Plugins (services/plugin_service.py). The rest are the operator's choice,
 # made in configuration. Built-in entries are always on.
 BANK_CHOICE_POINTS = ("import_formats", "decision_layouts", "matching_rules", "notification_channels")
 # Exception codes a matching rule plugin may not claim: the built-in rules' own, and the one
@@ -265,7 +265,7 @@ def is_builtin(point: str, key) -> bool:
 
 
 def bank_choices() -> list[dict]:
-    """The plugin-provided entries a bank can turn on, for Admin → Plugins."""
+    """The plugin-provided entries a bank can turn on, for Settings → Plugins."""
     load()
     return [
         {"point": point, "key": key, "label": label(key), "plugin": registry.origins.get((point, key), "?")}

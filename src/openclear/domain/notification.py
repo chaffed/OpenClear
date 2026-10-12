@@ -23,6 +23,9 @@ class NotificationType(str, enum.Enum):
     # Always emailed (see notification_service._ALWAYS_EMAIL_TYPES): an unexpected one is
     # the first sign an account was taken over.
     PASSWORD_CHANGED = "password_changed"
+    # services/reminder_service.py: items due soon, one message per person per reminder
+    # (UX_PLAN.md U3).
+    DEADLINE_REMINDER = "deadline_reminder"
 
 
 class NotificationChannel(str, enum.Enum):

@@ -1,0 +1,22 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Before the cutoff, the people who can recommend or decide items get one
+  message listing how many are still open and when the first is due. Each person chooses
+  email, text or both under Security → Notifications.</p>
+<form method="post" action="/ui/settings/reminders">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset>
+    <legend>Send reminders</legend>
+    {% if customer_level %}
+    <label><input type="radio" name="mode" value="bank" {{ "checked" if reminder_mode == "bank" else "" }}> Use your bank's timing: {{ reminder_inherited }}</label>
+    {% else %}
+    <label><input type="radio" name="mode" value="default" {{ "checked" if reminder_mode == "default" else "" }}> Use the platform default: {{ reminder_inherited }}</label>
+    {% endif %}
+    <label><input type="radio" name="mode" value="custom" {{ "checked" if reminder_mode == "custom" else "" }}> At these times</label>
+    <label class="indented">Minutes or hours before the cutoff, separated by commas
+      <input type="text" name="offsets" value="{{ reminder_offsets }}" placeholder="120, 30" aria-describedby="offsets-hint">
+    </label>
+    <p class="hint indented" id="offsets-hint">For example <code>2h, 30</code>: two hours and thirty minutes before. Up to four, each within 24 hours.</p>
+    <label><input type="radio" name="mode" value="off" {{ "checked" if reminder_mode == "off" else "" }}> Don't send reminders</label>
+  </fieldset>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

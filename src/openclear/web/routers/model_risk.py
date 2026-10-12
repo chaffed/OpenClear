@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Model risk (services/mrm_service.py; COMPLIANCE_PLAN.md C2): replay a past file
+"""Settings → Model risk (services/mrm_service.py; COMPLIANCE_PLAN.md C2): replay a past file
 through today's rules, run the anomaly-capture test, and read the reports."""
 
 import uuid

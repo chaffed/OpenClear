@@ -130,14 +130,14 @@ def test_customer_detail_page_links_to_banner_for_permitted_user(client, db_sess
     assert f'href="/ui/customers/{customer.id}/banner"' in resp.text
 
 
-def test_nav_shows_banner_link_for_customer_scoped_self_service_user(client, db_session, tenant_factory):
+def test_customer_settings_panel_links_the_banner_for_a_self_service_user(client, db_session, tenant_factory):
     tenant, _account, _users = tenant_factory.make(slug="cust-banner-nav")
     customer = _make_customer(db_session, tenant)
     _make_customer_scoped_user(db_session, tenant, customer)
     _login(client, tenant.slug, "scoped@customer.example.com")
 
-    resp = client.get("/ui/")
-    assert f'href="/ui/customers/{customer.id}/banner"' in resp.text
+    assert 'href="/ui/settings"' in client.get("/ui/").text
+    assert f'href="/ui/customers/{customer.id}/banner"' in client.get("/ui/settings").text
 
 
 def test_customer_can_save_and_see_a_banner_with_an_embedded_image(client, db_session, tenant_factory):

@@ -1,0 +1,11 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">A different person must make the final pay or return decision than the one
+  who recommended it. Takes effect at once for every exception.</p>
+<form method="post" action="/ui/settings/dual-control">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>
+    <input type="checkbox" name="require_dual_control" value="true" {{ "checked" if require_dual_control else "" }}>
+    Require dual control (maker/checker) on pay and return decisions
+  </label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

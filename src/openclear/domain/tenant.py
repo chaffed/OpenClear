@@ -132,6 +132,14 @@ class Tenant(Base):
     # Embedding (SDK_PLAN.md P2; services/embed_service.py): the https origins of the bank's
     # online banking that may frame OpenClear's pages, one per line. Empty: no embedding.
     embed_allowed_origins: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Reminders before the cutoff (UX_PLAN.md U3; services/reminder_service.py): minutes
+    # before each exception's decision deadline, comma-separated ("120,30"). Null uses the
+    # installation's default (config.Settings.reminder_offsets_minutes); "" turns them off.
+    reminder_offsets_minutes: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # When the bank last read its security events through the pull API (SIEM_PLAN.md S5):
+    # with no destination configured, the "Security events delivered" control warns once
+    # nobody has read them for a day.
+    security_event_feed_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Billing (domain/billing.py, BILLING_PLAN.md). How customers with no billing terms of
     # their own are billed, and how the bank's own accounts (not assigned to a customer)

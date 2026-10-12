@@ -40,63 +40,59 @@ router = APIRouter(prefix="/ui/admin", tags=["web-admin"])
 
 @router.get("")
 def admin_home(
-    request: Request, db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_any_web_permission("admin:manage", "tenant:manage")),
+) -> RedirectResponse:
+    """Admin and Settings are one control panel now (UX_PLAN.md U11)."""
+    return RedirectResponse("/ui/settings", status_code=303)
+
+
+@router.get("/ml-models")
+def ml_models(
+    request: Request, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("admin:manage")),
 ) -> HTMLResponse:
-    # Shared landing page for two otherwise-unrelated audiences (see
-    # require_any_web_permission) — each section below is independently gated in the
-    # template too, so a viewer only ever sees what their own permission covers.
     models = []
     backfill_counts: dict[str, dict[str, int]] = {}
-    is_demo_tenant = False
     tenant = db.get(Tenant, ctx.tenant_id)
     uses_bank_model = tenant.ml_model_source == MlModelSource.PRIVATE
     shared_summaries = []
-    if "admin:manage" in ctx.permissions:
-        if uses_bank_model:
-            # This bank's own bank-only models (every network); each customer's own models
-            # have their own dedicated page (the customer ML routes below). The shared
-            # model is run by the platform operator and isn't listed here at all.
-            models = db.execute(
-                select(MlModel)
-                .where(MlModel.tenant_id == ctx.tenant_id, MlModel.customer_id.is_(None))
-                .order_by(MlModel.network_code, MlModel.created_at.desc())
-            ).scalars().all()
-        else:
-            shared_summaries = tenant_ml_service.shared_model_summaries(db)
+    if uses_bank_model:
+        # This bank's own bank-only models (every network); each customer's own models
+        # have their own dedicated page (the customer ML routes below). The shared
+        # model is run by the platform operator and isn't listed here at all.
+        models = db.execute(
+            select(MlModel)
+            .where(MlModel.tenant_id == ctx.tenant_id, MlModel.customer_id.is_(None))
+            .order_by(MlModel.network_code, MlModel.created_at.desc())
+        ).scalars().all()
+    else:
+        shared_summaries = tenant_ml_service.shared_model_summaries(db)
 
-        # A live count of THIS bank's labeled decisions per network (its own contribution
-        # to whichever model it uses), separate from trained_from_decision_count on each
-        # MlModel row, which is frozen as of that model's training run. Same eligibility
-        # filter as ml/train.py::_labeled_decisions (features present, not retracted).
-        for network_code in registered_codes():
-            base_stmt = (
-                select(ExceptionItem.source, func.count(Decision.id))
-                .join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id)
-                .where(
-                    ExceptionItem.tenant_id == ctx.tenant_id,
-                    ExceptionItem.network_code == network_code,
-                    Decision.features_json.is_not(None),
-                    ExceptionItem.retracted_at.is_(None),
-                )
-                .group_by(ExceptionItem.source)
+    # A live count of THIS bank's labeled decisions per network (its own contribution
+    # to whichever model it uses), separate from trained_from_decision_count on each
+    # MlModel row, which is frozen as of that model's training run. Same eligibility
+    # filter as ml/train.py::_labeled_decisions (features present, not retracted).
+    for network_code in registered_codes():
+        base_stmt = (
+            select(ExceptionItem.source, func.count(Decision.id))
+            .join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id)
+            .where(
+                ExceptionItem.tenant_id == ctx.tenant_id,
+                ExceptionItem.network_code == network_code,
+                Decision.features_json.is_not(None),
+                ExceptionItem.retracted_at.is_(None),
             )
-            counts = dict(db.execute(base_stmt).all())
-            backfill_counts[network_code] = {
-                "live": counts.get(ExceptionItemSource.LIVE, 0),
-                "training_backfill": counts.get(ExceptionItemSource.TRAINING_BACKFILL, 0),
-            }
-
-        demo_tenant = demo_tenant_service.get_demo_tenant(db)
-        is_demo_tenant = demo_tenant is not None and demo_tenant.id == ctx.tenant_id
-
-    sso_connection_count = None
-    if "tenant:manage" in ctx.permissions:
-        sso_connection_count = len(sso_service.list_connections(db, ctx.tenant_id, customer_id=None))
+            .group_by(ExceptionItem.source)
+        )
+        counts = dict(db.execute(base_stmt).all())
+        backfill_counts[network_code] = {
+            "live": counts.get(ExceptionItemSource.LIVE, 0),
+            "training_backfill": counts.get(ExceptionItemSource.TRAINING_BACKFILL, 0),
+        }
 
     return render_template(
         request, "admin/ml_models.html", ctx=ctx, models=models, networks=registered_codes(),
-        backfill_counts=backfill_counts, is_demo_tenant=is_demo_tenant, sso_connection_count=sso_connection_count,
+        backfill_counts=backfill_counts,
         uses_bank_model=uses_bank_model, shared_summaries=shared_summaries,
         min_bank_decisions=get_settings().ml_bank_model_min_decisions,
     )
@@ -141,13 +137,13 @@ def retrain(
     # the platform operator (api/v1/platform_ml.py), never by one bank's admins.
     if db.get(Tenant, ctx.tenant_id).ml_model_source != MlModelSource.PRIVATE:
         return RedirectResponse(
-            "/ui/admin?error=" + quote("Your organization uses the shared model, which the platform operator retrains."),
+            "/ui/admin/ml-models?error=" + quote("Your organization uses the shared model, which the platform operator retrains."),
             status_code=303,
         )
     try:
         result = train_model(db, network_code, tenant_id=ctx.tenant_id)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
-        return RedirectResponse(f"/ui/admin?error={quote(str(exc))}", status_code=303)
+        return RedirectResponse(f"/ui/admin/ml-models?error={quote(str(exc))}", status_code=303)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="ml_model.retrain",
         summary=f"Retrained the bank-only {network_code} model ({'activated' if result.promoted else 'not activated'})",
@@ -155,7 +151,7 @@ def retrain(
     )
     db.commit()
     reason = (result.model_row.metrics_json or {}).get("evaluation", {}).get("reason", "")
-    return RedirectResponse(f"/ui/admin?flash={quote(f'Retrained {network_code}. {reason}')}", status_code=303)
+    return RedirectResponse(f"/ui/admin/ml-models?flash={quote(f'Retrained {network_code}. {reason}')}", status_code=303)
 
 
 @router.post("/ml/models/{model_id}/activate")
@@ -170,21 +166,21 @@ def activate(
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id)
         except change_request_service.ChangeRequestError:
             db.rollback()
-            return RedirectResponse("/ui/admin?error=" + quote("That model couldn't be found."), status_code=303)
+            return RedirectResponse("/ui/admin/ml-models?error=" + quote("That model couldn't be found."), status_code=303)
         db.commit()
-        return RedirectResponse("/ui/admin?flash=" + quote("Waiting for a second admin to approve (Admin → Changes awaiting approval)."), status_code=303)
+        return RedirectResponse("/ui/admin/ml-models?flash=" + quote("Waiting for a second admin to approve (Settings → Changes awaiting approval)."), status_code=303)
     try:
         # Confined to this bank's own bank-only models (ml/registry.py::activate_model).
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)
     except ValueError:
         db.rollback()
-        return RedirectResponse("/ui/admin?error=" + quote("That model couldn't be found."), status_code=303)
+        return RedirectResponse("/ui/admin/ml-models?error=" + quote("That model couldn't be found."), status_code=303)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="ml_model.activate",
         summary=f"Activated bank-only {model.network_code} model {model.version}", resource_type="ml_model", resource_id=model.id,
     )
     db.commit()
-    return RedirectResponse("/ui/admin?flash=Model+activated.", status_code=303)
+    return RedirectResponse("/ui/admin/ml-models?flash=Model+activated.", status_code=303)
 
 
 def _get_customer_or_404(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID):

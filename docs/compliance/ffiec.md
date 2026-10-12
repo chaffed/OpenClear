@@ -12,7 +12,7 @@ advice ([Compliance](README.md)).
 |---|---|---|
 | Least privilege | Per-bank security groups built from fine-grained permissions, checked on every API and web request. Business customers are scoped to their own accounts. | Settings → Security groups; Users → Export |
 | Segregation of duties | Two default rules: whoever submits items can't decide them, and whoever manages users can't define what groups grant. Enforced on groups and per item: the person who presented an item can't decide it. In *enforce* mode a breach is refused (`403 ERR_SOD_VIOLATION`); in either mode it's logged. | Settings → Segregation of duties; `sod.violation` entries in the action log; Controls |
-| Dual control | Maker-checker on pay/return decisions, per bank. Changes to matching rules and scoring models need a second admin under enforce mode. | Settings; Admin → Changes; the evidence bundle's changes |
+| Dual control | Maker-checker on pay/return decisions, per bank. Changes to matching rules and scoring models need a second admin under enforce mode. | Settings; Settings → Changes; the evidence bundle's changes |
 | Authentication | bcrypt passwords with a per-bank policy; FIDO2/WebAuthn security keys and passkeys; SSO with OIDC or SAML 2.0, group mapping, SCIM provisioning and sign-out from the identity provider. Systems use OAuth 2.0 client credentials, not passwords. | Controls → "Admins use a second factor"; Users → Export |
 | Access recertification | Every membership with its group, scope, status and last sign-in, exportable. | Users → Export (CSV, JSON); `GET /api/v1/users` |
 
@@ -30,8 +30,9 @@ advice ([Compliance](README.md)).
 
 | Theme | What OpenClear does | Evidence |
 |---|---|---|
-| Audit trail | Every state-changing action, by person or system, with time, channel and details. Each entry is ECDSA-signed and chained to the one before, so an edit, deletion or reordering is detectable. Old entries can move to signed archives without breaking the chain. | Admin → Action log → Verify; Controls → "Action log intact" |
-| Continuous monitoring | Live controls with PASS / WARN / FAIL and evidence, by API for a bank's monitoring tools. `openclear controls` exits non-zero on a failure. | Admin → Controls |
+| Audit trail | Every state-changing action, by person or system, with time, channel and details. Each entry is ECDSA-signed and chained to the one before, so an edit, deletion or reordering is detectable. Old entries can move to signed archives without breaking the chain. | Settings → Action log → Verify; Controls → "Action log intact" |
+| Log management | Security events (sign-ins and their failures, lockouts, second factors, API tokens, refusals, and changes to who may do what), each with the caller's address, the request and who, and never a secret or account data. Delivered to the bank's SIEM (syslog over TLS as JSON, CEF or LEEF; Splunk HEC; HTTPS) in order and at least once, with retries, from the bank's own destination and the installation's; also readable through a pull API. Events a destination hasn't received are kept until it has. JSON operational logs carry the same request context. | Settings → Security event forwarding; Controls → "Security events delivered"; the evidence bundle's `security_events`; `docs/guides/siem.md` |
+| Continuous monitoring | Live controls with PASS / WARN / FAIL and evidence, by API for a bank's monitoring tools. `openclear controls` exits non-zero on a failure. | Settings → Controls |
 | Timeliness | Exceptions past or near their decision deadline, stuck imports, a late decision outbox. | Controls → "Decisions and imports on time" |
 
 ## Development, change and resilience

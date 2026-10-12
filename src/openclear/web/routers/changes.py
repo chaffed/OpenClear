@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Changes awaiting approval (services/change_request_service.py), and the
+"""Settings → Changes awaiting approval (services/change_request_service.py), and the
 segregation-of-duties setting (auth/sod.py)."""
 
 import uuid

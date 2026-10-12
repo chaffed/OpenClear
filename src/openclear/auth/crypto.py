@@ -105,6 +105,7 @@ def is_current(ciphertext: str | None, *, settings: Settings | None = None) -> b
 
 def encrypted_columns():
     """Every column holding an encrypt_secret value: (model, attribute name)."""
+    from openclear.domain.security_event_destination import SecurityEventDestination
     from openclear.domain.sso_connection import SsoConnection
     from openclear.domain.tenant_extension import TenantExtension
     from openclear.domain.webhook import WebhookEndpoint
@@ -114,6 +115,7 @@ def encrypted_columns():
         (SsoConnection, "saml_sp_private_key_encrypted"),
         (WebhookEndpoint, "secret_encrypted"),
         (TenantExtension, "config_encrypted"),
+        (SecurityEventDestination, "token_encrypted"),
     ]
 
 

@@ -510,7 +510,7 @@ A plugin is checked in several ways:
 
 - A plugin declares the `PLUGIN_API_VERSION` range it supports. One outside that range is marked `incompatible` and isn't called.
 - Registration is all-or-nothing. A plugin adds to a staging copy of the registry, and the copy replaces the live one only if `register()` succeeds. A plugin that raises, or claims a name that's already taken, leaves nothing behind and is marked `failed`.
-- `plugins.status()` feeds Admin → Plugins.
+- `plugins.status()` feeds Settings → Plugins.
 
 Some extension points are a bank's choice rather than the operator's (`BANK_CHOICE_POINTS`): import formats, decision layouts, matching rules and notification channels. Scoring features aren't a bank's choice: they feed the shared model, so they apply to every bank.
 

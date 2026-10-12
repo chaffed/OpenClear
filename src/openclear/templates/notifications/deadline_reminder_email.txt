@@ -1,0 +1,8 @@
+{{ count }} item{{ "s" if count != 1 else "" }} at {{ bank_name }} still need{{ "" if count != 1 else "s" }} a pay or return decision. The first is due in {{ due_in }}.
+
+Decide them here: {{ queue_url }}
+
+Items not decided by their cutoff are decided automatically, using your default.
+
+You're receiving this because your role can recommend or decide these items. You can
+change what you're notified about at /ui/security/notifications.

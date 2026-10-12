@@ -10,7 +10,7 @@
     bank, so it's useful from day one. The platform operator trains it and decides which
     version is active.</li>
   <li>A <strong>bank-only model</strong> learns only from your own decisions, so your data
-    never leaves your organization. Your administrators retrain it on the Admin page.</li>
+    never leaves your organization. Your administrators retrain it in Settings → ML models.</li>
 </ul>
 <p>A customer can still have its own model on top of either (Customers → ML scoring).</p>
 {% endblock %}
@@ -23,7 +23,7 @@
   <p>Your organization uses
     <strong>{{ "a bank-only model" if uses_bank_model else "the shared model" }}</strong>{% if changed_at %},
     since {{ changed_at.strftime("%Y-%m-%d") }}{% if changed_by %} ({{ changed_by }}){% endif %}{% endif %}.
-    {% if uses_bank_model %}Manage it on the <a href="/ui/admin">Admin</a> page.{% endif %}</p>
+    {% if uses_bank_model %}Manage it in <a href="/ui/admin/ml-models">Settings → ML models</a>.{% endif %}</p>
 
   <table>
     <thead><tr><th></th><th>Shared model</th><th>Bank-only model</th></tr></thead>
@@ -69,7 +69,7 @@
     <li>Your model starts as an exact copy of today's shared model, so scoring continues
       without a gap. After that, it no longer receives updates to the shared model.</li>
     <li>Your decisions stop being used by the shared model from its next retrain.</li>
-    <li>Your administrators retrain your model on the Admin page. A retrained version replaces
+    <li>Your administrators retrain your model in Settings → ML models. A retrained version replaces
       the active one only once it has learned from at least {{ min_bank_decisions }} of your
       decisions and scores at least as well on your recent ones.</li>
     <li>You can switch back to the shared model at any time.</li>

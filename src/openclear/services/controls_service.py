@@ -3,7 +3,7 @@
 
 """Continuous control monitoring (COMPLIANCE_PLAN.md C4): each control's live status,
 `PASS`, `WARN` or `FAIL`, with the evidence for it, read from what the bank's installation
-is actually doing. Shown at Admin → Controls and `GET /api/v1/controls/status`, and
+is actually doing. Shown at Settings → Controls and `GET /api/v1/controls/status`, and
 included in the evidence export (C3).
 
 A control reports only what OpenClear can see. Disk and database encryption are the host's
@@ -267,7 +267,7 @@ def _anomaly_capture(session: Session, tenant_id: uuid.UUID) -> Control:
     run = mrm_service.latest(session, tenant_id, mrm_service.ANOMALY_CAPTURE)
     if run is None:
         return Control("anomaly_capture", "Synthetic fraud caught", WARN,
-                       "The anomaly-capture test hasn't run. Run it at Admin → Model risk, or turn on the daily schedule.", {})
+                       "The anomaly-capture test hasn't run. Run it at Settings → Model risk, or turn on the daily schedule.", {})
     evidence = {"run_id": str(run.id), "started_at": run.started_at.isoformat() if run.started_at else None,
                 "caught": run.report.get("caught"), "total": run.report.get("total")}
     if not run.passed:
@@ -275,6 +275,41 @@ def _anomaly_capture(session: Session, tenant_id: uuid.UUID) -> Control:
     if _aware(run.started_at) < _now() - CAPTURE_MAX_AGE:
         return Control("anomaly_capture", "Synthetic fraud caught", WARN, "The last run passed, but it's more than a day old.", evidence)
     return Control("anomaly_capture", "Synthetic fraud caught", PASS, run.summary, evidence)
+
+
+def _event_delivery(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Security events reach the bank's SIEM (SIEM_PLAN.md S5): through a destination that
+    isn't failing or falling behind, or, with none, by the bank reading the pull API."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services.siem import delivery
+
+    title = "Security events delivered"
+    statuses = delivery.status_for_bank(session, tenant_id)
+    evidence = {"destinations": [{
+        "destination": delivery.describe(s.destination), "receives": "bank" if s.destination.tenant_id else "installation",
+        "last_success_at": _iso(s.destination.last_success_at), "failing_since": _iso(s.destination.failing_since),
+        "last_error": s.destination.last_error, "waiting": s.backlog, "oldest_waiting_at": _iso(s.oldest_pending_at),
+    } for s in statuses]}
+    if not statuses:
+        tenant = session.get(Tenant, tenant_id)
+        read_at = _aware(tenant.security_event_feed_read_at) if tenant else None
+        evidence["feed_last_read_at"] = _iso(read_at)
+        if read_at is None or read_at < _now() - timedelta(days=1):
+            return Control("event_delivery", title, WARN,
+                           "No SIEM destination is set, and nobody has read the security events through the API in the last day. "
+                           "Add one in Settings → Security event forwarding.", evidence)
+        return Control("event_delivery", title, PASS, "No destination is set; the events are read through the API.", evidence)
+    stale = [s for s in statuses if s.stale]
+    if stale:
+        problems = [f"{delivery.describe(s.destination)}: " + (f"failing ({s.destination.last_error})" if s.destination.failing_since
+                                                              else f"{s.backlog} waiting") for s in stale]
+        return Control("event_delivery", title, FAIL, "Not delivered for over an hour: " + "; ".join(problems) + ".", evidence)
+    parts = []
+    for s in statuses:
+        last = _aware(s.destination.last_success_at)
+        parts.append(f"{delivery.describe(s.destination)}, " + (f"last delivered {last:%Y-%m-%d %H:%M} UTC" if last else "nothing to send yet")
+                     + (f", {s.backlog} waiting" if s.backlog else ""))
+    return Control("event_delivery", title, PASS, "; ".join(parts) + ".", evidence)
 
 
 def status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
@@ -289,6 +324,7 @@ def status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
         _parser_hardening(),
         _sla(session, tenant_id),
         _api_client_secrets(session, tenant_id),
+        _event_delivery(session, tenant_id),
         _production_safety(),
     ]
 

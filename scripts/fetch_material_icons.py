@@ -89,6 +89,24 @@ ICONS: dict[str, str] = {
     "format_italic": "markdown editor: Italic toolbar button",
     "link": "markdown editor: Insert link toolbar button",
     "format_list_bulleted": "markdown editor: Bulleted list toolbar button",
+    # Control panel tiles (templates/settings/panel.html; web/control_panel.py)
+    "palette": "tile: Branding",
+    "contact_support": "tile: Contact info",
+    "password": "tile: Password policy",
+    "timer": "tile: Timeouts",
+    "key": "tile: Single sign-on",
+    "rule": "tile: Segregation of duties",
+    "how_to_reg": "tile: Dual control",
+    "notifications_active": "tile: Reminders",
+    "analytics": "tile: Fraud scoring model",
+    "description": "tile: Decision files",
+    "web": "tile: Embedding",
+    "security": "tile: Security event forwarding",
+    "drive_folder_upload": "tile: Auto-import",
+    "science": "tile: Model risk",
+    "extension": "tile: Plugins",
+    "webhook": "tile: Webhooks",
+    "verified_user": "tile: Controls",
 }
 
 

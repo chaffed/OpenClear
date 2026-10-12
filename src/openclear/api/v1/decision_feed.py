@@ -63,7 +63,7 @@ def decision_file(
     db: Session = Depends(get_db), ctx: TenantContext = Depends(_read),
 ) -> Response:
     """The same decisions as a file in the layout a core takes back. Layouts beyond the
-    built-in CSV come from plugins, turned on per organization (Admin → Plugins)."""
+    built-in CSV come from plugins, turned on per organization (Settings → Plugins)."""
     try:
         chosen = plugin_service.require_enabled(db, ctx.tenant_id, "decision_layouts", layout, what="decision layout")
     except ValueError as exc:

@@ -143,6 +143,11 @@ def test_customer_scoped_admin_group_is_masked_from_tenant_admin_web_routes(clie
     # but every tenant-admin-only surface is masked out regardless
     assert client.get("/ui/users", follow_redirects=False).status_code == 403
     assert client.get("/ui/security-groups", follow_redirects=False).status_code == 403
-    assert client.get("/ui/settings", follow_redirects=False).status_code == 403
+    # Settings is the customer's own control panel (its reminders and banner), never the bank's.
+    customer_panel = client.get("/ui/settings", follow_redirects=False)
+    assert customer_panel.status_code == 200
+    assert 'data-key="reminders"' in customer_panel.text
+    assert 'data-key="branding"' not in customer_panel.text
+    assert client.get("/ui/settings/branding", follow_redirects=False).status_code == 403
     assert client.get("/ui/audit-log", follow_redirects=False).status_code == 403
     assert client.get("/ui/customers", follow_redirects=False).status_code == 403

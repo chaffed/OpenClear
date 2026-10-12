@@ -42,6 +42,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.ACCOUNT_UNLOCKED: "Your OpenClear account has been unlocked",
     NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
     NotificationType.PASSWORD_CHANGED: "Your OpenClear password was changed",
+    NotificationType.DEADLINE_REMINDER: "Items to decide before the cutoff",
 }
 
 

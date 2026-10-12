@@ -1,0 +1,28 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Blank uses the platform default. Session changes apply to sessions started after saving.</p>
+<form method="post" action="/ui/settings/session-timeout">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Idle sign-out after (minutes)
+    <input type="number" name="access_token_expire_minutes" min="1" step="1"
+           value="{{ access_token_expire_minutes if access_token_expire_minutes is not none else '' }}"
+           placeholder="Default: {{ default_access_token_expire_minutes }}">
+  </label>
+  <p class="hint">Users are warned 5 minutes before being signed out for inactivity.</p>
+  <label>Maximum session length (minutes)
+    <input type="number" name="refresh_token_expire_minutes" min="1" step="1"
+           value="{{ refresh_token_expire_minutes if refresh_token_expire_minutes is not none else '' }}"
+           placeholder="Default: {{ default_refresh_token_expire_minutes }}">
+  </label>
+  <p class="hint">After this long, users must sign in again even if they've been active.</p>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save session timeouts</button></div>
+</form>
+<form method="post" action="/ui/settings/data-export-timeout">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Data export timeout (seconds)
+    <input type="number" name="timeout_seconds" min="1" step="1"
+           value="{{ data_export_timeout_seconds if data_export_timeout_seconds is not none else '' }}"
+           placeholder="Default: {{ default_data_export_timeout_seconds }}">
+  </label>
+  <p class="hint">How long a background export may run before it's stopped and marked failed.</p>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save export timeout</button></div>
+</form>

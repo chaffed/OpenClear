@@ -78,6 +78,8 @@ CATALOG: dict[str, EventType] = {
     "sso_connection.changed": EventType("integration", "high"),
     "sso_connection.scim_token.issued": EventType("integration", "high"),
     "embed.origins.changed": EventType("integration", "medium"),
+    "security_events.destination.changed": EventType("integration", "high"),
+    "webhook.changed": EventType("integration", "medium"),
     # configuration
     "settings.changed": EventType("configuration", "medium"),
     "sod.mode.changed": EventType("configuration", "high"),
@@ -93,8 +95,10 @@ CATALOG: dict[str, EventType] = {
     "data_export.downloaded": EventType("data", "high"),
     "bulk_upload.reversed": EventType("data", "medium"),
     "list.exported": EventType("data", "medium"),
+    "users.exported": EventType("data", "medium"),
     # integrity
     "anomaly_capture.failed": EventType("integrity", "high"),
+    "secrets.reencrypted": EventType("integrity", "medium"),
 }
 
 # Action-log actions that are also security events (event name, and the setting changed for settings.*).
@@ -124,6 +128,11 @@ AUDIT_EVENTS: dict[str, str] = {
     "sso_connection.update": "sso_connection.changed",
     "sso_connection.scim_token": "sso_connection.scim_token.issued",
     "tenant.update_embedding": "embed.origins.changed",
+    "tenant.update_security_event_destination": "security_events.destination.changed",
+    "webhook.create": "webhook.changed",
+    "webhook.update": "webhook.changed",
+    "webhook.rotate_secret": "webhook.changed",
+    "tenant.update_reminders": "settings.changed",
     "tenant.update_settings": "settings.changed",
     "tenant.update_session_timeout": "settings.changed",
     "tenant.update_dual_control": "settings.changed",

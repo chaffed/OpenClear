@@ -17,11 +17,11 @@ several requirements depend on how the bank configures and hosts it.
 
 | Evidence | Where |
 |---|---|
-| Live control status (PASS / WARN / FAIL) | Admin → Controls; `GET /api/v1/controls/status`; `openclear controls` |
-| A signed evidence bundle for a period | Admin → Controls → Export evidence; `GET /api/v1/audit/export`; `openclear audit export` |
-| Every state-changing action, who did it and when | Admin → Action log (hash-chained, each entry ECDSA-signed) |
-| Model validation (back-testing and ongoing monitoring) | Admin → Model risk: file replay and the anomaly-capture test |
-| Segregation of duties and two-person changes | Settings → Segregation of duties; Admin → Changes |
+| Live control status (PASS / WARN / FAIL) | Settings → Controls; `GET /api/v1/controls/status`; `openclear controls` |
+| A signed evidence bundle for a period | Settings → Controls → Export evidence; `GET /api/v1/audit/export`; `openclear audit export` |
+| Every state-changing action, who did it and when | Settings → Action log (hash-chained, each entry ECDSA-signed) |
+| Model validation (back-testing and ongoing monitoring) | Settings → Model risk: file replay and the anomaly-capture test |
+| Segregation of duties and two-person changes | Settings → Segregation of duties; Settings → Changes |
 | Who has access, and whether they use it | Users → Export (CSV or JSON), with last sign-in |
 
 The evidence bundle is canonical JSON signed with the installation's file-signing key

@@ -156,7 +156,7 @@ def test_admin_ml_page_lists_networks(client, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="web-flow-admin-ok")
     _login(client, tenant.slug, users["admin"].email)
 
-    resp = client.get("/ui/admin")
+    resp = client.get("/ui/admin/ml-models")
     assert resp.status_code == 200
     assert "check" in resp.text
     assert "ach" in resp.text
@@ -181,18 +181,19 @@ def test_admin_page_shared_by_tenant_manage_and_admin_manage_each_seeing_only_th
     tenant_only = _make_single_permission_user(db_session, tenant, permission="tenant:manage", email="tenantonly@example.com")
     admin_only = _make_single_permission_user(db_session, tenant, permission="admin:manage", email="adminonly@example.com")
 
+    # /ui/admin is the control panel now; each sees only the tiles their permission covers.
     _login(client, tenant.slug, tenant_only.email)
     tenant_only_page = client.get("/ui/admin")
     assert tenant_only_page.status_code == 200
-    assert "Single Sign-On" in tenant_only_page.text
-    assert "ML Models" not in tenant_only_page.text
+    assert 'data-key="sso"' in tenant_only_page.text
+    assert 'data-key="ml-models"' not in tenant_only_page.text
 
     client.cookies.clear()
     _login(client, tenant.slug, admin_only.email)
     admin_only_page = client.get("/ui/admin")
     assert admin_only_page.status_code == 200
-    assert "ML Models" in admin_only_page.text
-    assert "Single Sign-On" not in admin_only_page.text
+    assert 'data-key="ml-models"' in admin_only_page.text
+    assert 'data-key="sso"' not in admin_only_page.text
 
 
 def test_admin_nav_link_visible_to_tenant_manage_without_admin_manage(client, db_session, tenant_factory):
@@ -201,7 +202,7 @@ def test_admin_nav_link_visible_to_tenant_manage_without_admin_manage(client, db
 
     _login(client, tenant.slug, tenant_only.email)
     dashboard = client.get("/ui/")
-    assert 'href="/ui/admin"' in dashboard.text
+    assert 'href="/ui/settings"' in dashboard.text
 
 
 def test_admin_page_still_403s_for_neither_permission(client, tenant_factory):

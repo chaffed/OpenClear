@@ -80,7 +80,7 @@ def test_switching_to_bank_only_and_back(client, db_session, tenant_factory):
     db_session.expire_all()
     assert tenant.ml_model_source == MlModelSource.PRIVATE
     assert get_active_model_row(db_session, "check", tenant_id=tenant.id) is not None
-    admin_page = client.get("/ui/admin").text
+    admin_page = client.get("/ui/admin/ml-models").text
     assert "Your bank-only model" in admin_page and "seed-from-shared-" in admin_page
 
     assert "error" in _post(client, f"{PAGE}/switch-to-shared").headers["location"]  # must consent
@@ -113,7 +113,7 @@ def test_admin_page_for_a_shared_bank_is_read_only(client, db_session, tenant_fa
     train_model(db_session, "check")
     _login(client, tenant, users["admin"].email)
 
-    page = client.get("/ui/admin").text
+    page = client.get("/ui/admin/ml-models").text
     retrain = _post(client, "/ui/admin/ml/retrain", network_code="check")
 
     assert "Shared model" in page and "Banks contributing" in page
@@ -127,6 +127,6 @@ def test_admin_page_counts_only_this_banks_decisions(client, db_session, tenant_
     _seed_labeled_decisions(db_session, other, other_account, other_users, count=12)
     _login(client, tenant, users["admin"].email)
 
-    page = client.get("/ui/admin").text
+    page = client.get("/ui/admin/ml-models").text
 
     assert "<td>check</td><td>0</td><td>0</td>" in page

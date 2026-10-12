@@ -88,7 +88,7 @@ def shared_model_summary(
 
 
 @router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead, responses={202: {
-    "description": "Segregation of duties is enforced: the activation waits for a second admin (Admin → Changes)",
+    "description": "Segregation of duties is enforced: the activation waits for a second admin (Settings → Changes)",
     "content": {"application/json": {"example": {"status": "pending", "change_request_id": "…", "detail": "…"}}}}})
 def activate_ml_model(
     model_id: uuid.UUID,
@@ -97,7 +97,7 @@ def activate_ml_model(
 ):
     """Activates one of this organization's bank-only models (404 for any other model). With
     segregation of duties enforced, it answers `202` with `{"status": "pending",
-    "change_request_id"}` instead: a second admin approves it in Admin → Changes."""
+    "change_request_id"}` instead: a second admin approves it in Settings → Changes."""
     from fastapi.responses import JSONResponse
 
     from openclear.services import change_request_service
@@ -110,7 +110,7 @@ def activate_ml_model(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Model not found") from None
         db.commit()
         return JSONResponse({"status": "pending", "change_request_id": str(change.id),
-                             "detail": "Segregation of duties is enforced: a second admin must approve this (Admin → Changes)."},
+                             "detail": "Segregation of duties is enforced: a second admin must approve this (Settings → Changes)."},
                             status_code=status.HTTP_202_ACCEPTED)
     try:
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)

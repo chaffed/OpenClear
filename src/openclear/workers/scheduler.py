@@ -18,6 +18,7 @@ from openclear.workers.tasks import (
     housekeeping_job,
     notification_dispatch_job,
     retrain_job,
+    security_event_delivery_job,
     sweep_expired_dispositions_job,
     decision_outbox_job,
 )
@@ -42,6 +43,9 @@ def start_scheduler() -> BackgroundScheduler:
         _add_job(_scheduler, "sweep_expired_dispositions_job", sweep_expired_dispositions_job, IntervalTrigger(seconds=settings.disposition_sweep_interval_seconds))
     if settings.enable_decision_outbox_scheduler:
         _add_job(_scheduler, "decision_outbox_job", decision_outbox_job, IntervalTrigger(seconds=settings.decision_outbox_tick_seconds))
+    if settings.enable_security_event_delivery_scheduler:
+        _add_job(_scheduler, "security_event_delivery_job", security_event_delivery_job,
+                 IntervalTrigger(seconds=settings.security_event_delivery_tick_seconds))
     if settings.enable_housekeeping_scheduler:
         _add_job(_scheduler, "housekeeping_job", housekeeping_job, CronTrigger(hour=settings.housekeeping_cron_hour, minute=30))
     if settings.enable_control_test_scheduler:

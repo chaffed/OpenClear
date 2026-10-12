@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Settings{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/settings?from={{ key }}">Back to settings</a></p>
+<div class="card settings-page">
+  <h1>{{ title }}</h1>
+  {% include "settings/_section_body.html" %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/markdown-editor.js"></script>
+<script src="/static/js/control-panel.js"></script>
+{% endblock %}

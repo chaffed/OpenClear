@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Plugins (PLUGIN_PLAN.md): what's loaded, from where and what each provides, and
+"""Settings → Plugins (PLUGIN_PLAN.md): what's loaded, from where and what each provides, and
 which plugin import formats and decision layouts this bank has turned on."""
 
 from urllib.parse import quote_plus

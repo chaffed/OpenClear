@@ -1,0 +1,62 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Sign-ins, failures, lockouts, and changes to who may do what, sent to your SIEM
+  as they happen, in order, each with an id to de-duplicate on. They're also available through
+  the API (<code>GET /api/v1/security-events</code>). Events never include passwords, tokens or
+  account data. See the SIEM guide for Splunk, Sentinel, QRadar and Elastic.</p>
+{% if deliveries %}
+<table>
+  <thead><tr><th>Destination</th><th>Last delivered</th><th>Waiting</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for d in deliveries %}
+    <tr>
+      <td>{{ d.label }}<br><span class="hint">{{ describe(d.destination) }}</span></td>
+      <td>{% if d.destination.last_success_at %}<time datetime="{{ d.destination.last_success_at | iso_utc }}" data-local-time>{{ d.destination.last_success_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}</td>
+      <td>{{ d.backlog }}</td>
+      <td>{% if d.destination.failing_since %}<span class="badge badge-danger">failing</span> <span class="hint">{{ d.destination.last_error }}</span>{% else %}<span class="badge badge-ok">ok</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<form method="post" action="/ui/settings/security-events" data-siem-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Send to
+    <select name="kind" data-siem-kind>
+      {% for value, label in kinds.items() %}<option value="{{ value }}" {{ "selected" if destination and destination.kind == value else "" }}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <fieldset data-siem-for="syslog">
+    <legend>Syslog</legend>
+    <label>Host <input type="text" name="host" value="{{ destination.host if destination and destination.host else '' }}" placeholder="siem.yourbank.example"></label>
+    <label>Port <input type="number" name="port" min="1" max="65535" value="{{ destination.port if destination and destination.port else '' }}" placeholder="6514" style="max-width:8em;"></label>
+    <label>Transport
+      <select name="transport">
+        {% for t in transports if t != "udp" or allow_udp %}<option value="{{ t }}" {{ "selected" if destination and destination.transport == t else "" }}>{{ {"tls": "TLS (RFC 5425)", "tcp": "TCP", "udp": "UDP"}[t] }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Message format
+      <select name="format">
+        {% for f in formats %}<option value="{{ f }}" {{ "selected" if destination and destination.format == f else "" }}>{{ {"json": "JSON", "cef": "CEF (ArcSight, QRadar)", "leef": "LEEF (QRadar)"}[f] }}</option>{% endfor %}
+      </select>
+    </label>
+  </fieldset>
+  <fieldset data-siem-for="splunk_hec https">
+    <legend>Endpoint</legend>
+    <label>URL <input type="url" name="url" value="{{ destination.url if destination and destination.url else '' }}" placeholder="https://splunk.yourbank.example:8088"></label>
+    <label>Token <input type="password" name="token" autocomplete="off"
+      placeholder="{{ 'Saved; leave blank to keep it' if destination and destination.token_encrypted else '' }}"></label>
+    <div data-siem-for="splunk_hec">
+      <label>Index (optional) <input type="text" name="splunk_index" value="{{ destination.splunk_index if destination and destination.splunk_index else '' }}"></label>
+      <label>Source type (optional) <input type="text" name="splunk_sourcetype" value="{{ destination.splunk_sourcetype if destination and destination.splunk_sourcetype else '' }}" placeholder="openclear:security"></label>
+    </div>
+  </fieldset>
+  <label><input type="checkbox" name="enabled" value="true" {{ "checked" if not destination or destination.enabled else "" }}> Send events</label>
+  <div class="form-actions">
+    <button type="submit" name="action" value="save">{{ icon("save") }}Save</button>
+    <button type="submit" name="action" value="test" class="secondary">{{ icon("send") }}Save and send a test event</button>
+    {% if destination %}
+    <button type="submit" name="action" value="remove" class="secondary" formnovalidate
+      data-confirm="Stop forwarding security events? Events stay available through the API." data-confirm-yes="Stop forwarding" data-confirm-danger>{{ icon("delete") }}Remove</button>
+    {% endif %}
+  </div>
+</form>

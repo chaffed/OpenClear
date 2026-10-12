@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Settings — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About settings{% endblock %}
+{% block help_body %}
+<p>Each tile shows how a setting stands now. Small settings open in a window over this
+  page; lists and workflows open as their own page. Your browser's Back button returns here
+  from either.</p>
+<p>Every setting has its own address (for example <code>/ui/settings/branding</code>), so you
+  can bookmark it or send it to a colleague.</p>
+<p>You see only the settings your security group lets you change.</p>
+{% endblock %}
+{% block content %}
+<div class="panel-head">
+  <h1>Settings</h1>
+  <div class="panel-search">
+    <label class="visually-hidden" for="panel-search">Find a setting</label>
+    <input id="panel-search" type="search" placeholder="Find a setting…" autocomplete="off" data-panel-search>
+  </div>
+</div>
+{% if is_demo_tenant %}
+<div class="card">
+  <h2>Demo data</h2>
+  <p>This is the public demo organization. It resets to its original data every hour, and
+    whenever someone signs in after it has been idle. You can also reset it now.</p>
+  <form method="post" action="/ui/admin/demo/reset" data-confirm="Reset all demo data now? You will be signed out and need to log back in.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="danger">{{ icon("restart_alt") }}Reset demo data now</button>
+  </form>
+</div>
+{% endif %}
+<p class="panel-empty hint" data-panel-empty hidden>No settings match.</p>
+{% for section, tiles in sections %}
+<section class="panel-section" data-panel-section aria-labelledby="panel-section-{{ loop.index }}">
+  <h2 id="panel-section-{{ loop.index }}">{{ section }}</h2>
+  <ul class="tiles" role="list">
+    {% for t in tiles %}
+    <li data-panel-tile data-search="{{ t.search_text }}">
+      <a class="tile" href="{{ t.href }}" data-key="{{ t.key }}" data-title="{{ t.title }}"{% if t.modal %} data-modal aria-haspopup="dialog"{% endif %}>
+        <span class="tile-icon" aria-hidden="true">{{ icon(t.icon) }}</span>
+        <span class="tile-body">
+          <span class="tile-title">{{ t.title }}</span>
+          <span class="tile-state{% if t.tone %} tone-{{ t.tone }}{% endif %}" data-tile-state{% if t.state_url %} data-state-url="{{ t.state_url }}"{% endif %}>{{ t.state }}</span>
+          <span class="tile-desc">{{ t.description }}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+
+<dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-dialog-title">
+  <div class="settings-dialog-head">
+    <h2 id="settings-dialog-title"></h2>
+    <button type="button" class="settings-dialog-close" data-dialog-close aria-label="Close">{{ icon("close") }}</button>
+  </div>
+  <div class="settings-dialog-body" data-dialog-body></div>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/markdown-editor.js"></script>
+<script src="/static/js/control-panel.js"></script>
+{% endblock %}

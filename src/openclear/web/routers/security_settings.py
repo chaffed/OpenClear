@@ -41,6 +41,7 @@ _NOTIFICATION_TYPE_LABELS = {
     NotificationType.RECOMMENDATION_AWAITING_APPROVAL: "A recommendation is awaiting your approval",
     NotificationType.ACCOUNT_UNLOCKED: "Your account was unlocked",
     NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
+    NotificationType.DEADLINE_REMINDER: "Reminder: items to decide before the cutoff",
 }
 
 

@@ -1,0 +1,6 @@
+{# One setting's form: inside section.html as a page, or alone as a modal's content
+   (control panel, static/js/control-panel.js). #}
+<div id="settings-section" data-key="{{ key }}" data-title="{{ title }}">
+  {% if error %}<p class="flash flash-error" role="alert" id="settings-error">{{ error }}</p>{% endif %}
+  {% include "settings/sections/" ~ key ~ ".html" %}
+</div>

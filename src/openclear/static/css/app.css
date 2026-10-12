@@ -255,11 +255,12 @@ th { color: var(--text-faint); font-weight: 600; font-size: 0.8rem; text-transfo
   display: block; width: 100%; max-width: 280px; margin-top: 0.75rem;
   padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;
 }
-th.sortable-col { cursor: pointer; user-select: none; }
-th.sortable-col:hover { color: var(--accent); }
-th.sortable-col::after { content: "\2195"; margin-left: 0.35rem; opacity: 0.35; }
-th.sort-asc::after { content: "\2191"; opacity: 1; }
-th.sort-desc::after { content: "\2193"; opacity: 1; }
+th.sortable-col .sort-button { all: unset; cursor: pointer; user-select: none; font: inherit; color: inherit; }
+th.sortable-col .sort-button:hover { color: var(--accent); }
+th.sortable-col .sort-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+th.sortable-col .sort-button::after { content: "\2195"; margin-left: 0.35rem; opacity: 0.35; }
+th.sort-asc .sort-button::after { content: "\2191"; opacity: 1; }
+th.sort-desc .sort-button::after { content: "\2193"; opacity: 1; }
 
 .pagination {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
@@ -407,10 +408,6 @@ public-demo notice, the tenant banner), which otherwise ran underneath page-cont
 
 /* Settings page (templates/settings/form.html) -- full-width grid of focused cards
    instead of one narrow centered card. */
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
-.settings-grid .card { margin-bottom: 0; }
-.settings-grid .card h2 { margin-top: 0; }
-.settings-grid .card form + form { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
 
 /* Mermaid ER diagrams with pan/zoom (templates/_macros/mermaid_diagram.html,
    templates/docs/admin/data-dictionary.html) */
@@ -564,4 +561,47 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
   .decision-card { position: sticky; bottom: 0; z-index: 4; box-shadow: 0 -4px 14px rgba(0,0,0,.12); }
   .decision-panel > form, .decision-return { flex: 1 1 100%; }
   .button-pay, .button-return { width: 100%; justify-content: center; padding-block: .9rem; font-size: 1.05rem; }
+}
+
+/* The control panel (templates/settings/panel.html; UX_PLAN.md U11). */
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
+.panel-head h1 { margin: 0; }
+.panel-search input { min-width: 16rem; margin: 0; }
+.panel-section { margin: 1.25rem 0 0; }
+.panel-section h2 { font-size: 1rem; color: var(--text-muted); text-transform: none; margin: 0 0 0.5rem; }
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.75rem; }
+.tiles > li[hidden], .panel-section[hidden] { display: none; }
+.tile { display: flex; gap: 0.75rem; align-items: flex-start; height: 100%; box-sizing: border-box; padding: 0.85rem 1rem;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); text-decoration: none; }
+.tile:hover { border-color: var(--accent); }
+.tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tile-icon { flex: none; display: inline-flex; padding: 0.4rem; border-radius: 6px; background: var(--bg-muted); color: var(--accent); }
+.tile-icon .icon { margin: 0; }
+.tile-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.tile-title { font-weight: 600; }
+.tile-state { font-size: 0.9rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.tile-state.tone-ok { color: var(--badge-ok-fg); }
+.tile-state.tone-warn { color: var(--badge-warn-fg); }
+.tile-state.tone-danger { color: var(--badge-danger-fg); font-weight: 600; }
+.tile-desc { font-size: 0.85rem; color: var(--text-faint); }
+
+/* A setting in a modal over the panel, full-screen on phones. */
+.settings-dialog { border: 1px solid var(--border); border-radius: 10px; padding: 0; width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 3rem); background: var(--bg); color: var(--text); }
+.settings-dialog::backdrop { background: rgba(17, 24, 39, 0.5); }
+.settings-dialog-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--bg); }
+.settings-dialog-head h2 { margin: 0; font-size: 1.15rem; }
+.settings-dialog-close { background: none; border: 0; padding: 0.25rem; color: var(--text-muted); cursor: pointer; }
+.settings-dialog-close:hover { color: var(--text); }
+.settings-dialog-close .icon { margin: 0; }
+.settings-dialog-body { padding: 1rem 1.25rem 1.25rem; }
+.settings-dialog-body[aria-busy="true"] { min-height: 6rem; }
+.settings-dialog-body form + form, .settings-page form + form { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.indented { margin-left: 1.6rem; }
+.settings-page { max-width: 44rem; }
+@media (max-width: 640px) {
+  .settings-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; border: 0; }
+  .panel-search, .panel-search input { width: 100%; min-width: 0; }
 }

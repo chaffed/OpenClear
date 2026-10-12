@@ -83,7 +83,7 @@ def test_settings_shows_auto_import_status_disabled_by_default(client, tenant_fa
     tenant, _account, users = tenant_factory.make(slug="web-settings-auto-import-disabled")
     _login(client, tenant.slug, users["admin"].email)
 
-    page = client.get("/ui/settings")
+    page = client.get("/ui/settings/auto-import")
     assert page.status_code == 200
     assert "disabled" in page.text
     assert "No files auto-imported yet" in page.text
@@ -101,7 +101,7 @@ def test_settings_shows_recent_auto_imports(client, db_session, tenant_factory):
     db_session.commit()
     _login(client, tenant.slug, users["admin"].email)
 
-    page = client.get("/ui/settings")
+    page = client.get("/ui/settings/auto-import")
     assert page.status_code == 200
     assert "dropped.csv" in page.text
     assert "issued_items" in page.text
@@ -306,15 +306,13 @@ def test_plain_login_page_still_works(client):
     assert resp.status_code == 200
 
 
-def test_settings_page_is_full_width_and_no_longer_links_sso(client, tenant_factory):
+def test_settings_is_a_control_panel_and_no_longer_links_sso_settings(client, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="web-settings-full-width")
     _login(client, tenant.slug, users["admin"].email)
 
     resp = client.get("/ui/settings")
     assert resp.status_code == 200
-    assert 'class="settings-grid"' in resp.text
-    # The whole page's own content no longer sits in a narrow centered card -- only
-    # count occurrences inside the content block, not anything base.html itself might add.
+    assert 'class="tiles"' in resp.text
     assert "card-narrow" not in resp.text
     assert "/ui/settings/sso" not in resp.text
 

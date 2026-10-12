@@ -84,7 +84,7 @@ def test_the_api_and_the_page(client, db_session, tenant_factory):
     response = client.get("/api/v1/controls/status", headers=login_headers(client, tenant.slug, users["admin"].email))
     assert response.status_code == 200
     body = response.json()
-    assert body["overall"] in ("PASS", "WARN", "FAIL") and len(body["controls"]) == 11
+    assert body["overall"] in ("PASS", "WARN", "FAIL") and len(body["controls"]) == 12
     assert {"key", "title", "status", "detail", "evidence"} <= set(body["controls"][0])
     client.get("/ui/login")
     csrf = client.cookies.get("csrf_token")

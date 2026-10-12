@@ -63,7 +63,7 @@ def require_enabled(session: Session, tenant_id: uuid.UUID, point: str, key, *, 
     """The registered entry, if it exists and this bank may use it."""
     entry = plugins.lookup(point, key, what=what)
     if not is_enabled(session, tenant_id, point, key):
-        raise NotEnabled(f"The {what} {plugins.label(key)!r} isn't turned on for this organization (Admin → Plugins).")
+        raise NotEnabled(f"The {what} {plugins.label(key)!r} isn't turned on for this organization (Settings → Plugins).")
     return entry
 
 

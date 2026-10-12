@@ -75,3 +75,6 @@ class Customer(Base):
     # set this directly. Text, not a capped String -- see Tenant.banner_message's own
     # comment for why.
     banner_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # This customer's own reminder timing (services/reminder_service.py), set by its own
+    # users holding customer_banner:manage: null follows the bank's, "" turns them off.
+    reminder_offsets_minutes: Mapped[str | None] = mapped_column(String(64), nullable=True)

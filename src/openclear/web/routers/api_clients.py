@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → API clients: credentials for the bank's own systems (SDK_PLAN.md P0;
+"""Settings → API clients: credentials for the bank's own systems (SDK_PLAN.md P0;
 services/api_client_service.py). A new or rotated secret is shown on the page that
 creates it, once, and never again."""
 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Check Return Reasons — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About check return reasons{% endblock %}
+{% block help_body %}
+<p>Returning a check means choosing one of these reasons. The return code is what a return
+  file to your core carries: the ANSI X9.100-188 return reason code, such as N for an altered
+  or fictitious item. Change a code where your core uses a different one.</p>
+<p>Retiring a reason removes it from the choices on new decisions without changing any past
+  decision that used it.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Check Return Reasons</h1>
+    <a href="/ui/check-return-reasons/new" class="button">{{ icon("add") }}New return reason</a>
+  </div>
+  {% if reasons %}
+  <table data-sortable>
+    <thead><tr><th>Reason</th><th>Return code</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for reason in reasons %}
+      <tr>
+        <td>{{ reason.reason_text }}</td>
+        <td>{{ reason.return_code or "—" }}</td>
+        <td><span class="badge {{ 'badge-ok' if reason.is_active else 'badge-danger' }}">{{ 'active' if reason.is_active else 'retired' }}</span></td>
+        <td>
+          <a href="/ui/check-return-reasons/{{ reason.id }}/edit" aria-label="Edit {{ reason.reason_text }}">Edit</a>
+          <form method="post" action="/ui/check-return-reasons/{{ reason.id }}/{{ 'deactivate' if reason.is_active else 'reactivate' }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button" aria-label="{{ 'Retire' if reason.is_active else 'Restore' }} {{ reason.reason_text }}">{{ "Retire" if reason.is_active else "Restore" }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No return reasons yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,5 +1,49 @@
 # Changelog
 
+## Unreleased
+
+### Control panel, reminders and event shipping (MASTER_PLAN.md M4)
+
+- **Settings is one control panel.** Settings and Admin are now one page of tiles, in five
+  sections, each tile showing how its setting stands ("Dual control · On", "Controls · 1
+  WARN"), with a search box. A person sees only the tiles their permissions allow.
+  - Small settings open in a dialog with its own URL (`/ui/settings/branding`), so it can
+    be bookmarked or linked; without JavaScript it's a plain page. Back closes it, focus
+    returns to the tile, closing with unsaved changes asks first, saving updates the tile
+    in place, and errors show in the dialog. It's full-screen on phones.
+  - Lists and workflows (users, SSO, webhooks, controls…) open as pages with "Back to
+    settings", which returns to their tile with the search kept.
+  - A business customer's own users get their customer's panel: reminders, banner and
+    billing statement.
+  - `/ui/admin` redirects to the panel; the ML models page is now `/ui/admin/ml-models`.
+- **Reminders before the cutoff.** Everyone who can recommend or decide an exception gets one
+  message per reminder, "N items to decide, due in X", by email or text per their
+  notification preferences. Timing per bank (Settings → Reminders; 2 hours and 30 minutes
+  before by default, `OPENCLEAR_REMINDER_OFFSETS_MINUTES`), with a customer override.
+- **Check return reasons** have their own settings page: add, edit, retire and restore,
+  with their X9.100-188 codes. `ach_return_reason:manage` now covers both lists.
+- **Security events delivered to a SIEM.** Syslog (RFC 5424 over TLS, as JSON, CEF or LEEF),
+  Splunk HTTP Event Collector (with indexer acknowledgement) and HTTPS JSON. Each bank adds
+  its own destination in Settings → Security event forwarding, with a test event; the
+  operator can set one for the whole installation (`OPENCLEAR_SIEM_*`). Delivery is in
+  order and at least once from a cursor, with backoff and catch-up, and never slows a
+  request (`OPENCLEAR_ENABLE_SECURITY_EVENT_DELIVERY_SCHEDULER`). Events a destination
+  hasn't received are kept past their retention until it has.
+- **A new control, "Security events delivered"**: it fails when a destination has been
+  failing for an hour or falls behind, and warns when there's no destination and nobody has
+  read the pull API for a day. The evidence export adds the period's event counts by
+  category and each destination's delivery record.
+- **New security events**: `webhook.changed`, `users.exported`, `secrets.reencrypted` and
+  `security_events.destination.changed`.
+- **Docs**: a SIEM guide (`docs/guides/siem.md`) for Splunk, Sentinel, QRadar, Elastic and a
+  syslog relay, with suggested detections; a log-management row in the FFIEC crosswalk.
+- **Fixes**:
+  - Sortable table headers are now real buttons inside the column header (axe flagged
+    `aria-sort` on `role="button"`).
+  - The scheduler now starts when only the decision outbox or control tests are turned on.
+- **Migration** `d1f3b5d7f9a2`: reminder timing on banks and customers,
+  `deadline_reminder`, and `security_event_destination`.
+
 ## 1.10.0 — 2026-10-11
 
 A release for running OpenClear in production, and for deciding faster. It brings:

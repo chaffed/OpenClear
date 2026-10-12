@@ -1,0 +1,23 @@
+{% from "_macros/icon.html" import icon %}
+<p>For a core that takes files: OpenClear writes every new pay and return decision to a file on
+  this schedule. Your core downloads each file (<code>GET /api/v1/decision-batches</code>), and
+  acknowledges it when processed. Each file also sends the <code>decision_batch.ready</code> webhook.</p>
+<form method="post" action="/ui/settings/decision-files">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label><input type="checkbox" name="enabled" value="true" {{ "checked" if outbox.enabled else "" }}> Write decision files</label>
+  <label>Layout
+    <select name="layout">
+      {% for name, layout in outbox_layouts %}<option value="{{ name }}" {{ "selected" if outbox.layout == name else "" }}>{{ layout.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Every (minutes) <input type="number" name="interval_minutes" min="5" max="1440" value="{{ outbox.interval_minutes }}"></label>
+  {% for name, layout in outbox_layouts if layout.config_fields %}
+  <fieldset>
+    <legend>{{ layout.label }} settings</legend>
+    {% for f in layout.config_fields %}
+    <label>{{ f.label }} <input type="text" name="setting_{{ name }}__{{ f.name }}" value="{{ (outbox_settings.get(name) or {}).get(f.name, '') }}"></label>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

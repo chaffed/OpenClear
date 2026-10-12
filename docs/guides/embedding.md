@@ -21,10 +21,10 @@ online banking page   ── mount(container, { url }) ──▶ <iframe> embedd
 
 ## For the bank's OpenClear admin
 
-1. **Admin → Single sign-on:** add an OIDC connection for your online banking platform.
+1. **Settings → Single sign-on:** add an OIDC connection for your online banking platform.
    - Set its *customer claim*, for example `customer_number`. The claim must carry the OpenClear customer number of each person's business.
    - Map its roles to security groups, for example `obp-approvers` → Approver and `obp-viewers` → Viewer.
-2. **Admin → API clients:** create a client for the platform's server.
+2. **Settings → API clients:** create a client for the platform's server.
    - Choose **May act for your users**.
    - Link the client to that connection.
    - Its security group caps what any person can do through it.

@@ -265,6 +265,40 @@ def _minutes_until(when) -> int | None:
 templates.env.globals["minutes_until"] = _minutes_until
 
 
+# Pages opened from a control-panel tile, and the tile each returns to: base.html shows
+# "Back to settings" on them, landing on that tile (UX_PLAN.md U11).
+_PANEL_PAGES = {
+    "/ui/admin/sso": "sso", "/ui/users": "users", "/ui/security-groups": "security-groups",
+    "/ui/admin/api-clients": "api-clients", "/ui/admin/webhooks": "webhooks", "/ui/admin/integration": "integration",
+    "/ui/admin/plugins": "plugins", "/ui/admin/changes": "changes", "/ui/admin/controls": "controls",
+    "/ui/admin/model-risk": "model-risk", "/ui/admin/ml-models": "ml-models", "/ui/check-return-reasons": "check-return-reasons",
+    "/ui/ach-return-reasons": "ach-return-reasons", "/ui/settings/fraud-model": "fraud-model",
+    "/ui/settings/segregation-of-duties": "segregation-of-duties", "/ui/settings/data-export": "data-export",
+    "/ui/billing": "billing", "/ui/wizard/bank": "getting-started", "/ui/audit-log": "action-log",
+    "/ui/billing/statement": "billing-statement",
+}
+
+
+def _panel_return(request, ctx) -> str | None:
+    """The tile key to return to from this page, if it was opened from the panel."""
+    if ctx is None:
+        return None
+    path = request.url.path
+    if ctx.customer_id is not None and path == f"/ui/customers/{ctx.customer_id}/banner":
+        return "banner"
+    return _PANEL_PAGES.get(path)
+
+
+def _panel_visible(ctx) -> bool:
+    from openclear.web.control_panel import can_see_panel
+
+    return ctx is not None and can_see_panel(ctx)
+
+
+templates.env.globals["panel_return"] = _panel_return
+templates.env.globals["panel_visible"] = _panel_visible
+
+
 def _iso_utc(value) -> str:
     """Exposed as the `iso_utc` filter: a datetime as ISO 8601 with its UTC offset, for
     <time datetime> elements the browser shows in the reader's own time zone. SQLite hands

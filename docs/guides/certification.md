@@ -2,7 +2,7 @@
 
 This is how a core, an online banking provider, or a bank's own systems show that their OpenClear integration does what banks rely on.
 
-**Where to see it:** OpenClear reads the results from what the integration actually did in its bank, usually a free sandbox at `/ui/sandbox`. You see them under **Admin → Integration checklist** or at `GET /api/v1/conformance`. When every required check passes, the integration meets the checklist.
+**Where to see it:** OpenClear reads the results from what the integration actually did in its bank, usually a free sandbox at `/ui/sandbox`. You see them under **Settings → Integration checklist** or at `GET /api/v1/conformance`. When every required check passes, the integration meets the checklist.
 
 ## Required
 
@@ -31,7 +31,7 @@ These show the parts an integration uses:
 2. **Generate test files** with Moov, and optionally CheckSim's checks: `scripts/sandbox_test_files.py`. Load them with `--load`, or through your own integration.
 3. **Decide a few exceptions** in the web UI, as the bank would.
 4. **Run your decision job:** your feed consumer or file pickup.
-5. **Register your webhook receiver** under Admin → Webhooks, and send a test event.
+5. **Register your webhook receiver** under Settings → Webhooks, and send a test event.
 6. **Click "Probe my webhook receiver"** on the checklist, or `POST /api/v1/conformance/webhook-probe`.
 
 The SDKs (Python, TypeScript, .NET) handle tokens, idempotency keys, paging, decision consumption and webhook verification. An integration built on one passes most checks by using it as documented.

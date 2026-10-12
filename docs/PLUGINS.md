@@ -19,9 +19,9 @@ The working example in [examples/openclear-plugin-example](../examples/openclear
 | Email or SMS provider | `add_email_provider` / `add_sms_provider` | The operator |
 | Storage backend | `add_storage_backend(name, factory)` | The operator (`OPENCLEAR_STORAGE_BACKEND`) |
 | Scoring model | `add_scoring_model(name, factory)` | The operator (`OPENCLEAR_ML_SCORING_MODEL`) |
-| Import format | `add_import_format(kind, name, ImportSpec)` | Each bank, under Admin → Plugins |
-| Decision file layout | `add_decision_layout(name, DecisionLayout)` | Each bank, under Admin → Plugins |
-| Matching rule | `add_matching_rule(MatchingRule)` | Each bank, under Admin → Plugins |
+| Import format | `add_import_format(kind, name, ImportSpec)` | Each bank, under Settings → Plugins |
+| Decision file layout | `add_decision_layout(name, DecisionLayout)` | Each bank, under Settings → Plugins |
+| Matching rule | `add_matching_rule(MatchingRule)` | Each bank, under Settings → Plugins |
 | Notification channel | `add_notification_channel(NotificationChannel)` | Each bank, with its own settings |
 | Scoring feature | `add_scoring_feature(ScoringFeature)` | The operator (it applies to every bank) |
 
@@ -129,7 +129,7 @@ A channel that calls out over the network is making requests on behalf of every 
 ## Turning a plugin on
 
 1. **The operator installs and allows the plugin.** Installing the package isn't enough; set `OPENCLEAR_PLUGINS=yourcore`. Use `OPENCLEAR_PLUGINS_REQUIRED=yourcore` instead if OpenClear shouldn't start without the plugin.
-2. **Each bank turns on what it uses.** A bank admin turns on the plugin's import formats, decision layouts, matching rules and notification channels under **Admin → Plugins**. The change is recorded in the bank's action log. OpenClear's own entries are always on.
+2. **Each bank turns on what it uses.** A bank admin turns on the plugin's import formats, decision layouts, matching rules and notification channels under **Settings → Plugins**. The change is recorded in the bank's action log. OpenClear's own entries are always on.
 
 A plugin is skipped if it:
 
@@ -138,7 +138,7 @@ A plugin is skipped if it:
 - raises in `register()`;
 - claims a name that's already taken.
 
-A skipped plugin leaves nothing registered. It's reported under Admin → Plugins and in the log, and OpenClear still starts.
+A skipped plugin leaves nothing registered. It's reported under Settings → Plugins and in the log, and OpenClear still starts.
 
 ## Testing
 

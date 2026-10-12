@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Chaffed
 
 """The bank's API clients, for access reviews (SDK_PLAN.md P0). Created, rotated and
-revoked in the web UI (Admin → API clients), where a new secret can be shown once."""
+revoked in the web UI (Settings → API clients), where a new secret can be shown once."""
 
 import uuid
 from datetime import datetime

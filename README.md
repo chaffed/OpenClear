@@ -542,7 +542,7 @@ today.
 ## Per-tenant branding
 
 Each tenant can customize a logo, favicon, accent color, and display name from
-`/ui/settings` (gated by a dedicated `tenant:manage` permission, not folded into
+Settings → Branding, `/ui/settings/branding` (gated by a dedicated `tenant:manage` permission, not folded into
 `admin:manage`, so a security group can be scoped to branding alone). Uploaded images are
 stored on local disk under `OPENCLEAR_TENANT_ASSET_STORAGE_DIR` (default
 `./data/tenant_assets`, consolidated under `.openclear-run/` by the quickstart launcher, same
@@ -611,15 +611,15 @@ third-party risk guidance):
   - In *warn* mode (where every bank starts) a breach is allowed and logged.
   - In *enforce* mode it's refused with `ERR_SOD_VIOLATION`.
   - Under enforce, turning a matching rule on or off and activating a model wait for a second
-    admin (Admin → Changes).
-- **Model risk** (Admin → Model risk):
+    admin (Settings → Changes).
+- **Model risk** (Settings → Model risk):
   - *replay* runs a past X9.37 or NACHA file through today's rules and compares the result
     with what happened;
   - *anomaly capture* checks that synthetic fraud is caught.
 
   Both are dry runs, rolled back. Turn on the daily anomaly capture with
   `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true`.
-- **Controls** (Admin → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
+- **Controls** (Settings → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
   control's live PASS / WARN / FAIL with its evidence. Record how the host encrypts disks and
   the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`.
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
@@ -657,7 +657,7 @@ key. BILLING_PLAN.md has the research and the decisions.
 ## Authentication
 
 **A bank's systems** (its core, its online banking provider) don't use a person's
-password: an admin creates an **API client** (Admin → API clients) with a security group
+password: an admin creates an **API client** (Settings → API clients) with a security group
 and, optionally, a customer, and the system exchanges its client id and secret for a
 short-lived token at `POST /api/v1/oauth/token` (OAuth 2.0 client credentials; API.md).
 It acts through a service identity nobody can sign in as, with exactly its group's
@@ -807,7 +807,7 @@ Then, either:
   while rotating, and `OPENCLEAR_EDGE_SECRET_HEADER`, default `X-OpenClear-Edge-Secret`. Requests
   without it are refused, apart from `/health`.
 
-Admin → Controls → "Edge network set up" fails when edge headers arrive but OpenClear isn't
+Settings → Controls → "Edge network set up" fails when edge headers arrive but OpenClear isn't
 set up for them, and warns without a lockdown.
 
 **Request ids.** Every response carries `X-Request-ID`: a trusted edge's own id (`CF-Ray`,
@@ -1136,7 +1136,17 @@ entry's signature, at `GET /api/v1/audit-log`. Both are feeds with a cursor, and
 lines for a log collector. The operator reads every bank's, and those belonging to no bank,
 at `GET /api/v1/platform/security-events` (platform key, `operations` scope).
 
-Events are kept for `OPENCLEAR_SECURITY_EVENT_RETENTION_DAYS` (30).
+Events are kept for `OPENCLEAR_SECURITY_EVENT_RETENTION_DAYS` (30), except those a SIEM
+destination hasn't received yet.
+
+**Delivery to a SIEM.** Events can also be pushed, in order and at least once, to syslog
+(RFC 5424 over TLS, as JSON, CEF or LEEF), a Splunk HTTP Event Collector, or an HTTPS
+endpoint. Each bank adds its own destination in **Settings → Security event forwarding**
+and receives only its own events; the operator can set one for the whole installation with
+`OPENCLEAR_SIEM_*`. Turn delivery on with
+`OPENCLEAR_ENABLE_SECURITY_EVENT_DELIVERY_SCHEDULER=true`. The control "Security events
+delivered" fails when a destination falls behind. [docs/guides/siem.md](docs/guides/siem.md)
+covers Splunk, Sentinel, QRadar, Elastic and a syslog relay, with suggested detections.
 
 ## Background jobs
 
@@ -1215,13 +1225,13 @@ A plugin is skipped if it:
 - fails to load;
 - claims a name that's already taken.
 
-Each skipped plugin is reported in the log and under **Admin → Plugins**, and the app still starts. OpenClear's own networks, OCR providers, email and SMS, storage, scoring model and import formats register the same way, from `plugins/builtin.py`.
+Each skipped plugin is reported in the log and under **Settings → Plugins**, and the app still starts. OpenClear's own networks, OCR providers, email and SMS, storage, scoring model and import formats register the same way, from `plugins/builtin.py`.
 
 Plugins run inside OpenClear with its full access. They're trusted code, so install only plugins you'd trust as much as OpenClear itself.
 
 A plugin loaded into OpenClear is part of the same program, so it's AGPL-3.0 too. A closed system should integrate through the API and webhooks instead.
 
-A plugin's import formats and decision file layouts are off for each bank until its admin turns them on under **Admin → Plugins**. To make a plugin required, set `OPENCLEAR_PLUGINS_REQUIRED`; OpenClear won't start if it doesn't load.
+A plugin's import formats and decision file layouts are off for each bank until its admin turns them on under **Settings → Plugins**. To make a plugin required, set `OPENCLEAR_PLUGINS_REQUIRED`; OpenClear won't start if it doesn't load.
 
 To write a plugin:
 
@@ -1260,6 +1270,23 @@ resource: accounts, issued items, stop payments, paid items, check images (uploa
 OCR status), ACH authorizations/transactions, the exceptions review queue
 (recommend/decide), admin ML screens, users/security groups, per-tenant branding
 settings, the immutable action log, and WebAuthn security-key management.
+
+**Settings** is one control panel (`/ui/settings`, `web/control_panel.py`): tiles grouped
+into sections (Organization, Security & access, Decisions & rules, Integrations, Data &
+compliance), each showing how its setting stands, with a search box. A person sees only the
+tiles their permissions allow; a business customer's own users get their customer's panel
+(reminders, banner, billing statement). Small settings open in a dialog and have their own
+URL (`/ui/settings/<key>`), which without JavaScript is a plain page; lists and workflows
+open as pages, each with a way back to its tile. The old Admin page is part of it
+(`/ui/admin` redirects there).
+
+**Reminders before the cutoff** (Settings → Reminders): before each open exception's
+decision deadline, everyone who can recommend or decide it gets one message, by email or
+text per their notification preferences, saying how many items are due and when the first
+is. The timing is minutes before the cutoff, by default 120 and 30
+(`OPENCLEAR_REMINDER_OFFSETS_MINUTES`); each bank sets its own or turns them off, and each
+business customer can override its bank's. They're sent by the disposition sweep
+(`OPENCLEAR_ENABLE_DISPOSITION_SCHEDULER`).
 
 It's a second presentation layer over the same `services/`/`auth/` code the JSON API
 uses (`web/routers/*.py` call service functions directly — never the JSON API over

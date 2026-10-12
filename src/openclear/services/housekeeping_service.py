@@ -69,11 +69,19 @@ def run(session: Session) -> HousekeepingResult:
         cutoff = session.execute(select(func.now())).scalar_one() - timedelta(hours=settings.idempotency_key_hours)
         result.deleted["idempotency_keys"] = _delete_in_batches(session, IdempotencyRecord, IdempotencyRecord.created_at < cutoff)
 
-    # Security events past their retention (services/security_events.py; SIEM_PLAN.md SI-D7).
+    # Security events past their retention (services/security_events.py; SIEM_PLAN.md SI-D7),
+    # except those a destination that receives them hasn't had yet: one that's been down for
+    # longer than the retention period still gets every event when it recovers (SI-D4).
     if cutoff := _cutoff(session, settings.security_event_retention_days):
-        from openclear.domain.security_event import SecurityEvent
+        from sqlalchemy import exists, or_
 
-        result.deleted["security_events"] = _delete_in_batches(session, SecurityEvent, SecurityEvent.occurred_at < cutoff)
+        from openclear.domain.security_event import SecurityEvent
+        from openclear.domain.security_event_destination import SecurityEventDestination as Destination
+
+        undelivered = exists().where(
+            Destination.enabled.is_(True), Destination.cursor < SecurityEvent.id,
+            or_(Destination.tenant_id.is_(None), Destination.tenant_id == SecurityEvent.tenant_id))
+        result.deleted["security_events"] = _delete_in_batches(session, SecurityEvent, SecurityEvent.occurred_at < cutoff, ~undelivered)
 
     # Vendor sandboxes past their lifetime (services/sandbox_service.py).
     from openclear.services import sandbox_service

@@ -1,0 +1,27 @@
+<p>
+  <span class="badge {{ 'badge-ok' if auto_import_enabled else '' }}">{{ 'enabled' if auto_import_enabled else 'disabled' }}</span>
+  {% if auto_import_enabled %}— scanning every {{ auto_import_interval_seconds }} seconds{% endif %}
+</p>
+<p class="hint">Whoever runs OpenClear turns this on or off for the whole installation, so it's
+  shown here read-only.</p>
+{# The server's absolute path isn't shown: it's an internal detail of the deployment. #}
+<p>Files go in your organization's folder, <code>{{ ctx.tenant_slug }}/</code>, inside the
+  server's auto-import drop folder. Ask your platform operator where that is.</p>
+{% if recent_auto_imports %}
+<table>
+  <thead><tr><th>Uploaded</th><th>File</th><th>Kind</th><th>Succeeded</th><th>Failed</th></tr></thead>
+  <tbody>
+    {% for upload in recent_auto_imports %}
+    <tr>
+      <td>{{ upload.uploaded_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td><a href="/ui/bulk-uploads/{{ upload.id }}">{{ upload.original_filename }}</a></td>
+      <td>{{ upload.kind.value }}</td>
+      <td>{{ upload.succeeded_count if upload.succeeded_count is not none else "—" }}</td>
+      <td>{{ upload.failed_count if upload.failed_count is not none else "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No files auto-imported yet.</p>
+{% endif %}

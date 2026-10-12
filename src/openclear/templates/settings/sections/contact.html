@@ -1,0 +1,15 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Shown in a footer on every page, including your login page. Leave a field
+  blank to leave it out; there's no footer until one is filled in.</p>
+<form method="post" action="/ui/settings/contact">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Support email <input type="email" name="support_email" value="{{ support_email or '' }}"></label>
+  <label>Support phone <input type="tel" name="support_phone" value="{{ support_phone or '' }}"></label>
+  <label>Website <input type="url" name="website" value="{{ website or '' }}" placeholder="https://"></label>
+  <label>Address line 1 <input type="text" name="address_line1" value="{{ address_line1 or '' }}"></label>
+  <label>Address line 2 <input type="text" name="address_line2" value="{{ address_line2 or '' }}"></label>
+  <label>City <input type="text" name="city" value="{{ city or '' }}"></label>
+  <label>State <input type="text" name="state" value="{{ state or '' }}"></label>
+  <label>Postal code <input type="text" name="postal_code" value="{{ postal_code or '' }}"></label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

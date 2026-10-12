@@ -4,7 +4,7 @@
 """Webhooks (SDK_PLAN.md P0): events sent to a bank's systems as they happen, in the
 Standard Webhooks format (https://www.standardwebhooks.com/).
 
-- **Endpoints** are set up by a bank admin (Admin → Webhooks): a URL, the event types it
+- **Endpoints** are set up by a bank admin (Settings → Webhooks): a URL, the event types it
   wants, and a signing secret (`whsec_...`, shown once).
 - **`emit()`** is called where something happens (an exception created, a decision
   made, a bulk upload finished). It writes one delivery per subscribed endpoint, in the

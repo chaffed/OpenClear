@@ -199,17 +199,20 @@ function initSortableTables() {
     const headers = Array.from(table.tHead.rows[0].cells);
     headers.forEach((th, index) => {
       if (th.hasAttribute("data-no-sort") || !th.textContent.trim()) return;
+      // The header stays a column header (aria-sort belongs there); a button inside it sorts.
       th.classList.add("sortable-col");
-      th.tabIndex = 0;
-      th.setAttribute("role", "button");
-      th.setAttribute("aria-sort", "none");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sort-button";
+      while (th.firstChild) button.appendChild(th.firstChild);
+      th.appendChild(button);
 
       const sort = () => {
         const nextDir = th.dataset.sortDir === "asc" ? "desc" : "asc";
         headers.forEach((h) => {
           delete h.dataset.sortDir;
           h.classList.remove("sort-asc", "sort-desc");
-          h.setAttribute("aria-sort", "none");
+          h.removeAttribute("aria-sort");
         });
         th.dataset.sortDir = nextDir;
         th.classList.add(nextDir === "asc" ? "sort-asc" : "sort-desc");
@@ -230,13 +233,7 @@ function initSortableTables() {
         sorted.forEach((row) => tbody.appendChild(row));
       };
 
-      th.addEventListener("click", sort);
-      th.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          sort();
-        }
-      });
+      button.addEventListener("click", sort);
     });
   });
 }

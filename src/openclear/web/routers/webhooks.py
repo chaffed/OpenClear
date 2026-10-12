@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Webhooks (SDK_PLAN.md P0; services/webhook_service.py): where a bank's events
+"""Settings → Webhooks (SDK_PLAN.md P0; services/webhook_service.py): where a bank's events
 are sent, the deliveries and their results, test pings and replays."""
 
 import uuid

@@ -150,6 +150,8 @@ erDiagram
 <tr><td>accent_color</td><td>String(7)</td><td>yes</td><td></td><td>Hex color used as the app's accent throughout this tenant's UI.</td></tr>
 <tr><td>support_email / support_phone / website</td><td>String</td><td>yes</td><td></td><td>Shown in the page footer; footer is hidden entirely if every contact field is unset.</td></tr>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td>Shown in the page footer.</td></tr>
+<tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>Reminders before the cutoff, minutes before each deadline, comma-separated ("120,30"). Null follows the installation's default; empty turns them off (services/reminder_service.py).</td></tr>
+<tr><td>security_event_feed_read_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank last read its security events through the API (for the "Security events delivered" control).</td></tr>
 </tbody>
 </table>
 
@@ -173,6 +175,7 @@ transactional record.</p>
 <tr><td>primary_contact_name / email / phone / website</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>notes</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
+<tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>This customer's own reminder timing, set by its own users. Null follows the bank's; empty turns them off.</td></tr>
 </tbody>
 </table>
 
@@ -427,7 +430,7 @@ ceremonies.</p>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td></td></tr>
 <tr><td>recipient_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td></td></tr>
-<tr><td>notification_type</td><td>String(40)</td><td>no</td><td></td><td>E.g. exception created, recommendation awaiting approval, account locked/unlocked, exception auto-decided.</td></tr>
+<tr><td>notification_type</td><td>String(40)</td><td>no</td><td></td><td>E.g. exception created, recommendation awaiting approval, account locked/unlocked, exception auto-decided, deadline reminder.</td></tr>
 <tr><td>channel</td><td>String(10)</td><td>no</td><td></td><td><code>email</code> or <code>sms</code>.</td></tr>
 <tr><td>destination</td><td>String(255)</td><td>no</td><td></td><td>Email address or phone number at send time.</td></tr>
 <tr><td>subject</td><td>String(255)</td><td>yes</td><td></td><td></td></tr>
@@ -849,7 +852,7 @@ processed.</p>
 
 <h3>tenant_extension</h3>
 <p>A plugin's import format, decision file layout, matching rule or notification channel
-that an organization has turned on (Admin → Plugins). OpenClear's own are always on and need no row.</p>
+that an organization has turned on (Settings → Plugins). OpenClear's own are always on and need no row.</p>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
@@ -1140,6 +1143,42 @@ and every read filters by bank.</p>
 <tr><td>request_id / edge_id / channel</td><td>String</td><td>yes</td><td></td><td>The request, the edge's own id, web or api.</td></tr>
 <tr><td>audit_sequence</td><td>BigInteger</td><td>yes</td><td></td><td>The action-log entry this event also is.</td></tr>
 <tr><td>details</td><td>JSON</td><td>yes</td><td></td><td>Event-specific detail (never secrets or account data).</td></tr>
+</tbody>
+</table>
+
+<h3>security_event_destination</h3>
+<p>Where security events are delivered (services/siem/): syslog, Splunk HEC or HTTPS. A bank's
+own (one per bank) receives only that bank's events; the row with no bank is the
+installation's, written from configuration, and receives every bank's. Delivery is in order
+from <code>cursor</code>. No row-level security: delivery reads every bank's destinations, and
+every read from a request filters by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id, unique</td><td>Null for the installation's.</td></tr>
+<tr><td>kind / enabled</td><td>String(20) / Boolean</td><td>no</td><td></td><td>syslog, splunk_hec or https; whether events are sent.</td></tr>
+<tr><td>host / port / transport / format</td><td>String / Integer / String / String</td><td>yes (format no)</td><td></td><td>Syslog: where, over tls, tcp or udp, as json, cef or leef.</td></tr>
+<tr><td>url / token_encrypted</td><td>String(2048) / Text</td><td>yes</td><td></td><td>Splunk HEC or HTTPS: the endpoint, and its token (AES-256-GCM).</td></tr>
+<tr><td>splunk_index / splunk_sourcetype</td><td>String(80)</td><td>yes</td><td></td><td>Optional, for Splunk HEC.</td></tr>
+<tr><td>cursor / delivered_count</td><td>BigInteger</td><td>no</td><td></td><td>The id of the last event delivered; how many have been.</td></tr>
+<tr><td>last_success_at / last_attempt_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+<tr><td>last_error / failing_since / consecutive_failures / next_attempt_at</td><td>String / Timestamp / Integer / Timestamp</td><td>yes (count no)</td><td></td><td>The current failure, if any, and when it's retried.</td></tr>
+<tr><td>created_at / updated_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>deadline_reminder</h3>
+<p>That an exception was included in the reminder sent a number of minutes before its decision
+deadline, so each goes once (services/reminder_service.py). The messages are notifications.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>exception_item_id</td><td>UUID</td><td>no</td><td>FK → exception_item.id; UK (with offset_minutes)</td><td></td></tr>
+<tr><td>offset_minutes</td><td>Integer</td><td>no</td><td></td><td>Which reminder: minutes before the deadline.</td></tr>
+<tr><td>sent_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
 

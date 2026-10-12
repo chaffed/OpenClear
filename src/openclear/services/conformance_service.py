@@ -54,7 +54,7 @@ def checklist(session: Session, tenant_id: uuid.UUID) -> list[Check]:
     used = [c for c in clients if c.last_used_at]
     checks = [
         Check("api_client", "Authenticates with an API client (OAuth client credentials)", True, "pass" if used else "todo",
-              f"{len(used)} of {len(clients)} API clients have signed in" if clients else "No API client yet (Admin → API clients)"),
+              f"{len(used)} of {len(clients)} API clients have signed in" if clients else "No API client yet (Settings → API clients)"),
         seen("sync", "Syncs customers and accounts", True,
              _api_count(session, tenant_id, ("customer.create", "customer.update", "account.create", "account.update")), "customer and account changes"),
         seen("issued_items", "Sends issued checks (the positive pay file)", True, _api_count(session, tenant_id, ("issued_item.create",)), "issued checks"),
@@ -83,8 +83,8 @@ def checklist(session: Session, tenant_id: uuid.UUID) -> list[Check]:
     delivered = session.execute(select(func.count()).select_from(WebhookDelivery).where(
         WebhookDelivery.tenant_id == tenant_id, WebhookDelivery.status == WebhookDeliveryStatus.SUCCEEDED)).scalar_one()
     checks.append(Check("webhooks", "Receives webhooks", True, "pass" if delivered else "todo",
-                        f"{delivered} delivered" if delivered else ("Endpoint set up; no delivery succeeded yet (send a test from Admin → Webhooks)"
-                                                                 if endpoints else "No webhook endpoint yet (Admin → Webhooks)")))
+                        f"{delivered} delivered" if delivered else ("Endpoint set up; no delivery succeeded yet (send a test from Settings → Webhooks)"
+                                                                 if endpoints else "No webhook endpoint yet (Settings → Webhooks)")))
     probe = session.execute(select(ConformanceResult).where(ConformanceResult.tenant_id == tenant_id, ConformanceResult.check == PROBE)).scalar_one_or_none()
     checks.append(Check(PROBE, "Verifies webhook signatures (rejects a forged one)", True,
                         ("pass" if probe.passed else "fail") if probe else "todo", probe.detail if probe else "Run the probe below"))
@@ -118,7 +118,7 @@ def probe_webhooks(session: Session, tenant_id: uuid.UUID) -> ConformanceResult:
     endpoint = session.execute(select(WebhookEndpoint).where(WebhookEndpoint.tenant_id == tenant_id, WebhookEndpoint.is_active.is_(True))
                                .order_by(WebhookEndpoint.created_at)).scalars().first()
     if endpoint is None:
-        passed, detail = False, "No active webhook endpoint to probe (Admin → Webhooks)."
+        passed, detail = False, "No active webhook endpoint to probe (Settings → Webhooks)."
     else:
         settings = get_settings()
         secret = decrypt_secret(endpoint.secret_encrypted)

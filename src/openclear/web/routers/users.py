@@ -95,11 +95,20 @@ def _csv_safe(value: object) -> object:
     return value
 
 
+def _exported(db: Session, ctx: TenantContext, fmt: str, count: int) -> None:
+    """Who has access is itself sensitive: an export is a security event (SIEM_PLAN.md)."""
+    from openclear.services import security_events
+
+    security_events.emit(db, "users.exported", tenant_id=ctx.tenant_id, details={"format": fmt, "users": count})
+    db.commit()
+
+
 @router.get("/export.csv")
 def export_users_csv(
     db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("user:manage"))
 ) -> Response:
     rows = user_service.list_tenant_users(db, ctx.tenant_id)
+    _exported(db, ctx, "csv", len(rows))
     buffer = io.StringIO()
     writer = csv.DictWriter(buffer, fieldnames=_EXPORT_COLUMNS)
     writer.writeheader()
@@ -117,6 +126,7 @@ def export_users_json(
     db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("user:manage"))
 ) -> Response:
     rows = user_service.list_tenant_users(db, ctx.tenant_id)
+    _exported(db, ctx, "json", len(rows))
     payload = json.dumps([_export_row(row) for row in rows], indent=2)
     return Response(
         content=payload,

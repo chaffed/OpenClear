@@ -18,6 +18,7 @@ from openclear.web.routers.model_risk import router as model_risk_router
 from openclear.web.routers.controls import router as controls_router
 from openclear.web.routers.ach_authorizations import router as ach_authorizations_router
 from openclear.web.routers.ach_return_reasons import router as ach_return_reasons_router
+from openclear.web.routers.check_return_reasons import router as check_return_reasons_router
 from openclear.web.routers.billing import customer_router as billing_customer_router
 from openclear.web.routers.billing import router as billing_router
 from openclear.web.routers.ach_transactions import router as ach_transactions_router
@@ -73,6 +74,7 @@ web_router.include_router(check_images_router)
 web_router.include_router(ach_authorizations_router)
 web_router.include_router(ach_transactions_router)
 web_router.include_router(ach_return_reasons_router)
+web_router.include_router(check_return_reasons_router)
 web_router.include_router(exceptions_router)
 web_router.include_router(fraud_training_router)
 web_router.include_router(admin_router)

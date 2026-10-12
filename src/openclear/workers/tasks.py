@@ -258,7 +258,7 @@ def sweep_expired_dispositions_job() -> None:
     one bad row can't lose the rest of the batch, same isolation as notification_dispatch_job.
     auto_decide_exception() returning None means "leave it open, try again next sweep"
     (no model/score yet, or no configured ACH return reason) -- not a failure."""
-    from openclear.services import webhook_service
+    from openclear.services import reminder_service, webhook_service
 
     session = get_session_factory()()
     try:
@@ -269,6 +269,13 @@ def sweep_expired_dispositions_job() -> None:
         except Exception:  # noqa: BLE001 -- the sweep itself matters more
             session.rollback()
             logger.exception("Deadline warnings failed")
+        # Then the reminders to people (services/reminder_service.py; UX_PLAN.md U3).
+        try:
+            if reminded := reminder_service.send_due(session):
+                logger.info("Deadline reminders queued for %d people", reminded)
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            session.rollback()
+            logger.exception("Deadline reminders failed")
         now = datetime.now(timezone.utc)
         rows = (
             session.execute(
@@ -373,6 +380,18 @@ def decision_outbox_job() -> None:
         written = decision_outbox_service.run_due(session)
         if written:
             logger.info("Decision outbox: %d file(s) written", written)
+    finally:
+        session.close()
+
+
+def security_event_delivery_job() -> None:
+    """Delivers security events to each destination from its cursor (services/siem/delivery.py)."""
+    from openclear.services.siem import delivery
+
+    session = get_session_factory()()
+    try:
+        if sent := delivery.deliver_due(session):
+            logger.info("Security events: %d delivered", sent)
     finally:
         session.close()
 

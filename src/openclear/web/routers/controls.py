@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Admin → Controls (services/controls_service.py; COMPLIANCE_PLAN.md C4)."""
+"""Settings → Controls (services/controls_service.py; COMPLIANCE_PLAN.md C4)."""
 
 import uuid
 from datetime import date, datetime, timezone
@@ -34,6 +34,19 @@ def controls_page(request: Request, db: Session = Depends(get_db),
     return render_template(request, "admin/controls.html", ctx=ctx, result=controls_service.summary(controls_service.status(db, ctx.tenant_id)),
                            default_start=today.replace(day=1).isoformat(), default_end=today.isoformat(),
                            export_run=export_run, export_state=long_runs.state(export_run) if export_run else None)
+
+
+@router.get("/ui/admin/controls/summary")
+def controls_summary(db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("audit_log:read"))):
+    """The Controls tile's state on the control panel: "All pass", "1 FAIL", "2 WARN"."""
+    from fastapi.responses import JSONResponse
+
+    counts = controls_service.summary(controls_service.status(db, ctx.tenant_id))["counts"]
+    if counts.get("FAIL"):
+        return JSONResponse({"state": f"{counts['FAIL']} FAIL", "tone": "danger"})
+    if counts.get("WARN"):
+        return JSONResponse({"state": f"{counts['WARN']} WARN", "tone": "warn"})
+    return JSONResponse({"state": "All pass", "tone": "ok"})
 
 
 @router.post("/ui/admin/controls/evidence")

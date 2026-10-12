@@ -104,6 +104,9 @@ async def _lifespan(app: FastAPI):
         or settings.notifications_enabled
         or settings.enable_disposition_scheduler
         or settings.enable_housekeeping_scheduler
+        or settings.enable_decision_outbox_scheduler
+        or settings.enable_control_test_scheduler
+        or settings.enable_security_event_delivery_scheduler
         or (settings.demo_tenant_enabled and settings.demo_tenant_reset_interval_minutes > 0)
     ):
         from openclear.workers.scheduler import start_scheduler, stop_scheduler
@@ -120,6 +123,9 @@ async def _lifespan(app: FastAPI):
         try:
             if changed := reencrypt_all(session):
                 logger.info("Re-encrypted %d stored secrets under the current key", changed)
+                from openclear.services import security_events
+
+                security_events.emit(session, "secrets.reencrypted", tenant_id=None, actor_type="system", details={"count": changed})
             session.commit()
         except Exception:  # noqa: BLE001 -- never stops the app starting
             session.rollback()

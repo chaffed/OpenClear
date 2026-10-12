@@ -37,7 +37,7 @@ PERMISSION_CATALOG: dict[str, str] = {
     "audit_log:read": "View the immutable action log",
     "customer:manage": "Manage customers",
     "data_export:run": "Export all tenant/customer data for migration or offboarding",
-    "ach_return_reason:manage": "Manage the catalog of ACH return reasons",
+    "ach_return_reason:manage": "Manage the catalogs of ACH and check return reasons",
     "wsud:sign": "Sign a Written Statement of Unauthorized Debit (customer-scoped)",
     "wsud:read": "View signed Written Statements of Unauthorized Debit across customers",
     "bulk_import:run": "Trigger an on-demand auto-import scan of dropped files",
@@ -49,7 +49,7 @@ PERMISSION_CATALOG: dict[str, str] = {
     # group nominally contains), this one is meant to be held and exercised by a
     # customer's own scoped users. This is the first genuinely customer-self-service
     # permission in the catalog -- see web/routers/customer_banner.py.
-    "customer_banner:manage": "Manage this customer's own banner message",
+    "customer_banner:manage": "Manage this customer's own settings: its banner message and reminders",
     # Billing (BILLING_PLAN.md). billing:read is also meant for a customer's own scoped
     # users, who see only their own customer's statement; billing:manage is bank-only.
     "billing:read": "View billing statements and reports",

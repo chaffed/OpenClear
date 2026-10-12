@@ -1,0 +1,11 @@
+{% from "_macros/icon.html" import icon %}
+{% from "_macros/markdown_editor.html" import markdown_editor %}
+<p class="hint">The login message shows on your login page, before signing in. The banner
+  shows at the top of every page to everyone in your organization; if a customer has its own
+  banner too, the two rotate, yours first.</p>
+<form method="post" action="/ui/settings/messages">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {{ markdown_editor("login_message", login_message, label="Login message") }}
+  {{ markdown_editor("banner_message", banner_message, label="Banner message") }}
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

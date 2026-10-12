@@ -1,0 +1,12 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Your business customers can use OpenClear inside your online banking without
+  signing in again. List the https origins of your online banking that may show it, one per
+  line; leave it empty to turn embedding off. Your online banking provider starts each
+  embedded session through the API (<code>POST /api/v1/embed/launch</code>).</p>
+<form method="post" action="/ui/settings/embedding">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Allowed origins
+    <textarea name="embed_allowed_origins" rows="3" placeholder="https://banking.yourbank.example">{{ embed_allowed_origins | default("") }}</textarea>
+  </label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

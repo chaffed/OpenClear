@@ -35,8 +35,12 @@ def list_security_events(
     lockouts, second factors, tokens, refusals, and changes to who may do what. Pass the last
     `sequence` back as `after` to continue; `next_after` is the one to use next. Events are
     kept for `security_event_retention_days` (30 by default)."""
+    from openclear.services.siem import delivery
+
     _bank_staff(ctx)
     events = security_events.feed(db, ctx.tenant_id, after=after, limit=limit)
+    delivery.mark_feed_read(db, ctx.tenant_id)  # for the "Security events delivered" control
+    db.commit()
     return {"events": [security_events.as_record(e, ctx.tenant_slug) for e in events],
             "next_after": events[-1].id if events else after}
 
