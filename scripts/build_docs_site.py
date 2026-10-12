@@ -35,6 +35,9 @@ PAGES = [
     ("docs/guides/embedding.md", "guides/embedding.md", "Embedding in online banking"),
     ("integrations/fineract/README.md", "guides/fineract.md", "Apache Fineract adapter"),
     ("docs/PLUGINS.md", "guides/plugins.md", "Writing a plugin"),
+    ("docs/guides/bi.md", "guides/bi.md", "Reporting with your BI platform"),
+    ("docs/guides/siem.md", "guides/siem.md", "Sending security events to a SIEM"),
+    ("docs/guides/edge.md", "guides/edge.md", "Running behind an edge network"),
     ("docs/compliance/README.md", "compliance/index.md", "Compliance"),
     ("docs/compliance/ffiec.md", "compliance/ffiec.md", "FFIEC IT Handbook"),
     ("docs/compliance/nacha.md", "compliance/nacha.md", "Nacha Operating Rules"),
@@ -62,6 +65,9 @@ NAV = """nav:
       - Embedding in online banking: guides/embedding.md
       - Apache Fineract adapter: guides/fineract.md
       - Writing a plugin: guides/plugins.md
+      - Reporting with your BI platform: guides/bi.md
+      - Sending security events to a SIEM: guides/siem.md
+      - Running behind an edge network: guides/edge.md
   - Compliance:
       - compliance/index.md
       - FFIEC IT Handbook: compliance/ffiec.md

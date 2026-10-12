@@ -6,7 +6,11 @@ them, run them on a schedule, and export them as CSV, Excel or PDF. What a perso
 report is exactly what they're allowed to see: for a customer's people, only the accounts
 they've been given, and only the kinds of data their permissions cover.
 
-**Status: on hold.** Written 2026-10-12; the product owner wants every other feature in first, so reporting is built last. The decisions below are proposals still awaiting their answer.
+**Status: replaced.** On 2026-10-12 the product owner decided OpenClear won't have a reporting
+dashboard or report builder of its own. Banks report from their own business intelligence
+platform, fed from OpenClear's API; the guide is [docs/guides/bi.md](docs/guides/bi.md). The
+analysis below is kept for the record: it's why the data sits behind the API and its
+permissions rather than being read straight from the database.
 
 ## The choice: an outside BI tool, or a report builder inside OpenClear
 
@@ -150,4 +154,5 @@ R3 + R4 + R5, then **release 1.13**.
   Metabase (row-level permissions only in paid editions), ReportBro (AGPL, fits the stack).
   Recommendation: our own builder on secured datasets, with ReportBro for designed PDFs.
 - 2026-10-12 Put on hold by the product owner: reporting comes after every other feature.
+- 2026-10-12 Replaced by the product owner: no reporting dashboard in OpenClear. Banks use their own BI platform, fed through the API (docs/guides/bi.md: credentials, what to pull and how to keep it current, the data model, row-level security for bank, customer and operator, reading a replica on a self-hosted install). Gaps that would make BI pipelines easier, not built: a "changed since" filter on the lists, read-only API credentials scoped to one customer, and the full data export through the API.
 

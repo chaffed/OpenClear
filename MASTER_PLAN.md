@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.12.0 released (M6, M7); every stage of this plan is built. Reporting (REPORTING_PLAN.md) is on hold until every other feature is in; a real Cloudflare zone confirms M7 when one is available.**
+**Status: 1.12.0 released (M6, M7); every stage of this plan is built. Reporting is done through each bank's own BI platform (docs/guides/bi.md), not built in; a real Cloudflare zone confirms M7 when one is available.**
 
 ## How testing is kept down
 

@@ -44,6 +44,7 @@ prerequisites and step-by-step setup, also available as an in-app guided checkli
 - [Postgres](#postgres)
 - [MSSQL](#mssql)
 - [Running more than one instance](#running-more-than-one-instance)
+- [Reporting](#reporting)
 - [Logs and security events](#logs-and-security-events)
 - [Background jobs](#background-jobs)
 - [Plugins](#plugins)
@@ -1166,6 +1167,15 @@ Everything else a request depends on (sessions, CSRF, WebAuthn challenges, the d
 idle-reset clock) lives in the database or in signed cookies, so a request can land on any
 instance. Only the OIDC discovery and signing-key caches are per process, and each instance
 simply fills its own.
+
+## Reporting
+
+OpenClear has no reporting dashboard of its own: banks report from their business intelligence
+platform (Power BI, Tableau, Looker, Qlik, Superset…), fed from the API into their warehouse.
+[docs/guides/bi.md](docs/guides/bi.md) covers a read-only API client, what to pull and how to
+keep it current (cursor feeds for decisions, the action log and security events; paged lists),
+the data model, row-level security for the bank, its customers and the operator, and reading a
+replica on a self-hosted install.
 
 ## Logs and security events
 
