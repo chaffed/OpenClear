@@ -312,6 +312,30 @@ def test_a_tls_destination_with_an_untrusted_certificate_fails_clearly(siem_sett
         receiver.close()
 
 
+def test_plain_tcp_sends_one_message_per_line(siem_settings):
+    """Splunk's TCP input (checked against a real one) runs octet-counted frames together."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen()
+    received = bytearray()
+
+    def serve():
+        conn, _ = server.accept()
+        with conn:
+            while chunk := conn.recv(65536):
+                received.extend(chunk)
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    target = senders.Target(kind="syslog", host="127.0.0.1", port=server.getsockname()[1], transport="tcp", format="cef",
+                            allow_private=True)
+    senders.send(target, [RECORD, {**RECORD, "id": "evt_8"}], hostname="h")
+    thread.join(5)
+    server.close()
+    lines = bytes(received).decode().split("\n")
+    assert len(lines) == 3 and lines[2] == "" and all(line.startswith("<109>1 ") for line in lines[:2])
+
+
 def test_bank_destinations_must_be_public_unless_allowed(monkeypatch, engine, db_session, tenant_factory):
     monkeypatch.setattr(get_settings(), "siem_allow_private_hosts", False)
     tenant, _account, _users = tenant_factory.make(slug="siem-ssrf")

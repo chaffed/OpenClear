@@ -98,7 +98,8 @@ The categories are `authentication`, `access`, `identity`, `integration`, `confi
   and `identSrc`.
 
 Syslog messages are RFC 5424, facility 13 (log audit), app name `openclear`, with the event
-name as the message id. Over TCP and TLS they're octet-counted (RFC 5425 / RFC 6587).
+name as the message id. Over TLS they're octet-counted (RFC 5425); over plain TCP each ends
+with a newline (RFC 6587's traditional framing, which Splunk's TCP input and QRadar expect).
 Severity: low → informational, medium → notice, high → warning, critical → critical.
 
 ## Setting up a bank's destination
@@ -147,12 +148,17 @@ pauses it and keeps its cursor, so turning it back on resumes where it stopped.
    Index and source type are optional; the source type defaults to `openclear:security`.
 
 With acknowledgement on, OpenClear sends each batch with a request channel and waits for
-Splunk to confirm it was indexed before moving on.
+Splunk to confirm it was indexed before moving on. Splunk stops indexing, and so stops
+acknowledging, when its disk has less free space than `minFreeSpace` (5 GB by default);
+delivery then retries until it has room.
 
-**Syslog**: point OpenClear at a Splunk Connect for Syslog (SC4S) or a universal forwarder's
-TCP input, with JSON format, and set `KV_MODE = json` for the source type.
+**Syslog**: over TLS, send to Splunk Connect for Syslog (SC4S) or a relay (below), which
+read RFC 5425's octet counting; Splunk's own TCP input doesn't, and would run messages
+together. Over plain TCP on a trusted network, Splunk's TCP input works directly (one message
+per line). With JSON format, set `KV_MODE = json` for the source type.
 
-Search: `index=openclear sourcetype="openclear:security" | spath`.
+Search: `index=openclear sourcetype="openclear:security"`. Splunk extracts the JSON fields
+itself (`event.name`, `actor.email`, `source.ip`…); there's no need for `spath`.
 
 ## Microsoft Sentinel
 

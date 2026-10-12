@@ -141,15 +141,25 @@ def check_splunk(reuse: bool = False) -> None:
     # Splunk restarts itself during setup, so its API answering isn't enough: wait for the
     # container's own health check.
     wait_for("Splunk to be healthy", lambda: run("docker", "inspect", "-f", "{{.State.Health.Status}}", SPLUNK).strip() == "healthy", 1800)
+    allow_small_disk()
     wait_for("Splunk's management API", lambda: splunk_api("GET", "/services/server/info").status_code == 200, 300)
     configure_and_send()
 
 
 def start_splunk() -> None:
-    run("docker", "rm", "-f", SPLUNK, check=False)
+    run("docker", "rm", "-fv", SPLUNK, check=False)
     run("docker", "run", "-d", "--name", SPLUNK, "--platform", "linux/amd64", "-p", "18088:8088", "-p", "18089:8089", "-p", "11514:1514",
         "-e", "SPLUNK_START_ARGS=--accept-license", "-e", "SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com",
         "-e", f"SPLUNK_PASSWORD={PASSWORD}", "-e", f"SPLUNK_HEC_TOKEN={HEC_TOKEN}", "splunk/splunk:latest")
+
+
+def allow_small_disk() -> None:
+    """Splunk stops indexing below 5 GB free (so HEC never acknowledges); a test VM often
+    has less. Lower the limit and restart."""
+    run("docker", "exec", "-u", "splunk", SPLUNK, "bash", "-c",
+        'grep -q "^minFreeSpace" /opt/splunk/etc/system/local/server.conf 2>/dev/null || '
+        '{ printf "[diskUsage]\\nminFreeSpace = 50\\n" >> /opt/splunk/etc/system/local/server.conf; '
+        '/opt/splunk/bin/splunk restart --answer-yes --no-prompt; }')
 
 
 def configure_and_send() -> None:
@@ -158,6 +168,8 @@ def configure_and_send() -> None:
     splunk_api("POST", "/services/data/indexes", data={"name": "openclear"})
     created = splunk_api("POST", "/servicesNS/nobody/splunk_httpinput/data/inputs/http",
                          data={"name": "openclear-ack", "index": "openclear", "useACK": "1", "output_mode": "json"})
+    if created.status_code >= 400:  # already there, from an earlier run against this container
+        created = splunk_api("GET", "/servicesNS/nobody/splunk_httpinput/data/inputs/http/openclear-ack", params={"output_mode": "json"})
     ack_token = json.loads(created.text)["entry"][0]["content"]["token"]
     splunk_api("POST", "/services/data/inputs/tcp/raw", data={"name": "1514", "sourcetype": "syslog", "index": "openclear"})
     time.sleep(10)
@@ -175,7 +187,7 @@ def configure_and_send() -> None:
         return bool(results) and int(results[0]["count"]) >= expected
 
     wait_for("the HEC events in a search", lambda: found("hec", 3), 180)
-    hec_events = splunk_search(f'search index=openclear sourcetype="openclear:security" "{marker}-hec" | spath | table event.name details.n source.ip')
+    hec_events = splunk_search(f'search index=openclear sourcetype="openclear:security" "{marker}-hec" | table event.name details.n source.ip')
     print("Splunk search, HEC:", hec_events)
     assert {e["event.name"] for e in hec_events} == {"auth.login.failed"} and len(hec_events) == 3
     wait_for("the syslog events in a search", lambda: found("syslog", 2), 180)
@@ -196,7 +208,7 @@ def main() -> None:
             check_splunk(reuse=args.reuse_splunk)
     finally:
         if not args.keep:
-            run("docker", "rm", "-f", SYSLOG_NG, SPLUNK, check=False)
+            run("docker", "rm", "-fv", SYSLOG_NG, SPLUNK, check=False)
     print("All live checks passed.")
 
 

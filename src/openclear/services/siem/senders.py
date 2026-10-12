@@ -105,8 +105,9 @@ def _tls_context(target: Target) -> ssl.SSLContext:
 
 
 def send_syslog(target: Target, records: list[dict], *, hostname: str) -> None:
-    """One connection per batch. TCP and TLS use octet counting (RFC 5425); UDP sends one
-    message per datagram, for a relay on the same host."""
+    """One connection per batch. TLS uses octet counting (RFC 5425), plain TCP a newline
+    after each message (RFC 6587); UDP sends one message per datagram, for a relay on the
+    same host."""
     messages = [formats.syslog_message(r, target.format, hostname=hostname) for r in records]
     port = target.port or (6514 if target.transport == "tls" else 514)
     if target.transport == "udp":
@@ -121,7 +122,13 @@ def send_syslog(target: Target, records: list[dict], *, hostname: str) -> None:
     try:
         conn = _tls_context(target).wrap_socket(raw, server_hostname=target.host) if target.transport == "tls" else raw
         with conn:
-            conn.sendall(b"".join(formats.octet_frame(m) for m in messages))
+            # TLS: octet counting, as RFC 5425 requires. Plain TCP: one message per line
+            # (RFC 6587's traditional framing), which Splunk's TCP input, QRadar and most
+            # relays expect; a message never contains a line break.
+            if target.transport == "tls":
+                conn.sendall(b"".join(formats.octet_frame(m) for m in messages))
+            else:
+                conn.sendall(b"".join(m.encode("utf-8") + b"\n" for m in messages))
             if target.transport == "tls":
                 # Close cleanly, so a receiver that's still reading sees the whole batch.
                 try:
