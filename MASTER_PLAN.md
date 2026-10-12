@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.11.0 released (M4, M5). M6 and M7 built. Next: release 1.12; then a real Cloudflare zone to confirm M7, when one is available.**
+**Status: 1.12.0 released (M6, M7); every stage of this plan is built. Reporting (REPORTING_PLAN.md) is on hold until every other feature is in; a real Cloudflare zone confirms M7 when one is available.**
 
 ## How testing is kept down
 
@@ -107,4 +107,7 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-11 M4 built on branch `m4-control-panel` and merged into `main` (`12d38748`, `5765fcf4`): the control panel at bank and customer level, reminders before the cutoff, the check return-reasons page, security event delivery (syslog TLS JSON/CEF/LEEF, Splunk HEC with acknowledgement, HTTPS), the "Security events delivered" control, evidence counts, the SIEM guide and the FFIEC row; migration `d1f3b5d7f9a2`. Suites at `12d38748`: SQLite 1518 passed, Postgres 1544, Linux 3.11 1504, no failures. Real tools (`scripts/siem_live_check.py`): a syslog-ng relay over TLS passed. Splunk then passed under Colima's Rosetta (qemu couldn't start it): HEC with indexer acknowledgement, and its TCP syslog input once plain TCP sent one message per line (it ran octet-counted frames together; TLS keeps octet counting, per RFC 5425). SQLite 1520 passed after that change.
 - 2026-10-12 M5 merged into `main`. Suites at `bfe18ee3`: SQLite 1532 passed, Postgres 1557 (after raising the test container's `max_locks_per_transaction` to 256: parallel schema rebuilds ran out of lock slots), Linux 3.11 1515 with one failure, a test whose token "abc" could occur in random hex ids, fixed at `ae41f165`.
 - 2026-10-12 Released 1.11.0 (M4, M5) at `b03f5bec`, and deployed to the sandbox.
+- 2026-10-12 M6 and M7 merged into `main`. M6 at `a93ebc28`: SQLite 1539, Postgres 1564, Linux 3.11 1522. M7 at `9c1d59c7`: SQLite 1550, Postgres 1575, Linux 3.11 1533. No failures.
+- 2026-10-12 Released 1.12.0 (M6, M7), and deployed to the sandbox.
+- 2026-10-12 Deploying 1.12.0: the image upload from here to Fly's registry failed three times on one large layer, so the sandbox was built by Fly's remote builder instead (the base and sandbox Dockerfiles combined in the release copy). The first real run of the edge check, against the sandbox behind Fly's proxy, found the sandbox saw Fly's own address for every caller (the last X-Forwarded-For hop is Fly's): now `Fly-Client-IP`, trusted only from Fly's private network. The check and the Controls page's edge control now recognise Fly.
 

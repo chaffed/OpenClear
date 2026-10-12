@@ -199,6 +199,10 @@ edge's WAF, bot or caching rules.
 - **Azure Front Door:** `X-Azure-ClientIP` as the client-IP header, the `AzureFrontDoor.Backend`
   service tag at the origin, and `X-Azure-FDID` checked by your load balancer (or the edge
   secret). The Default Rule Set needs the same path exceptions.
+- **Fly.io:** Fly's proxy sets `Fly-Client-IP` (overwriting anything a client sends) and appends
+  its own address to `X-Forwarded-For`, so the last hop there is Fly's, not the caller's. Use
+  `OPENCLEAR_CLIENT_IP_HEADER=Fly-Client-IP` with `OPENCLEAR_TRUSTED_PROXY_CIDRS=172.16.0.0/12,fdaa::/16`
+  (Fly's private network, which is the only way into a machine). The hosted sandbox runs this way.
 - **F5 (BIG-IP ASM / Advanced WAF):** insert `X-Forwarded-For` and use
   `OPENCLEAR_TRUSTED_PROXY_COUNT=1`, or a custom header with `OPENCLEAR_CLIENT_IP_HEADER`. Add the
   upload and SAML paths as file-upload and XML profiles rather than turning signatures off.

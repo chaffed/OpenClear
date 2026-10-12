@@ -31,7 +31,7 @@ from openclear.config import get_settings
 EDGE_ID_HEADERS = ("cf-ray", "x-akamai-request-id", "akamai-request-id", "x-request-id")
 # Headers that show an edge network is in front, whether or not it's configured.
 EDGE_HINT_HEADERS = ("cf-ray", "cf-connecting-ip", "true-client-ip", "akamai-origin-hop", "x-akamai-request-id",
-                     "x-akamai-edgescape", "cdn-loop")
+                     "x-akamai-edgescape", "cdn-loop", "fly-client-ip")
 
 
 @dataclass

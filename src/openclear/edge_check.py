@@ -156,6 +156,9 @@ def _client_ip(client: httpx.Client, expect_ip: str | None) -> list[Check]:
                       f"{seen['client_ip']}, not the caller. Set OPENCLEAR_CLIENT_IP_HEADER and OPENCLEAR_TRUSTED_PROXY_CIDRS.", evidence)]
     if expect_ip and seen["client_ip"] != expect_ip:
         return [Check("client_ip", title, FAIL, f"OpenClear sees {seen['client_ip']}, not this machine's {expect_ip}.", evidence)]
+    if expect_ip and seen["edge_trusted"] and seen["client_ip_from"] in ("header", "forwarded"):
+        return [Check("client_ip", title, PASS, f"OpenClear sees {seen['client_ip']}, this machine's address, read from the "
+                                                 f"{'edge' if seen['client_ip_from'] == 'header' else 'proxy'}'s header.", evidence)]
     if seen["client_ip_from"] == "connection" and seen["edge_headers"]:
         return [Check("client_ip", title, FAIL, "An edge is in front, but OpenClear reads the address from the connection.", evidence)]
     if not seen["edge_headers"]:

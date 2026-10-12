@@ -6,7 +6,7 @@ them, run them on a schedule, and export them as CSV, Excel or PDF. What a perso
 report is exactly what they're allowed to see: for a customer's people, only the accounts
 they've been given, and only the kinds of data their permissions cover.
 
-**Status: planned, not started.** Proposed as stages M8–M9 after release 1.12 (MASTER_PLAN.md).
+**Status: on hold.** Written 2026-10-12; the product owner wants every other feature in first, so reporting is built last. The decisions below are proposals still awaiting their answer.
 
 ## The choice: an outside BI tool, or a report builder inside OpenClear
 
@@ -149,3 +149,5 @@ R3 + R4 + R5, then **release 1.13**.
 - 2026-10-12 Plan written. Options reviewed: Superset (embedding with guest-token row filters),
   Metabase (row-level permissions only in paid editions), ReportBro (AGPL, fits the stack).
   Recommendation: our own builder on secured datasets, with ReportBro for designed PDFs.
+- 2026-10-12 Put on hold by the product owner: reporting comes after every other feature.
+
