@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Edges (MASTER_PLAN.md M7)
+
+- **The edge check**, `scripts/edge_check.py <url> [--origin <origin>] [--expect-ip <ip>]`:
+  through Cloudflare, Akamai or a load balancer, it checks that OpenClear sees the caller's
+  real address, the origin refuses requests that go around the edge, security headers arrive
+  unaltered and nothing is injected, pages and the API aren't cached while static files are,
+  responses are compressed, and legitimate requests (X9.37 and NACHA uploads, a large SAML
+  response, SCIM, markdown with HTML-like text, URLs in settings, a burst of API calls) get
+  through the WAF and bot management. It needs no account and changes nothing; `--json` for
+  a report; exits 1 on a failure.
+- **`GET /api/v1/edge/echo`**: how OpenClear saw the request (the caller's address and where
+  it came from, whether the edge was trusted, the edge headers, the request id). No sign-in.
+- **The edge deployment guide**, `docs/guides/edge.md`: origin lockdown, settings, WAF
+  exceptions path by path, bot management, features to turn off, caching, sizes and timeouts,
+  error pages, a go-live checklist, and notes for CloudFront, Azure Front Door and F5.
+- `scripts/edge_ip_ranges.py cloudflare` prints Cloudflare's ranges for
+  `OPENCLEAR_TRUSTED_PROXY_CIDRS`.
+- Tested against a stub edge in the suite (`tests/stub_edge.py`) that behaves like Cloudflare
+  and Akamai, including the mistakes real setups make; a real zone confirms it later.
+
 ### Bank staff and operator (MASTER_PLAN.md M6)
 
 - **The customer hub.** The Customers list puts customers with items to decide first, with

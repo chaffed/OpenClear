@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.11.0 released (M4, M5). M6 built on `m6-staff-operator`. Next: M7 (the edge check and guide), then release 1.12.**
+**Status: 1.11.0 released (M4, M5). M6 and M7 built. Next: release 1.12; then a real Cloudflare zone to confirm M7, when one is available.**
 
 ## How testing is kept down
 

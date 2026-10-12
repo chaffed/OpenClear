@@ -2077,6 +2077,56 @@
         "title": "DecisionRead",
         "type": "object"
       },
+      "EdgeEcho": {
+        "properties": {
+          "client_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "client_ip_from": {
+            "title": "Client Ip From",
+            "type": "string"
+          },
+          "edge_headers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Edge Headers",
+            "type": "array"
+          },
+          "edge_trusted": {
+            "title": "Edge Trusted",
+            "type": "boolean"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "required": [
+          "client_ip",
+          "client_ip_from",
+          "edge_trusted",
+          "edge_headers",
+          "request_id"
+        ],
+        "title": "EdgeEcho",
+        "type": "object"
+      },
       "EmbedLaunchCreate": {
         "properties": {
           "parent_origin": {
@@ -7550,6 +7600,28 @@
         "summary": "Decision File",
         "tags": [
           "decision-feed"
+        ]
+      }
+    },
+    "/api/v1/edge/echo": {
+      "get": {
+        "description": "How OpenClear saw this request: the caller's address and where it came from, whether\nthe connection came from a trusted edge, which edge headers arrived, and the request id.",
+        "operationId": "echo_api_v1_edge_echo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeEcho"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Echo",
+        "tags": [
+          "edge"
         ]
       }
     },

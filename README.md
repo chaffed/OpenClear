@@ -824,6 +824,13 @@ still-at-their-checked-in-default conditions, unrelated to signing keys:
 
 ## Reverse proxy / WAF deployment
 
+**The full guide is [docs/guides/edge.md](docs/guides/edge.md)**: origin lockdown, the settings,
+the WAF exceptions path by path, bot management, the edge features to turn off, caching,
+sizes and timeouts, and a go-live checklist. Check a deployment with
+`python scripts/edge_check.py https://openclear.bank.example --origin <origin>`: it needs no
+account, changes nothing, and fails if the edge blocks legitimate requests, caches pages,
+injects scripts, alters security headers, or lets requests around it.
+
 **Rate limits.** Every request is rate-limited (`web/rate_limit.py`):
 - a signed-in person or API client as themselves: `rate_limit_per_principal_per_minute`, 600 by default;
 - anyone else by IP address: `rate_limit_per_minute`, 120 by default;

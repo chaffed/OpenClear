@@ -304,6 +304,15 @@ public sealed record DecisionRead
     [JsonPropertyName("submitted_by_user_id")] public string SubmittedByUserId { get; init; } = default!;
 }
 
+public sealed record EdgeEcho
+{
+    [JsonPropertyName("client_ip")] public string ClientIp { get; init; } = default!;
+    [JsonPropertyName("client_ip_from")] public string ClientIpFrom { get; init; } = default!;
+    [JsonPropertyName("edge_headers")] public IReadOnlyList<string> EdgeHeaders { get; init; } = default!;
+    [JsonPropertyName("edge_trusted")] public bool EdgeTrusted { get; init; } = default!;
+    [JsonPropertyName("request_id")] public string RequestId { get; init; } = default!;
+}
+
 public sealed record EmbedLaunchCreate
 {
     [JsonPropertyName("parent_origin")] public string ParentOrigin { get; init; } = default!;
@@ -1467,6 +1476,26 @@ public sealed partial class DropboxImportApi
 }
 
 /// <summary>
+/// edge endpoints.
+/// </summary>
+public sealed partial class EdgeApi
+{
+    private readonly ITransport _c;
+    public EdgeApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Echo.
+    ///
+    /// GET /api/v1/edge/echo
+    ///
+    /// How OpenClear saw this request: the caller's address and where it came from, whether
+    /// the connection came from a trusted edge, which edge headers arrived, and the request id.
+    /// </summary>
+    public Task<EdgeEcho> EchoAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<EdgeEcho>("GET", "/api/v1/edge/echo", cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// embed endpoints.
 /// </summary>
 public sealed partial class EmbedApi
@@ -2080,6 +2109,7 @@ public partial class OpenClearClient
     public DecisionFeedApi DecisionFeed { get; private set; } = default!;
     public DecisionsApi Decisions { get; private set; } = default!;
     public DropboxImportApi DropboxImport { get; private set; } = default!;
+    public EdgeApi Edge { get; private set; } = default!;
     public EmbedApi Embed { get; private set; } = default!;
     public ExceptionsApi Exceptions { get; private set; } = default!;
     public FraudTrainingApi FraudTraining { get; private set; } = default!;
@@ -2112,6 +2142,7 @@ public partial class OpenClearClient
         DecisionFeed = new DecisionFeedApi(this);
         Decisions = new DecisionsApi(this);
         DropboxImport = new DropboxImportApi(this);
+        Edge = new EdgeApi(this);
         Embed = new EmbedApi(this);
         Exceptions = new ExceptionsApi(this);
         FraudTraining = new FraudTrainingApi(this);

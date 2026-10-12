@@ -314,6 +314,14 @@ class DecisionRead(TypedDict):
     submitted_by_user_id: str | None
 
 
+class EdgeEcho(TypedDict):
+    client_ip: str | None
+    client_ip_from: str
+    edge_headers: list[str]
+    edge_trusted: bool
+    request_id: str | None
+
+
 class EmbedLaunchCreate(TypedDict):
     parent_origin: str
     path: NotRequired[str]
@@ -1376,6 +1384,23 @@ class DropboxImportApi:
         return self._c.call("POST", "/api/v1/import/run")
 
 
+class EdgeApi:
+    """`edge` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def echo(self) -> EdgeEcho:
+        """Echo.
+
+        GET /api/v1/edge/echo
+
+        How OpenClear saw this request: the caller's address and where it came from, whether
+        the connection came from a trusted edge, which edge headers arrived, and the request id.
+        """
+        return self._c.call("GET", "/api/v1/edge/echo")
+
+
 class EmbedApi:
     """`embed` endpoints."""
 
@@ -1915,6 +1940,7 @@ AREAS = {
     "decision_feed": DecisionFeedApi,
     "decisions": DecisionsApi,
     "dropbox_import": DropboxImportApi,
+    "edge": EdgeApi,
     "embed": EmbedApi,
     "exceptions": ExceptionsApi,
     "fraud_training": FraudTrainingApi,

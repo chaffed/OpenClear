@@ -291,6 +291,14 @@ export interface DecisionRead {
   submitted_by_user_id: string | null;
 }
 
+export interface EdgeEcho {
+  client_ip: string | null;
+  client_ip_from: string;
+  edge_headers: Array<string>;
+  edge_trusted: boolean;
+  request_id: string | null;
+}
+
 export interface EmbedLaunchCreate {
   parent_origin: string;
   path?: string;
@@ -1501,6 +1509,27 @@ export class DropboxImportApi {
   }
 }
 
+/** `edge` endpoints. */
+export class EdgeApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Echo.
+   *
+   * GET /api/v1/edge/echo
+   *
+   * How OpenClear saw this request: the caller's address and where it came from, whether
+   * the connection came from a trusted edge, which edge headers arrived, and the request id.
+   */
+  echo(): Promise<EdgeEcho> {
+    return this.c.call<EdgeEcho>("GET", `/api/v1/edge/echo`, {  });
+  }
+}
+
 /** `embed` endpoints. */
 export class EmbedApi {
   private readonly c: Transport;
@@ -2172,6 +2201,7 @@ export const AREAS = {
   decisionFeed: DecisionFeedApi,
   decisions: DecisionsApi,
   dropboxImport: DropboxImportApi,
+  edge: EdgeApi,
   embed: EmbedApi,
   exceptions: ExceptionsApi,
   fraudTraining: FraudTrainingApi,
