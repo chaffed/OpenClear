@@ -129,13 +129,30 @@ def splunk_search(query: str) -> list[dict]:
     return [json.loads(line)["result"] for line in response.text.splitlines() if line.strip() and '"result"' in line]
 
 
-def check_splunk() -> None:
+def check_splunk(reuse: bool = False) -> None:
+    global PASSWORD
+    running = run("docker", "inspect", "-f", "{{.State.Running}}", SPLUNK, check=False).strip() == "true"
+    if reuse and running:
+        env = json.loads(run("docker", "inspect", "-f", "{{json .Config.Env}}", SPLUNK))
+        PASSWORD = next(e.split("=", 1)[1] for e in env if e.startswith("SPLUNK_PASSWORD="))
+    else:
+        start_splunk()
+    print("Waiting for Splunk to start (several minutes under emulation)…")
+    # Splunk restarts itself during setup, so its API answering isn't enough: wait for the
+    # container's own health check.
+    wait_for("Splunk to be healthy", lambda: run("docker", "inspect", "-f", "{{.State.Health.Status}}", SPLUNK).strip() == "healthy", 1800)
+    wait_for("Splunk's management API", lambda: splunk_api("GET", "/services/server/info").status_code == 200, 300)
+    configure_and_send()
+
+
+def start_splunk() -> None:
     run("docker", "rm", "-f", SPLUNK, check=False)
     run("docker", "run", "-d", "--name", SPLUNK, "--platform", "linux/amd64", "-p", "18088:8088", "-p", "18089:8089", "-p", "11514:1514",
         "-e", "SPLUNK_START_ARGS=--accept-license", "-e", "SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com",
         "-e", f"SPLUNK_PASSWORD={PASSWORD}", "-e", f"SPLUNK_HEC_TOKEN={HEC_TOKEN}", "splunk/splunk:latest")
-    print("Waiting for Splunk to start (several minutes under emulation)…")
-    wait_for("Splunk's management API", lambda: splunk_api("GET", "/services/server/info").status_code == 200, 1500)
+
+
+def configure_and_send() -> None:
 
     # An index, a HEC token with indexer acknowledgement, and a TCP syslog input.
     splunk_api("POST", "/services/data/indexes", data={"name": "openclear"})
@@ -170,12 +187,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--keep", action="store_true", help="leave the containers running")
     parser.add_argument("--skip-splunk", action="store_true")
+    parser.add_argument("--reuse-splunk", action="store_true", help="use a running container from an earlier --keep run")
     args = parser.parse_args()
     try:
         with tempfile.TemporaryDirectory(dir=Path.home()) as tmp:  # under $HOME so Colima can mount it
             check_syslog_ng(Path(tmp))
         if not args.skip_splunk:
-            check_splunk()
+            check_splunk(reuse=args.reuse_splunk)
     finally:
         if not args.keep:
             run("docker", "rm", "-f", SYSLOG_NG, SPLUNK, check=False)

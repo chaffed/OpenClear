@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.10.0 released (M1–M3, error pages). Next: M4 (control panel, reminders, event shipping).**
+**Status: 1.10.0 released (M1–M3, error pages). M4 merged (not yet pushed). Next: M5 (uploads), then release 1.11.**
 
 ## How testing is kept down
 
@@ -104,3 +104,5 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-11 M3 built on branch `m3-deciding` (the prototype's designs accepted as they stand, before user testing): Pay/Return buttons, check return reasons (`check_return_reason`, seeded), deciding several at once (`POST /ui/exceptions/bulk`, per-item rules and transactions), decide-now landing and banner for customer users, the exception page reordered, P/R/J/K keys, cards and a sticky decision bar on phones, WCAG-passing button colours; fixed UTC times from SQLite in the browser.
 - 2026-10-11 M3 merged into `main`. Suites at `8ff9f556`: SQLite 1486 passed, Postgres 1511, Linux 3.11 1472, each with the same one failure (a test checking the ACH page's old dropdown), fixed at `e9b2d06e` and rerun green on SQLite and Postgres. Also merged: the bare address redirects (to the sandbox sign-up on the sandbox), deployed to the sandbox as a hotfix on 1.9.0.
 - 2026-10-11 Released 1.10.0 (M1, M2, M3, error pages, faster tests, the front-door redirect) at `060df6f1`, after two CI fixes to the TypeScript SDK test (its live server now uses a pooled SQLite file). Deployed to the sandbox; migrations ran. Releases renumbered: 1.11 = M4+M5, 1.12 = M6+M7.
+- 2026-10-11 M4 built on branch `m4-control-panel` and merged into `main` (`12d38748`, `5765fcf4`): the control panel at bank and customer level, reminders before the cutoff, the check return-reasons page, security event delivery (syslog TLS JSON/CEF/LEEF, Splunk HEC with acknowledgement, HTTPS), the "Security events delivered" control, evidence counts, the SIEM guide and the FFIEC row; migration `d1f3b5d7f9a2`. Suites at `12d38748`: SQLite 1518 passed, Postgres 1544, Linux 3.11 1504, no failures. Real tools (`scripts/siem_live_check.py`): a syslog-ng relay over TLS passed. Splunk's container (amd64 only) didn't start under qemu emulation on this Apple-silicon Mac (`splunk start` failed after 40 minutes); still to check, with Colima's Rosetta or on an x86 host.
+
