@@ -29,6 +29,8 @@
   order and at least once from a cursor, with backoff and catch-up, and never slows a
   request (`OPENCLEAR_ENABLE_SECURITY_EVENT_DELIVERY_SCHEDULER`). Events a destination
   hasn't received are kept past their retention until it has.
+  TLS syslog is octet-counted (RFC 5425), plain TCP one message per line. Checked against
+  real Splunk (HEC with acknowledgement, and its TCP syslog input) and a syslog-ng relay.
 - **A new control, "Security events delivered"**: it fails when a destination has been
   failing for an hour or falls behind, and warns when there's no destination and nobody has
   read the pull API for a day. The evidence export adds the period's event counts by
