@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.13.0 — 2026-10-12
+
+Reporting through each bank's own business intelligence platform: a guide, and what a data
+pipeline needs from the API. It brings:
+
+- `docs/guides/bi.md`: connecting Power BI, Tableau, Looker, Qlik or Superset through a warehouse;
+- `updated_since` on every list, with cursor paging that never misses a row;
+- read-only API clients, including a customer's own data feed;
+- the full data export through the API;
+- for the sandbox, the caller's real address behind Fly's proxy.
 
 ### For banks' data pipelines and BI platforms (docs/guides/bi.md)
 
