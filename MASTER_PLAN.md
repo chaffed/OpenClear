@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.10.0 released (M1–M3, error pages). M4 merged and pushed. M5 built on `m5-uploads`. Next: release 1.11.**
+**Status: 1.11.0 released (M4, M5). Next: M6 (bank staff and operator: the customer hub, support access, the operator view).**
 
 ## How testing is kept down
 
@@ -105,4 +105,6 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-11 M3 merged into `main`. Suites at `8ff9f556`: SQLite 1486 passed, Postgres 1511, Linux 3.11 1472, each with the same one failure (a test checking the ACH page's old dropdown), fixed at `e9b2d06e` and rerun green on SQLite and Postgres. Also merged: the bare address redirects (to the sandbox sign-up on the sandbox), deployed to the sandbox as a hotfix on 1.9.0.
 - 2026-10-11 Released 1.10.0 (M1, M2, M3, error pages, faster tests, the front-door redirect) at `060df6f1`, after two CI fixes to the TypeScript SDK test (its live server now uses a pooled SQLite file). Deployed to the sandbox; migrations ran. Releases renumbered: 1.11 = M4+M5, 1.12 = M6+M7.
 - 2026-10-11 M4 built on branch `m4-control-panel` and merged into `main` (`12d38748`, `5765fcf4`): the control panel at bank and customer level, reminders before the cutoff, the check return-reasons page, security event delivery (syslog TLS JSON/CEF/LEEF, Splunk HEC with acknowledgement, HTTPS), the "Security events delivered" control, evidence counts, the SIEM guide and the FFIEC row; migration `d1f3b5d7f9a2`. Suites at `12d38748`: SQLite 1518 passed, Postgres 1544, Linux 3.11 1504, no failures. Real tools (`scripts/siem_live_check.py`): a syslog-ng relay over TLS passed. Splunk then passed under Colima's Rosetta (qemu couldn't start it): HEC with indexer acknowledgement, and its TCP syslog input once plain TCP sent one message per line (it ran octet-counted frames together; TLS keeps octet counting, per RFC 5425). SQLite 1520 passed after that change.
+- 2026-10-12 M5 merged into `main`. Suites at `bfe18ee3`: SQLite 1532 passed, Postgres 1557 (after raising the test container's `max_locks_per_transaction` to 256: parallel schema rebuilds ran out of lock slots), Linux 3.11 1515 with one failure, a test whose token "abc" could occur in random hex ids, fixed at `ae41f165`.
+- 2026-10-12 Released 1.11.0 (M4, M5) at `b03f5bec`, and deployed to the sandbox.
 
