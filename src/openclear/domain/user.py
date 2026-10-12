@@ -49,6 +49,11 @@ class User(Base):
     # or an admin's "Sign out everywhere") invalidates every token this user holds on
     # every device, since auth/deps.py rejects a token whose tv doesn't match.
     token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Platform staff (UX_PLAN.md U8, U9): "operator" (the operator view, provisioning banks)
+    # or "support" (working in a bank only through a grant that bank made,
+    # domain/support_access_grant.py). Set only by scripts/platform_staff.py, never from a
+    # bank's own screens. Null for everyone else.
+    platform_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Set by the user themselves on /ui/security/notifications — nullable since SMS
     # notifications are opt-in and most users will never set one. No format validation

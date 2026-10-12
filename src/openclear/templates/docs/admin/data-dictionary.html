@@ -210,6 +210,7 @@ several tenants and customers.</p>
 <tr><td>locked_until</td><td>Timestamp</td><td>yes</td><td></td><td>Set after too many failed attempts; cleared by an admin unlock.</td></tr>
 <tr><td>phone</td><td>String(32)</td><td>yes</td><td></td><td>Used only for SMS notifications the user opts into.</td></tr>
 <tr><td>is_service_account</td><td>Boolean</td><td>no</td><td></td><td>The service identity of an API client (see api_client): it can't sign in by password or SSO, and isn't listed with the bank's people.</td></tr>
+<tr><td>platform_role</td><td>String(20)</td><td>yes</td><td></td><td>Platform staff: operator or support (scripts/platform_staff.py). Null for everyone else.</td></tr>
 </tbody>
 </table>
 
@@ -1216,6 +1217,25 @@ deadline, so each goes once (services/reminder_service.py). The messages are not
 <tr><td>exception_item_id</td><td>UUID</td><td>no</td><td>FK → exception_item.id; UK (with offset_minutes)</td><td></td></tr>
 <tr><td>offset_minutes</td><td>Integer</td><td>no</td><td></td><td>Which reminder: minutes before the deadline.</td></tr>
 <tr><td>sent_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>support_access_grant</h3>
+<p>A bank letting a named platform support person in, for a reason and a period
+(services/support_access_service.py). Read-only unless write access, which a second bank admin
+approves. No row-level security: a support person's own grants are listed across banks; every
+read filters by bank or by person.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>support_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td>The support person (a user with a platform_role).</td></tr>
+<tr><td>reason</td><td>String(500)</td><td>no</td><td></td><td>Why access is needed.</td></tr>
+<tr><td>write_access</td><td>Boolean</td><td>no</td><td></td><td>Also entering and correcting items; never deciding them.</td></tr>
+<tr><td>status</td><td>String(10)</td><td>no</td><td></td><td>pending (write access awaiting approval), active, revoked or expired.</td></tr>
+<tr><td>granted_by_user_id / approved_by_user_id / ended_by_user_id</td><td>UUID</td><td>no / yes / yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>granted_at / starts_at / expires_at / ended_at / last_used_at</td><td>Timestamp</td><td>no / yes / no / yes / yes</td><td></td><td></td></tr>
 </tbody>
 </table>
 

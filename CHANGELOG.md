@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+### Bank staff and operator (MASTER_PLAN.md M6)
+
+- **The customer hub.** The Customers list puts customers with items to decide first, with
+  open items, items due today, the next deadline, the last issued-check file and the decision
+  default at the deadline; search, and "No issue file in N days". A customer's page shows its
+  open items and has **Send a reminder now**. The exceptions list filters by customer for bank
+  staff (`?customer=`).
+- **Platform staff.** People who run the installation (`scripts/platform_staff.py`, operator
+  or support) sign in at `/ui/platform/login`, separately from any bank.
+- **The operator view** (`/ui/platform`): every bank's customers, open and overdue
+  exceptions, jobs, last import, controls and security-event delivery; setting up a bank from
+  the web, with a first admin who sets their own password.
+- **Support access instead of impersonation.** Settings → Support access grants a named
+  support person access for a reason and a period (up to 72 hours), read-only unless a second
+  admin approves write access, never to decide items or see secrets, users, groups, settings
+  or the action log. They work under their own name, with a banner; ending the grant or its
+  time running out ends the session at once. Every grant, approval, use and end is in the
+  action log, as a security event, and in the evidence export.
+- **Accessibility**: a table that scrolls sideways is now reachable by keyboard (focusable,
+  and named, only while it overflows).
+- **Migration** `f3b5d7f9b1c4`: `support_access_grant`, and the platform role on users.
+
 ## 1.11.0 — 2026-10-12
 
 Settings you can see at a glance, reminders before the cutoff, security events delivered to

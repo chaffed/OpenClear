@@ -22,6 +22,7 @@ DELIBERATELY_UNPROTECTED = {
     "job": "workers claim every bank's jobs, then bind to the job's bank (c4f6a8b0d2e5)",
     "notification": "tenant_id is nullable, like user's (c3d4e5f6a7b8)",
     "security_event": "some events belong to no bank, and delivery reads every bank's (b9d1f3a5c7e0)",
+    "support_access_grant": "a support person's own grants are listed across banks (f3b5d7f9b1c4)",
     "security_event_destination": "the installation's belongs to no bank, and delivery reads every bank's (d1f3b5d7f9a2)",
 }
 

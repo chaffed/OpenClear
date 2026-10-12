@@ -200,25 +200,52 @@ def _send_for_bank(session: Session, tenant_id: uuid.UUID, items: list, now: dat
         due_by_customer[item.customer_id].append(deadline)
     if not due_by_customer:
         return 0
+    return _notify(session, tenant, due_by_customer, now, notification_service)
 
-    # One message per person: the items due that they can see, and the soonest deadline.
+
+def _notify(session: Session, tenant: Tenant, due_by_customer: dict, now: datetime, notification_service) -> int:
+    """One message per person: the items due that they can see, and the soonest deadline
+    (None for items with no deadline). Returns how many people."""
+    tenant_id = tenant.id
     per_person: dict[uuid.UUID, tuple] = {}
     for customer_id, deadlines in due_by_customer.items():
         recipients = {}
         for permission in ("exception:recommend", "exception:decide"):
             for user in notification_service._recipients_for_permission(session, tenant_id, permission, customer_id=customer_id):
                 recipients[user.id] = user
+        dated = [d for d in deadlines if d is not None]
         for user in recipients.values():
             _user, count, nearest = per_person.get(user.id, (user, 0, None))
-            soonest = min(deadlines)
-            per_person[user.id] = (user, count + len(deadlines), soonest if nearest is None else min(nearest, soonest))
+            soonest = min(dated) if dated else None
+            if nearest is not None and soonest is not None:
+                soonest = min(nearest, soonest)
+            per_person[user.id] = (user, count + len(deadlines), soonest or nearest)
     for user, count, nearest in per_person.values():
-        due_in = duration((nearest - now).total_seconds() / 60)
+        due_in = duration((nearest - now).total_seconds() / 60) if nearest is not None else None
+        plural = "s" if count != 1 else ""
         notification_service._queue(
             session, tenant_id=tenant_id, recipient=user, notification_type=NotificationType.DEADLINE_REMINDER,
             template_context={"count": count, "due_in": due_in, "bank_name": tenant.name,
                               "queue_url": notification_service._absolute_url("/ui/exceptions")},
-            subject=f"{count} item{'s' if count != 1 else ''} to decide, due in {due_in}",
+            subject=f"{count} item{plural} to decide, due in {due_in}" if due_in else f"{count} item{plural} to decide",
         )
     session.flush()
     return len(per_person)
+
+
+def remind_customer_now(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, now: datetime | None = None) -> tuple[int, int]:
+    """Bank staff's "Send a reminder now" (the customer hub, UX_PLAN.md U7): one message to
+    each person who can act on this customer's open items, whatever the timing. Not logged
+    against the scheduled reminders, so those still go. Returns (items, people). The caller
+    commits."""
+    from openclear.services import notification_service
+
+    now = now or datetime.now(timezone.utc)
+    tenant = session.get(Tenant, tenant_id)
+    deadlines = [_aware(d) if d is not None else None for d in session.execute(select(ExceptionItem.decision_deadline).where(
+        ExceptionItem.tenant_id == tenant_id, ExceptionItem.customer_id == customer_id,
+        ExceptionItem.status.in_(list(NEEDS_ATTENTION)))).scalars()]
+    if not deadlines:
+        return 0, 0
+    return len(deadlines), _notify(session, tenant, {customer_id: deadlines}, now, notification_service)
+

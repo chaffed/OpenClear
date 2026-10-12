@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Customers — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About customers{% endblock %}
@@ -9,6 +8,9 @@
   segregates their data: a login scoped to that customer sees only its own data
   everywhere in the app, whether that's a bank employee assigned to that client or the
   client's own staff.</p>
+<p>Customers with items to decide come first, soonest deadline first. "No issue file in"
+  finds customers who may have stopped sending their issued-check files, a common reason
+  checks get flagged that shouldn't be.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -16,20 +18,47 @@
     <h1>Customers</h1>
     <a href="/ui/customers/new" class="button">{{ icon("add") }}New customer</a>
   </div>
-  {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Customer number</th><th>Name</th><th>Status</th></tr></thead>
+  <form method="get" action="/ui/customers" class="list-search" role="search">
+    <div class="list-search-main">
+      <label>Find <input type="search" name="q" value="{{ q }}" placeholder="Name or number"></label>
+      <label>No issue file in
+        <select name="quiet">
+          <option value="">—</option>
+          {% for d in quiet_choices %}<option value="{{ d }}" {{ "selected" if quiet == d else "" }}>{{ d }} days</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="secondary">{{ icon("search") }}Show</button>
+    </div>
+  </form>
+  {% if rows %}
+  <p class="hint">{{ total }} customer{{ "s" if total != 1 }}{% if quiet %} with no issue file in {{ quiet }} days{% endif %}.</p>
+  <table>
+    <thead><tr><th scope="col">Customer</th><th scope="col">Open</th><th scope="col">Due today</th><th scope="col">Next deadline</th>
+      <th scope="col">Last issue file</th><th scope="col">At the deadline</th><th scope="col">Status</th></tr></thead>
     <tbody>
-      {% for customer in page_obj.items %}
+      {% for r in rows %}
+      {% set days = r.days_since_issue_file(now) %}
       <tr>
-        <td>{{ customer.customer_number }}</td>
-        <td><a href="/ui/customers/{{ customer.id }}">{{ customer.name }}</a></td>
-        <td><span class="badge {{ 'badge-ok' if customer.is_active else '' }}">{{ 'active' if customer.is_active else 'inactive' }}</span></td>
+        <td><a href="/ui/customers/{{ r.customer.id }}">{{ r.customer.name }}</a><br><span class="hint">{{ r.customer.customer_number }}</span></td>
+        <td>{% if r.open_count %}<a href="/ui/exceptions?customer={{ r.customer.id }}">{{ r.open_count }}</a>{% else %}0{% endif %}</td>
+        <td>{% if r.due_today %}<span class="badge badge-warn">{{ r.due_today }}</span>{% else %}0{% endif %}</td>
+        <td>{% if r.nearest_deadline %}<time datetime="{{ r.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ r.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}</td>
+        <td>{% if days is none %}<span class="hint">never</span>{% elif days == 0 %}today{% else %}{{ days }} day{{ "s" if days != 1 }} ago{% endif %}</td>
+        <td>{{ r.decision_default }}</td>
+        <td><span class="badge {{ 'badge-ok' if r.customer.is_active else '' }}">{{ 'active' if r.customer.is_active else 'inactive' }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {{ pg.pager(page_obj, request) }}
+  {% if pages > 1 %}
+  <nav class="pagination" aria-label="Pages">
+    {% if page > 1 %}<a href="?page={{ page - 1 }}&q={{ q | urlencode }}&quiet={{ quiet or '' }}">Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a href="?page={{ page + 1 }}&q={{ q | urlencode }}&quiet={{ quiet or '' }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% elif q or quiet %}
+  <p>No customers match.</p>
   {% else %}
   <p>No customers yet.</p>
   {% endif %}

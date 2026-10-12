@@ -19,6 +19,17 @@
 {% set embed_event = request.query_params.get("event") if embedded else none %}
 <body{% if embedded %} class="embedded" data-embed-parent="{{ ctx.embed_parent_origin }}"{% if embed_event in ("exception-decided", "exception-recommended") %} data-embed-event="{{ embed_event }}"{% endif %}{% endif %}>
   <a href="#main-content" class="skip-link">Skip to content</a>
+  {% if ctx and ctx.support_grant_id %}
+  <div class="support-banner" role="note">
+    <span><strong>Support access</strong> to {{ ctx.tenant_name }}, {{ "read and write" if ctx.support_write else "read-only" }},
+      granted by the bank, until <time datetime="{{ ctx.support_expires_at | iso_utc }}" data-local-time>{{ ctx.support_expires_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.
+      Everything you do is in the bank's action log under your name.</span>
+    <form method="post" action="/ui/platform/support/end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Leave</button>
+    </form>
+  </div>
+  {% endif %}
   <div class="app-shell">
     {% if ctx and not embedded %}
     {% from "_macros/icon.html" import icon %}

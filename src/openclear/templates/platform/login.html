@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Platform sign-in — OpenClear{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Platform sign-in</h1>
+  <p class="hint">For the people who run this OpenClear installation. Bank staff sign in on their bank's own page.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/platform/login">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Email <input type="email" name="email" value="{{ email or '' }}" autocomplete="username" required></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">{{ icon("login") }}Sign in</button>
+  </form>
+</div>
+{% endblock %}

@@ -46,6 +46,7 @@ from openclear.domain import (  # noqa: F401
     security_group,
     sso_connection,
     stop_payment,
+    support_access_grant,
     tenant,
     tenant_extension,
     tenant_membership,

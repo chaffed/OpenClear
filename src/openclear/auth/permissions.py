@@ -141,3 +141,14 @@ DEFAULT_SECURITY_GROUPS: dict[str, list[str]] = {
         "wsud:sign", "bulk_import:run", "end_user_documentation:read",
     ],
 }
+
+# Bank-granted support access (UX_PLAN.md U8; services/support_access_service.py). A support
+# person can read what a bank's own staff read, but never secrets, users, groups, settings
+# or the action log; write access (approved by a second bank admin) adds entering and
+# correcting items, never deciding them or anything about who may do what.
+SUPPORT_READ_PERMISSIONS = frozenset(p for p in _READS if p not in ("billing:read",))
+SUPPORT_WRITE_PERMISSIONS = frozenset({
+    "account:write", "issued_item:write", "stop_payment:write", "paid_item:write", "check_image:write",
+    "ach_authorization:write", "ach_transaction:write", "bulk_import:run",
+})
+

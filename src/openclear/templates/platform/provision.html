@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Set up a bank — OpenClear{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card card-narrow">
+  <h1>Set up a bank</h1>
+  <p class="hint">Creates the bank with its default security groups and return reasons, and its first
+    admin, who chooses their own password on first sign-in and then follows the Getting Started checklist.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/platform/banks">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Bank's name <input type="text" name="name" value="{{ bank_name or '' }}" required maxlength="255"></label>
+    <label>Short name (in its sign-in address) <input type="text" name="slug" value="{{ slug or '' }}" required pattern="[a-z0-9][a-z0-9-]*" placeholder="first-community"></label>
+    <label>First admin's email <input type="email" name="admin_email" value="{{ admin_email or '' }}" required></label>
+    <button type="submit">{{ icon("add") }}Set up the bank</button>
+  </form>
+</div>
+{% endblock %}

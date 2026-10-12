@@ -637,3 +637,12 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* A fieldset is min-width: min-content by default, so a wide table inside one widened the
    whole page on a phone instead of scrolling inside its own box. */
 fieldset { min-width: 0; }
+.tone-ok { color: var(--badge-ok-fg); }
+.tone-warn { color: var(--badge-warn-fg); }
+.tone-danger { color: var(--badge-danger-fg); font-weight: 600; }
+
+/* A support session (services/support_access_service.py): always visible. */
+.support-banner { background: var(--badge-warn-bg); color: var(--badge-warn-fg); border-bottom: 2px solid var(--badge-warn-fg);
+  padding: 0.5rem 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between; }
+.support-banner form { margin: 0; }
+

@@ -129,6 +129,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("sso", "Security & access", "Single sign-on", "key", "/ui/admin/sso",
              "Sign bank staff in through your identity provider.", _plural(sso_count, "connection") if sso_count else "Off",
              keywords="sso saml oidc okta entra azure identity provider"),
+        Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
+             "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
+             keywords="support help vendor access grant impersonate"),
         Tile("segregation-of-duties", "Security & access", "Segregation of duties", "rule", "/ui/settings/segregation-of-duties",
              "Which duties one person mustn't hold together.", "Enforce" if tenant.sod_mode == "enforce" else "Warn",
              tone="ok" if tenant.sod_mode == "enforce" else "warn", keywords="sod maker checker conflicts"),
@@ -155,6 +158,14 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
              "Files your bank's file transfer drops are imported automatically.",
              "On" if settings.auto_import_enabled else "Off", modal=True, keywords="dropbox sftp folder files"),
     ]
+
+
+def _support_state(db, tenant_id) -> str:
+    from openclear.domain.support_access_grant import SupportAccessGrant
+
+    active = _count(db, select(func.count()).select_from(SupportAccessGrant).where(
+        SupportAccessGrant.tenant_id == tenant_id, SupportAccessGrant.status.in_(("pending", "active"))))
+    return f"{active} open" if active else "None"
 
 
 def _admin_tiles(db, ctx, tenant, settings) -> list[Tile]:

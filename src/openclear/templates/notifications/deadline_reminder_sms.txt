@@ -1,1 +1,1 @@
-OpenClear: {{ count }} item{{ "s" if count != 1 else "" }} to decide, the first due in {{ due_in }}. {{ queue_url }}
+OpenClear: {{ count }} item{{ "s" if count != 1 else "" }} to decide{% if due_in %}, the first due in {{ due_in }}{% endif %}. {{ queue_url }}

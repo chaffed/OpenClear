@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Platform — OpenClear{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Platform</h1>
+    <form method="post" action="/ui/platform/logout" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Sign out</button>
+    </form>
+  </div>
+  <p>Signed in as <strong>{{ user.email }}</strong> ({{ user.platform_role }}).</p>
+</div>
+
+<div class="card">
+  <h2>Access banks have granted you</h2>
+  {% if grants %}
+  <table>
+    <thead><tr><th scope="col">Bank</th><th scope="col">Why</th><th scope="col">Access</th><th scope="col">Until</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+    <tbody>
+      {% for g, tenant in grants %}
+      <tr>
+        <td>{{ tenant.name }}</td>
+        <td>{{ g.reason }}</td>
+        <td>{{ "read and write" if g.write_access else "read-only" }}</td>
+        <td><time datetime="{{ g.expires_at | iso_utc }}" data-local-time data-relative-time>{{ g.expires_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></td>
+        <td><span class="badge {{ {'active': 'badge-ok', 'pending': 'badge-warn'}.get(g.status, '') }}">{{ {'pending': 'waiting for the bank'}.get(g.status, g.status) }}</span></td>
+        <td>{% if g.status == "active" %}
+          <form method="post" action="/ui/platform/support/{{ g.id }}/start" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">{{ icon("login") }}Open</button>
+          </form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No bank has granted you access. A bank's admin grants it under Settings → Support access.</p>
+  {% endif %}
+</div>
+
+{% if user.platform_role == "operator" %}
+<div class="card">
+  <div class="toolbar">
+    <h2>Banks</h2>
+    <a href="/ui/platform/banks/new" class="button">{{ icon("add") }}Set up a bank</a>
+  </div>
+  <p class="hint">{% if sandboxes %}Including sandboxes. <a href="/ui/platform">Hide them</a>.{% else %}Sandboxes hidden. <a href="/ui/platform?sandboxes=true">Show them</a>.{% endif %}
+    To look inside a bank, ask it for support access.</p>
+  {% if banks %}
+  <table>
+    <thead><tr><th scope="col">Bank</th><th scope="col">Customers</th><th scope="col">Open</th><th scope="col">Overdue</th><th scope="col">Jobs</th>
+      <th scope="col">Last import</th><th scope="col">Controls</th><th scope="col">Security events</th></tr></thead>
+    <tbody>
+      {% for b in banks %}
+      <tr>
+        <td>{{ b.tenant.name }}<br><span class="hint">{{ b.tenant.slug }}{% if not b.tenant.is_active %} · inactive{% endif %}{% if b.tenant.is_sandbox %} · sandbox{% endif %}</span></td>
+        <td>{{ b.customers }}</td>
+        <td>{{ b.open_exceptions }}</td>
+        <td>{% if b.overdue %}<span class="badge badge-danger">{{ b.overdue }}</span>{% else %}0{% endif %}</td>
+        <td>{{ b.jobs_queued }} queued{% if b.jobs_failed %}, <span class="tone-danger">{{ b.jobs_failed }} failed</span>{% endif %}</td>
+        <td>{% if b.last_import_at %}<time datetime="{{ b.last_import_at | iso_utc }}" data-local-time>{{ b.last_import_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}<span class="hint">never</span>{% endif %}</td>
+        <td><span data-lazy-state="/ui/platform/banks/{{ b.tenant.id }}/controls">Checking…</span></td>
+        <td><span class="{{ 'tone-' ~ b.delivery_tone if b.delivery_tone else '' }}">{{ b.delivery }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No banks yet.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -275,7 +275,7 @@ _PANEL_PAGES = {
     "/ui/ach-return-reasons": "ach-return-reasons", "/ui/settings/fraud-model": "fraud-model",
     "/ui/settings/segregation-of-duties": "segregation-of-duties", "/ui/settings/data-export": "data-export",
     "/ui/billing": "billing", "/ui/wizard/bank": "getting-started", "/ui/audit-log": "action-log",
-    "/ui/billing/statement": "billing-statement", "/ui/layouts": "layouts",
+    "/ui/billing/statement": "billing-statement", "/ui/layouts": "layouts", "/ui/settings/support-access": "support-access",
 }
 
 

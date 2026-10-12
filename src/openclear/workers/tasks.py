@@ -269,6 +269,15 @@ def sweep_expired_dispositions_job() -> None:
         except Exception:  # noqa: BLE001 -- the sweep itself matters more
             session.rollback()
             logger.exception("Deadline warnings failed")
+        # Support access past its period ends, with an action-log entry (UX_PLAN.md U8).
+        try:
+            from openclear.services import support_access_service
+
+            if support_access_service.expire_due(session):
+                session.commit()
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            session.rollback()
+            logger.exception("Expiring support access failed")
         # Then the reminders to people (services/reminder_service.py; UX_PLAN.md U3).
         try:
             if reminded := reminder_service.send_due(session):

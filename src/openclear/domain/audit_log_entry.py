@@ -14,6 +14,10 @@ from openclear.db.base import Base, new_uuid
 class AuditChannel(str, enum.Enum):
     WEB = "web"
     API = "api"
+    # Done by OpenClear itself or the platform operator, with no bank user behind it: support
+    # access ending at its time, a bank being set up (services/support_access_service.py,
+    # services/operator_service.py).
+    SYSTEM = "system"
 
 
 class AuditLogEntry(Base):

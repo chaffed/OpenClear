@@ -195,3 +195,38 @@ def _scope_allows_password_login(session: Session, tenant: Tenant, membership: T
         return tenant.password_login_enabled
     customer = session.get(Customer, membership.customer_id)
     return customer is not None and customer.password_login_enabled
+
+
+def authenticate_platform(session: Session, email: str, password: str, *, settings: Settings | None = None) -> User | None:
+    """Platform staff signing in to the platform pages (web/platform_session.py; UX_PLAN.md
+    U8, U9): the same lockout as a bank sign-in, on the same identity. Returns the user, or
+    None (the caller says only "invalid credentials"). Flushes; the caller commits."""
+    settings = settings or get_settings()
+    from openclear.services import security_events
+
+    def failed(reason: str, user=None, name="auth.login.failed") -> None:
+        security_events.emit(session, name, tenant_id=None, outcome="failure", reason=reason, actor_type="user",
+                             actor_id=user.id if user else None, actor_label=email[:320], details={"where": "platform"})
+
+    user = session.execute(select(User).where(User.email == (email or "").strip().lower())).scalar_one_or_none()
+    if user is None or not user.is_active or user.is_service_account or user.platform_role is None:
+        failed("unknown_user" if user is None else "not_platform_staff", user)
+        return None
+    if user.locked_until is not None and _as_utc(user.locked_until) > datetime.now(timezone.utc):
+        failed("locked", user)
+        return None
+    if not verify_password(password, user.hashed_password):
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= settings.login_max_failed_attempts:
+            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.login_lockout_minutes)
+            notification_service.notify_account_locked(session, user)
+            failed("threshold_reached", user, name="auth.lockout")
+        else:
+            failed("invalid_credentials", user)
+        session.flush()
+        return None
+    user.failed_login_attempts, user.locked_until = 0, None
+    security_events.emit(session, "auth.login.succeeded", tenant_id=None, actor_type="user", actor_id=user.id,
+                         actor_label=user.email, details={"method": "password", "where": "platform", "role": user.platform_role})
+    session.flush()
+    return user

@@ -44,6 +44,7 @@ def create_token(
     session_expires_at: datetime | None = None,
     on_behalf_of: dict | None = None,
     embed: dict | None = None,
+    support_grant_id: uuid.UUID | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -105,6 +106,10 @@ def create_token(
         # An embedded session (services/embed_service.py): `po` is the online banking origin
         # allowed to frame it. Carried through refreshes.
         payload["emb"] = embed
+    if support_grant_id is not None:
+        # A support session (services/support_access_service.py): built from this grant,
+        # not from a membership (auth/deps.py).
+        payload["sga"] = str(support_grant_id)
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 

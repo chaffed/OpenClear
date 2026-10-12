@@ -211,6 +211,22 @@ def _security_events(session: Session, tenant_id: uuid.UUID, start: datetime, en
     }
 
 
+def _support_access(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
+    """Support access the bank granted that was open at any time in the period (UX_PLAN.md U8)."""
+    from openclear.domain.support_access_grant import SupportAccessGrant
+    from openclear.domain.user import User
+
+    rows = session.execute(select(SupportAccessGrant).where(
+        SupportAccessGrant.tenant_id == tenant_id, SupportAccessGrant.granted_at < end, SupportAccessGrant.expires_at >= start,
+    ).order_by(SupportAccessGrant.granted_at)).scalars().all()
+    ids = {r.support_user_id for r in rows} | {r.granted_by_user_id for r in rows} | {r.approved_by_user_id for r in rows if r.approved_by_user_id}
+    emails = dict(session.execute(select(User.id, User.email).where(User.id.in_(ids))).all()) if ids else {}
+    return [{"support_person": emails.get(r.support_user_id), "reason": r.reason, "write_access": r.write_access, "status": r.status,
+             "granted_by": emails.get(r.granted_by_user_id), "approved_by": emails.get(r.approved_by_user_id),
+             "granted_at": _iso(r.granted_at), "expires_at": _iso(r.expires_at), "ended_at": _iso(r.ended_at),
+             "last_used_at": _iso(r.last_used_at)} for r in rows]
+
+
 def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, generated_by_user_id: uuid.UUID | None) -> dict:
     from openclear.domain.tenant import Tenant
     from openclear.services import controls_service
@@ -232,6 +248,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "decisions": _decisions(session, tenant_id, period_start, period_end),
         "control_runs": _control_runs(session, tenant_id, period_start, period_end),
         "security_events": _security_events(session, tenant_id, period_start, period_end),
+        "support_access": _support_access(session, tenant_id, period_start, period_end),
         "controls": controls,
     }
 

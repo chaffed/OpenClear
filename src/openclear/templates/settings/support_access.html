@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Support access — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About support access{% endblock %}
+{% block help_body %}
+<p>When you need help from the people who run OpenClear, grant one of them access here, for a
+  stated reason and a set time. They work under their own name, with a banner saying it's your
+  grant, and the access ends by itself when the time is up, or as soon as you end it.</p>
+<p>Read-only access lets them see what your staff see, except secrets, users, security groups,
+  settings and the action log. Write access also lets them enter and correct items, never decide
+  them; it needs a second admin's approval before it starts.</p>
+<p>Every grant, approval, use and end is in your action log.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Support access</h1>
+  <form method="post" action="/ui/settings/support-access" class="card-section">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Grant access</h2>
+    {% if people %}
+    <label>Support person
+      <select name="support_email" required>
+        {% for p in people %}<option value="{{ p.email }}">{{ p.email }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Why access is needed <input type="text" name="reason" required minlength="5" maxlength="500" placeholder="Ticket 4821: the ACH import is stuck"></label>
+    <label>For how long (hours, up to {{ max_hours }}) <input type="number" name="hours" min="1" max="{{ max_hours }}" value="4" style="max-width:6em;" required></label>
+    <label><input type="checkbox" name="write_access" value="true"> Also let them enter and correct items (needs a second admin's approval)</label>
+    <div class="form-actions"><button type="submit">{{ icon("vpn_key") }}Grant access</button></div>
+    {% else %}
+    <p class="hint">No support people are set up for this installation yet.</p>
+    {% endif %}
+  </form>
+</div>
+<div class="card">
+  <h2>Grants</h2>
+  {% if grants %}
+  <table>
+    <thead><tr><th scope="col">Who</th><th scope="col">Why</th><th scope="col">Access</th><th scope="col">Until</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+    <tbody>
+      {% for g in grants %}
+      <tr>
+        <td>{{ emails.get(g.support_user_id, "") }}<br><span class="hint">granted by {{ emails.get(g.granted_by_user_id, "") }}</span></td>
+        <td>{{ g.reason }}</td>
+        <td>{{ "read and write" if g.write_access else "read-only" }}{% if g.approved_by_user_id %}<br><span class="hint">approved by {{ emails.get(g.approved_by_user_id, "") }}</span>{% endif %}</td>
+        <td><time datetime="{{ g.expires_at | iso_utc }}" data-local-time>{{ g.expires_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+          {% if g.last_used_at %}<br><span class="hint">last opened <time datetime="{{ g.last_used_at | iso_utc }}" data-local-time>{{ g.last_used_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></span>{% endif %}</td>
+        <td><span class="badge {{ {'active': 'badge-ok', 'pending': 'badge-warn'}.get(g.status, '') }}">{{ {'pending': 'waiting for approval'}.get(g.status, g.status) }}</span></td>
+        <td>
+          {% if g.status == "pending" and g.granted_by_user_id != ctx.user_id %}
+          <form method="post" action="/ui/settings/support-access/{{ g.id }}/approve" class="inline-form" data-confirm="Approve write access for {{ emails.get(g.support_user_id, '') }}?" data-confirm-yes="Approve">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Approve</button>
+          </form>
+          {% endif %}
+          {% if g.status in ("pending", "active") %}
+          <form method="post" action="/ui/settings/support-access/{{ g.id }}/revoke" class="inline-form" data-confirm="End this support access now?" data-confirm-yes="End access" data-confirm-danger>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">End</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No support access has been granted.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Bank set up — OpenClear{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card card-narrow">
+  <h1>{{ tenant.name }} is set up</h1>
+  <p>Its sign-in page is <a href="/ui/login/{{ tenant.slug }}">/ui/login/{{ tenant.slug }}</a>.</p>
+  <p>Send the first admin, <strong>{{ admin_email }}</strong>, this temporary password by a separate channel. It's shown once;
+    they choose their own when they first sign in.</p>
+  <p><code id="temp-password">{{ password }}</code> <button type="button" class="secondary" data-copy-target="temp-password">Copy</button></p>
+</div>
+{% endblock %}

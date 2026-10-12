@@ -383,6 +383,17 @@ def create_app() -> FastAPI:
             title="Not allowed: segregation of duties", show_back_link=True,
         )
 
+    from openclear.web.platform_session import PlatformAuthRequired, PlatformForbidden
+
+    @app.exception_handler(PlatformAuthRequired)
+    def _handle_platform_auth_required(request: Request, exc: PlatformAuthRequired) -> RedirectResponse:
+        return RedirectResponse("/ui/platform/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    @app.exception_handler(PlatformForbidden)
+    def _handle_platform_forbidden(request: Request, exc: PlatformForbidden):
+        return render_template(request, "error.html", status_code=status.HTTP_403_FORBIDDEN, status_code_display=403,
+                               message="That page is for platform operators.", show_back_link=True)
+
     @app.exception_handler(WebForbidden)
     def _handle_web_forbidden(request: Request, exc: WebForbidden):
         return render_template(

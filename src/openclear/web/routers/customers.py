@@ -9,11 +9,9 @@ from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.customer import Customer
-from openclear.repositories.customer_repo import CustomerRepository
+from openclear.domain.tenant import Tenant
 from openclear.services import account_service, audit_log_service, customer_ml_service, customer_service, sso_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
 
@@ -54,17 +52,51 @@ def _input_from_form(
     )
 
 
+HUB_PAGE_SIZE = 50
+QUIET_CHOICES = (7, 14, 30, 60)
+
+
 @router.get("")
 def list_customers(
-    request: Request, page: int = 1, db: Session = Depends(get_db),
+    request: Request, page: int = 1, q: str = "", quiet: str = "", db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("customer:manage")),
 ) -> HTMLResponse:
-    page_obj = paginate(
-        page=page,
-        count_fn=lambda: CustomerRepository(db, ctx.tenant_id).count(),
-        list_fn=lambda **kw: customer_service.list_customers(db, ctx.tenant_id, order_by=Customer.created_at.desc(), **kw),
-    )
-    return render_template(request, "customers/list.html", ctx=ctx, page_obj=page_obj)
+    """The customer hub (UX_PLAN.md U7; services/customer_hub_service.py): needs-action first."""
+    from datetime import datetime, timezone
+
+    from openclear.services import customer_hub_service
+
+    quiet_days = int(quiet) if quiet.isdigit() else None
+    rows = customer_hub_service.rows(db, ctx.tenant_id, q=q, quiet_days=quiet_days)
+    pages = max(1, -(-len(rows) // HUB_PAGE_SIZE))
+    page = min(max(1, page), pages)
+    return render_template(request, "customers/list.html", ctx=ctx, rows=rows[(page - 1) * HUB_PAGE_SIZE: page * HUB_PAGE_SIZE],
+                           total=len(rows), page=page, pages=pages, q=q, quiet=quiet_days, quiet_choices=QUIET_CHOICES,
+                           now=datetime.now(timezone.utc))
+
+
+@router.post("/{customer_id}/remind")
+def remind_customer(
+    customer_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """"Send a reminder now": one message to each person who can act on the customer's open items."""
+    from urllib.parse import quote
+
+    from openclear.services import reminder_service
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    items, people = reminder_service.remind_customer_now(db, ctx.tenant_id, customer_id)
+    if items:
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.remind",
+                                        summary=f"Reminded {customer.name} of {items} open item{'s' if items != 1 else ''} ({people} people)",
+                                        resource_type="customer", resource_id=customer.id)
+    db.commit()
+    message = (f"Reminder sent to {people} {'person' if people == 1 else 'people'} about {items} open item{'s' if items != 1 else ''}."
+               if people else ("Nobody at this customer can act on its items." if items else "This customer has nothing open."))
+    return RedirectResponse(f"/ui/customers/{customer_id}?flash={quote(message)}", status_code=303)
 
 
 @router.get("/new")
@@ -143,9 +175,18 @@ def customer_detail(
         customer_ml_service.get_ml_summary(db, ctx.tenant_id, customer.id) if "admin:manage" in ctx.permissions else None
     )
     sso_connection_count = len(sso_service.list_connections(db, ctx.tenant_id, customer_id=customer.id))
+    from openclear.services import exception_service, reminder_service
+
+    open_count, nearest_deadline = exception_service.attention_summary(db, ctx.tenant_id, customer_id=customer.id)
+    tenant = db.get(Tenant, ctx.tenant_id)
+    try:
+        reminder_timing = reminder_service.describe(reminder_service.customer_offsets(tenant, customer))
+    except reminder_service.ReminderError:
+        reminder_timing = "Not valid"
     return render_template(
         request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, ml_summary=ml_summary,
-        sso_connection_count=sso_connection_count
+        sso_connection_count=sso_connection_count, open_count=open_count, nearest_deadline=nearest_deadline,
+        reminder_timing=reminder_timing,
     )
 
 

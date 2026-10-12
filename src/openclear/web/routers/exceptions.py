@@ -133,6 +133,7 @@ def list_exceptions(
     request: Request,
     network_code: str | None = None,
     status: str = "",
+    customer: str = "",
     page: int = 1,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:read")),
@@ -149,8 +150,16 @@ def list_exceptions(
 
     from openclear.web import list_search
 
-    filters = dict(network_code=network_code or None, statuses=statuses, customer_id=ctx.customer_id)
-    search = list_search.parse(request, extra=("status", "network_code"))
+    # Bank staff can narrow to one customer (the customer hub links here); a customer's own
+    # people only ever see their own.
+    customer_id = ctx.customer_id
+    if customer_id is None and customer:
+        try:
+            customer_id = uuid.UUID(customer)
+        except ValueError:
+            customer_id = None
+    filters = dict(network_code=network_code or None, statuses=statuses, customer_id=customer_id)
+    search = list_search.parse(request, extra=("status", "network_code", "customer"))
     spec = list_search.exceptions_spec()
     # A work queue (open or awaiting approval) is oldest first, unless another sort is chosen.
     spec.default_order = lambda: [ExceptionItem.created_at.asc() if oldest_first else ExceptionItem.created_at.desc()]

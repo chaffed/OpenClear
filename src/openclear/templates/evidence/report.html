@@ -101,6 +101,18 @@
 {% else %}<p>No SIEM destination is configured; events are available through the pull API.</p>{% endif %}
 {% endif %}
 
+{% if b.support_access is defined %}
+<h2>Support access</h2>
+{% if b.support_access %}
+<table>
+  <thead><tr><th>Who</th><th>Why</th><th>Access</th><th>Granted</th><th>Until</th><th>Status</th></tr></thead>
+  <tbody>{% for g in b.support_access %}<tr><td>{{ g.support_person }}</td><td>{{ g.reason }}</td>
+    <td>{{ "read and write" if g.write_access else "read-only" }}{% if g.approved_by %} (approved by {{ g.approved_by }}){% endif %}</td>
+    <td>{{ g.granted_at[:16]|replace("T", " ") }} by {{ g.granted_by }}</td><td>{{ g.expires_at[:16]|replace("T", " ") }}</td><td>{{ g.status }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>None granted in the period.</p>{% endif %}
+{% endif %}
+
 <h2>Decisions</h2>
 <p>{{ b.decisions.count }} decisions in the period{% for k, v in b.decisions.by_outcome.items() %}{{ ": " if loop.first else ", " }}{{ v }} {{ k }}{% endfor %}.
   {% if b.decisions.truncated %}<strong>Only the first {{ b.decisions.count }} are listed; export a shorter period for the rest.</strong>{% endif %}</p>

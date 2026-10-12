@@ -554,6 +554,12 @@ customer-scoped tables enforce `tenant_id` only, not `customer_id` — the repos
 above is the primary, tested enforcement point, same posture as tenant isolation's own RLS
 today.
 
+
+**The customer hub.** The Customers list puts customers with items to decide first, soonest
+deadline first, with their open items, items due today, the last issued-check file and
+what happens at the deadline. "No issue file in N days" finds customers who may have
+stopped sending files. From a customer, **Send a reminder now** messages everyone who can
+act on its open items.
 ## Per-tenant branding
 
 Each tenant can customize a logo, favicon, accent color, and display name from
@@ -668,6 +674,33 @@ statement and PDF. OpenClear doesn't calculate earnings credits or post debits i
 The platform operator can bill each bank too, from its own fee schedule (including a
 per-bank monthly fee), through `/api/v1/platform/billing` with a `billing`-scoped platform
 key. BILLING_PLAN.md has the research and the decisions.
+
+## Platform staff, the operator view and support access
+
+The people who run an installation aren't members of any bank. `scripts/platform_staff.py`
+makes someone platform staff (no screen can):
+
+```sh
+python scripts/platform_staff.py ops@yourcompany.example --role operator
+python scripts/platform_staff.py helpdesk@yourcompany.example --role support
+python scripts/platform_staff.py helpdesk@yourcompany.example --remove
+```
+
+They sign in at `/ui/platform/login` (the same lockout as a bank sign-in, a separate session).
+
+- **The operator view** (`/ui/platform`, operators): every bank with its customers, open
+  and overdue exceptions, queued and failed jobs, last import, controls and security-event
+  delivery; and **Set up a bank**, which creates it with its default groups and return
+  reasons and a first admin who chooses their own password on first sign-in.
+- **Support access** (instead of impersonation): a bank admin grants a named support person
+  access under Settings → Support access, for a reason and up to 72 hours. It's read-only
+  (what the bank's staff can see, except secrets, users, groups, settings and the action
+  log) unless write access is approved by a second admin, and even then it never covers
+  deciding items. The support person opens the bank from `/ui/platform` and works under
+  their own name, with a banner saying whose access it is and until when; ending it, or
+  its time running out, ends the session on the next request. Nobody can grant or approve
+  their own access. Every grant, approval, use and end is in the bank's action log, as a
+  security event, and in the evidence export.
 
 ## Authentication
 

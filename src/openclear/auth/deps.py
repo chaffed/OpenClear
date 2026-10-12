@@ -91,6 +91,9 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     if not session_service.claims_are_current(db, payload, user):
         raise AccessRevoked("Session was signed out")
 
+    if payload.get("sga"):
+        return _support_context(db, payload, user, tenant_id)
+
     # customer_id is part of the lookup (not just user_id/tenant_id) because one user can
     # now hold several memberships in the same tenant — one per customer, or a tenant-wide
     # one plus per-customer overrides (domain/tenant_membership.py). `== customer_id` here
@@ -172,6 +175,35 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     from openclear.web import request_context
 
     request_context.note_identity(tenant_id=tenant_id, tenant_slug=branding.slug, user_id=user_id, user_email=user.email)
+    return ctx
+
+
+def _support_context(db: Session, payload: dict, user: User, tenant_id: uuid.UUID) -> TenantContext:
+    """A support session: the bank's grant, not a membership, says what this person may do,
+    and only while it's active (services/support_access_service.py). Revoking it, or its
+    period ending, ends the session on the next request."""
+    from openclear.services import support_access_service
+
+    grant = support_access_service.active_grant(db, uuid.UUID(payload["sga"]), user_id=user.id, tenant_id=tenant_id)
+    if grant is None or user.platform_role not in support_access_service.PLATFORM_ROLES:
+        raise AccessRevoked("Support access has ended")
+    branding = get_tenant_branding_by_id(db, tenant_id)
+    if branding is None:
+        raise AccessRevoked("Tenant no longer exists")
+    expires_at = grant.expires_at if grant.expires_at.tzinfo else grant.expires_at.replace(tzinfo=timezone.utc)
+    ctx = TenantContext(
+        tenant_id=tenant_id, user_id=user.id, security_group_id=uuid.UUID(payload["security_group_id"]),
+        permissions=support_access_service.permissions_for(grant), tenant_slug=branding.slug, tenant_name=branding.name,
+        accent_color=branding.accent_color, has_logo=branding.has_logo, has_favicon=branding.has_favicon,
+        customer_id=None, customer_name=None, support_email=branding.support_email, support_phone=branding.support_phone,
+        website=branding.website, address_line1=branding.address_line1, address_line2=branding.address_line2, city=branding.city,
+        state=branding.state, postal_code=branding.postal_code, banner_message=branding.banner_message, is_demo=branding.is_demo,
+        access_expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc), session_expires_at=expires_at,
+        support_grant_id=grant.id, support_expires_at=expires_at, support_write=grant.write_access,
+    )
+    from openclear.web import request_context
+
+    request_context.note_identity(tenant_id=tenant_id, tenant_slug=branding.slug, user_id=user.id, user_email=user.email)
     return ctx
 
 

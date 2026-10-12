@@ -27,6 +27,7 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "axe"
 BASELINE = FIXTURES / "baseline.json"
 PAGES = [
     ("login", "/ui/login", False),
+    ("platform_login", "/ui/platform/login", False),
     ("dashboard", "/ui/", True),
     ("exceptions", "/ui/exceptions", True),
     ("exception", "{exception}", True),
@@ -38,6 +39,8 @@ PAGES = [
     ("settings_security_events", "/ui/settings/security-events", True),
     ("check_return_reasons", "/ui/check-return-reasons", True),
     ("layouts", "/ui/layouts", True),
+    ("customer_hub", "/ui/customers", True),
+    ("support_access", "/ui/settings/support-access", True),
     ("layout_builder", "/ui/layouts/new?template=fixed_width", True),
     ("controls", "/ui/admin/controls", True),
     ("action_log", "/ui/audit-log", True),

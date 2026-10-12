@@ -83,6 +83,12 @@ class TenantContext:
     # it. Templates drop the navigation, and the pages may be framed by that origin only.
     embed_parent_origin: str | None = None
 
+    # A support session (services/support_access_service.py): the bank's grant it runs
+    # under, until when, and whether it can write. base.html shows a banner throughout.
+    support_grant_id: uuid.UUID | None = None
+    support_expires_at: datetime | None = None
+    support_write: bool = False
+
     # Mirrors User.must_change_password (an admin reset this user's password to a
     # temporary one). web/deps.py::get_web_context redirects every page but the
     # change-password form while it's set; auth/deps.py::get_current_context refuses API

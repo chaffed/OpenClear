@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.11.0 released (M4, M5). Next: M6 (bank staff and operator: the customer hub, support access, the operator view).**
+**Status: 1.11.0 released (M4, M5). M6 built on `m6-staff-operator`. Next: M7 (the edge check and guide), then release 1.12.**
 
 ## How testing is kept down
 

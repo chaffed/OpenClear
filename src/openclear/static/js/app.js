@@ -10,9 +10,26 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.appendChild(table);
   });
 
+  // A table wider than its box scrolls inside it; keyboard users then need to reach the box
+  // to scroll it, so it's focusable and named, but only while it actually overflows.
+  const markScrollable = () => document.querySelectorAll(".table-scroll").forEach((box) => {
+    if (box.scrollWidth > box.clientWidth + 1) {
+      box.setAttribute("tabindex", "0");
+      box.setAttribute("role", "region");
+      box.setAttribute("aria-label", "Table, scrolls sideways");
+    } else {
+      box.removeAttribute("tabindex");
+      box.removeAttribute("role");
+      box.removeAttribute("aria-label");
+    }
+  });
+  markScrollable();
+  window.addEventListener("resize", markScrollable);
+
   initConfirmations();
   initBusyForms();
   initDropzones();
+  initLazyStates();
   initToasts();
   initPolling();
 
@@ -508,6 +525,20 @@ function initDropzones() {
       input.files = event.dataTransfer.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
+  });
+}
+
+// An element with data-lazy-state="<url>" shows a state worked out after the page loads
+// (it takes a moment): the URL answers {"state": "1 WARN", "tone": "warn"}.
+function initLazyStates() {
+  document.querySelectorAll("[data-lazy-state]").forEach((el) => {
+    fetch(el.dataset.lazyState, { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        el.textContent = data ? data.state : "—";
+        if (data && data.tone) el.classList.add(`tone-${data.tone}`);
+      })
+      .catch(() => { el.textContent = "—"; });
   });
 }
 

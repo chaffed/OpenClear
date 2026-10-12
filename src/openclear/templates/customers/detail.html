@@ -41,6 +41,23 @@
 
 <div class="card">
   <div class="toolbar">
+    <h2>To decide</h2>
+    {% if open_count %}
+    <form method="post" action="/ui/customers/{{ customer.id }}/remind" class="inline-form"
+      data-confirm="Send {{ customer.name }}'s people a reminder now about {{ open_count }} open item{{ 's' if open_count != 1 }}?" data-confirm-yes="Send reminder">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">{{ icon("notifications_active") }}Send a reminder now</button>
+    </form>
+    {% endif %}
+  </div>
+  <p>{% if open_count %}<a href="/ui/exceptions?customer={{ customer.id }}">{{ open_count }} item{{ "s" if open_count != 1 }} to decide</a>{% if nearest_deadline %}, the first due
+    <time datetime="{{ nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}.{% else %}Nothing to decide.{% endif %}
+    Reminders: {{ reminder_timing }}.</p>
+  <p class="hint"><a href="/ui/layouts">Issue-file layouts</a> · <a href="/ui/users">Users</a> · <a href="/ui/issued-items">Issued items</a></p>
+</div>
+
+<div class="card">
+  <div class="toolbar">
     <h1>Setup checklist</h1>
     <a href="/ui/customers/{{ customer.id }}/wizard" class="button secondary">{{ icon("checklist") }}Open checklist</a>
   </div>

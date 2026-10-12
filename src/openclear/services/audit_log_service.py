@@ -95,7 +95,7 @@ def record_action(
     tenant_id: uuid.UUID,
     *,
     actor_user_id: uuid.UUID | None,
-    channel: Literal["web", "api"],
+    channel: Literal["web", "api", "system"],
     action: str,
     summary: str,
     resource_type: str,
@@ -146,7 +146,7 @@ class PendingAction:
     """One entry for record_actions: the same fields record_action takes."""
 
     actor_user_id: uuid.UUID | None
-    channel: Literal["web", "api"]
+    channel: Literal["web", "api", "system"]
     action: str
     summary: str
     resource_type: str
