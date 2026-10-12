@@ -454,7 +454,7 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
     tenant, _account, users = tenant_factory.make(slug="siem-web")
     csrf = _login(client, tenant.slug, users["admin"].email)
     resp = client.post("/ui/settings/security-events", data={
-        "csrf_token": csrf, "action": "test", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in", "token": "abc",
+        "csrf_token": csrf, "action": "test", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in", "token": "tok-Sentinel-Q7",
     }, follow_redirects=False)
     assert resp.status_code == 303 and "test+event+was+delivered" in resp.headers["location"].replace("%20", "+").lower()
     assert http_receiver.events()[0]["event"]["name"] == "security_events.test"
@@ -468,7 +468,7 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
     assert resp.status_code == 422 and "HTTP 401" in resp.text and 'id="settings-section"' in resp.text
     changed = [e for e in db_session.execute(select(SecurityEvent).where(SecurityEvent.tenant_id == tenant.id)).scalars()
                if e.name == "security_events.destination.changed"]
-    assert changed and all("abc" not in json.dumps(security_events.as_record(e)) for e in changed)
+    assert changed and all("tok-Sentinel-Q7" not in json.dumps(security_events.as_record(e)) for e in changed)
 
     resp = client.post("/ui/settings/security-events", data={"csrf_token": csrf, "action": "remove"}, follow_redirects=False)
     assert resp.status_code == 303
