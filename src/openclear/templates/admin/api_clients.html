@@ -25,7 +25,7 @@
       <tr>
         <td>{{ c.name }}</td>
         <td><code>{{ c.client_id }}</code></td>
-        <td>{{ c.security_group or "—" }}</td>
+        <td>{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}</td>
         <td>{{ c.customer or "All (bank-wide)" }}</td>
         <td>{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}</td>
         <td><span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span></td>

@@ -27,7 +27,8 @@ isn't a contract and changes between releases.
 | Way | Use it for | Notes |
 |---|---|---|
 | **The API** (recommended) | Everything, on every kind of installation | OAuth 2.0 client credentials; JSON; paged lists and cursor feeds. |
-| **File exports** | A first load, an audit, a one-off | The decision feed as CSV, billing CSVs and ISO 20022 statements, any list's CSV export from the web, and the full data export (Settings → Data export: every record as JSON in a zip). |
+| **The full data export** | A first load, an archive | Every record as JSON in a zip, through the API (`POST /api/v1/data-exports`) or Settings → Data export. |
+| **File exports** | An audit, a one-off | The decision feed as CSV, billing CSVs and ISO 20022 statements, and any list's CSV export from the web. |
 | **A read-only database replica** | Only a bank running its own OpenClear, with a database team who'll track schema changes | Never on a hosted or shared installation. See "Reading the database directly" below. |
 
 Connecting a BI tool **directly** to the API works for small volumes (Power BI's Web
@@ -40,10 +41,13 @@ assumes a pipeline.
 1. In OpenClear, **Settings → Security groups**: create a group, for example "BI read-only", with
    only the read permissions you'll pull: `account:read`, `issued_item:read`, `paid_item:read`,
    `stop_payment:read`, `exception:read`, `ach_authorization:read`, `ach_transaction:read`, plus
-   `audit_log:read` for the action log and security events, and `billing:read` for billing.
-   Leave out everything that writes or manages.
-2. **Settings → API clients**: create a client in that group. Copy its secret once into your
-   pipeline's secret store (Azure Key Vault, AWS Secrets Manager, and so on).
+   `audit_log:read` for the action log and security events, `billing:read` for billing, and
+   `data_export:run` for the full data export. Leave out everything that writes or manages.
+2. **Settings → API clients**: create a client in that group and tick **Read only**. A
+   read-only client can only ever read (and run the full data export), whatever its group
+   allows, so a mistake in the group can't turn the pipeline into something that writes. Copy
+   its secret once into your pipeline's secret store (Azure Key Vault, AWS Secrets Manager,
+   and so on).
 3. The pipeline gets a token, then calls the API with it:
 
 ```sh
@@ -64,24 +68,37 @@ export is recorded as a security event, so your SOC sees the pipeline's activity
 | Decisions (pay or return, who recommended and decided, when) | `GET /api/v1/decisions?after=<sequence>` (JSON), or `/api/v1/decisions/feed.csv` | **Incremental**: keep the last `sequence` and pass it as `after`. `X-Latest-Sequence` says how far there is to go; a `Link: rel="next"` header gives the next page. |
 | The action log (every change, by whom, signed) | `GET /api/v1/audit-log?after_sequence=<n>` | **Incremental**, by `sequence`. Also tells you what changed elsewhere (see below). |
 | Security events | `GET /api/v1/security-events?after=<n>` | **Incremental**, by `sequence`. |
-| Exceptions | `GET /api/v1/exceptions?limit=1000&offset=…` | Full load, or refresh the ones the action log names. |
+| Exceptions | `GET /api/v1/exceptions?updated_since=<time>` | **Incremental** by `updated_since` (below). |
 | Issued checks, presented checks, stop payments | `/api/v1/issued-items`, `/api/v1/paid-items`, `/api/v1/stop-payments` | The same. |
 | ACH filters and transactions | `/api/v1/ach/authorizations`, `/api/v1/ach/transactions` | The same. |
-| Accounts and customers | `/api/v1/accounts`, `/api/v1/customers` | Full load (small). |
+| Accounts and customers | `/api/v1/accounts`, `/api/v1/customers` | The same. |
+| Everything, once | `POST /api/v1/data-exports`, then poll `GET /api/v1/data-exports/{id}` and download its `file_url` | A first load, or a periodic archive. |
 | Users and their access (for access reviews) | `/api/v1/users` | Full load. |
 | Billing | `/api/v1/billing/statements?period=YYYY-MM`, `/api/v1/billing/report.csv` | Per period, after it's finalized. |
 | Controls | `/api/v1/controls/status` | A daily snapshot, to chart controls over time. |
 
-**Paging.** Lists take `limit` (up to 1,000) and `offset`, return oldest first, and send
-`X-Total-Count` and a `Link: rel="next"` header while there's more. Feeds take a cursor
-(`after` or `after_sequence`) instead, which never skips or repeats a row.
+**Paging.** Lists take `limit` (up to 1,000), return oldest first, and send `X-Total-Count`
+and a `Link: rel="next"` header while there's more. A full load can page with `offset`;
+a changed-since load follows the next link (below). Feeds take a cursor (`after` or
+`after_sequence`) instead, which never skips or repeats a row.
 
-**Keeping lists current without reloading everything.** The lists don't filter by "changed
-since" yet. For a small or mid-sized bank a nightly full load is simplest. For a large one,
-read the action log incrementally: each entry has `resource_type` and `resource_id`
-(for example `issued_item` and its id), so the pipeline fetches only the records that changed:
-`GET /api/v1/issued-items/{id}`, `/paid-items/{id}`, `/exceptions/{id}` and
-`/ach/transactions/{id}`. Stop payments, accounts and customers are small enough to reload.
+**Keeping lists current.** Every list takes `updated_since` (an ISO 8601 time). With it, the
+list returns only rows changed at or after that time, in the order they changed, and every
+row carries its `updated_at` and `customer_id`.
+
+- **Paging:** follow the `Link: rel="next"` header. It carries the last row's `updated_at` as
+  `updated_since` and its `id` as `after_id`, so the next page starts exactly after that row.
+  Don't page a changed-since list with `offset`: a row that changes while you're reading
+  shifts the others and one would be skipped.
+- **Between runs:** store the last row's `updated_at` and `id`, and start the next run with
+  them (`updated_since=…&after_id=…`). Upsert by `id`: a row that changes again comes again.
+
+```
+GET /api/v1/exceptions?updated_since=2026-10-12T06:00:00Z&limit=1000
+GET /api/v1/exceptions?updated_since=2026-10-12T06:04:31.120000Z&after_id=8f1c…&limit=1000   (from the Link header)
+```
+
+Do a full load first (no `updated_since`, or the data export), then incremental runs.
 
 **Rate limits.** An API client is limited as itself (600 requests a minute by default). Pull
 1,000 rows a page, run during quiet hours, and on a `429` wait for `Retry-After`.
@@ -120,8 +137,7 @@ give each audience only what OpenClear would show them:
 
 ### The bank's customers
 
-Customers don't have API credentials of their own; the bank serves them their reports. Two
-ways:
+The bank serves its customers' reporting. Three ways:
 
 - **From your warehouse**, with row-level security on `customer_id` (and on account, if some
   of a customer's people may see only some accounts). Power BI: an RLS role filtering on the
@@ -133,8 +149,13 @@ ways:
   see in OpenClear: their customer only, and only what their permissions allow. That suits
   reports generated per customer, for example into online banking.
 
-A customer's own people can also export any list they can see as CSV from OpenClear,
-and the bank can produce one customer's full data export from that customer's page.
+- **A feed of their own**: a read-only API client limited to one customer (Settings → API
+  clients: choose the customer, and tick Read only). Its token sees that customer's accounts
+  and items only, and can't change anything. Give it to the customer's own data team, or run
+  it on their behalf.
+
+A customer's own people can also export any list they can see as CSV, and, with the data
+export permission, download their own customer's full data export.
 
 ### The operator (a hosted installation)
 
@@ -169,7 +190,7 @@ A bank running its own OpenClear may prefer to replicate its database into the w
 
 ## Security checklist
 
-- [ ] The pipeline's API client is in a read-only group with only the permissions it needs.
+- [ ] The pipeline's API client is marked **Read only**, in a group with only the permissions it needs.
 - [ ] Its secret lives in a secret store, and is rotated.
 - [ ] Warehouse tables holding OpenClear data are classified as containing customer account
       information, and encrypted at rest.
@@ -211,3 +232,6 @@ with httpx.Client(base_url=BASE, headers={"Authorization": f"Bearer {token}"}, t
         after = rows[-1]["sequence"]
         STATE.write_text(str(after))
 ```
+
+Lists work the same way with `updated_since`: follow each page's `Link: rel="next"` header,
+and store the last row's `updated_at` and `id` for the next run.

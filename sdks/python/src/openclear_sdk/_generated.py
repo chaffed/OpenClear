@@ -31,6 +31,7 @@ class AccountRead(TypedDict):
     external_account_id: str | None
     id: str
     name: str
+    updated_at: NotRequired[str | None]
 
 
 class AccountUpsert(TypedDict):
@@ -56,6 +57,7 @@ class AchAuthorizationRead(TypedDict):
     account_id: str
     allowed_sec_codes: list[str] | None
     created_at: str
+    customer_id: NotRequired[str | None]
     effective_date: str
     expiration_date: str | None
     frequency_limit: int | None
@@ -65,6 +67,7 @@ class AchAuthorizationRead(TypedDict):
     originator_name: str
     receiver_id: str | None
     status: AchAuthorizationStatus
+    updated_at: NotRequired[str | None]
 
 
 AchAuthorizationStatus = Literal["active", "revoked"]
@@ -110,6 +113,7 @@ class AchTransactionRead(TypedDict):
     account_id: str
     amount: str
     created_at: str
+    customer_id: NotRequired[str | None]
     effective_date: str
     id: str
     match_status: AchMatchStatus
@@ -120,6 +124,7 @@ class AchTransactionRead(TypedDict):
     settlement_status: AchSettlementStatus
     trace_number: str
     transaction_type: AchTransactionType
+    updated_at: NotRequired[str | None]
 
 
 AchTransactionType = Literal["debit", "credit"]
@@ -139,6 +144,7 @@ class ApiClientRead(TypedDict):
     id: str
     last_used_at: str | None
     name: str
+    read_only: NotRequired[bool]
     revoked_at: str | None
     secret_rotated_at: str | None
     security_group: str | None
@@ -239,6 +245,7 @@ class CustomerRead(TypedDict):
     primary_contact_name: str | None
     state: str | None
     tax_id: str | None
+    updated_at: NotRequired[str | None]
 
 
 class CustomerTermsRead(TypedDict):
@@ -276,6 +283,17 @@ class CustomerUpsert(TypedDict):
     state: NotRequired[str | None]
     tax_id: NotRequired[str | None]
     website: NotRequired[str | None]
+
+
+class DataExportRead(TypedDict):
+    completed_at: str | None
+    customer_id: str | None
+    error: str | None
+    file_url: str | None
+    id: str
+    requested_at: str | None
+    size_bytes: int | None
+    status: str
 
 
 class DecideRequest(TypedDict):
@@ -334,6 +352,7 @@ class EmbedLaunchRead(TypedDict):
 
 class ExceptionRead(TypedDict):
     created_at: str
+    customer_id: NotRequired[str | None]
     decision_deadline: str | None
     exception_types: list[str]
     id: str
@@ -343,6 +362,7 @@ class ExceptionRead(TypedDict):
     related_reference_id: str | None
     source_item_id: str
     status: ExceptionStatus
+    updated_at: NotRequired[str | None]
 
 
 ExceptionStatus = Literal["open", "pending_approval", "pay", "return", "escalated", "withdrawn"]
@@ -458,10 +478,12 @@ class IssuedItemRead(TypedDict):
     amount: str
     check_number: str
     created_at: str
+    customer_id: NotRequired[str | None]
     id: str
     issue_date: str
     payee_name: str
     status: IssuedItemStatus
+    updated_at: NotRequired[str | None]
     void_reason: str | None
 
 
@@ -548,12 +570,14 @@ class PaidItemRead(TypedDict):
     account_id: str
     check_number: str
     created_at: str
+    customer_id: NotRequired[str | None]
     id: str
     match_status: PaidItemMatchStatus
     matched_issued_item_id: str | None
     presented_amount: str
     presented_date: str
     settlement_status: PaidItemSettlementStatus
+    updated_at: NotRequired[str | None]
 
 
 PaidItemSettlementStatus = Literal["pending", "paid", "returned", "reversed"]
@@ -623,11 +647,13 @@ class StopPaymentRead(TypedDict):
     amount: str | None
     check_number: str
     created_at: str
+    customer_id: NotRequired[str | None]
     effective_date: str
     expiration_date: str | None
     id: str
     reason: str | None
     status: StopPaymentStatus
+    updated_at: NotRequired[str | None]
 
 
 StopPaymentStatus = Literal["active", "expired", "cancelled"]
@@ -681,19 +707,19 @@ class AccountsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_accounts(self, *, limit: int | None = None, offset: int | None = None) -> list[AccountRead]:
+    def list_accounts(self, *, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[AccountRead]:
         """List Accounts.
 
         GET /api/v1/accounts
         """
-        return self._c.call("GET", "/api/v1/accounts", query={"limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/accounts", query={"limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_accounts(self, *, limit: int | None = None) -> Iterator[AccountRead]:
+    def iter_accounts(self, *, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[AccountRead]:
         """Every row of list_accounts, following each page's `Link: rel="next"`.
 
         GET /api/v1/accounts
         """
-        return self._c.paginate("GET", "/api/v1/accounts", query={"limit": limit})
+        return self._c.paginate("GET", "/api/v1/accounts", query={"limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def upsert_account(self, account_number: str, body: AccountUpsert) -> AccountRead:
         """Upsert Account.
@@ -712,19 +738,19 @@ class AchAuthorizationsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_ach_authorizations(self, *, status_filter: AchAuthorizationStatus | None = None, limit: int | None = None, offset: int | None = None) -> list[AchAuthorizationRead]:
+    def list_ach_authorizations(self, *, status_filter: AchAuthorizationStatus | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[AchAuthorizationRead]:
         """List Ach Authorizations.
 
         GET /api/v1/ach/authorizations
         """
-        return self._c.call("GET", "/api/v1/ach/authorizations", query={"status_filter": status_filter, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/ach/authorizations", query={"status_filter": status_filter, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_ach_authorizations(self, *, status_filter: AchAuthorizationStatus | None = None, limit: int | None = None) -> Iterator[AchAuthorizationRead]:
+    def iter_ach_authorizations(self, *, status_filter: AchAuthorizationStatus | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[AchAuthorizationRead]:
         """Every row of list_ach_authorizations, following each page's `Link: rel="next"`.
 
         GET /api/v1/ach/authorizations
         """
-        return self._c.paginate("GET", "/api/v1/ach/authorizations", query={"status_filter": status_filter, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/ach/authorizations", query={"status_filter": status_filter, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def create_ach_authorization(self, body: AchAuthorizationCreate) -> AchAuthorizationRead:
         """Create Ach Authorization.
@@ -747,19 +773,19 @@ class AchTransactionsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_ach_transactions(self, *, account_id: str | None = None, limit: int | None = None, offset: int | None = None) -> list[AchTransactionRead]:
+    def list_ach_transactions(self, *, account_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[AchTransactionRead]:
         """List Ach Transactions.
 
         GET /api/v1/ach/transactions
         """
-        return self._c.call("GET", "/api/v1/ach/transactions", query={"account_id": account_id, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/ach/transactions", query={"account_id": account_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_ach_transactions(self, *, account_id: str | None = None, limit: int | None = None) -> Iterator[AchTransactionRead]:
+    def iter_ach_transactions(self, *, account_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[AchTransactionRead]:
         """Every row of list_ach_transactions, following each page's `Link: rel="next"`.
 
         GET /api/v1/ach/transactions
         """
-        return self._c.paginate("GET", "/api/v1/ach/transactions", query={"account_id": account_id, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/ach/transactions", query={"account_id": account_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def create_ach_transaction(self, body: AchTransactionCreate) -> AchTransactionRead:
         """Create Ach Transaction.
@@ -1186,21 +1212,21 @@ class CustomersApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_customers(self, *, external_customer_id: str | None = None, limit: int | None = None, offset: int | None = None) -> list[CustomerRead]:
+    def list_customers(self, *, external_customer_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[CustomerRead]:
         """List Customers.
 
         GET /api/v1/customers
 
         Oldest first, paged. Filter by the core's id with `external_customer_id`.
         """
-        return self._c.call("GET", "/api/v1/customers", query={"external_customer_id": external_customer_id, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/customers", query={"external_customer_id": external_customer_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_customers(self, *, external_customer_id: str | None = None, limit: int | None = None) -> Iterator[CustomerRead]:
+    def iter_customers(self, *, external_customer_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[CustomerRead]:
         """Every row of list_customers, following each page's `Link: rel="next"`.
 
         GET /api/v1/customers
         """
-        return self._c.paginate("GET", "/api/v1/customers", query={"external_customer_id": external_customer_id, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/customers", query={"external_customer_id": external_customer_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def upsert_customer(self, customer_number: str, body: CustomerUpsert) -> CustomerRead:
         """Upsert Customer.
@@ -1211,6 +1237,49 @@ class CustomersApi:
         `201` when it was created. Fields left out are cleared, as with any `PUT`.
         """
         return self._c.call("PUT", f"/api/v1/customers/{_path(customer_number)}", json=body)
+
+
+class DataExportsApi:
+    """`data exports` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def list_exports(self) -> list[DataExportRead]:
+        """List Exports.
+
+        GET /api/v1/data-exports
+
+        This client's scope's exports, newest first.
+        """
+        return self._c.call("GET", "/api/v1/data-exports")
+
+    def start_export(self, *, customer_number: str | None = None) -> DataExportRead:
+        """Start Export.
+
+        POST /api/v1/data-exports
+
+        Starts an export in the background. Poll `GET /api/v1/data-exports/{id}` until `status`
+        is `completed`, then download `file_url`.
+        """
+        return self._c.call("POST", "/api/v1/data-exports", query={"customer_number": customer_number})
+
+    def get_export(self, export_id: str) -> DataExportRead:
+        """Get Export.
+
+        GET /api/v1/data-exports/{export_id}
+        """
+        return self._c.call("GET", f"/api/v1/data-exports/{_path(export_id)}")
+
+    def download_export(self, export_id: str) -> bytes:
+        """Download Export.
+
+        GET /api/v1/data-exports/{export_id}/file
+
+        The archive: data/*.json, one file per kind of record, plus the files (check images,
+        uploads) the records point to.
+        """
+        return self._c.call("GET", f"/api/v1/data-exports/{_path(export_id)}/file", raw=True)
 
 
 class DecisionBatchesApi:
@@ -1425,19 +1494,19 @@ class ExceptionsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None, offset: int | None = None) -> list[ExceptionRead]:
+    def list_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[ExceptionRead]:
         """List Exceptions.
 
         GET /api/v1/exceptions
         """
-        return self._c.call("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None) -> Iterator[ExceptionRead]:
+    def iter_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[ExceptionRead]:
         """Every row of list_exceptions, following each page's `Link: rel="next"`.
 
         GET /api/v1/exceptions
         """
-        return self._c.paginate("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def get_exception(self, exception_id: str) -> ExceptionRead:
         """Get Exception.
@@ -1495,19 +1564,19 @@ class IssuedItemsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_issued_items(self, *, status_filter: IssuedItemStatus | None = None, account_id: str | None = None, limit: int | None = None, offset: int | None = None) -> list[IssuedItemRead]:
+    def list_issued_items(self, *, status_filter: IssuedItemStatus | None = None, account_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[IssuedItemRead]:
         """List Issued Items.
 
         GET /api/v1/issued-items
         """
-        return self._c.call("GET", "/api/v1/issued-items", query={"status_filter": status_filter, "account_id": account_id, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/issued-items", query={"status_filter": status_filter, "account_id": account_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_issued_items(self, *, status_filter: IssuedItemStatus | None = None, account_id: str | None = None, limit: int | None = None) -> Iterator[IssuedItemRead]:
+    def iter_issued_items(self, *, status_filter: IssuedItemStatus | None = None, account_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[IssuedItemRead]:
         """Every row of list_issued_items, following each page's `Link: rel="next"`.
 
         GET /api/v1/issued-items
         """
-        return self._c.paginate("GET", "/api/v1/issued-items", query={"status_filter": status_filter, "account_id": account_id, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/issued-items", query={"status_filter": status_filter, "account_id": account_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def create_issued_item(self, body: IssuedItemCreate) -> IssuedItemRead:
         """Create Issued Item.
@@ -1602,19 +1671,19 @@ class PaidItemsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_paid_items(self, *, account_id: str | None = None, limit: int | None = None, offset: int | None = None) -> list[PaidItemRead]:
+    def list_paid_items(self, *, account_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[PaidItemRead]:
         """List Paid Items.
 
         GET /api/v1/paid-items
         """
-        return self._c.call("GET", "/api/v1/paid-items", query={"account_id": account_id, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/paid-items", query={"account_id": account_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_paid_items(self, *, account_id: str | None = None, limit: int | None = None) -> Iterator[PaidItemRead]:
+    def iter_paid_items(self, *, account_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[PaidItemRead]:
         """Every row of list_paid_items, following each page's `Link: rel="next"`.
 
         GET /api/v1/paid-items
         """
-        return self._c.paginate("GET", "/api/v1/paid-items", query={"account_id": account_id, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/paid-items", query={"account_id": account_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def create_paid_item(self, body: PaidItemCreate) -> PaidItemRead:
         """Create Paid Item.
@@ -1869,19 +1938,19 @@ class StopPaymentsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_stop_payments(self, *, status_filter: StopPaymentStatus | None = None, limit: int | None = None, offset: int | None = None) -> list[StopPaymentRead]:
+    def list_stop_payments(self, *, status_filter: StopPaymentStatus | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[StopPaymentRead]:
         """List Stop Payments.
 
         GET /api/v1/stop-payments
         """
-        return self._c.call("GET", "/api/v1/stop-payments", query={"status_filter": status_filter, "limit": limit, "offset": offset})
+        return self._c.call("GET", "/api/v1/stop-payments", query={"status_filter": status_filter, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_stop_payments(self, *, status_filter: StopPaymentStatus | None = None, limit: int | None = None) -> Iterator[StopPaymentRead]:
+    def iter_stop_payments(self, *, status_filter: StopPaymentStatus | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[StopPaymentRead]:
         """Every row of list_stop_payments, following each page's `Link: rel="next"`.
 
         GET /api/v1/stop-payments
         """
-        return self._c.paginate("GET", "/api/v1/stop-payments", query={"status_filter": status_filter, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/stop-payments", query={"status_filter": status_filter, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def create_stop_payment(self, body: StopPaymentCreate) -> StopPaymentRead:
         """Create Stop Payment.
@@ -1936,6 +2005,7 @@ AREAS = {
     "conformance": ConformanceApi,
     "controls": ControlsApi,
     "customers": CustomersApi,
+    "data_exports": DataExportsApi,
     "decision_batches": DecisionBatchesApi,
     "decision_feed": DecisionFeedApi,
     "decisions": DecisionsApi,

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from openclear.api.v1.bulk_uploads import BulkUploadAccepted, accepted, too_many_for_sync
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -104,14 +104,14 @@ def list_ach_transactions(
     response: Response,
     account_id: uuid.UUID | None = None,
     page: Page = Depends(page_params),
+    updated_since: Since | None = Depends(updated_since_param),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("ach_transaction:read")),
 ) -> list[AchTransactionRead]:
     repo = AchTransactionRepository(db, ctx.tenant_id, ctx.customer_id)
-    txns = repo.list(
-        account_id=account_id, order_by=(AchTransaction.created_at, AchTransaction.id), limit=page.limit, offset=page.offset
-    )
-    set_page_headers(request, response, page, repo.count(account_id=account_id))
+    extra, order = changed_since(AchTransaction, updated_since, (AchTransaction.created_at, AchTransaction.id))
+    txns = repo.list(account_id=account_id, order_by=order, limit=page.limit, offset=page.offset, **extra)
+    set_page_headers(request, response, page, repo.count(account_id=account_id, **extra), since=updated_since, rows=txns)
     return [AchTransactionRead.model_validate(t) for t in txns]
 
 

@@ -21,6 +21,7 @@ public sealed record AccountRead
     [JsonPropertyName("external_account_id")] public string ExternalAccountId { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record AccountUpsert
@@ -49,6 +50,7 @@ public sealed record AchAuthorizationRead
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
     [JsonPropertyName("allowed_sec_codes")] public IReadOnlyList<string> AllowedSecCodes { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("effective_date")] public string EffectiveDate { get; init; } = default!;
     [JsonPropertyName("expiration_date")] public string ExpirationDate { get; init; } = default!;
     [JsonPropertyName("frequency_limit")] public long FrequencyLimit { get; init; } = default!;
@@ -58,6 +60,7 @@ public sealed record AchAuthorizationRead
     [JsonPropertyName("originator_name")] public string OriginatorName { get; init; } = default!;
     [JsonPropertyName("receiver_id")] public string ReceiverId { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record AchFraudExampleCreate
@@ -94,6 +97,7 @@ public sealed record AchTransactionRead
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
     [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("effective_date")] public string EffectiveDate { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("match_status")] public string MatchStatus { get; init; } = default!;
@@ -104,6 +108,7 @@ public sealed record AchTransactionRead
     [JsonPropertyName("settlement_status")] public string SettlementStatus { get; init; } = default!;
     [JsonPropertyName("trace_number")] public string TraceNumber { get; init; } = default!;
     [JsonPropertyName("transaction_type")] public string TransactionType { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record Acknowledgement
@@ -122,6 +127,7 @@ public sealed record ApiClientRead
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("last_used_at")] public string LastUsedAt { get; init; } = default!;
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
+    [JsonPropertyName("read_only")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? ReadOnly { get; init; }
     [JsonPropertyName("revoked_at")] public string RevokedAt { get; init; } = default!;
     [JsonPropertyName("secret_rotated_at")] public string SecretRotatedAt { get; init; } = default!;
     [JsonPropertyName("security_group")] public string SecurityGroup { get; init; } = default!;
@@ -226,6 +232,7 @@ public sealed record CustomerRead
     [JsonPropertyName("primary_contact_name")] public string PrimaryContactName { get; init; } = default!;
     [JsonPropertyName("state")] public string State { get; init; } = default!;
     [JsonPropertyName("tax_id")] public string TaxId { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record CustomerTermsRead
@@ -266,6 +273,18 @@ public sealed record CustomerUpsert
     [JsonPropertyName("state")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? State { get; init; }
     [JsonPropertyName("tax_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TaxId { get; init; }
     [JsonPropertyName("website")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Website { get; init; }
+}
+
+public sealed record DataExportRead
+{
+    [JsonPropertyName("completed_at")] public string CompletedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("error")] public string Error { get; init; } = default!;
+    [JsonPropertyName("file_url")] public string FileUrl { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("requested_at")] public string RequestedAt { get; init; } = default!;
+    [JsonPropertyName("size_bytes")] public long SizeBytes { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
 }
 
 public sealed record DecideRequest
@@ -328,6 +347,7 @@ public sealed record EmbedLaunchRead
 public sealed record ExceptionRead
 {
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("decision_deadline")] public string DecisionDeadline { get; init; } = default!;
     [JsonPropertyName("exception_types")] public IReadOnlyList<string> ExceptionTypes { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -337,6 +357,7 @@ public sealed record ExceptionRead
     [JsonPropertyName("related_reference_id")] public string RelatedReferenceId { get; init; } = default!;
     [JsonPropertyName("source_item_id")] public string SourceItemId { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record FeeItemCreate
@@ -461,10 +482,12 @@ public sealed record IssuedItemRead
     [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
     [JsonPropertyName("check_number")] public string CheckNumber { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("issue_date")] public string IssueDate { get; init; } = default!;
     [JsonPropertyName("payee_name")] public string PayeeName { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
     [JsonPropertyName("void_reason")] public string VoidReason { get; init; } = default!;
 }
 
@@ -541,12 +564,14 @@ public sealed record PaidItemRead
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
     [JsonPropertyName("check_number")] public string CheckNumber { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("match_status")] public string MatchStatus { get; init; } = default!;
     [JsonPropertyName("matched_issued_item_id")] public string MatchedIssuedItemId { get; init; } = default!;
     [JsonPropertyName("presented_amount")] public string PresentedAmount { get; init; } = default!;
     [JsonPropertyName("presented_date")] public string PresentedDate { get; init; } = default!;
     [JsonPropertyName("settlement_status")] public string SettlementStatus { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 /// <summary>
@@ -623,11 +648,13 @@ public sealed record StopPaymentRead
     [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
     [JsonPropertyName("check_number")] public string CheckNumber { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("effective_date")] public string EffectiveDate { get; init; } = default!;
     [JsonPropertyName("expiration_date")] public string ExpirationDate { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("reason")] public string Reason { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
 public sealed record SwitchLockClearedRead
@@ -686,15 +713,15 @@ public sealed partial class AccountsApi
     ///
     /// GET /api/v1/accounts
     /// </summary>
-    public Task<IReadOnlyList<AccountRead>> ListAccountsAsync(long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<AccountRead>>("GET", "/api/v1/accounts", query: new Dictionary<string, object?> { ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<AccountRead>> ListAccountsAsync(long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<AccountRead>>("GET", "/api/v1/accounts", query: new Dictionary<string, object?> { ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListAccountsAsync, following each page's Link: rel="next".
     /// GET /api/v1/accounts
     /// </summary>
-    public IAsyncEnumerable<AccountRead> IterAccountsAsync(long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<AccountRead>("GET", "/api/v1/accounts", query: new Dictionary<string, object?> { ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<AccountRead> IterAccountsAsync(long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<AccountRead>("GET", "/api/v1/accounts", query: new Dictionary<string, object?> { ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Upsert Account.
@@ -721,15 +748,15 @@ public sealed partial class AchAuthorizationsApi
     ///
     /// GET /api/v1/ach/authorizations
     /// </summary>
-    public Task<IReadOnlyList<AchAuthorizationRead>> ListAchAuthorizationsAsync(string? statusFilter = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<AchAuthorizationRead>>("GET", "/api/v1/ach/authorizations", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<AchAuthorizationRead>> ListAchAuthorizationsAsync(string? statusFilter = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<AchAuthorizationRead>>("GET", "/api/v1/ach/authorizations", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListAchAuthorizationsAsync, following each page's Link: rel="next".
     /// GET /api/v1/ach/authorizations
     /// </summary>
-    public IAsyncEnumerable<AchAuthorizationRead> IterAchAuthorizationsAsync(string? statusFilter = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<AchAuthorizationRead>("GET", "/api/v1/ach/authorizations", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<AchAuthorizationRead> IterAchAuthorizationsAsync(string? statusFilter = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<AchAuthorizationRead>("GET", "/api/v1/ach/authorizations", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Create Ach Authorization.
@@ -761,15 +788,15 @@ public sealed partial class AchTransactionsApi
     ///
     /// GET /api/v1/ach/transactions
     /// </summary>
-    public Task<IReadOnlyList<AchTransactionRead>> ListAchTransactionsAsync(string? accountId = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<AchTransactionRead>>("GET", "/api/v1/ach/transactions", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<AchTransactionRead>> ListAchTransactionsAsync(string? accountId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<AchTransactionRead>>("GET", "/api/v1/ach/transactions", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListAchTransactionsAsync, following each page's Link: rel="next".
     /// GET /api/v1/ach/transactions
     /// </summary>
-    public IAsyncEnumerable<AchTransactionRead> IterAchTransactionsAsync(string? accountId = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<AchTransactionRead>("GET", "/api/v1/ach/transactions", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<AchTransactionRead> IterAchTransactionsAsync(string? accountId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<AchTransactionRead>("GET", "/api/v1/ach/transactions", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Create Ach Transaction.
@@ -1260,15 +1287,15 @@ public sealed partial class CustomersApi
     ///
     /// Oldest first, paged. Filter by the core's id with `external_customer_id`.
     /// </summary>
-    public Task<IReadOnlyList<CustomerRead>> ListCustomersAsync(string? externalCustomerId = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<CustomerRead>>("GET", "/api/v1/customers", query: new Dictionary<string, object?> { ["external_customer_id"] = externalCustomerId, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<CustomerRead>> ListCustomersAsync(string? externalCustomerId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<CustomerRead>>("GET", "/api/v1/customers", query: new Dictionary<string, object?> { ["external_customer_id"] = externalCustomerId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListCustomersAsync, following each page's Link: rel="next".
     /// GET /api/v1/customers
     /// </summary>
-    public IAsyncEnumerable<CustomerRead> IterCustomersAsync(string? externalCustomerId = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<CustomerRead>("GET", "/api/v1/customers", query: new Dictionary<string, object?> { ["external_customer_id"] = externalCustomerId, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<CustomerRead> IterCustomersAsync(string? externalCustomerId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<CustomerRead>("GET", "/api/v1/customers", query: new Dictionary<string, object?> { ["external_customer_id"] = externalCustomerId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Upsert Customer.
@@ -1280,6 +1307,55 @@ public sealed partial class CustomersApi
     /// </summary>
     public Task<CustomerRead> UpsertCustomerAsync(string customerNumber, CustomerUpsert body, CancellationToken cancellationToken = default) =>
         _c.CallAsync<CustomerRead>("PUT", $"/api/v1/customers/{Uri.EscapeDataString(customerNumber.ToString()!)}", json: body, cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// data exports endpoints.
+/// </summary>
+public sealed partial class DataExportsApi
+{
+    private readonly ITransport _c;
+    public DataExportsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// List Exports.
+    ///
+    /// GET /api/v1/data-exports
+    ///
+    /// This client's scope's exports, newest first.
+    /// </summary>
+    public Task<IReadOnlyList<DataExportRead>> ListExportsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<DataExportRead>>("GET", "/api/v1/data-exports", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Start Export.
+    ///
+    /// POST /api/v1/data-exports
+    ///
+    /// Starts an export in the background. Poll `GET /api/v1/data-exports/{id}` until `status`
+    /// is `completed`, then download `file_url`.
+    /// </summary>
+    public Task<DataExportRead> StartExportAsync(string? customerNumber = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<DataExportRead>("POST", "/api/v1/data-exports", query: new Dictionary<string, object?> { ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Export.
+    ///
+    /// GET /api/v1/data-exports/{export_id}
+    /// </summary>
+    public Task<DataExportRead> GetExportAsync(string exportId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<DataExportRead>("GET", $"/api/v1/data-exports/{Uri.EscapeDataString(exportId.ToString()!)}", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Download Export.
+    ///
+    /// GET /api/v1/data-exports/{export_id}/file
+    ///
+    /// The archive: data/*.json, one file per kind of record, plus the files (check images,
+    /// uploads) the records point to.
+    /// </summary>
+    public Task<byte[]> DownloadExportAsync(string exportId, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", $"/api/v1/data-exports/{Uri.EscapeDataString(exportId.ToString()!)}/file", cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -1529,15 +1605,15 @@ public sealed partial class ExceptionsApi
     ///
     /// GET /api/v1/exceptions
     /// </summary>
-    public Task<IReadOnlyList<ExceptionRead>> ListExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<ExceptionRead>>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<ExceptionRead>> ListExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<ExceptionRead>>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListExceptionsAsync, following each page's Link: rel="next".
     /// GET /api/v1/exceptions
     /// </summary>
-    public IAsyncEnumerable<ExceptionRead> IterExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<ExceptionRead>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<ExceptionRead> IterExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<ExceptionRead>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Get Exception.
@@ -1610,15 +1686,15 @@ public sealed partial class IssuedItemsApi
     ///
     /// GET /api/v1/issued-items
     /// </summary>
-    public Task<IReadOnlyList<IssuedItemRead>> ListIssuedItemsAsync(string? statusFilter = null, string? accountId = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<IssuedItemRead>>("GET", "/api/v1/issued-items", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<IssuedItemRead>> ListIssuedItemsAsync(string? statusFilter = null, string? accountId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<IssuedItemRead>>("GET", "/api/v1/issued-items", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListIssuedItemsAsync, following each page's Link: rel="next".
     /// GET /api/v1/issued-items
     /// </summary>
-    public IAsyncEnumerable<IssuedItemRead> IterIssuedItemsAsync(string? statusFilter = null, string? accountId = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<IssuedItemRead>("GET", "/api/v1/issued-items", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["account_id"] = accountId, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<IssuedItemRead> IterIssuedItemsAsync(string? statusFilter = null, string? accountId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<IssuedItemRead>("GET", "/api/v1/issued-items", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["account_id"] = accountId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Create Issued Item.
@@ -1731,15 +1807,15 @@ public sealed partial class PaidItemsApi
     ///
     /// GET /api/v1/paid-items
     /// </summary>
-    public Task<IReadOnlyList<PaidItemRead>> ListPaidItemsAsync(string? accountId = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<PaidItemRead>>("GET", "/api/v1/paid-items", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<PaidItemRead>> ListPaidItemsAsync(string? accountId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<PaidItemRead>>("GET", "/api/v1/paid-items", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListPaidItemsAsync, following each page's Link: rel="next".
     /// GET /api/v1/paid-items
     /// </summary>
-    public IAsyncEnumerable<PaidItemRead> IterPaidItemsAsync(string? accountId = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<PaidItemRead>("GET", "/api/v1/paid-items", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<PaidItemRead> IterPaidItemsAsync(string? accountId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<PaidItemRead>("GET", "/api/v1/paid-items", query: new Dictionary<string, object?> { ["account_id"] = accountId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Create Paid Item.
@@ -2035,15 +2111,15 @@ public sealed partial class StopPaymentsApi
     ///
     /// GET /api/v1/stop-payments
     /// </summary>
-    public Task<IReadOnlyList<StopPaymentRead>> ListStopPaymentsAsync(string? statusFilter = null, long? limit = null, long? offset = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<StopPaymentRead>>("GET", "/api/v1/stop-payments", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<StopPaymentRead>> ListStopPaymentsAsync(string? statusFilter = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<StopPaymentRead>>("GET", "/api/v1/stop-payments", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListStopPaymentsAsync, following each page's Link: rel="next".
     /// GET /api/v1/stop-payments
     /// </summary>
-    public IAsyncEnumerable<StopPaymentRead> IterStopPaymentsAsync(string? statusFilter = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<StopPaymentRead>("GET", "/api/v1/stop-payments", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<StopPaymentRead> IterStopPaymentsAsync(string? statusFilter = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<StopPaymentRead>("GET", "/api/v1/stop-payments", query: new Dictionary<string, object?> { ["status_filter"] = statusFilter, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Create Stop Payment.
@@ -2105,6 +2181,7 @@ public partial class OpenClearClient
     public ConformanceApi Conformance { get; private set; } = default!;
     public ControlsApi Controls { get; private set; } = default!;
     public CustomersApi Customers { get; private set; } = default!;
+    public DataExportsApi DataExports { get; private set; } = default!;
     public DecisionBatchesApi DecisionBatches { get; private set; } = default!;
     public DecisionFeedApi DecisionFeed { get; private set; } = default!;
     public DecisionsApi Decisions { get; private set; } = default!;
@@ -2138,6 +2215,7 @@ public partial class OpenClearClient
         Conformance = new ConformanceApi(this);
         Controls = new ControlsApi(this);
         Customers = new CustomersApi(this);
+        DataExports = new DataExportsApi(this);
         DecisionBatches = new DecisionBatchesApi(this);
         DecisionFeed = new DecisionFeedApi(this);
         Decisions = new DecisionsApi(this);

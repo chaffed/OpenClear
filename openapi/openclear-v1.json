@@ -41,6 +41,18 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -224,6 +236,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "effective_date": {
             "format": "date",
             "title": "Effective Date",
@@ -290,6 +314,18 @@
           },
           "status": {
             "$ref": "#/components/schemas/AchAuthorizationStatus"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -569,6 +605,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "effective_date": {
             "format": "date",
             "title": "Effective Date",
@@ -614,6 +662,18 @@
           },
           "transaction_type": {
             "$ref": "#/components/schemas/AchTransactionType"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -727,6 +787,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "read_only": {
+            "default": false,
+            "title": "Read Only",
+            "type": "boolean"
           },
           "revoked_at": {
             "anyOf": [
@@ -1551,6 +1616,18 @@
               }
             ],
             "title": "Tax Id"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -1871,6 +1948,100 @@
         "title": "CustomerUpsert",
         "type": "object"
       },
+      "DataExportRead": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested At"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "customer_id",
+          "requested_at",
+          "completed_at",
+          "size_bytes",
+          "error",
+          "file_url"
+        ],
+        "title": "DataExportRead",
+        "type": "object"
+      },
       "DecideRequest": {
         "properties": {
           "ach_return_reason_id": {
@@ -2172,6 +2343,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "decision_deadline": {
             "anyOf": [
               {
@@ -2241,6 +2424,18 @@
           },
           "status": {
             "$ref": "#/components/schemas/ExceptionStatus"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -3030,6 +3225,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3046,6 +3253,18 @@
           },
           "status": {
             "$ref": "#/components/schemas/IssuedItemStatus"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           },
           "void_reason": {
             "anyOf": [
@@ -3466,6 +3685,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3498,6 +3729,18 @@
           },
           "settlement_status": {
             "$ref": "#/components/schemas/PaidItemSettlementStatus"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -3856,6 +4099,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
           "effective_date": {
             "format": "date",
             "title": "Effective Date",
@@ -3891,6 +4146,18 @@
           },
           "status": {
             "$ref": "#/components/schemas/StopPaymentStatus"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [
@@ -4204,6 +4471,44 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
           }
         ],
         "responses": {
@@ -4356,6 +4661,44 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
             }
           }
         ],
@@ -4534,6 +4877,44 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
             }
           }
         ],
@@ -6921,6 +7302,44 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
           }
         ],
         "responses": {
@@ -7025,6 +7444,190 @@
         "summary": "Upsert Customer",
         "tags": [
           "customers"
+        ]
+      }
+    },
+    "/api/v1/data-exports": {
+      "get": {
+        "description": "This client's scope's exports, newest first.",
+        "operationId": "list_exports_api_v1_data_exports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DataExportRead"
+                  },
+                  "title": "Response List Exports Api V1 Data Exports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Exports",
+        "tags": [
+          "data exports"
+        ]
+      },
+      "post": {
+        "description": "Starts an export in the background. Poll `GET /api/v1/data-exports/{id}` until `status`\nis `completed`, then download `file_url`.",
+        "operationId": "start_export_api_v1_data_exports_post",
+        "parameters": [
+          {
+            "description": "A bank-wide client: export only this customer",
+            "in": "query",
+            "name": "customer_number",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A bank-wide client: export only this customer",
+              "title": "Customer Number"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Export",
+        "tags": [
+          "data exports"
+        ]
+      }
+    },
+    "/api/v1/data-exports/{export_id}": {
+      "get": {
+        "operationId": "get_export_api_v1_data_exports__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Export",
+        "tags": [
+          "data exports"
+        ]
+      }
+    },
+    "/api/v1/data-exports/{export_id}/file": {
+      "get": {
+        "description": "The archive: data/*.json, one file per kind of record, plus the files (check images,\nuploads) the records point to.",
+        "operationId": "download_export_api_v1_data_exports__export_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "A zip archive"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Export",
+        "tags": [
+          "data exports"
         ]
       }
     },
@@ -7734,6 +8337,44 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
           }
         ],
         "responses": {
@@ -8074,6 +8715,44 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
             }
           }
         ],
@@ -8872,6 +9551,44 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
             }
           }
         ],
@@ -10264,6 +10981,44 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
             }
           }
         ],

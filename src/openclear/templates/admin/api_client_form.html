@@ -20,6 +20,9 @@
         {% for c in customers %}<option value="{{ c.id }}" {{ "selected" if values.customer_id == c.id|string else "" }}>{{ c.name }} ({{ c.customer_number }})</option>{% endfor %}
       </select>
     </label>
+    <label><input type="checkbox" name="read_only" value="true" {{ "checked" if values.read_only else "" }}>
+      Read only (whatever the security group allows, it can only read: for a data pipeline or reporting, or a
+      customer's own data feed when it's limited to one customer)</label>
     <label><input type="checkbox" name="can_act_for_users" value="true" {{ "checked" if values.can_act_for_users else "" }}>
       May act for your users (for an online banking provider's server acting for a signed-in customer)</label>
     {% if connections %}

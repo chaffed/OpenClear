@@ -3,8 +3,9 @@
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -28,6 +29,9 @@ class Account(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
     # Nullable: an account with no customer is a tenant-wide "house" account, visible
     # only to bank-wide (non-customer-scoped) staff — see TenantMembership.customer_id.

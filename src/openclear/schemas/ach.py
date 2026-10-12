@@ -38,6 +38,10 @@ class AchAuthorizationRead(BaseModel):
     effective_date: date
     expiration_date: date | None
     created_at: datetime
+    # The customer the record belongs to (none for the bank's own accounts), and when it last
+    # changed (the list endpoints' updated_since filters on it).
+    customer_id: uuid.UUID | None = None
+    updated_at: datetime | None = None
 
 
 class AchTransactionCreate(BaseModel):
@@ -68,3 +72,7 @@ class AchTransactionRead(BaseModel):
     match_status: AchMatchStatus
     settlement_status: AchSettlementStatus
     created_at: datetime
+    # The customer the record belongs to (none for the bank's own accounts), and when it last
+    # changed (the list endpoints' updated_since filters on it).
+    customer_id: uuid.UUID | None = None
+    updated_at: datetime | None = None

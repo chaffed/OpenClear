@@ -5,13 +5,14 @@
 list and an upsert by the bank's own customer number. `PUT` is naturally safe to repeat."""
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -54,18 +55,21 @@ class CustomerRead(BaseModel):
     phone: str | None
     city: str | None
     state: str | None
+    updated_at: datetime | None = None
 
 
 @router.get("", response_model=list[CustomerRead])
 def list_customers(
     request: Request, response: Response, external_customer_id: str | None = None, page: Page = Depends(page_params),
+    updated_since: Since | None = Depends(updated_since_param),
     db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
 ) -> list[CustomerRead]:
     """Oldest first, paged. Filter by the core's id with `external_customer_id`."""
     repo = CustomerRepository(db, ctx.tenant_id)
     filters = {"external_customer_id": external_customer_id} if external_customer_id else {}
-    rows = repo.list(**filters, order_by=(Customer.created_at, Customer.id), limit=page.limit, offset=page.offset)
-    set_page_headers(request, response, page, repo.count(**filters))
+    extra, order = changed_since(Customer, updated_since, (Customer.created_at, Customer.id))
+    rows = repo.list(**filters, **extra, order_by=order, limit=page.limit, offset=page.offset)
+    set_page_headers(request, response, page, repo.count(**filters, **extra), since=updated_since, rows=rows)
     return [CustomerRead.model_validate(c) for c in rows]
 
 

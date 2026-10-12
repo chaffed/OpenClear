@@ -31,3 +31,7 @@ class StopPaymentRead(BaseModel):
     reason: str | None
     status: StopPaymentStatus
     created_at: datetime
+    # The customer the record belongs to (none for the bank's own accounts), and when it last
+    # changed (the list endpoints' updated_since filters on it).
+    customer_id: uuid.UUID | None = None
+    updated_at: datetime | None = None

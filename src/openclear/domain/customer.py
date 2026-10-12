@@ -44,6 +44,9 @@ class Customer(Base):
     password_require_number: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     password_require_symbol: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Cross-reference to an identifier from an outside system (e.g. a core-banking CIF
     # number) — distinct from customer_number above, which is this app's own tenant-scoped

@@ -30,6 +30,7 @@ from openclear.api.v1.conformance import router as conformance_router
 from openclear.api.v1.mrm import router as mrm_router
 from openclear.api.v1.controls import router as controls_router
 from openclear.api.v1.audit import router as audit_router
+from openclear.api.v1.data_exports import router as data_exports_router
 from openclear.api.v1.edge import router as edge_router
 from openclear.api.v1.security_events import router as security_events_router
 from openclear.api.v1.decision_batches import router as decision_batches_router
@@ -62,6 +63,7 @@ api_router.include_router(controls_router)
 api_router.include_router(audit_router)
 api_router.include_router(security_events_router)
 api_router.include_router(edge_router)
+api_router.include_router(data_exports_router)
 api_router.include_router(decision_batches_router)
 api_router.include_router(api_clients_router)
 api_router.include_router(bulk_uploads_router)

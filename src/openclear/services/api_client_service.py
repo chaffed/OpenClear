@@ -83,6 +83,7 @@ def create_client(
     can_act_for_users: bool = False,
     created_by_user_id: uuid.UUID | None = None,
     sso_connection_id: uuid.UUID | None = None,
+    read_only: bool = False,
 ) -> IssuedSecret:
     name = (name or "").strip()
     if sso_connection_id is not None:
@@ -122,7 +123,7 @@ def create_client(
     client = ApiClient(
         tenant_id=tenant_id, name=name, client_id=client_id, secret_hash=_hash(secret), user_id=service_user.id,
         membership_id=membership.id, can_act_for_users=can_act_for_users, created_by_user_id=created_by_user_id,
-        sso_connection_id=sso_connection_id,
+        sso_connection_id=sso_connection_id, read_only=read_only,
     )
     session.add(client)
     session.flush()
@@ -189,7 +190,7 @@ def describe(session: Session, client: ApiClient) -> dict:
     return {
         "id": client.id, "name": client.name, "client_id": client.client_id,
         "security_group": group.name if group else None, "customer": customer.name if customer else None,
-        "can_act_for_users": client.can_act_for_users, "created_by": creator.email if creator else None,
+        "can_act_for_users": client.can_act_for_users, "read_only": client.read_only, "created_by": creator.email if creator else None,
         "sso_connection_id": client.sso_connection_id,
         "created_at": client.created_at, "secret_rotated_at": client.secret_rotated_at,
         "last_used_at": client.last_used_at, "revoked_at": client.revoked_at,

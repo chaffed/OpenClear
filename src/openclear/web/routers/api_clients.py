@@ -54,20 +54,21 @@ def create_api_client(
     security_group_id: str = Form(""),
     customer_id: str = Form(""),
     can_act_for_users: bool = Form(False),
+    read_only: bool = Form(False),
     sso_connection_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(_manage),
     _csrf: None = Depends(verify_csrf),
 ) -> Response:
     values = {"name": name, "security_group_id": security_group_id, "customer_id": customer_id, "can_act_for_users": can_act_for_users,
-              "sso_connection_id": sso_connection_id}
+              "sso_connection_id": sso_connection_id, "read_only": read_only}
     try:
         issued = api_client_service.create_client(
             db, ctx.tenant_id, name=name,
             security_group_id=uuid.UUID(security_group_id) if security_group_id else uuid.UUID(int=0),
             customer_id=uuid.UUID(customer_id) if customer_id else None,
             can_act_for_users=can_act_for_users, created_by_user_id=ctx.user_id,
-            sso_connection_id=uuid.UUID(sso_connection_id) if sso_connection_id else None,
+            sso_connection_id=uuid.UUID(sso_connection_id) if sso_connection_id else None, read_only=read_only,
         )
     except (api_client_service.ApiClientError, ValueError) as exc:
         db.rollback()
@@ -75,7 +76,8 @@ def create_api_client(
                      values=values, status_code=422)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="api_client.create",
-        summary=f"Created API client {issued.client.name} ({issued.client.client_id})", resource_type="api_client",
+        summary=f"Created {'read-only ' if issued.client.read_only else ''}API client {issued.client.name} ({issued.client.client_id})",
+        resource_type="api_client",
         resource_id=issued.client.id,
     )
     db.commit()

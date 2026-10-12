@@ -3,6 +3,7 @@
 
 import enum
 import uuid
+from datetime import datetime
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -48,6 +49,7 @@ class AchTransaction(Base):
 
     __tablename__ = "ach_transaction"
     __table_args__ = (
+        Index("ix_ach_transaction_tenant_id_updated_at", "tenant_id", "updated_at"),
         UniqueConstraint("tenant_id", "trace_number", name="uq_ach_transaction_tenant_trace"),
         # The ACH frequency-limit count (networks/ach/adapter.py) runs for every debit.
         Index("ix_ach_transaction_tenant_account_originator_date", "tenant_id", "account_id", "originator_id", "effective_date"),
@@ -86,3 +88,6 @@ class AchTransaction(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

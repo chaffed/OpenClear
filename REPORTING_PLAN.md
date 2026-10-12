@@ -155,4 +155,5 @@ R3 + R4 + R5, then **release 1.13**.
   Recommendation: our own builder on secured datasets, with ReportBro for designed PDFs.
 - 2026-10-12 Put on hold by the product owner: reporting comes after every other feature.
 - 2026-10-12 Replaced by the product owner: no reporting dashboard in OpenClear. Banks use their own BI platform, fed through the API (docs/guides/bi.md: credentials, what to pull and how to keep it current, the data model, row-level security for bank, customer and operator, reading a replica on a self-hosted install). Gaps that would make BI pipelines easier, not built: a "changed since" filter on the lists, read-only API credentials scoped to one customer, and the full data export through the API.
+- 2026-10-12 The three gaps built (branch `m8-bi-api`): `updated_since` with cursor paging on every list (and `updated_at`, `customer_id` on each row), read-only API clients (one customer's own feed when limited to a customer), and the full data export through the API.
 

@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -54,15 +54,15 @@ def list_stop_payments(
     response: Response,
     status_filter: StopPaymentStatus | None = None,
     page: Page = Depends(page_params),
+    updated_since: Since | None = Depends(updated_since_param),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("stop_payment:read")),
 ) -> list[StopPaymentRead]:
-    stops = stop_payment_service.list_stop_payments(
-        db, ctx.tenant_id, status=status_filter, customer_id=ctx.customer_id,
-        order_by=(StopPayment.created_at, StopPayment.id), limit=page.limit, offset=page.offset,
-    )
-    total = StopPaymentRepository(db, ctx.tenant_id, ctx.customer_id).count(status=status_filter)
-    set_page_headers(request, response, page, total)
+    repo = StopPaymentRepository(db, ctx.tenant_id, ctx.customer_id)
+    extra, order = changed_since(StopPayment, updated_since, (StopPayment.created_at, StopPayment.id))
+    stops = repo.list(status=status_filter, order_by=order, limit=page.limit, offset=page.offset, **extra)
+    total = repo.count(status=status_filter, **extra)
+    set_page_headers(request, response, page, total, since=updated_since, rows=stops)
     return [StopPaymentRead.model_validate(s) for s in stops]
 
 

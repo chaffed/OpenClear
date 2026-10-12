@@ -3,6 +3,7 @@
 
 import enum
 import uuid
+from datetime import datetime
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -45,7 +46,8 @@ class PaidItem(Base):
 
     __tablename__ = "paid_item"
     # The duplicate-paid check runs for every presented check (networks/check/adapter.py).
-    __table_args__ = (Index("ix_paid_item_tenant_account_check", "tenant_id", "account_id", "check_number"),)
+    __table_args__ = (Index("ix_paid_item_tenant_account_check", "tenant_id", "account_id", "check_number"),
+                      Index("ix_paid_item_tenant_id_updated_at", "tenant_id", "updated_at"))
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
@@ -74,3 +76,6 @@ class PaidItem(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

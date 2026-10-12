@@ -41,6 +41,7 @@ class ExceptionItem(Base):
 
     __tablename__ = "exception_item"
     __table_args__ = (
+        Index("ix_exception_item_tenant_id_updated_at", "tenant_id", "updated_at"),
         # The work queue, its counts and the dashboard filter a bank's items by status and
         # sort by age; the expired-disposition sweep looks across banks by status and deadline.
         Index("ix_exception_item_tenant_status_created", "tenant_id", "status", "created_at"),
@@ -93,6 +94,9 @@ class ExceptionItem(Base):
     # warn_deadlines_approaching), so each exception is announced once.
     deadline_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     source: Mapped[ExceptionItemSource] = mapped_column(
         Enum(ExceptionItemSource, name="exception_item_source", native_enum=False, length=20),

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from openclear.api.v1.bulk_uploads import BulkUploadAccepted, accepted, too_many_for_sync
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -107,15 +107,15 @@ def list_issued_items(
     status_filter: IssuedItemStatus | None = None,
     account_id: uuid.UUID | None = None,
     page: Page = Depends(page_params),
+    updated_since: Since | None = Depends(updated_since_param),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("issued_item:read")),
 ) -> list[IssuedItemRead]:
-    items = issued_item_service.list_issued_items(
-        db, ctx.tenant_id, status=status_filter, account_id=account_id, customer_id=ctx.customer_id,
-        order_by=(IssuedItem.created_at, IssuedItem.id), limit=page.limit, offset=page.offset,
-    )
-    total = IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id).count(status=status_filter, account_id=account_id)
-    set_page_headers(request, response, page, total)
+    repo = IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id)
+    extra, order = changed_since(IssuedItem, updated_since, (IssuedItem.created_at, IssuedItem.id))
+    items = repo.list(status=status_filter, account_id=account_id, order_by=order, limit=page.limit, offset=page.offset, **extra)
+    total = repo.count(status=status_filter, account_id=account_id, **extra)
+    set_page_headers(request, response, page, total, since=updated_since, rows=items)
     return [IssuedItemRead.model_validate(i) for i in items]
 
 

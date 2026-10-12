@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### For banks' data pipelines and BI platforms (docs/guides/bi.md)
+
+- **`updated_since` on every list** (exceptions, issued and presented checks, stop payments,
+  ACH filters and transactions, accounts, customers): only rows changed since a time, in the
+  order they changed. Pages follow a `Link: rel="next"` cursor (`updated_since` with
+  `after_id`), so a row that changes mid-way is never skipped. Each row now carries
+  `updated_at` and `customer_id`.
+- **Read-only API clients**: tick "Read only" when creating a client; whatever its group allows,
+  it can only read (and run the full data export). Limited to one customer, it's that
+  customer's own data feed.
+- **The full data export through the API**: `POST /api/v1/data-exports` (the bank, or one
+  customer with `customer_number`; a customer's client always its own), poll
+  `GET /api/v1/data-exports/{id}`, download `file_url`.
+- The BI guide covers all three.
+- **Migration** `a4c6e8a0c2d5`: `updated_at` on exceptions, presented checks, ACH transactions
+  and filters, stop payments, accounts and customers (from their creation time), indexes for
+  changed-since reads, and `api_client.read_only`.
+
 ## 1.12.0 — 2026-10-12
 
 Tools for the bank's staff and for whoever runs the installation, and for putting OpenClear

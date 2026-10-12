@@ -6,13 +6,14 @@ list and an upsert by account number. A customer-scoped caller sees and changes 
 own customer's accounts."""
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -39,16 +40,19 @@ class AccountRead(BaseModel):
     customer_id: uuid.UUID | None
     ach_debit_block_mode: AchDebitBlockMode
     external_account_id: str | None
+    updated_at: datetime | None = None
 
 
 @router.get("", response_model=list[AccountRead])
 def list_accounts(
     request: Request, response: Response, page: Page = Depends(page_params), db: Session = Depends(get_db),
+    updated_since: Since | None = Depends(updated_since_param),
     ctx: TenantContext = Depends(require_permission("account:read")),
 ) -> list[AccountRead]:
     repo = AccountRepository(db, ctx.tenant_id, ctx.customer_id)
-    rows = repo.list(order_by=(Account.account_number, Account.id), limit=page.limit, offset=page.offset)
-    set_page_headers(request, response, page, repo.count())
+    extra, order = changed_since(Account, updated_since, (Account.account_number, Account.id))
+    rows = repo.list(order_by=order, limit=page.limit, offset=page.offset, **extra)
+    set_page_headers(request, response, page, repo.count(**extra), since=updated_since, rows=rows)
     return [AccountRead.model_validate(a) for a in rows]
 
 

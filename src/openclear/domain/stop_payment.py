@@ -3,6 +3,7 @@
 
 import enum
 import uuid
+from datetime import datetime
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -44,3 +45,6 @@ class StopPayment(Base):
 
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the row last changed: what list endpoints' updated_since filters on, so a bank's
+    # data pipeline fetches only what changed (docs/guides/bi.md).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

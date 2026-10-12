@@ -26,6 +26,7 @@ class ApiClientRead(BaseModel):
     security_group: str | None
     customer: str | None
     can_act_for_users: bool
+    read_only: bool = False
     created_by: str | None
     created_at: datetime | None
     secret_rotated_at: datetime | None

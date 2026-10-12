@@ -39,6 +39,10 @@ class ApiClient(Base):
     # banking provider's server does for a signed-in customer (SDK_PLAN.md P0). Off unless
     # the bank turns it on.
     can_act_for_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Read-only credentials (docs/guides/bi.md): whatever the security group allows, this
+    # client only ever has its *:read permissions (auth/deps.py). For a data pipeline, and for
+    # handing a customer a feed of its own data (with customer_id set on its membership).
+    read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # The online banking provider's SSO connection whose ID tokens this client may exchange
     # for a token acting for that person (RFC 8693; api/v1/oauth.py), and whose subject ids
     # OpenClear-Act-As-Subject refers to. Needs can_act_for_users.

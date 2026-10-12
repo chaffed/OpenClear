@@ -16,5 +16,6 @@ def file_response(media_type: str, description: str) -> dict:
 
 CSV_FILE = file_response("text/csv", "A CSV file")
 XML_FILE = file_response("application/xml", "An XML file")
+ZIP_FILE = file_response("application/zip", "A zip archive")
 # A decision file's type depends on its layout (plugins.api.DecisionLayout.media_type).
 ANY_FILE = file_response("application/octet-stream", "A file; its Content-Type depends on the layout")

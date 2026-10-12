@@ -15,6 +15,7 @@ export interface AccountRead {
   external_account_id: string | null;
   id: string;
   name: string;
+  updated_at?: string | null;
 }
 
 export interface AccountUpsert {
@@ -40,6 +41,7 @@ export interface AchAuthorizationRead {
   account_id: string;
   allowed_sec_codes: Array<string> | null;
   created_at: string;
+  customer_id?: string | null;
   effective_date: string;
   expiration_date: string | null;
   frequency_limit: number | null;
@@ -49,6 +51,7 @@ export interface AchAuthorizationRead {
   originator_name: string;
   receiver_id: string | null;
   status: AchAuthorizationStatus;
+  updated_at?: string | null;
 }
 
 export type AchAuthorizationStatus = "active" | "revoked";
@@ -90,6 +93,7 @@ export interface AchTransactionRead {
   account_id: string;
   amount: string;
   created_at: string;
+  customer_id?: string | null;
   effective_date: string;
   id: string;
   match_status: AchMatchStatus;
@@ -100,6 +104,7 @@ export interface AchTransactionRead {
   settlement_status: AchSettlementStatus;
   trace_number: string;
   transaction_type: AchTransactionType;
+  updated_at?: string | null;
 }
 
 export type AchTransactionType = "debit" | "credit";
@@ -118,6 +123,7 @@ export interface ApiClientRead {
   id: string;
   last_used_at: string | null;
   name: string;
+  read_only?: boolean;
   revoked_at: string | null;
   secret_rotated_at: string | null;
   security_group: string | null;
@@ -217,6 +223,7 @@ export interface CustomerRead {
   primary_contact_name: string | null;
   state: string | null;
   tax_id: string | null;
+  updated_at?: string | null;
 }
 
 export interface CustomerTermsRead {
@@ -254,6 +261,17 @@ export interface CustomerUpsert {
   state?: string | null;
   tax_id?: string | null;
   website?: string | null;
+}
+
+export interface DataExportRead {
+  completed_at: string | null;
+  customer_id: string | null;
+  error: string | null;
+  file_url: string | null;
+  id: string;
+  requested_at: string | null;
+  size_bytes: number | null;
+  status: string;
 }
 
 export interface DecideRequest {
@@ -311,6 +329,7 @@ export interface EmbedLaunchRead {
 
 export interface ExceptionRead {
   created_at: string;
+  customer_id?: string | null;
   decision_deadline: string | null;
   exception_types: Array<string>;
   id: string;
@@ -320,6 +339,7 @@ export interface ExceptionRead {
   related_reference_id: string | null;
   source_item_id: string;
   status: ExceptionStatus;
+  updated_at?: string | null;
 }
 
 export type ExceptionStatus = "open" | "pending_approval" | "pay" | "return" | "escalated" | "withdrawn";
@@ -434,10 +454,12 @@ export interface IssuedItemRead {
   amount: string;
   check_number: string;
   created_at: string;
+  customer_id?: string | null;
   id: string;
   issue_date: string;
   payee_name: string;
   status: IssuedItemStatus;
+  updated_at?: string | null;
   void_reason: string | null;
 }
 
@@ -514,12 +536,14 @@ export interface PaidItemRead {
   account_id: string;
   check_number: string;
   created_at: string;
+  customer_id?: string | null;
   id: string;
   match_status: PaidItemMatchStatus;
   matched_issued_item_id: string | null;
   presented_amount: string;
   presented_date: string;
   settlement_status: PaidItemSettlementStatus;
+  updated_at?: string | null;
 }
 
 export type PaidItemSettlementStatus = "pending" | "paid" | "returned" | "reversed";
@@ -585,11 +609,13 @@ export interface StopPaymentRead {
   amount: string | null;
   check_number: string;
   created_at: string;
+  customer_id?: string | null;
   effective_date: string;
   expiration_date: string | null;
   id: string;
   reason: string | null;
   status: StopPaymentStatus;
+  updated_at?: string | null;
 }
 
 export type StopPaymentStatus = "active" | "expired" | "cancelled";
@@ -645,7 +671,7 @@ export class AccountsApi {
    *
    * GET /api/v1/accounts
    */
-  listAccounts(query: { limit?: number; offset?: number } = {}): Promise<Array<AccountRead>> {
+  listAccounts(query: { limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<AccountRead>> {
     return this.c.call<Array<AccountRead>>("GET", `/api/v1/accounts`, { query });
   }
 
@@ -654,7 +680,7 @@ export class AccountsApi {
    *
    * GET /api/v1/accounts
    */
-  iterAccounts(query: { limit?: number } = {}): AsyncIterable<AccountRead> {
+  iterAccounts(query: { limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<AccountRead> {
     return this.c.paginate<AccountRead>("GET", `/api/v1/accounts`, { query });
   }
 
@@ -684,7 +710,7 @@ export class AchAuthorizationsApi {
    *
    * GET /api/v1/ach/authorizations
    */
-  listAchAuthorizations(query: { status_filter?: AchAuthorizationStatus | null; limit?: number; offset?: number } = {}): Promise<Array<AchAuthorizationRead>> {
+  listAchAuthorizations(query: { status_filter?: AchAuthorizationStatus | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<AchAuthorizationRead>> {
     return this.c.call<Array<AchAuthorizationRead>>("GET", `/api/v1/ach/authorizations`, { query });
   }
 
@@ -693,7 +719,7 @@ export class AchAuthorizationsApi {
    *
    * GET /api/v1/ach/authorizations
    */
-  iterAchAuthorizations(query: { status_filter?: AchAuthorizationStatus | null; limit?: number } = {}): AsyncIterable<AchAuthorizationRead> {
+  iterAchAuthorizations(query: { status_filter?: AchAuthorizationStatus | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<AchAuthorizationRead> {
     return this.c.paginate<AchAuthorizationRead>("GET", `/api/v1/ach/authorizations`, { query });
   }
 
@@ -729,7 +755,7 @@ export class AchTransactionsApi {
    *
    * GET /api/v1/ach/transactions
    */
-  listAchTransactions(query: { account_id?: string | null; limit?: number; offset?: number } = {}): Promise<Array<AchTransactionRead>> {
+  listAchTransactions(query: { account_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<AchTransactionRead>> {
     return this.c.call<Array<AchTransactionRead>>("GET", `/api/v1/ach/transactions`, { query });
   }
 
@@ -738,7 +764,7 @@ export class AchTransactionsApi {
    *
    * GET /api/v1/ach/transactions
    */
-  iterAchTransactions(query: { account_id?: string | null; limit?: number } = {}): AsyncIterable<AchTransactionRead> {
+  iterAchTransactions(query: { account_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<AchTransactionRead> {
     return this.c.paginate<AchTransactionRead>("GET", `/api/v1/ach/transactions`, { query });
   }
 
@@ -1272,7 +1298,7 @@ export class CustomersApi {
    *
    * Oldest first, paged. Filter by the core's id with `external_customer_id`.
    */
-  listCustomers(query: { external_customer_id?: string | null; limit?: number; offset?: number } = {}): Promise<Array<CustomerRead>> {
+  listCustomers(query: { external_customer_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<CustomerRead>> {
     return this.c.call<Array<CustomerRead>>("GET", `/api/v1/customers`, { query });
   }
 
@@ -1281,7 +1307,7 @@ export class CustomersApi {
    *
    * GET /api/v1/customers
    */
-  iterCustomers(query: { external_customer_id?: string | null; limit?: number } = {}): AsyncIterable<CustomerRead> {
+  iterCustomers(query: { external_customer_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<CustomerRead> {
     return this.c.paginate<CustomerRead>("GET", `/api/v1/customers`, { query });
   }
 
@@ -1295,6 +1321,59 @@ export class CustomersApi {
    */
   upsertCustomer(customerNumber: string, body: CustomerUpsert): Promise<CustomerRead> {
     return this.c.call<CustomerRead>("PUT", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}`, { json: body });
+  }
+}
+
+/** `data exports` endpoints. */
+export class DataExportsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * List Exports.
+   *
+   * GET /api/v1/data-exports
+   *
+   * This client's scope's exports, newest first.
+   */
+  listExports(): Promise<Array<DataExportRead>> {
+    return this.c.call<Array<DataExportRead>>("GET", `/api/v1/data-exports`, {  });
+  }
+
+  /**
+   * Start Export.
+   *
+   * POST /api/v1/data-exports
+   *
+   * Starts an export in the background. Poll `GET /api/v1/data-exports/{id}` until `status`
+   * is `completed`, then download `file_url`.
+   */
+  startExport(query: { customer_number?: string | null } = {}): Promise<DataExportRead> {
+    return this.c.call<DataExportRead>("POST", `/api/v1/data-exports`, { query });
+  }
+
+  /**
+   * Get Export.
+   *
+   * GET /api/v1/data-exports/{export_id}
+   */
+  getExport(exportId: string): Promise<DataExportRead> {
+    return this.c.call<DataExportRead>("GET", `/api/v1/data-exports/${encodeURIComponent(String(exportId))}`, {  });
+  }
+
+  /**
+   * Download Export.
+   *
+   * GET /api/v1/data-exports/{export_id}/file
+   *
+   * The archive: data/*.json, one file per kind of record, plus the files (check images,
+   * uploads) the records point to.
+   */
+  downloadExport(exportId: string): Promise<Uint8Array> {
+    return this.c.call<Uint8Array>("GET", `/api/v1/data-exports/${encodeURIComponent(String(exportId))}/file`, { raw: true });
   }
 }
 
@@ -1565,7 +1644,7 @@ export class ExceptionsApi {
    *
    * GET /api/v1/exceptions
    */
-  listExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number; offset?: number } = {}): Promise<Array<ExceptionRead>> {
+  listExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<ExceptionRead>> {
     return this.c.call<Array<ExceptionRead>>("GET", `/api/v1/exceptions`, { query });
   }
 
@@ -1574,7 +1653,7 @@ export class ExceptionsApi {
    *
    * GET /api/v1/exceptions
    */
-  iterExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number } = {}): AsyncIterable<ExceptionRead> {
+  iterExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<ExceptionRead> {
     return this.c.paginate<ExceptionRead>("GET", `/api/v1/exceptions`, { query });
   }
 
@@ -1655,7 +1734,7 @@ export class IssuedItemsApi {
    *
    * GET /api/v1/issued-items
    */
-  listIssuedItems(query: { status_filter?: IssuedItemStatus | null; account_id?: string | null; limit?: number; offset?: number } = {}): Promise<Array<IssuedItemRead>> {
+  listIssuedItems(query: { status_filter?: IssuedItemStatus | null; account_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<IssuedItemRead>> {
     return this.c.call<Array<IssuedItemRead>>("GET", `/api/v1/issued-items`, { query });
   }
 
@@ -1664,7 +1743,7 @@ export class IssuedItemsApi {
    *
    * GET /api/v1/issued-items
    */
-  iterIssuedItems(query: { status_filter?: IssuedItemStatus | null; account_id?: string | null; limit?: number } = {}): AsyncIterable<IssuedItemRead> {
+  iterIssuedItems(query: { status_filter?: IssuedItemStatus | null; account_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<IssuedItemRead> {
     return this.c.paginate<IssuedItemRead>("GET", `/api/v1/issued-items`, { query });
   }
 
@@ -1788,7 +1867,7 @@ export class PaidItemsApi {
    *
    * GET /api/v1/paid-items
    */
-  listPaidItems(query: { account_id?: string | null; limit?: number; offset?: number } = {}): Promise<Array<PaidItemRead>> {
+  listPaidItems(query: { account_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<PaidItemRead>> {
     return this.c.call<Array<PaidItemRead>>("GET", `/api/v1/paid-items`, { query });
   }
 
@@ -1797,7 +1876,7 @@ export class PaidItemsApi {
    *
    * GET /api/v1/paid-items
    */
-  iterPaidItems(query: { account_id?: string | null; limit?: number } = {}): AsyncIterable<PaidItemRead> {
+  iterPaidItems(query: { account_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<PaidItemRead> {
     return this.c.paginate<PaidItemRead>("GET", `/api/v1/paid-items`, { query });
   }
 
@@ -2121,7 +2200,7 @@ export class StopPaymentsApi {
    *
    * GET /api/v1/stop-payments
    */
-  listStopPayments(query: { status_filter?: StopPaymentStatus | null; limit?: number; offset?: number } = {}): Promise<Array<StopPaymentRead>> {
+  listStopPayments(query: { status_filter?: StopPaymentStatus | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<StopPaymentRead>> {
     return this.c.call<Array<StopPaymentRead>>("GET", `/api/v1/stop-payments`, { query });
   }
 
@@ -2130,7 +2209,7 @@ export class StopPaymentsApi {
    *
    * GET /api/v1/stop-payments
    */
-  iterStopPayments(query: { status_filter?: StopPaymentStatus | null; limit?: number } = {}): AsyncIterable<StopPaymentRead> {
+  iterStopPayments(query: { status_filter?: StopPaymentStatus | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<StopPaymentRead> {
     return this.c.paginate<StopPaymentRead>("GET", `/api/v1/stop-payments`, { query });
   }
 
@@ -2197,6 +2276,7 @@ export const AREAS = {
   conformance: ConformanceApi,
   controls: ControlsApi,
   customers: CustomersApi,
+  dataExports: DataExportsApi,
   decisionBatches: DecisionBatchesApi,
   decisionFeed: DecisionFeedApi,
   decisions: DecisionsApi,

@@ -137,6 +137,15 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         customer_name = customer.name
         customer_banner_message = customer.banner_message
 
+    if user.is_service_account:
+        # A read-only API client (docs/guides/bi.md) only ever reads, whatever its group allows.
+        # The full data export is a read too.
+        from openclear.domain.api_client import ApiClient
+
+        read_only = db.execute(select(ApiClient.read_only).where(ApiClient.user_id == user_id)).scalar_one_or_none()
+        if read_only:
+            permissions = frozenset(p for p in permissions if p.endswith(":read") or p == "data_export:run")
+
     ctx = TenantContext(
         tenant_id=tenant_id,
         user_id=user_id,

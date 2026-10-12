@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -29,6 +29,7 @@ class IssuedItemSource(str, enum.Enum):
 class IssuedItem(Base):
     __tablename__ = "issued_item"
     __table_args__ = (
+        Index("ix_issued_item_tenant_id_updated_at", "tenant_id", "updated_at"),
         UniqueConstraint("tenant_id", "account_id", "check_number", name="uq_issued_item_tenant_account_check"),
     )
 

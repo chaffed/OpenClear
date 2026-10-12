@@ -176,6 +176,7 @@ transactional record.</p>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>notes</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
 <tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>This customer's own reminder timing, set by its own users. Null follows the bank's; empty turns them off.</td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -191,6 +192,7 @@ transactional record.</p>
 <tr><td>external_account_id</td><td>String(64)</td><td>yes</td><td>UK (with tenant_id)</td><td>A customer's own internal reference, usable in bulk files in place of the real account number.</td></tr>
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
 <tr><td>ach_debit_block_mode</td><td>String(32) enum</td><td>no</td><td></td><td><code>filter_by_authorization</code> or <code>block_all</code>.</td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -230,6 +232,7 @@ which carries its security group and optional customer.</p>
 <tr><td>can_act_for_users</td><td>Boolean</td><td>no</td><td></td><td>Whether it may act for one of the bank's users (an online banking provider's server).</td></tr>
 <tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>created_at / secret_rotated_at / last_used_at / revoked_at</td><td>Timestamp</td><td>varies</td><td></td><td>Revoking is one-way.</td></tr>
+<tr><td>read_only</td><td>Boolean</td><td>no</td><td></td><td>Only ever reads (and runs the full data export), whatever its group allows.</td></tr>
 </tbody>
 </table>
 
@@ -533,6 +536,7 @@ erDiagram
 <tr><td>settlement_status</td><td>String(20) enum</td><td>no</td><td></td><td>pending / paid / returned / reversed.</td></tr>
 <tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>manual / bulk upload / auto-import.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -550,6 +554,7 @@ erDiagram
 <tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>active / cancelled / expired.</td></tr>
 <tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -641,6 +646,7 @@ erDiagram
 <tr><td>effective_date / expiration_date</td><td>Date</td><td>varies</td><td></td><td></td></tr>
 <tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -661,6 +667,7 @@ erDiagram
 <tr><td>settlement_status</td><td>String(20) enum</td><td>no</td><td></td><td></td></tr>
 <tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>manual / bulk upload (tabular or NACHA).</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 
@@ -814,6 +821,7 @@ erDiagram
 <tr><td>retracted_at / retracted_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → user.id</td><td>Set when a training example is retracted; it stops counting toward future training.</td></tr>
 <tr><td>recommended_ach_return_reason_id</td><td>UUID</td><td>yes</td><td>FK → ach_return_reason.id</td><td>The return reason a maker chose when recommending an ACH return; pre-selected for the approver.</td></tr>
 <tr><td>shared_training_approved_at</td><td>Timestamp</td><td>yes</td><td></td><td>For a training example from an organization on the shared model: when the platform operator approved it for training the shared model. Until then it's excluded from the shared model.</td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
 

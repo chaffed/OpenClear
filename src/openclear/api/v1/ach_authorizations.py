@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from openclear.api.v1.pagination import Page, page_params, set_page_headers
+from openclear.api.v1.pagination import Page, Since, changed_since, page_params, set_page_headers, updated_since_param
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -55,15 +55,15 @@ def list_ach_authorizations(
     response: Response,
     status_filter: AchAuthorizationStatus | None = None,
     page: Page = Depends(page_params),
+    updated_since: Since | None = Depends(updated_since_param),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("ach_authorization:read")),
 ) -> list[AchAuthorizationRead]:
-    rules = ach_authorization_service.list_ach_authorizations(
-        db, ctx.tenant_id, status=status_filter, customer_id=ctx.customer_id,
-        order_by=(AchAuthorizationRule.created_at, AchAuthorizationRule.id), limit=page.limit, offset=page.offset,
-    )
-    total = AchAuthorizationRepository(db, ctx.tenant_id, ctx.customer_id).count(status=status_filter)
-    set_page_headers(request, response, page, total)
+    repo = AchAuthorizationRepository(db, ctx.tenant_id, ctx.customer_id)
+    extra, order = changed_since(AchAuthorizationRule, updated_since, (AchAuthorizationRule.created_at, AchAuthorizationRule.id))
+    rules = repo.list(status=status_filter, order_by=order, limit=page.limit, offset=page.offset, **extra)
+    total = repo.count(status=status_filter, **extra)
+    set_page_headers(request, response, page, total, since=updated_since, rows=rules)
     return [AchAuthorizationRead.model_validate(r) for r in rules]
 
 
