@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Issue-file layouts — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About issue-file layouts{% endblock %}
+{% block help_body %}
+<p>A layout tells OpenClear how to read an issued-check file that isn't in OpenClear's own
+  column format: which column (or which characters, in a fixed-width file) holds the
+  account, check number, amount, date and payee, and how amounts and dates are written.</p>
+<p>Build one from a sample of your file. Each upload records the layout it used, so
+  changing a layout later doesn't change what an earlier upload meant.</p>
+<p>The default layout is chosen for you when you upload. A customer's own default comes
+  before the bank's.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Issue-file layouts</h1>
+    <a href="/ui/layouts/new" class="button">{{ icon("add") }}New layout</a>
+  </div>
+  {% if layouts %}
+  <table>
+    <thead><tr><th>Name</th><th>File</th>{% if ctx.customer_id is none %}<th>For</th>{% endif %}<th>Default</th><th></th></tr></thead>
+    <tbody>
+      {% for layout in layouts %}
+      <tr>
+        <td>{{ layout.name }}</td>
+        <td>{{ file_types[layout.settings.file_type] }}</td>
+        {% if ctx.customer_id is none %}<td>{{ customer_names.get(layout.customer_id, "All customers") if layout.customer_id else "All customers" }}</td>{% endif %}
+        <td>{% if layout.is_default %}<span class="badge badge-ok">default</span>{% endif %}</td>
+        <td>
+          {% if editable(layout) %}
+          <a href="/ui/layouts/{{ layout.id }}" aria-label="Edit {{ layout.name }}">Edit</a>
+          <form method="post" action="/ui/layouts/{{ layout.id }}/delete" class="inline-form" data-confirm="Delete the layout {{ layout.name }}? Uploads that used it keep their copy." data-confirm-yes="Delete" data-confirm-danger>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button" aria-label="Delete {{ layout.name }}">Delete</button>
+          </form>
+          {% else %}<span class="hint">Your bank's</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No layouts yet. Files in OpenClear's own columns need none.</p>
+  {% endif %}
+</div>
+<div class="card">
+  <h2>Start from a common layout</h2>
+  <p class="hint">Starting points, not any one vendor's specification. Pick the nearest, then
+    match it to your file with a sample.</p>
+  <ul class="plain-list">
+    {% for key, t in templates_.items() %}
+    <li><a href="/ui/layouts/new?template={{ key }}">{{ t.name }}</a>: {{ t.description }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

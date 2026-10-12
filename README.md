@@ -288,10 +288,25 @@ array, not a file):
   entry by entry against Moov's open source ACH implementation on its sample files
   (`tests/fixtures/moov-ach/`).
 
+- **Layouts** (`bulk_import/layouts.py`, issued items): a customer's own format, described
+  once in Settings → Issue-file layouts: delimited (any delimiter, header or not, columns by
+  name or position), fixed-width (start and length per field, an optional record prefix, and
+  lines to skip for a header or trailer) or Excel (a sheet). Amounts with a decimal point,
+  implied cents or a separate cents column; named date formats (`MMDDYY`, `YYYYMMDD`…); a
+  void flag; leading zeros dropped if asked. The layout builder works from a sample file and
+  previews the result before saving, and starts from a short library of common shapes. An
+  upload records a copy of the layout it used. The web form, the API (`format=layout` with a
+  `layout_id`; `GET /api/v1/bulk-uploads/layouts`) and the drop folder (the default layout)
+  all use them.
+
 Every row/entry carries its own account number (not a single account picked once for the
 whole file) — resolved against your existing accounts, so one file can span multiple
 accounts. Unmatched account numbers, and any other bad row, are reported individually
-without failing the rest of the file.
+without failing the rest of the file. Each failed row names the field at fault, and can be fixed in the
+browser and imported again (`/ui/bulk-uploads/<id>/fix`): only the fixed rows are imported,
+each recorded as a `bulk_upload_correction` with who made it, and backing the upload out
+covers them. The uploaded file itself never changes. Every upload page also takes a file
+dragged onto it.
 
 **Files are imported in the background** (`services/bulk_import_service.py`). The upload
 stores the file and checks it can be parsed; a file that can't be is rejected on the form

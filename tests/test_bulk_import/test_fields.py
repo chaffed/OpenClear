@@ -37,8 +37,11 @@ def test_parse_decimal_handles_dollar_sign_and_commas():
 
 
 def test_parse_decimal_invalid_raises():
-    with pytest.raises(RowFieldError, match="not a valid amount"):
+    with pytest.raises(RowFieldError, match="contains a letter") as error:
         parse_decimal({"amount": "abc"}, "amount")
+    assert error.value.field == "amount"
+    with pytest.raises(RowFieldError, match="isn't a valid amount"):
+        parse_decimal({"amount": "1.2.3"}, "amount")
 
 
 def test_parse_date_iso_format():

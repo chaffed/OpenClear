@@ -28,6 +28,7 @@ def start_import(
     default_filename: str,
     error_field: str = "error",
     options: dict | None = None,
+    extra_context: dict | None = None,
 ) -> Response | HTMLResponse:
     record = bulk_import_service.receive_upload(
         db,
@@ -42,6 +43,7 @@ def start_import(
         options=options,
     )
     if record.status == BulkUploadStatus.REJECTED:
-        return render_template(request, form_template, ctx=ctx, status_code=422, upload_record=record, **{error_field: record.error})
+        return render_template(request, form_template, ctx=ctx, status_code=422, upload_record=record,
+                               **{error_field: record.error, **(extra_context or {})})
     jobs_queued(db.get_bind())
     return RedirectResponse(f"/ui/bulk-uploads/{record.id}", status_code=303)

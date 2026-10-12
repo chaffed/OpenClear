@@ -18,6 +18,32 @@ examples.</p>
   simply be un-created out from under that activity).</li>
 </ul>
 
+<h2>Fixing rows that failed</h2>
+<p>When some rows fail, the upload's page lists them with the reason, naming the field at
+fault ("Amount: '1,2O0.00' contains a letter"). Press <strong>Fix failed rows</strong> to
+edit them in place: each row shows its values with the problem beside the field, and
+<strong>Import fixed rows</strong> imports only the rows you ticked. The file you uploaded
+stays exactly as it was received; each fix is recorded separately, with who made it, and
+backing the upload out reverses what the fixes created too.</p>
+
+<h2>Your own file format: layouts</h2>
+<p>An issued-check file that isn't in OpenClear's own columns (a different header, no header,
+a fixed-width file, or a spreadsheet) can be read with a <strong>layout</strong>. Build one
+under <a href="/ui/layouts">Settings → Issue-file layouts</a>:</p>
+<ol>
+  <li>Choose a sample of your file and press <strong>Show sample</strong>.</li>
+  <li>For a delimited or Excel file, choose what each column holds from the list above it. For a
+    fixed-width file, select a field's characters in the sample and press <strong>Use selected
+    text</strong>, or type its start and length.</li>
+  <li>Say how amounts (with a decimal point, or implied cents) and dates (such as MMDDYY) are
+    written, and whether a column marks voids. Press <strong>Preview</strong> to see what would be
+    imported, then <strong>Save</strong>.</li>
+</ol>
+<p>Choose the layout when you upload; your default is chosen for you. Files dropped in your
+bank's drop folder use your default layout too. A file that fails because its columns don't
+match offers to start a layout from that very file. A void line in an issue file voids the
+check already issued with that number, or records it as voided if it isn't on file yet.</p>
+
 <p>Start a bulk upload from the relevant feature's own page (for example,
 <a href="/ui/issued-items">Issued Items</a> or <a href="/ui/ach/transactions">ACH
 Transactions</a>) — there's a "Bulk upload" option alongside "New" on each.</p>

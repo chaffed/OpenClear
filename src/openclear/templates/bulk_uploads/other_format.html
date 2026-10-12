@@ -15,7 +15,7 @@
         {% for kind, fmt in formats %}<option value="{{ kind.value }}/{{ fmt }}">{{ kind.value | replace("_", " ") }}: {{ fmt }}</option>{% endfor %}
       </select>
     </label>
-    <label>File <input type="file" name="upload_file" required></label>
+    <label>File <input type="file" name="upload_file" required data-dropzone></label>
     <label><input type="checkbox" name="create_missing_accounts" value="true"> Create accounts that don't exist yet</label>
     <button type="submit">{{ icon("upload_file") }}Upload</button>
   </form>

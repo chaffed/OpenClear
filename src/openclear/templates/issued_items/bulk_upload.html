@@ -11,8 +11,9 @@
 {% block content %}
 <div class="card">
   <h1>Bulk upload issued items</h1>
-  <p>Upload a delimited file (CSV, TSV, pipe- or semicolon-separated) or an Excel
-    (.xlsx) file. The first row must be a header row with these column names
+  <p>Upload a delimited file (CSV, TSV, pipe- or semicolon-separated), an Excel (.xlsx) file,
+    or a fixed-width file. A file in your own format needs a <a href="/ui/layouts">layout</a>
+    that says where each field is. Without one, the first row must name these columns
     (case/spacing-insensitive, any order):</p>
   <table>
     <thead><tr><th>Column</th><th>Required</th><th>Example</th></tr></thead>
@@ -33,7 +34,14 @@
   {% endif %}
   <form method="post" action="/ui/issued-items/bulk" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>File <input type="file" name="upload_file" accept=".csv,.txt,.tsv,.xlsx,.xls" required></label>
+    <label>File <input type="file" name="upload_file" accept=".csv,.txt,.tsv,.dat,.prn,.xlsx,.xls" required data-dropzone></label>
+    <label>Layout
+      <select name="layout_id">
+        <option value="">OpenClear's columns (no layout)</option>
+        {% for layout in layouts or [] %}<option value="{{ layout.id }}" {{ "selected" if layout.id == default_layout_id else "" }}>{{ layout.name }}{{ " (default)" if layout.is_default else "" }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if not layouts %}<p class="hint">No layouts yet. <a href="/ui/layouts/new">Build one from a sample of your file.</a></p>{% endif %}
     <label><input type="checkbox" name="create_missing_accounts" value="true"> Automatically create accounts for account numbers not already in the system</label>
     <button type="submit">{{ icon("upload") }}Upload</button>
   </form>

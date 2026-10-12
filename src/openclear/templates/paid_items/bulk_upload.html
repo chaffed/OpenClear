@@ -38,7 +38,7 @@
   {% endif %}
   <form method="post" action="/ui/paid-items/bulk" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>File <input type="file" name="upload_file" accept=".csv,.txt,.tsv,.xlsx,.xls" required></label>
+    <label>File <input type="file" name="upload_file" accept=".csv,.txt,.tsv,.xlsx,.xls" required data-dropzone></label>
     <label><input type="checkbox" name="create_missing_accounts" value="true"> Automatically create accounts for account numbers not already in the system</label>
     <button type="submit">{{ icon("upload") }}Upload</button>
   </form>

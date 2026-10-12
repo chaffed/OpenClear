@@ -390,6 +390,14 @@ export interface ImportFormatRead {
   kind: string;
 }
 
+export interface ImportLayoutRead {
+  customer_id: string | null;
+  file_type: string;
+  id: string;
+  is_default: boolean;
+  name: string;
+}
+
 export interface ImportRunResponse {
   results: Array<ImportedFileResultRead>;
 }
@@ -786,7 +794,7 @@ export class AdminApi {
    *
    * Activates one of this organization's bank-only models (404 for any other model). With
    * segregation of duties enforced, it answers `202` with `{"status": "pending",
-   * "change_request_id"}` instead: a second admin approves it in Admin → Changes.
+   * "change_request_id"}` instead: a second admin approves it in Settings → Changes.
    */
   activateMlModel(modelId: string): Promise<MlModelRead | unknown> {
     return this.c.call<MlModelRead | unknown>("PATCH", `/api/v1/admin/ml/models/${encodeURIComponent(String(modelId))}/activate`, {  });
@@ -1081,9 +1089,11 @@ export class BulkUploadsApi {
    * POST /api/v1/bulk-uploads
    *
    * Uploads a file to import in the background. Poll `status_url` for progress. A file
-   * that can't be read at all comes back `rejected`, with the reason in `error`.
+   * that can't be read at all comes back `rejected`, with the reason in `error`. An
+   * issued-check file in the customer's own columns or a fixed-width format is sent with
+   * `format=layout` and its `layout_id`.
    */
-  uploadFile(form: { create_missing_accounts?: boolean; file: Blob; format: string; kind: BulkUploadKind }): Promise<BulkUploadAccepted> {
+  uploadFile(form: { create_missing_accounts?: boolean; file: Blob; format: string; kind: BulkUploadKind; layout_id?: string | null }): Promise<BulkUploadAccepted> {
     return this.c.call<BulkUploadAccepted>("POST", `/api/v1/bulk-uploads`, { multipart: form });
   }
 
@@ -1098,6 +1108,19 @@ export class BulkUploadsApi {
    */
   listImportFormats(): Promise<Array<ImportFormatRead>> {
     return this.c.call<Array<ImportFormatRead>>("GET", `/api/v1/bulk-uploads/formats`, {  });
+  }
+
+  /**
+   * List Import Layouts.
+   *
+   * GET /api/v1/bulk-uploads/layouts
+   *
+   * The issued-check file layouts the caller can upload with (Settings → Issue-file
+   * layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
+   * `kind=issued_items` and `format=layout`.
+   */
+  listImportLayouts(): Promise<Array<ImportLayoutRead>> {
+    return this.c.call<Array<ImportLayoutRead>>("GET", `/api/v1/bulk-uploads/layouts`, {  });
   }
 
   /**
@@ -1410,7 +1433,7 @@ export class DecisionFeedApi {
    * GET /api/v1/decisions/file
    *
    * The same decisions as a file in the layout a core takes back. Layouts beyond the
-   * built-in CSV come from plugins, turned on per organization (Admin → Plugins).
+   * built-in CSV come from plugins, turned on per organization (Settings → Plugins).
    */
   decisionFile(query: { layout?: string; after?: number; limit?: number } = {}): Promise<Uint8Array> {
     return this.c.call<Uint8Array>("GET", `/api/v1/decisions/file`, { query, raw: true });

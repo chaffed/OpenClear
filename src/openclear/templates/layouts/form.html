@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ "Edit" if layout else "New" }} issue-file layout — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}Building a layout{% endblock %}
+{% block help_body %}
+<ol>
+  <li>Choose a sample of your file and press <strong>Show sample</strong>. Its first rows appear.</li>
+  <li>Say what kind of file it is. For a delimited or Excel file, choose the field each column holds
+    from the list above it. For a fixed-width file, give each field's start and length (counting from 1),
+    or select its characters in the sample and press <strong>Use selected text</strong>.</li>
+  <li>Say how amounts and dates are written, and press <strong>Preview</strong>. Each row shows what
+    would be imported, or what's wrong with it.</li>
+  <li>When the preview looks right, <strong>Save</strong>.</li>
+</ol>
+{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/layouts">Issue-file layouts</a></p>
+<div class="card">
+  <h1>{{ "Edit" if layout else "New" }} issue-file layout</h1>
+  {% if error %}<p class="flash flash-error" role="alert" id="layout-error">{{ error }}</p>{% endif %}
+
+  <form method="post" action="{{ '/ui/layouts/' ~ layout.id if layout else '/ui/layouts' }}" enctype="multipart/form-data" class="layout-builder" data-no-busy>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="sample_b64" value="{{ sample_b64 }}">
+    <input type="hidden" name="sample_name" value="{{ sample_name or '' }}">
+
+    <fieldset>
+      <legend>Layout</legend>
+      <label>Name <input type="text" name="name" value="{{ layout_name }}" maxlength="100" required></label>
+      {% if ctx.customer_id is none %}
+      <label>For
+        <select name="owner">
+          <option value="">All customers</option>
+          {% for c in customers %}<option value="{{ c.id }}" {{ "selected" if owner == c.id else "" }}>{{ c.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label><input type="checkbox" name="is_default" value="true" {{ "checked" if is_default else "" }}> Use this layout by default for uploads</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sample file</legend>
+      {% if sample_name %}<p>Using <strong>{{ sample_name }}</strong>. Choose another to replace it.</p>{% endif %}
+      <label>Sample <input type="file" name="sample" accept=".csv,.txt,.tsv,.dat,.prn,.xlsx,.xls" data-dropzone></label>
+      <button type="submit" name="action" value="preview" class="secondary">{{ icon("visibility") }}Show sample</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>The file</legend>
+      <label>Kind of file
+        <select name="file_type" data-layout-type>
+          {% for value, label in file_types.items() %}<option value="{{ value }}" {{ "selected" if settings.file_type == value else "" }}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <div data-layout-for="delimited">
+        {% set delim = settings.delimiter if settings.delimiter is defined else "," %}
+        <label>Delimiter
+          <select name="delimiter">
+            {% for value, label in delimiters.items() %}<option value="{{ value }}" {{ "selected" if delim == value else "" }}>{{ label }}</option>{% endfor %}
+            <option value="other" {{ "selected" if delim not in delimiters else "" }}>Other</option>
+          </select>
+        </label>
+        <label>Other delimiter <input type="text" name="delimiter_other" maxlength="1" style="max-width:4em;" value="{{ delim if delim not in delimiters else '' }}"></label>
+      </div>
+      <div data-layout-for="excel">
+        <label>Sheet (blank for the first) <input type="text" name="sheet" value="{{ settings.sheet or '' }}"></label>
+      </div>
+      <div data-layout-for="delimited excel">
+        <label><input type="checkbox" name="has_header" value="true" {{ "checked" if settings.has_header else "" }}> The first row names the columns</label>
+      </div>
+      <div data-layout-for="fixed">
+        <label>Only lines starting with (optional, e.g. D for detail records) <input type="text" name="line_prefix" value="{{ settings.line_prefix or '' }}" style="max-width:8em;"></label>
+      </div>
+      <div class="inline-fields">
+        <label>Lines to skip at the top <input type="number" name="skip_rows" min="0" value="{{ settings.skip_rows or 0 }}" style="max-width:6em;"></label>
+        <label>Lines to skip at the bottom <input type="number" name="skip_footer" min="0" value="{{ settings.skip_footer or 0 }}" style="max-width:6em;"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Where each field is</legend>
+      {% if problem %}<p class="flash flash-warn" role="status">{{ problem }}</p>{% endif %}
+      {% if view and not view.fixed %}
+      <p class="hint">Choose what each column holds. Required: {% for f in required %}{{ fields[f] }}{{ ", " if not loop.last }}{% endfor %}.</p>
+      <div class="table-scroll">
+      <table class="sample-grid">
+        <thead>
+          <tr>
+            {% for i in view.columns %}
+            <th scope="col">
+              <label class="visually-hidden" for="assign_{{ i }}">Column {{ i + 1 }}{% if view.header and i < view.header|length %} ({{ view.header[i] }}){% endif %} holds</label>
+              <select name="assign_{{ i }}" id="assign_{{ i }}">
+                <option value="">—</option>
+                {% for key, label in fields.items() %}<option value="{{ key }}" {{ "selected" if assigned.get(i) == key else "" }}>{{ label }}</option>{% endfor %}
+              </select>
+              <div class="sample-col-name">{{ view.header[i] if view.header and i < view.header|length and view.header[i] else "Column " ~ (i + 1) }}</div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in view.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% elif settings.file_type != "fixed" %}
+      <p class="hint">Without a sample, give each field's column name (when the first row names them) or number (1 is the first).</p>
+      <div class="field-grid">
+        {% for key, label in fields.items() %}
+        {% set ref = (settings.columns or {}).get(key) or {} %}
+        <label>{{ label }}{% if key in required %} (required){% endif %}
+          <input type="text" name="col_{{ key }}" value="{{ ref.name or ref.position or '' }}">
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div data-layout-for="fixed">
+        {% if view and view.fixed %}
+        <p class="hint">Select a field's characters in a line below, choose the field, and press <strong>Use selected text</strong>; or type the positions.</p>
+        <div class="table-scroll">
+          <pre class="sample-lines" data-sample-lines>{% set ruler = namespace(text="") %}{% for n in range(1, view.width + 1) %}{% set ruler.text = ruler.text ~ ("|" if n % 10 == 0 else ("+" if n % 5 == 0 else "·")) %}{% endfor %}<span class="ruler" aria-hidden="true">{{ ruler.text }}</span>
+{% for line in view.lines %}<span class="sample-line">{{ line }}</span>
+{% endfor %}</pre>
+        </div>
+        <div class="inline-fields" data-selection-tools hidden>
+          <label>Selected text is
+            <select data-selection-field>{% for key, label in fields.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+          </label>
+          <button type="button" class="secondary" data-use-selection>Use selected text</button>
+          <span class="hint" data-selection-status aria-live="polite"></span>
+        </div>
+        {% endif %}
+        <table class="field-positions">
+          <thead><tr><th scope="col">Field</th><th scope="col">Start</th><th scope="col">Length</th></tr></thead>
+          <tbody>
+            {% for key, label in fields.items() %}
+            {% set spot = (settings.positions or {}).get(key) or {} %}
+            <tr>
+              <th scope="row">{{ label }}{% if key in required %} <span class="hint">(required)</span>{% endif %}</th>
+              <td><input type="number" min="1" name="start_{{ key }}" value="{{ spot.start or '' }}" aria-label="{{ label }} start" style="max-width:6em;"></td>
+              <td><input type="number" min="1" name="length_{{ key }}" value="{{ spot.length or '' }}" aria-label="{{ label }} length" style="max-width:6em;"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Values</legend>
+      <label>Amounts
+        <select name="amount_format">{% for value, label in amount_formats.items() %}<option value="{{ value }}" {{ "selected" if (settings.amount_format or "decimal") == value else "" }}>{{ label }}</option>{% endfor %}</select>
+      </label>
+      <label>Dates
+        <select name="date_format">{% for value in date_formats %}<option value="{{ value }}" {{ "selected" if (settings.date_format or "auto") == value else "" }}>{{ "Recognize it (2026-01-15, 01/15/2026)" if value == "auto" else value }}</option>{% endfor %}</select>
+      </label>
+      <label>A void is marked by (comma-separated, e.g. V, Y) <input type="text" name="void_values" value="{{ settings.void_values or '' }}" style="max-width:12em;"></label>
+      <label><input type="checkbox" name="strip_zeros" value="check_number" {{ "checked" if "check_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from check numbers</label>
+      <label><input type="checkbox" name="strip_zeros" value="account_number" {{ "checked" if "account_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from account numbers</label>
+    </fieldset>
+
+    <div class="form-actions">
+      <button type="submit" name="action" value="preview" class="secondary">{{ icon("visibility") }}Preview</button>
+      <button type="submit" name="action" value="save">{{ icon("save") }}Save</button>
+    </div>
+  </form>
+</div>
+
+{% if preview %}
+<div class="card" aria-live="polite">
+  <h2>Preview</h2>
+  <p class="hint">The first {{ preview | length }} items, as they would be imported.</p>
+  <div class="table-scroll">
+  <table class="layout-preview">
+    <thead><tr><th scope="col">Where</th><th scope="col">Account</th><th scope="col">Check</th><th scope="col">Amount</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Void</th><th scope="col">Problem</th></tr></thead>
+    <tbody>
+      {% for row in preview %}
+      <tr{% if row.error %} class="row-error"{% endif %}>
+        <td>{{ row.label }}</td>
+        {% if row.parsed %}
+        <td>{{ row.parsed.account_number }}</td><td>{{ row.parsed.check_number }}</td><td>{{ row.parsed.amount }}</td>
+        <td>{{ row.parsed.issue_date }}</td><td>{{ row.parsed.payee_name }}</td><td>{{ "void" if row.parsed.void else "" }}</td><td></td>
+        {% else %}
+        {% for f in ("account_number", "check_number", "amount", "issue_date", "payee_name", "void") %}
+        <td{% if row.error_field == f %} class="cell-error"{% endif %}>{{ row.raw.get(f, "") }}</td>
+        {% endfor %}
+        <td class="cell-error">{{ row.error }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/layout-builder.js"></script>
+{% endblock %}

@@ -11,14 +11,19 @@ _DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d")
 class RowFieldError(ValueError):
     """A specific row/entry's field failed to parse or is missing — the message is
     surfaced directly to the user in the bulk-upload results page, so it's written to be
-    read by someone looking at their own spreadsheet row, not a developer."""
+    read by someone looking at their own spreadsheet row, not a developer. `field` names
+    the field at fault, so the fix form shows the message beside it (UX_PLAN.md U2)."""
+
+    def __init__(self, message: str, field: str | None = None) -> None:
+        super().__init__(message)
+        self.field = field
 
 
 def require_str(row: dict[str, Any], key: str) -> str:
     value = row.get(key)
     text = str(value).strip() if value is not None else ""
     if not text or text.lower() == "nan":  # pandas renders empty cells as float NaN
-        raise RowFieldError(f"'{key}' is required")
+        raise RowFieldError(f"'{key}' is required", key)
     return text
 
 
@@ -36,7 +41,8 @@ def parse_decimal(row: dict[str, Any], key: str) -> Decimal:
     try:
         return Decimal(cleaned)
     except InvalidOperation:
-        raise RowFieldError(f"'{key}' is not a valid amount: {raw!r}") from None
+        reason = "contains a letter" if any(ch.isalpha() for ch in cleaned) else "isn't a valid amount"
+        raise RowFieldError(f"'{key}' {reason}: {raw!r}", key) from None
 
 
 def parse_date(row: dict[str, Any], key: str) -> date:
@@ -54,4 +60,4 @@ def parse_date(row: dict[str, Any], key: str) -> date:
             return datetime.strptime(raw, fmt).date()
         except ValueError:
             continue
-    raise RowFieldError(f"'{key}' is not a recognizable date: {raw!r}")
+    raise RowFieldError(f"'{key}' is not a recognizable date: {raw!r}", key)

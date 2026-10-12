@@ -153,7 +153,7 @@ def _issued_item_input_from_row(
             session, tenant_id, account_number, customer_id=scoped_customer_id
         )
         if account is None:
-            raise RowFieldError(f"No account found with account number {account_number!r}")
+            raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
 
     return IssuedItemInput(
         account_id=account.id,
@@ -177,6 +177,40 @@ def create_issued_item_from_row(
     data = _issued_item_input_from_row(
         session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
     )
+    item = create_issued_item(
+        session, tenant_id, data, submitted_by_user_id=submitted_by_user_id, source=IssuedItemSource.BULK_FILE,
+        scoped_customer_id=scoped_customer_id,
+    )
+    return item.id
+
+
+def create_issued_item_from_layout_row(
+    session: Session,
+    tenant_id: uuid.UUID,
+    row: dict[str, Any],
+    *,
+    submitted_by_user_id: uuid.UUID | None,
+    auto_create_accounts: bool = False,
+    scoped_customer_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """One item read by a layout (bulk_import/layouts.convert). A void line voids the check
+    already issued with that number on that account, or records it as issued and voided
+    if it isn't on file yet, so a later presentment of it is still caught."""
+    from openclear.repositories.issued_item_repo import IssuedItemRepository
+
+    data = _issued_item_input_from_row(
+        session, tenant_id, row, auto_create_accounts=auto_create_accounts, scoped_customer_id=scoped_customer_id
+    )
+    if row.get("void"):
+        existing = IssuedItemRepository(session, tenant_id, scoped_customer_id).list(account_id=data.account_id,
+                                                                                    check_number=data.check_number)
+        item = existing[0] if existing else create_issued_item(
+            session, tenant_id, data, submitted_by_user_id=submitted_by_user_id, source=IssuedItemSource.BULK_FILE,
+            scoped_customer_id=scoped_customer_id,
+        )
+        if item.status != IssuedItemStatus.VOIDED:
+            void_issued_item(session, tenant_id, item.id, "Voided by an issue file", scoped_customer_id=scoped_customer_id)
+        return item.id
     item = create_issued_item(
         session, tenant_id, data, submitted_by_user_id=submitted_by_user_id, source=IssuedItemSource.BULK_FILE,
         scoped_customer_id=scoped_customer_id,

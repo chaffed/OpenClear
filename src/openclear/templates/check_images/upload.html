@@ -14,7 +14,7 @@
     delimited data, no image required.</p>
   <form method="post" action="/ui/check-images" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Front image <input type="file" name="front_image" accept="image/*" required></label>
+    <label>Front image <input type="file" name="front_image" accept="image/*" required data-dropzone></label>
     <label>Link to paid item (optional)
       <select name="paid_item_id">
         <option value="">— none —</option>

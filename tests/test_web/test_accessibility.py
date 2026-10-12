@@ -37,6 +37,8 @@ PAGES = [
     ("settings_reminders", "/ui/settings/reminders", True),
     ("settings_security_events", "/ui/settings/security-events", True),
     ("check_return_reasons", "/ui/check-return-reasons", True),
+    ("layouts", "/ui/layouts", True),
+    ("layout_builder", "/ui/layouts/new?template=fixed_width", True),
     ("controls", "/ui/admin/controls", True),
     ("action_log", "/ui/audit-log", True),
     ("not_found", "/ui/no-such-page", True),

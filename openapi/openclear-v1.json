@@ -972,6 +972,19 @@
           },
           "kind": {
             "$ref": "#/components/schemas/BulkUploadKind"
+          },
+          "layout_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With format=layout: a layout from GET /api/v1/bulk-uploads/layouts",
+            "title": "Layout Id"
           }
         },
         "required": [
@@ -2762,6 +2775,48 @@
           "built_in"
         ],
         "title": "ImportFormatRead",
+        "type": "object"
+      },
+      "ImportLayoutRead": {
+        "properties": {
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "file_type": {
+            "title": "File Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "customer_id",
+          "is_default",
+          "file_type"
+        ],
+        "title": "ImportLayoutRead",
         "type": "object"
       },
       "ImportRunResponse": {
@@ -4683,7 +4738,7 @@
     },
     "/api/v1/admin/ml/models/{model_id}/activate": {
       "patch": {
-        "description": "Activates one of this organization's bank-only models (404 for any other model). With\nsegregation of duties enforced, it answers `202` with `{\"status\": \"pending\",\n\"change_request_id\"}` instead: a second admin approves it in Admin \u2192 Changes.",
+        "description": "Activates one of this organization's bank-only models (404 for any other model). With\nsegregation of duties enforced, it answers `202` with `{\"status\": \"pending\",\n\"change_request_id\"}` instead: a second admin approves it in Settings \u2192 Changes.",
         "operationId": "activate_ml_model_api_v1_admin_ml_models__model_id__activate_patch",
         "parameters": [
           {
@@ -4718,7 +4773,7 @@
                 }
               }
             },
-            "description": "Segregation of duties is enforced: the activation waits for a second admin (Admin \u2192 Changes)"
+            "description": "Segregation of duties is enforced: the activation waits for a second admin (Settings \u2192 Changes)"
           },
           "422": {
             "content": {
@@ -6294,7 +6349,7 @@
     },
     "/api/v1/bulk-uploads": {
       "post": {
-        "description": "Uploads a file to import in the background. Poll `status_url` for progress. A file\nthat can't be read at all comes back `rejected`, with the reason in `error`.",
+        "description": "Uploads a file to import in the background. Poll `status_url` for progress. A file\nthat can't be read at all comes back `rejected`, with the reason in `error`. An\nissued-check file in the customer's own columns or a fixed-width format is sent with\n`format=layout` and its `layout_id`.",
         "operationId": "upload_file_api_v1_bulk_uploads_post",
         "requestBody": {
           "content": {
@@ -6365,6 +6420,37 @@
           }
         ],
         "summary": "List Import Formats",
+        "tags": [
+          "bulk-uploads"
+        ]
+      }
+    },
+    "/api/v1/bulk-uploads/layouts": {
+      "get": {
+        "description": "The issued-check file layouts the caller can upload with (Settings \u2192 Issue-file\nlayouts): a customer's own and the bank's. Send one's `id` as `layout_id` with\n`kind=issued_items` and `format=layout`.",
+        "operationId": "list_import_layouts_api_v1_bulk_uploads_layouts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportLayoutRead"
+                  },
+                  "title": "Response List Import Layouts Api V1 Bulk Uploads Layouts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Import Layouts",
         "tags": [
           "bulk-uploads"
         ]
@@ -7394,7 +7480,7 @@
     },
     "/api/v1/decisions/file": {
       "get": {
-        "description": "The same decisions as a file in the layout a core takes back. Layouts beyond the\nbuilt-in CSV come from plugins, turned on per organization (Admin \u2192 Plugins).",
+        "description": "The same decisions as a file in the layout a core takes back. Layouts beyond the\nbuilt-in CSV come from plugins, turned on per organization (Settings \u2192 Plugins).",
         "operationId": "decision_file_api_v1_decisions_file_get",
         "parameters": [
           {

@@ -113,10 +113,55 @@ def bulk_upload_detail(
     failures = bulk_import_service.row_results(db, record, failures_only=True, limit=_FAILURES_SHOWN)
     has_row_results = bool(failures) or bool(bulk_import_service.row_results(db, record, limit=1))
     back_url, back_label = _BACK_BY_KIND.get(record.kind, (None, None))
+    corrections = bulk_import_service.corrections(db, record) if finished else []
+    fixed_rows = {c.row_index for c in corrections if c.success}
+    options = record.options or {}
+    # A file in someone's own columns fails on every row (or is rejected): offer to describe
+    # it with a layout, starting from this very file.
+    offer_layout = (record.kind == BulkUploadKind.ISSUED_ITEMS and options.get("format", "tabular") == "tabular"
+                    and "issued_item:write" in ctx.permissions
+                    and (record.status.value == "rejected" or (finished and record.failed_count and not record.succeeded_count)))
     return render_template(
         request, "bulk_uploads/detail.html", ctx=ctx, record=record, verified=verified, tracked_records=tracked_records,
         finished=finished, failures=failures, has_row_results=has_row_results, back_url=back_url, back_label=back_label,
+        corrections=[c for c in corrections if c.success], fixed_rows=fixed_rows, correctable=bulk_import_service.correctable(record),
+        layout_name=(options.get("layout") or {}).get("name"), offer_layout=offer_layout,
     )
+
+
+@router.get("/{upload_id}/fix")
+def fix_rows_form(request: Request, upload_id: uuid.UUID, db: Session = Depends(get_db),
+                  ctx: TenantContext = Depends(get_web_context)) -> Response:
+    """The failed rows, each editable, with its error beside the field at fault (UX_PLAN.md U2)."""
+    record = _get_authorized_record(db, ctx, upload_id)
+    if not bulk_import_service.correctable(record):
+        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}", status_code=303)
+    rows = bulk_import_service.open_failures(db, record)
+    if not rows:
+        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}?flash={quote('Every failed row is fixed.')}", status_code=303)
+    return render_template(request, "bulk_uploads/fix.html", ctx=ctx, record=record, rows=rows,
+                           remaining=(record.failed_count or 0) - sum(1 for c in bulk_import_service.corrections(db, record) if c.success))
+
+
+@router.post("/{upload_id}/fix")
+async def fix_rows(request: Request, upload_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context),
+                   _csrf: None = Depends(verify_csrf)) -> Response:
+    """Imports the rows ticked for import, as edited; each is recorded as a fix of this upload."""
+    record = _get_authorized_record(db, ctx, upload_id)
+    if not bulk_import_service.correctable(record):
+        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}", status_code=303)
+    form = await request.form()
+    chosen = {int(v) for v in form.getlist("fix") if str(v).isdigit()}
+    edits: dict[int, dict[str, str]] = {index: {} for index in chosen}
+    for key, value in form.items():
+        if key.startswith("row_") and "__" in key:
+            index_text, field = key.removeprefix("row_").split("__", 1)
+            if index_text.isdigit() and int(index_text) in chosen:
+                edits[int(index_text)][field] = str(value)
+    fixed, still = bulk_import_service.apply_corrections(db, record, edits, user_id=ctx.user_id, channel="web")
+    db.commit()
+    message = f"{fixed} row{'s' if fixed != 1 else ''} imported." + (f" {still} still need{'s' if still == 1 else ''} fixing." if still else "")
+    return RedirectResponse(f"/ui/bulk-uploads/{upload_id}/fix?flash={quote(message)}", status_code=303)
 
 
 @router.get("/{upload_id}/results.csv")

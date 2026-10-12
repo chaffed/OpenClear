@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initConfirmations();
   initBusyForms();
+  initDropzones();
   initToasts();
   initPolling();
 
@@ -477,3 +478,36 @@ function initBulkDecisions() {
   if (all) all.addEventListener("change", () => { boxes.forEach((b) => (b.checked = all.checked)); update(); });
   update();
 }
+
+// A file input with data-dropzone also takes a file dragged onto it (UX_PLAN.md U2). The
+// input stays a real, labelled file input, so the keyboard and screen readers use it as
+// before; the zone around it shows the chosen file's name.
+function initDropzones() {
+  document.querySelectorAll("input[type=file][data-dropzone]").forEach((input) => {
+    const zone = document.createElement("div");
+    zone.className = "dropzone";
+    input.parentNode.insertBefore(zone, input);
+    zone.appendChild(input);
+    const hint = document.createElement("p");
+    hint.className = "dropzone-hint";
+    hint.setAttribute("aria-live", "polite");
+    hint.textContent = "or drag a file here";
+    zone.appendChild(hint);
+    const show = () => {
+      hint.textContent = input.files && input.files.length ? `Chosen: ${input.files[0].name}` : "or drag a file here";
+    };
+    input.addEventListener("change", show);
+    ["dragenter", "dragover"].forEach((name) => zone.addEventListener(name, (event) => {
+      event.preventDefault();
+      zone.classList.add("dropzone-over");
+    }));
+    ["dragleave", "drop"].forEach((name) => zone.addEventListener(name, () => zone.classList.remove("dropzone-over")));
+    zone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      if (!event.dataTransfer || !event.dataTransfer.files.length) return;
+      input.files = event.dataTransfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
+}
+

@@ -36,11 +36,11 @@ def _submission_from_row(
             session, tenant_id, account_number, customer_id=scoped_customer_id
         )
         if account is None:
-            raise RowFieldError(f"No account found with account number {account_number!r}")
+            raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
 
     transaction_type_raw = require_str(row, "transaction_type").lower()
     if transaction_type_raw not in ("debit", "credit"):
-        raise RowFieldError(f"'transaction_type' must be 'debit' or 'credit', got {transaction_type_raw!r}")
+        raise RowFieldError(f"'transaction_type' must be 'debit' or 'credit', got {transaction_type_raw!r}", "transaction_type")
 
     return AchTransactionSubmission(
         account_id=account.id,

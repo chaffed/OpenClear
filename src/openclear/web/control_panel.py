@@ -20,8 +20,8 @@ SECTIONS = ("Organization", "Security & access", "Decisions & rules", "Integrati
 
 # Who sees the panel at all: anyone holding a permission one of its tiles needs.
 BANK_PERMISSIONS = ("tenant:manage", "admin:manage", "user:manage", "security_group:manage", "api_client:manage",
-                    "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read")
-CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read")
+                    "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read", "issued_item:write")
+CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write")
 
 
 @dataclass
@@ -244,6 +244,22 @@ def _billing_tiles(db, ctx, tenant, settings) -> list[Tile]:
                  "Fees, customer billing terms and statements.", keywords="fees invoice statement")]
 
 
+def _layout_tile(db, ctx) -> Tile:
+    from openclear.services import import_layout_service
+
+    rows = import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id)
+    default = next((r for r in rows if r.is_default and (ctx.customer_id is None or r.customer_id == ctx.customer_id)), None) \
+        or next((r for r in rows if r.is_default), None)
+    state = (_plural(len(rows), "layout") + (f" · default {default.name}" if default else "")) if rows else "None"
+    return Tile("layouts", "Integrations" if ctx.customer_id is None else "Organization", "Issue-file layouts", "description",
+                "/ui/layouts", "How to read issued-check files in your own columns or a fixed-width format.", state,
+                keywords="issue file arp mapping columns fixed width excel upload import")
+
+
+def _layout_tiles(db, ctx, tenant, settings) -> list[Tile]:
+    return [_layout_tile(db, ctx)]
+
+
 _BANK_BUILDERS: list[tuple[str, Callable]] = [
     ("tenant:manage", _tenant_tiles),
     ("admin:manage", _admin_tiles),
@@ -254,6 +270,7 @@ _BANK_BUILDERS: list[tuple[str, Callable]] = [
     ("audit_log:read", _audit_tiles),
     ("data_export:run", _export_tiles),
     ("billing:read", _billing_tiles),
+    ("issued_item:write", _layout_tiles),
 ]
 
 
@@ -283,6 +300,8 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
                  "A message at the top of every page for your own people.", "Showing" if customer.banner_message else "None",
                  keywords="announcement message"),
         ]
+    if "issued_item:write" in ctx.permissions:
+        tiles.append(_layout_tile(db, ctx))
     if "billing:read" in ctx.permissions:
         tiles.append(Tile("billing-statement", "Data & compliance", "Billing statement", "request_quote", "/ui/billing/statement",
                           "What your bank charges you for positive pay.", keywords="fees invoice"))

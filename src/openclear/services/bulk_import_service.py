@@ -112,6 +112,8 @@ class ImportSpec:
     audit_action: str
     audit_noun: str  # "Paid item", for "Paid item created via bulk upload (row 2)"
     creates_check_image: bool = False
+    # `load` also takes the upload's options (a layout's settings, for "layout").
+    load_takes_options: bool = False
 
 
 # --- Loading a stored file ----------------------------------------------------------------
@@ -196,6 +198,23 @@ def _load_zip(ref: str, filename: str) -> LoadedFile:
     return loaded
 
 
+def _load_layout(path: str, filename: str, options: dict) -> LoadedFile:
+    """An issued-check file read by the layout the upload chose (bulk_import/layouts.py); the
+    upload keeps a copy of the layout's settings, so this always reads it the same way."""
+    from openclear.bulk_import import layouts
+
+    settings = ((options or {}).get("layout") or {}).get("settings")
+    if not settings:
+        raise BulkFileRejected("No layout was chosen for this file.")
+    try:
+        items = layouts.extract(settings, filename, _read(path))
+    except layouts.LayoutError as exc:
+        raise BulkFileRejected(str(exc)) from None
+    if not items:
+        raise BulkFileRejected("The layout found no items in that file.")
+    return LoadedFile([SourceRow(label, values) for label, values in items], content=settings)
+
+
 def _load_json(path: str, filename: str) -> LoadedFile:
     try:
         items = json.loads(_read(path))
@@ -247,6 +266,16 @@ def _issued_item_tabular(ctx: RowContext, row: SourceRow, loaded: LoadedFile) ->
 
     return issued_item_service.create_issued_item_from_row(
         ctx.session, ctx.tenant_id, row.data, submitted_by_user_id=ctx.actor_user_id,
+        auto_create_accounts=_create_missing(ctx), scoped_customer_id=ctx.scoped_customer_id,
+    )
+
+
+def _issued_item_layout(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uuid.UUID:
+    from openclear.bulk_import import layouts
+    from openclear.services import issued_item_service
+
+    return issued_item_service.create_issued_item_from_layout_row(
+        ctx.session, ctx.tenant_id, layouts.convert(loaded.content, row.data), submitted_by_user_id=ctx.actor_user_id,
         auto_create_accounts=_create_missing(ctx), scoped_customer_id=ctx.scoped_customer_id,
     )
 
@@ -320,6 +349,7 @@ BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
     (BulkUploadKind.PAID_ITEMS, "json"): ImportSpec(_load_json, _paid_item_json, **_PAID),
     (BulkUploadKind.ISSUED_ITEMS, "tabular"): ImportSpec(_load_tabular, _issued_item_tabular, **_ISSUED),
     (BulkUploadKind.ISSUED_ITEMS, "json"): ImportSpec(_load_json, _issued_item_json, **_ISSUED),
+    (BulkUploadKind.ISSUED_ITEMS, "layout"): ImportSpec(_load_layout, _issued_item_layout, load_takes_options=True, **_ISSUED),
     (BulkUploadKind.ACH_TRANSACTIONS, "tabular"): ImportSpec(_load_tabular, _ach_tabular, **_ACH),
     (BulkUploadKind.ACH_TRANSACTIONS, "nacha"): ImportSpec(_load_nacha, _ach_nacha, **_ACH),
     (BulkUploadKind.ACH_TRANSACTIONS, "json"): ImportSpec(_load_json, _ach_json, **_ACH),
@@ -333,7 +363,10 @@ BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
 
 @contextlib.contextmanager
 def _loaded(spec: ImportSpec, record: BulkUploadFile) -> Iterator[LoadedFile]:
-    loaded = spec.load(record.storage_path, record.original_filename)
+    if spec.load_takes_options:
+        loaded = spec.load(record.storage_path, record.original_filename, record.options or {})
+    else:
+        loaded = spec.load(record.storage_path, record.original_filename)
     try:
         yield loaded
     finally:
@@ -458,10 +491,10 @@ def _import(session: Session, record: BulkUploadFile) -> None:
                 try:
                     created_id = spec.ingest(ctx, row, loaded)
                     savepoint.commit()
-                    outcomes.append((start + offset, row, created_id, None))
+                    outcomes.append((start + offset, row, created_id, None, None))
                 except Exception as exc:  # noqa: BLE001 -- one bad row fails on its own
                     savepoint.rollback()
-                    outcomes.append((start + offset, row, None, str(exc) or exc.__class__.__name__))
+                    outcomes.append((start + offset, row, None, str(exc) or exc.__class__.__name__, getattr(exc, "field", None)))
             queued_ocr |= _record_chunk(session, record, spec, outcomes)
             start += len(chunk)
             record.processed_rows = start
@@ -493,10 +526,10 @@ def _record_chunk(session: Session, record: BulkUploadFile, spec: ImportSpec, ou
     created_ids = []
     audit_actions = []
     queued_ocr = False
-    for row_index, row, created_id, error in outcomes:
+    for row_index, row, created_id, error, error_field in outcomes:
         session.add(BulkUploadRowResult(
             tenant_id=record.tenant_id, bulk_upload_file_id=record.id, row_index=row_index, row_label=row.label[:200],
-            success=created_id is not None, created_id=created_id, error=error,
+            success=created_id is not None, created_id=created_id, error=error, error_field=(error_field or None) and error_field[:60],
         ))
         if created_id is None:
             continue
@@ -584,3 +617,115 @@ def check_job(session: Session, upload: BulkUploadFile) -> BulkUploadFile:
 
 def is_finished(upload: BulkUploadFile) -> bool:
     return upload.status in (BulkUploadStatus.COMPLETED, BulkUploadStatus.REJECTED, BulkUploadStatus.FAILED)
+
+
+# --- Fixing failed rows in the browser (UX_PLAN.md U2) ----------------------------------------
+
+# Formats whose rows are a set of named values a person can edit; a cash letter, a NACHA
+# file or a zip of images isn't fixed this way.
+CORRECTABLE_FORMATS = frozenset({"tabular", "layout", "json"})
+MAX_FIXES_SHOWN = 50
+
+
+@dataclass
+class FailedRow:
+    row_index: int
+    label: str
+    error: str | None
+    error_field: str | None
+    values: dict[str, str]
+
+
+def correctable(record: BulkUploadFile) -> bool:
+    return (record.status == BulkUploadStatus.COMPLETED and record.backed_out_at is None and bool(record.failed_count)
+            and (record.options or {}).get("format", "tabular") in CORRECTABLE_FORMATS and record.kind != BulkUploadKind.USERS)
+
+
+def _as_text(value: Any) -> str:
+    return "" if value is None else str(value)
+
+
+def _fixes(session: Session, record: BulkUploadFile):
+    from openclear.domain.bulk_upload_file import BulkUploadCorrection
+
+    return list(session.execute(select(BulkUploadCorrection).where(
+        BulkUploadCorrection.tenant_id == record.tenant_id, BulkUploadCorrection.bulk_upload_file_id == record.id,
+    ).order_by(BulkUploadCorrection.corrected_at)).scalars())
+
+
+def corrections(session: Session, record: BulkUploadFile) -> list:
+    return _fixes(session, record)
+
+
+def open_failures(session: Session, record: BulkUploadFile, *, limit: int = MAX_FIXES_SHOWN) -> list[FailedRow]:
+    """The failed rows not yet fixed, with what was last tried for each: the file's values,
+    or the last attempt at a fix and its error."""
+    fixes = _fixes(session, record)
+    fixed = {f.row_index for f in fixes if f.success}
+    latest = {f.row_index: f for f in fixes if not f.success}
+    failures = [r for r in row_results(session, record, failures_only=True) if r.row_index not in fixed][:limit]
+    if not failures:
+        return []
+    with _loaded(_spec(record), record) as loaded:
+        rows = []
+        for result in failures:
+            if result.row_index >= len(loaded.rows) or not isinstance(loaded.rows[result.row_index].data, dict):
+                continue
+            original = loaded.rows[result.row_index].data
+            attempt = latest.get(result.row_index)
+            values = {str(k): _as_text(v) for k, v in (attempt.data if attempt else original).items()}
+            rows.append(FailedRow(result.row_index, result.row_label, attempt.error if attempt else result.error,
+                                  attempt.error_field if attempt else result.error_field, values))
+    return rows
+
+
+def apply_corrections(session: Session, record: BulkUploadFile, edits: dict[int, dict[str, str]], *, user_id: uuid.UUID | None,
+                      channel: str = "web") -> tuple[int, int]:
+    """Imports the edited rows, each on its own, and records each attempt. Only rows that
+    failed and aren't fixed yet, and only the fields the row already had. Returns (fixed,
+    still failing). The caller commits."""
+    from openclear.domain.bulk_upload_file import BulkUploadCorrection
+
+    if not correctable(record):
+        raise ValueError("This upload's rows can't be fixed here.")
+    spec = _spec(record)
+    fixes = _fixes(session, record)
+    already = {f.row_index for f in fixes if f.success}
+    failed = {r.row_index for r in row_results(session, record, failures_only=True)} - already
+    ctx = RowContext(session, record.tenant_id, record.customer_id, user_id, record.options or {})
+    fixed = still = 0
+    audit = []
+    with _loaded(spec, record) as loaded:
+        for row_index, values in sorted(edits.items())[:MAX_FIXES_SHOWN]:
+            if row_index not in failed or row_index >= len(loaded.rows):
+                continue
+            original = loaded.rows[row_index]
+            if not isinstance(original.data, dict):
+                continue
+            data = {key: (values[str(key)].strip() if str(key) in values else value) for key, value in original.data.items()}
+            savepoint = session.begin_nested()
+            try:
+                created_id = spec.ingest(ctx, SourceRow(original.label, data), loaded)
+                savepoint.commit()
+            except Exception as exc:  # noqa: BLE001 -- shown beside the row, like the import's own errors
+                savepoint.rollback()
+                session.add(BulkUploadCorrection(
+                    tenant_id=record.tenant_id, bulk_upload_file_id=record.id, row_index=row_index, data=data, success=False,
+                    error=str(exc) or exc.__class__.__name__, error_field=(getattr(exc, "field", None) or None),
+                    corrected_by_user_id=user_id))
+                still += 1
+                continue
+            session.add(BulkUploadCorrection(
+                tenant_id=record.tenant_id, bulk_upload_file_id=record.id, row_index=row_index, data=data, success=True,
+                created_id=created_id, corrected_by_user_id=user_id))
+            bulk_upload_reversal_service.track_created_record(
+                session, record.tenant_id, record.id, resource_type=spec.resource_type, resource_id=created_id,
+                row_label=f"{original.label} (fixed)"[:100])
+            audit.append(audit_log_service.PendingAction(
+                actor_user_id=user_id, channel=channel, action=spec.audit_action,
+                summary=f"{spec.audit_noun} created by fixing a failed row of {record.original_filename} ({original.label})",
+                resource_type=spec.resource_type, resource_id=created_id))
+            fixed += 1
+    audit_log_service.record_actions(session, record.tenant_id, audit)
+    session.flush()
+    return fixed, still

@@ -41,7 +41,7 @@
   <form method="post" action="/ui/check-images/bulk" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="format" value="zip">
-    <label>File <input type="file" name="upload_file" accept=".zip" required></label>
+    <label>File <input type="file" name="upload_file" accept=".zip" required data-dropzone></label>
     <button type="submit">{{ icon("upload") }}Upload zip</button>
   </form>
 
@@ -57,7 +57,7 @@
   <form method="post" action="/ui/check-images/bulk" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="format" value="x937">
-    <label>File <input type="file" name="upload_file" accept=".x937,.937,.x9,.icl,.dat,.txt" required></label>
+    <label>File <input type="file" name="upload_file" accept=".x937,.937,.x9,.icl,.dat,.txt" required data-dropzone></label>
     <button type="submit">{{ icon("upload") }}Upload X9.37 file</button>
   </form>
 </div>

@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: 1.10.0 released (M1–M3, error pages). M4 merged (not yet pushed). Next: M5 (uploads), then release 1.11.**
+**Status: 1.10.0 released (M1–M3, error pages). M4 merged and pushed. M5 built on `m5-uploads`. Next: release 1.11.**
 
 ## How testing is kept down
 

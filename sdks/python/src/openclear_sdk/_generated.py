@@ -414,6 +414,14 @@ class ImportFormatRead(TypedDict):
     kind: str
 
 
+class ImportLayoutRead(TypedDict):
+    customer_id: str | None
+    file_type: str
+    id: str
+    is_default: bool
+    name: str
+
+
 class ImportRunResponse(TypedDict):
     results: list[ImportedFileResultRead]
 
@@ -795,7 +803,7 @@ class AdminApi:
 
         Activates one of this organization's bank-only models (404 for any other model). With
         segregation of duties enforced, it answers `202` with `{"status": "pending",
-        "change_request_id"}` instead: a second admin approves it in Admin → Changes.
+        "change_request_id"}` instead: a second admin approves it in Settings → Changes.
         """
         return self._c.call("PATCH", f"/api/v1/admin/ml/models/{_path(model_id)}/activate")
 
@@ -1028,15 +1036,17 @@ class BulkUploadsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def upload_file(self, file: FileInput, format: str, kind: BulkUploadKind, *, create_missing_accounts: bool | None = None) -> BulkUploadAccepted:
+    def upload_file(self, file: FileInput, format: str, kind: BulkUploadKind, *, create_missing_accounts: bool | None = None, layout_id: str | None = None) -> BulkUploadAccepted:
         """Upload File.
 
         POST /api/v1/bulk-uploads
 
         Uploads a file to import in the background. Poll `status_url` for progress. A file
-        that can't be read at all comes back `rejected`, with the reason in `error`.
+        that can't be read at all comes back `rejected`, with the reason in `error`. An
+        issued-check file in the customer's own columns or a fixed-width format is sent with
+        `format=layout` and its `layout_id`.
         """
-        return self._c.call("POST", "/api/v1/bulk-uploads", data={"create_missing_accounts": create_missing_accounts, "format": format, "kind": kind}, files={"file": file})
+        return self._c.call("POST", "/api/v1/bulk-uploads", data={"create_missing_accounts": create_missing_accounts, "format": format, "kind": kind, "layout_id": layout_id}, files={"file": file})
 
     def list_import_formats(self) -> list[ImportFormatRead]:
         """List Import Formats.
@@ -1048,6 +1058,17 @@ class BulkUploadsApi:
         kinds the caller may upload.
         """
         return self._c.call("GET", "/api/v1/bulk-uploads/formats")
+
+    def list_import_layouts(self) -> list[ImportLayoutRead]:
+        """List Import Layouts.
+
+        GET /api/v1/bulk-uploads/layouts
+
+        The issued-check file layouts the caller can upload with (Settings → Issue-file
+        layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
+        `kind=issued_items` and `format=layout`.
+        """
+        return self._c.call("GET", "/api/v1/bulk-uploads/layouts")
 
     def get_bulk_upload(self, upload_id: str) -> BulkUploadRead:
         """Get Bulk Upload.
@@ -1301,7 +1322,7 @@ class DecisionFeedApi:
         GET /api/v1/decisions/file
 
         The same decisions as a file in the layout a core takes back. Layouts beyond the
-        built-in CSV come from plugins, turned on per organization (Admin → Plugins).
+        built-in CSV come from plugins, turned on per organization (Settings → Plugins).
         """
         return self._c.call("GET", "/api/v1/decisions/file", query={"layout": layout, "after": after, "limit": limit}, raw=True)
 

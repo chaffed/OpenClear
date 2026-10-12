@@ -104,25 +104,60 @@ def list_import_formats(db: Session = Depends(get_db), ctx: TenantContext = Depe
     ]
 
 
+class ImportLayoutRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    customer_id: uuid.UUID | None
+    is_default: bool
+    file_type: str
+
+
+@router.get("/layouts", response_model=list[ImportLayoutRead])
+def list_import_layouts(db: Session = Depends(get_db), ctx: TenantContext = Depends(get_current_context)) -> list[ImportLayoutRead]:
+    """The issued-check file layouts the caller can upload with (Settings → Issue-file
+    layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
+    `kind=issued_items` and `format=layout`."""
+    from openclear.services import import_layout_service
+
+    if "issued_item:write" not in ctx.permissions:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing permission: issued_item:write")
+    return [ImportLayoutRead(id=layout.id, name=layout.name, customer_id=layout.customer_id, is_default=layout.is_default,
+                             file_type=layout.settings.get("file_type", "delimited"))
+            for layout in import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id)]
+
+
 @router.post("", response_model=BulkUploadAccepted, status_code=status.HTTP_202_ACCEPTED)
 def upload_file(
     kind: BulkUploadKind = Form(...),
     format: str = Form(..., description="An import format from GET /api/v1/bulk-uploads/formats"),
     file: UploadFile = File(...),
     create_missing_accounts: bool = Form(False),
+    layout_id: uuid.UUID | None = Form(None, description="With format=layout: a layout from GET /api/v1/bulk-uploads/layouts"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(get_current_context),
 ) -> BulkUploadAccepted:
     """Uploads a file to import in the background. Poll `status_url` for progress. A file
-    that can't be read at all comes back `rejected`, with the reason in `error`."""
+    that can't be read at all comes back `rejected`, with the reason in `error`. An
+    issued-check file in the customer's own columns or a fixed-width format is sent with
+    `format=layout` and its `layout_id`."""
+    from openclear.services import import_layout_service
+
     permission = bulk_import_service.PERMISSION_BY_KIND.get(kind)
     if permission not in ctx.permissions:
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
+    options: dict = {"create_missing_accounts": create_missing_accounts}
+    if format == "layout":
+        if kind != BulkUploadKind.ISSUED_ITEMS or layout_id is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "format=layout needs kind=issued_items and a layout_id.")
+        try:
+            options |= import_layout_service.upload_options(import_layout_service.get(db, ctx.tenant_id, layout_id, ctx.customer_id))
+        except import_layout_service.LayoutNotFound:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Layout not found.") from None
     try:
         record = bulk_import_service.receive_upload(
             db, ctx.tenant_id, kind=kind, file_format=format, filename=file.filename or f"upload.{format}",
             content_type=file.content_type, uploaded_by_user_id=ctx.user_id, customer_id=ctx.customer_id,
-            source=BulkUploadSource.API, stream=file.file, options={"create_missing_accounts": create_missing_accounts},
+            source=BulkUploadSource.API, stream=file.file, options=options,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None

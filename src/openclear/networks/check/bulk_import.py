@@ -52,7 +52,7 @@ def _create_paid_item_and_images(
 ) -> uuid.UUID:
     account = account_service.get_account_by_number(session, tenant_id, account_number, customer_id=scoped_customer_id)
     if account is None:
-        raise RowFieldError(f"No account found with account number {account_number!r}")
+        raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
 
     front_png, back_png = normalize_and_split_image(front_bytes, image_filename, back_data=back_bytes)
 
@@ -165,7 +165,7 @@ def ingest_paid_item_tabular_row(
     else:
         account = account_service.get_account_by_number(session, tenant_id, account_number, customer_id=scoped_customer_id)
         if account is None:
-            raise RowFieldError(f"No account found with account number {account_number!r}")
+            raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
 
     paid_item = ingest_paid_item(
         session,

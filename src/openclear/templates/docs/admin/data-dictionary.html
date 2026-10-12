@@ -1009,6 +1009,43 @@ erDiagram
 <tr><td>success</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_id</td><td>UUID</td><td>yes</td><td></td><td>What the row created (an issued item, a paid item, ...).</td></tr>
 <tr><td>error / note</td><td>Text</td><td>yes</td><td></td><td>Why the row failed.</td></tr>
+<tr><td>error_field</td><td>String(60)</td><td>yes</td><td></td><td>The field a failed row's error is about (e.g. amount), so the fix form shows it beside that field.</td></tr>
+</tbody>
+</table>
+
+<h3>bulk_upload_correction</h3>
+<p>A failed row fixed in the browser and imported again. The uploaded file is never changed; each
+attempt is its own row, with who made it. What a fix creates is tracked with the upload's other
+records, so backing the upload out reverses it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>bulk_upload_file_id</td><td>UUID</td><td>no</td><td>FK → bulk_upload_file.id</td><td></td></tr>
+<tr><td>row_index</td><td>Integer</td><td>no</td><td></td><td>The row's 0-based position in the file.</td></tr>
+<tr><td>data</td><td>JSON</td><td>no</td><td></td><td>The values submitted.</td></tr>
+<tr><td>success / created_id</td><td>Boolean / UUID</td><td>no / yes</td><td></td><td>Whether it imported, and what it created.</td></tr>
+<tr><td>error / error_field</td><td>Text / String(60)</td><td>yes</td><td></td><td>Why it still failed, and the field at fault.</td></tr>
+<tr><td>corrected_by_user_id / corrected_at</td><td>UUID / Timestamp</td><td>yes / no</td><td>FK → user.id</td><td>Who fixed it, and when.</td></tr>
+</tbody>
+</table>
+
+<h3>import_layout</h3>
+<p>How to read an issued-check file in a customer's own format (bulk_import/layouts.py): delimited,
+fixed-width or Excel, where each field is, and how amounts and dates are written. An upload keeps a
+copy of the settings it used, in its options.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>That customer's own; null for one any of the bank's customers can use.</td></tr>
+<tr><td>kind</td><td>String(30)</td><td>no</td><td></td><td>issued_items.</td></tr>
+<tr><td>name</td><td>String(100)</td><td>no</td><td></td><td></td></tr>
+<tr><td>settings</td><td>JSON</td><td>no</td><td></td><td>file_type, columns or positions, amount_format, date_format, void_values, lines to skip, strip_zeros.</td></tr>
+<tr><td>is_default</td><td>Boolean</td><td>no</td><td></td><td>Chosen for uploads; one per bank or customer.</td></tr>
+<tr><td>created_by_user_id / created_at / updated_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 </tbody>
 </table>
 

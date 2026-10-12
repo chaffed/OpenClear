@@ -283,7 +283,7 @@ def _check_fraud_example_from_row(
     account_number = require_str(row, "account_number")
     account = account_service.get_account_by_number(session, tenant_id, account_number, customer_id=ctx.customer_id)
     if account is None:
-        raise RowFieldError(f"No account found with account number {account_number!r}")
+        raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
     new_item = CheckFraudRawInput(
         account_id=account.id,
         check_number=require_str(row, "check_number"),
@@ -348,7 +348,7 @@ def _ach_fraud_example_from_row(
     account_number = require_str(row, "account_number")
     account = account_service.get_account_by_number(session, tenant_id, account_number, customer_id=ctx.customer_id)
     if account is None:
-        raise RowFieldError(f"No account found with account number {account_number!r}")
+        raise RowFieldError(f"No account found with account number {account_number!r}", "account_number")
     new_item = AchFraudRawInput(
         account_id=account.id,
         originator_id=require_str(row, "originator_id"),

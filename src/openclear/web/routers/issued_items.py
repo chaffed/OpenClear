@@ -128,11 +128,20 @@ def create_issued_item(
 # as an invalid UUID before this route is ever tried.
 
 
+def _layout_choices(db: Session, ctx: TenantContext) -> dict:
+    """The layouts this person can upload with (services/import_layout_service.py), and the
+    one chosen for them: their customer's default, else the bank's."""
+    from openclear.services import import_layout_service
+
+    default = import_layout_service.default_for(db, ctx.tenant_id, ctx.customer_id)
+    return {"layouts": import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id), "default_layout_id": default.id if default else None}
+
+
 @router.get("/bulk")
 def bulk_upload_form(
-    request: Request, ctx: TenantContext = Depends(require_web_permission("issued_item:write"))
+    request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("issued_item:write"))
 ) -> HTMLResponse:
-    return render_template(request, "issued_items/bulk_upload.html", ctx=ctx)
+    return render_template(request, "issued_items/bulk_upload.html", ctx=ctx, **_layout_choices(db, ctx))
 
 
 @router.post("/bulk")
@@ -140,14 +149,26 @@ async def bulk_upload_issued_items(
     request: Request,
     upload_file: UploadFile,
     create_missing_accounts: bool = Form(False),
+    layout_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("issued_item:write")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
+    from openclear.services import import_layout_service
+
+    options = {"create_missing_accounts": create_missing_accounts}
+    file_format = "tabular"
+    if layout_id:
+        try:
+            layout = import_layout_service.get(db, ctx.tenant_id, uuid.UUID(layout_id), ctx.customer_id)
+        except (ValueError, import_layout_service.LayoutNotFound):
+            raise WebNotFound() from None
+        options |= import_layout_service.upload_options(layout)
+        file_format = "layout"
     return start_import(
-        request, db, ctx, upload_file, kind=BulkUploadKind.ISSUED_ITEMS, file_format="tabular",
+        request, db, ctx, upload_file, kind=BulkUploadKind.ISSUED_ITEMS, file_format=file_format,
         form_template="issued_items/bulk_upload.html", default_filename="upload.csv",
-        options={"create_missing_accounts": create_missing_accounts},
+        options=options, extra_context=_layout_choices(db, ctx),
     )
 
 

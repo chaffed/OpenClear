@@ -40,6 +40,7 @@
   <table>
     <tbody>
       <tr><th>Kind</th><td>{{ record.kind.value }}</td></tr>
+      {% if layout_name %}<tr><th>Layout</th><td>{{ layout_name }}</td></tr>{% endif %}
       <tr><th>Uploaded</th><td>{{ record.uploaded_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
       <tr><th>Size</th><td>{{ record.size_bytes }} bytes</td></tr>
       {% if record.succeeded_count is not none %}
@@ -54,13 +55,27 @@
   <p><a href="/ui/bulk-uploads/{{ record.id }}/download" class="button">{{ icon("download") }}Download original file</a>
     {% if has_row_results %}<a href="/ui/bulk-uploads/{{ record.id }}/results.csv" class="button secondary">{{ icon("download") }}Download row results (CSV)</a>{% endif %}</p>
 
+  {% if offer_layout %}
+  <div class="callout" role="note">
+    <p>Is this file in your own columns or a fixed-width format? Describe it once with a layout,
+      starting from this file, and upload it again.</p>
+    <p><a href="/ui/layouts/new?from_upload={{ record.id }}" class="button secondary">{{ icon("tune") }}Save these settings as a layout</a></p>
+  </div>
+  {% endif %}
+
   {% if failures %}
-  <h2>Rows that failed</h2>
+  <div class="toolbar">
+    <h2>Rows that failed</h2>
+    {% if correctable and failures | rejectattr("row_index", "in", fixed_rows) | list %}
+    <a href="/ui/bulk-uploads/{{ record.id }}/fix" class="button">{{ icon("edit") }}Fix failed rows</a>
+    {% endif %}
+  </div>
   <table>
-    <thead><tr><th>Row</th><th>Error</th></tr></thead>
+    <thead><tr><th>Row</th><th>Error</th><th>Fixed</th></tr></thead>
     <tbody>
       {% for r in failures %}
-      <tr><td>{{ r.row_label }}</td><td>{{ r.error }}</td></tr>
+      <tr><td>{{ r.row_label }}</td><td>{% if r.error_field %}<strong>{{ r.error_field | replace("_", " ") | capitalize }}:</strong> {% endif %}{{ r.error }}</td>
+        <td>{% if r.row_index in fixed_rows %}<span class="badge badge-ok">fixed</span>{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -88,6 +103,19 @@
     {% else %}
       <p>This upload predates the backout feature (or nothing it created was tracked) — nothing can be automatically backed out.</p>
     {% endif %}
+  {% endif %}
+
+  {% if corrections %}
+  <h2>Rows fixed in the browser</h2>
+  <table>
+    <thead><tr><th>Row</th><th>Fixed</th></tr></thead>
+    <tbody>
+      {% for c in corrections %}
+      <tr><td>{{ (failures | selectattr("row_index", "equalto", c.row_index) | map(attribute="row_label") | first) or ("row index " ~ c.row_index) }}</td>
+        <td><time datetime="{{ c.corrected_at | iso_utc }}" data-local-time>{{ c.corrected_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
 
   {% if tracked_records %}

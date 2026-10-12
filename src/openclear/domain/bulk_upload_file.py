@@ -136,3 +136,27 @@ class BulkUploadRowResult(Base):
     created_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The field a failed row's error is about ("amount"), so the fix form can show it beside
+    # that field (bulk_import/fields.RowFieldError.field). Null when it's about the row.
+    error_field: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
+
+class BulkUploadCorrection(Base):
+    """A failed row fixed in the browser and imported again (UX_PLAN.md U2). The uploaded
+    file stays as received (it's signed); each fix is its own record, with who made it,
+    what they submitted and what happened. What it creates is tracked with the upload's
+    other records, so backing the upload out covers it too."""
+
+    __tablename__ = "bulk_upload_correction"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    bulk_upload_file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("bulk_upload_file.id"), nullable=False, index=True)
+    row_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_field: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    corrected_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    corrected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

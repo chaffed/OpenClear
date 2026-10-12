@@ -438,7 +438,9 @@ table.evidence tr.mismatch td, table.evidence tr.mismatch th { background: var(-
 /* Phone-width layout (FIX_PLAN.md Phase 7, U5). app.js wraps every table in .table-scroll,
    so a wide table scrolls within its card; nothing else may make the page wider than the
    screen. */
-.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll { position: relative; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* position: relative keeps an absolutely positioned descendant (a visually hidden label in a
+   header cell) inside the scroll box, rather than widening the page. */
 .table-scroll > table { margin-top: 0.5rem; }
 /* min-width only: a max-width here would override .card-narrow's own width. */
 .card, .page > * { min-width: 0; }
@@ -602,3 +604,36 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
   .settings-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; border: 0; }
   .panel-search, .panel-search input { width: 100%; min-width: 0; }
 }
+
+/* Drag and drop onto a file input (static/js/app.js initDropzones). */
+.dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 0.85rem 1rem; margin: 0.25rem 0 0.75rem; }
+.dropzone.dropzone-over { border-color: var(--accent); background: var(--bg-muted); }
+.dropzone input[type=file] { margin: 0; }
+.dropzone-hint { margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--text-faint); }
+
+/* The issue-file layout builder (templates/layouts/form.html). */
+.layout-builder fieldset { margin: 0 0 1rem; }
+.inline-fields { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: flex-end; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 0.25rem 1rem; }
+.sample-grid select { min-width: 9rem; margin: 0; }
+.sample-grid td, .sample-col-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; white-space: pre; }
+.sample-col-name { font-weight: normal; color: var(--text-faint); margin-top: 0.25rem; }
+.sample-lines { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; line-height: 1.5;
+  background: var(--bg-muted); padding: 0.75rem; border-radius: 6px; overflow-x: auto; margin: 0 0 0.5rem; }
+.sample-lines .ruler { color: var(--text-faint); user-select: none; }
+.sample-lines .sample-line::selection { background: var(--accent); color: #fff; }
+.layout-preview .row-error td { background: var(--badge-danger-bg); }
+.cell-error { color: var(--badge-danger-fg); font-weight: 600; }
+.plain-list { padding-left: 1.2rem; }
+.plain-list li { margin: 0.35rem 0; }
+
+/* Fixing failed upload rows (templates/bulk_uploads/fix.html). */
+.fix-row { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin: 0 0 1rem; }
+.fix-row legend { font-weight: 600; padding: 0 0.35rem; }
+.field-error { display: block; color: var(--badge-danger-fg); font-size: 0.85rem; margin: 0.15rem 0 0.35rem; }
+.input-error { border-color: var(--danger) !important; }
+.callout { border-left: 4px solid var(--accent); background: var(--bg-muted); padding: 0.5rem 1rem; margin: 1rem 0; border-radius: 4px; }
+
+/* A fieldset is min-width: min-content by default, so a wide table inside one widened the
+   whole page on a phone instead of scrolling inside its own box. */
+fieldset { min-width: 0; }

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Fix failed rows — {{ record.original_filename }}{% endblock %}
+{% block help_title %}Fixing failed rows{% endblock %}
+{% block help_body %}
+<p>Each row that failed is shown with its values and what was wrong. Correct the values and
+  press <strong>Import fixed rows</strong>: only the ticked rows are imported, each on its own.</p>
+<p>The file you uploaded isn't changed; it stays exactly as received. Each fix is recorded
+  separately, with who made it, and backing the upload out also reverses what the fixes created.</p>
+{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/bulk-uploads/{{ record.id }}">{{ record.original_filename }}</a></p>
+<div class="card">
+  <h1>Fix failed rows</h1>
+  <p>{{ remaining }} row{{ "s" if remaining != 1 }} of <strong>{{ record.original_filename }}</strong> still to fix{% if rows | length < remaining %}; the first {{ rows | length }} are shown{% endif %}.</p>
+  <form method="post" action="/ui/bulk-uploads/{{ record.id }}/fix" class="fix-rows">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% for row in rows %}
+    <fieldset class="fix-row">
+      <legend>{{ row.label | capitalize }}</legend>
+      {% if row.error and not (row.error_field and row.error_field in row.values) %}
+      <p class="field-error" id="err-{{ row.row_index }}">{{ row.error }}</p>
+      {% endif %}
+      <div class="field-grid">
+        {% for key, value in row.values.items() %}
+        {% set at_fault = row.error_field == key %}
+        <label>{{ key | replace("_", " ") | capitalize }}
+          <input type="text" name="row_{{ row.row_index }}__{{ key }}" value="{{ value }}"
+            {% if at_fault %}aria-invalid="true" aria-describedby="err-{{ row.row_index }}-{{ key }}" class="input-error"{% endif %}>
+          {% if at_fault %}<span class="field-error" id="err-{{ row.row_index }}-{{ key }}">{{ row.error }}</span>{% endif %}
+        </label>
+        {% endfor %}
+      </div>
+      <label><input type="checkbox" name="fix" value="{{ row.row_index }}" checked> Import this row</label>
+    </fieldset>
+    {% endfor %}
+    <div class="form-actions">
+      <button type="submit">{{ icon("upload") }}Import fixed rows</button>
+      <a href="/ui/bulk-uploads/{{ record.id }}" class="button secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

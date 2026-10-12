@@ -6,7 +6,7 @@ products in general, so about half of it describes things OpenClear already has;
 listed below so they aren't rebuilt. The rest, plus a few gaps the analysis missed, are the
 phases here.
 
-**Status: waves 1 (M3) and 2 (M4) built; waves 3 and 4 to come.**
+**Status: waves 1–3 built (M3, M4, M5); wave 4 to come.**
 
 ## Who uses OpenClear, and what matters most to each
 
@@ -114,4 +114,5 @@ tests they touch. That's five merges in all, instead of about a dozen. MASTER_PL
 - 2026-10-10 Clickable prototypes for the user-testing round (decision flow, control panel, layout builder, session guide): https://claude.ai/artifact/79s6chjETNh5qjaAEV43m6. From review: a page opened from a control-panel tile returns to the panel with the browser's Back button (added to U11).
 - 2026-10-11 Wave 1 built (M3) from the prototype as it stood, without the user-testing round (accepted by the product owner). Findings from sessions, when they happen, come back as follow-ups. The decide-now banner is for customer users only; bank staff have the Exceptions count in the navigation.
 - 2026-10-11 Wave 2 built (M4): the control panel at bank and customer level (U11; `web/control_panel.py`, `templates/settings/panel.html`, `static/js/control-panel.js`), replacing the Settings and Admin grids; each small setting at `/ui/settings/<key>` as a page or, with `?partial=1`, a dialog's content; saving in the background (JSON for the script, a redirect otherwise). Reminders before the cutoff (U3; `services/reminder_service.py`, a `deadline_reminder` log, bank timing with a customer override). The check return-reason catalogue's page. A real-browser test covers the dialog's URL, Back, Escape with unsaved changes, saving in place and errors. axe found `aria-sort` on `role="button"` in every sortable table header; fixed for all tables.
+- 2026-10-12 Wave 3 built (M5): issue-file layouts (U1; `bulk_import/layouts.py`, `import_layout`, the `issued_items/layout` import format) with the builder from a sample (assign a field per column, or select fixed-width characters; preview with errors) and a library of starting shapes, used by the web, the API and the drop folder; failed rows fixed in the browser (U2; the field at fault on each row result, `bulk_upload_correction`, audited and reversed by back-out); drag and drop on every upload page; "Save these settings as a layout" from a mismatched file. A browser test checks the builder, the fix page and the upload page at phone width with axe; it found fieldsets and hidden header labels widening the page, fixed for every page.
 

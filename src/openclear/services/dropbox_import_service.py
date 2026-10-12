@@ -165,12 +165,22 @@ def _process_one_file(
     # background job (services/bulk_import_service.py), so a large file doesn't hold up the
     # scan. The counts are known here only when the job has already run (inline mode);
     # otherwise they're on the upload's page when it finishes.
+    # Issued items in the customer's (or else the bank's) default layout, if one is set
+    # (services/import_layout_service.py); otherwise OpenClear's own columns.
+    file_format, options = _FORMAT_BY_SUBPATH[kind_subpath], None
+    if kind_subpath == _ISSUED_ITEMS:
+        from openclear.services import import_layout_service
+
+        layout = import_layout_service.default_for(session, tenant.id, customer_id)
+        if layout is not None:
+            file_format, options = "layout", import_layout_service.upload_options(layout)
     with path.open("rb") as handle:
         upload_record = bulk_import_service.receive_upload(
             session,
             tenant.id,
             kind=_bulk_upload_kind_for(kind_subpath),
-            file_format=_FORMAT_BY_SUBPATH[kind_subpath],
+            file_format=file_format,
+            options=options,
             filename=path.name,
             content_type=None,
             uploaded_by_user_id=None,

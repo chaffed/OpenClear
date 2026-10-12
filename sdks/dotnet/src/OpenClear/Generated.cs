@@ -411,6 +411,15 @@ public sealed record ImportFormatRead
     [JsonPropertyName("kind")] public string Kind { get; init; } = default!;
 }
 
+public sealed record ImportLayoutRead
+{
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("file_type")] public string FileType { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("is_default")] public bool IsDefault { get; init; } = default!;
+    [JsonPropertyName("name")] public string Name { get; init; } = default!;
+}
+
 public sealed record ImportRunResponse
 {
     [JsonPropertyName("results")] public IReadOnlyList<ImportedFileResultRead> Results { get; init; } = default!;
@@ -809,7 +818,7 @@ public sealed partial class AdminApi
     ///
     /// Activates one of this organization's bank-only models (404 for any other model). With
     /// segregation of duties enforced, it answers `202` with `{"status": "pending",
-    /// "change_request_id"}` instead: a second admin approves it in Admin → Changes.
+    /// "change_request_id"}` instead: a second admin approves it in Settings → Changes.
     /// </summary>
     public Task<JsonElement> ActivateMlModelAsync(string modelId, CancellationToken cancellationToken = default) =>
         _c.CallAsync<JsonElement>("PATCH", $"/api/v1/admin/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", cancellationToken: cancellationToken);
@@ -1080,10 +1089,12 @@ public sealed partial class BulkUploadsApi
     /// POST /api/v1/bulk-uploads
     ///
     /// Uploads a file to import in the background. Poll `status_url` for progress. A file
-    /// that can't be read at all comes back `rejected`, with the reason in `error`.
+    /// that can't be read at all comes back `rejected`, with the reason in `error`. An
+    /// issued-check file in the customer's own columns or a fixed-width format is sent with
+    /// `format=layout` and its `layout_id`.
     /// </summary>
-    public Task<BulkUploadAccepted> UploadFileAsync(FilePart file, string format, string kind, bool? createMissingAccounts = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<BulkUploadAccepted>("POST", "/api/v1/bulk-uploads", form: new Dictionary<string, object?> { ["create_missing_accounts"] = createMissingAccounts, ["file"] = file, ["format"] = format, ["kind"] = kind }, cancellationToken: cancellationToken);
+    public Task<BulkUploadAccepted> UploadFileAsync(FilePart file, string format, string kind, bool? createMissingAccounts = null, string? layoutId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<BulkUploadAccepted>("POST", "/api/v1/bulk-uploads", form: new Dictionary<string, object?> { ["create_missing_accounts"] = createMissingAccounts, ["file"] = file, ["format"] = format, ["kind"] = kind, ["layout_id"] = layoutId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// List Import Formats.
@@ -1096,6 +1107,18 @@ public sealed partial class BulkUploadsApi
     /// </summary>
     public Task<IReadOnlyList<ImportFormatRead>> ListImportFormatsAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<ImportFormatRead>>("GET", "/api/v1/bulk-uploads/formats", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// List Import Layouts.
+    ///
+    /// GET /api/v1/bulk-uploads/layouts
+    ///
+    /// The issued-check file layouts the caller can upload with (Settings → Issue-file
+    /// layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
+    /// `kind=issued_items` and `format=layout`.
+    /// </summary>
+    public Task<IReadOnlyList<ImportLayoutRead>> ListImportLayoutsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<ImportLayoutRead>>("GET", "/api/v1/bulk-uploads/layouts", cancellationToken: cancellationToken);
 
     /// <summary>
     /// Get Bulk Upload.
@@ -1380,7 +1403,7 @@ public sealed partial class DecisionFeedApi
     /// GET /api/v1/decisions/file
     ///
     /// The same decisions as a file in the layout a core takes back. Layouts beyond the
-    /// built-in CSV come from plugins, turned on per organization (Admin → Plugins).
+    /// built-in CSV come from plugins, turned on per organization (Settings → Plugins).
     /// </summary>
     public Task<byte[]> DecisionFileAsync(string? layout = null, long? after = null, long? limit = null, CancellationToken cancellationToken = default) =>
         _c.CallRawAsync("GET", "/api/v1/decisions/file", query: new Dictionary<string, object?> { ["layout"] = layout, ["after"] = after, ["limit"] = limit }, cancellationToken: cancellationToken);
