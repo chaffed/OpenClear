@@ -210,6 +210,7 @@ def test_api_bulk_over_the_cap_is_queued_and_pollable(client, db_session, tenant
     body = resp.json()
     assert body["total"] == 3 and body["status_url"] == f"/api/v1/bulk-uploads/{body['upload_id']}"
 
+    jobs.drain(db_session.get_bind())  # the import may still be running in the background; finish it
     upload = client.get(body["status_url"], headers=headers).json()
     assert (upload["status"], upload["source"], upload["succeeded"], upload["failed"]) == ("completed", "api", 3, 0)
     results = client.get(f"{body['status_url']}/results?limit=2", headers=headers)
