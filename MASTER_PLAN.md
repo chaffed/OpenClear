@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md). Open: user-testing sessions, and a real Cloudflare zone to confirm M7.**
+**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md). Waiting for a first client (who'd also fund them): user-testing sessions, a real Cloudflare zone to confirm M7, and publishing the SDKs to package registries.**
 
 ## How testing is kept down
 
@@ -111,4 +111,5 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-12 Released 1.12.0 (M6, M7), and deployed to the sandbox.
 - 2026-10-12 Deploying 1.12.0: the image upload from here to Fly's registry failed three times on one large layer, so the sandbox was built by Fly's remote builder instead (the base and sandbox Dockerfiles combined in the release copy). The first real run of the edge check, against the sandbox behind Fly's proxy, found the sandbox saw Fly's own address for every caller (the last X-Forwarded-For hop is Fly's): now `Fly-Client-IP`, trusted only from Fly's private network. The check and the Controls page's edge control now recognise Fly.
 - 2026-10-12 For reporting through the bank's BI platform (decided instead of a dashboard): the BI guide, `updated_since` with cursor paging on every list, read-only API clients, and the data export through the API. Suites at `e9dc65ec`: SQLite 1563, Postgres 1588, Linux 3.11 1545 with one failure, a bulk-upload test racing its background job, fixed. Released as 1.13.0.
+- 2026-10-12 Decided with the product owner: user testing, the Cloudflare confirmation and SDK publishing wait for a first client, who'd fund them. They're not blockers for building.
 
