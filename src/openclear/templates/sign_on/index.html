@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Sign-on — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About sign-on{% endblock %}
+{% block help_body %}
+<p>Connect {{ customer.name }}'s identity provider (Entra ID, Okta, Google Workspace, or any OpenID Connect or
+  SAML 2.0 provider) so your people sign in with their work accounts. Each connection maps your provider's
+  groups to the roles {{ ctx.tenant_name }} offers; someone in none of the mapped groups can't sign in.</p>
+<p>New people are created automatically only for email addresses in domains you've verified. Anyone else must be
+  invited from People first.</p>
+<p>Turning off password sign-in needs a working connection, and you must have signed in through it in this
+  session: use <em>Test sign-in</em>. {{ ctx.tenant_name }} can always turn passwords back on.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Sign-on</h1>
+    <a href="/ui/sign-on/new" class="button">{{ icon("add_link") }}Add connection</a>
+  </div>
+  {% if connections %}
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Connection</th><th>Protocol</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for c in connections %}
+      <tr>
+        <td>{{ c.display_name }}{% if c.managed_by != "customer" %} <span class="badge">set up by {{ ctx.tenant_name }}</span>{% endif %}</td>
+        <td>{{ "SAML 2.0" if c.protocol.value == "saml" else "OpenID Connect" }}</td>
+        <td>
+          {% if not c.is_active %}<span class="badge badge-danger">off</span>
+          {% elif c.id in working %}<span class="badge badge-ok">working</span>
+          {% else %}<span class="badge badge-danger">no group mappings</span>{% endif %}
+        </td>
+        <td>
+          {% if c.id in working %}<a href="{{ test_urls[c.id] }}">Test sign-in</a>{% endif %}
+          {% if c.managed_by == "customer" %}
+          <a href="/ui/sign-on/{{ c.id }}/edit">Edit</a>
+          <form method="post" action="/ui/sign-on/{{ c.id }}/{{ 'deactivate' if c.is_active else 'reactivate' }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">{{ "Turn off" if c.is_active else "Turn on" }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p>No connections yet. Your people sign in with a password.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Email domains</h2>
+  <p>Prove a domain is yours by publishing a DNS TXT record at the domain (or at <code>_openclear.</code> in front of it).
+    Your sign-on and directory can then create people with addresses there.</p>
+  {% if domains %}
+  <table>
+    <thead><tr><th>Domain</th><th>TXT record</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for d in domains %}
+      <tr>
+        <td>{{ d.domain }}</td>
+        <td><code>{{ txt_prefix }}{{ d.verification_token }}</code></td>
+        <td>{% if d.verified_at %}<span class="badge badge-ok">verified</span>{% else %}<span class="badge">not yet</span>{% endif %}</td>
+        <td>
+          {% if not d.verified_at %}
+          <form method="post" action="/ui/sign-on/domains/{{ d.id }}/verify" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Verify</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/ui/sign-on/domains/{{ d.id }}/delete" class="inline-form" data-confirm="Remove {{ d.domain }}?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <form method="post" action="/ui/sign-on/domains" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Domain <input type="text" name="domain" placeholder="acme.com" required></label>
+    <button type="submit" class="secondary">{{ icon("add") }}Add domain</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Passwords</h2>
+  {% if customer.password_login_enabled %}
+  <p>Your people can sign in with a password as well as through sign-on.</p>
+  <form method="post" action="/ui/sign-on/password-sign-in" data-confirm="Turn off password sign-in? Your people will sign in only through your identity provider.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Turn off password sign-in</button>
+  </form>
+  {% else %}
+  <p>Password sign-in is off: your people sign in through your identity provider.</p>
+  <form method="post" action="/ui/sign-on/password-sign-in">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="allowed" value="true">
+    <button type="submit" class="secondary">Allow password sign-in again</button>
+  </form>
+  {% endif %}
+  <p><a href="/ui/customers/{{ customer.id }}/password-policy">Password rules</a> (never weaker than {{ ctx.tenant_name }}'s).</p>
+</div>
+{% endblock %}

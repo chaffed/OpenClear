@@ -319,6 +319,15 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
         tiles.append(Tile("people", "Security & access", "People", "groups", "/ui/people",
                           "Invite your people, choose their roles and accounts, and remove access when they leave.",
                           f"{active} active" + (f", {waiting} invited" if waiting else ""), keywords="users invite team staff"))
+    if "customer_sso:manage" in ctx.permissions:
+        from openclear.services import sso_service
+
+        working = len(sso_service.get_login_connections(db, ctx.tenant_id, customer_id=ctx.customer_id))
+        tiles.append(Tile("sign-on", "Security & access", "Sign-on", "login", "/ui/sign-on",
+                          "Connect your identity provider, verify your email domains, and choose whether passwords still work.",
+                          (f"{working} connection{'s' if working != 1 else ''}" if working else "Passwords only")
+                          + ("" if customer.password_login_enabled or not working else ", passwords off"),
+                          keywords="sso single sign-on saml oidc okta entra azure scim domain password"))
     if "issued_item:write" in ctx.permissions:
         tiles.append(_layout_tile(db, ctx))
     if "billing:read" in ctx.permissions:

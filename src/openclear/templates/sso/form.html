@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% set base = "/ui/customers/" ~ customer.id ~ "/sso" if customer is defined else "/ui/admin/sso" %}
+{% set base = sso_base if sso_base is defined else ("/ui/customers/" ~ customer.id ~ "/sso" if customer is defined else "/ui/admin/sso") %}
 {% set action = base if not connection else base ~ "/" ~ connection.id %}
 {% block title %}{{ "Edit" if connection else "Add" }} SSO connection — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this form{% endblock %}
@@ -92,7 +92,8 @@
     {% endif %}
     <label>
       <input type="checkbox" name="auto_provision" value="true" {{ "checked" if connection and connection.auto_provision else "" }}>
-      Auto-provision a new OpenClear account the first time someone signs in
+      Auto-provision a new OpenClear account the first time someone signs in{% if customer_managed is defined %}
+      (only for email addresses in your verified domains){% endif %}
     </label>
     <button type="submit">{{ icon("save") }}Save</button>
   </form>

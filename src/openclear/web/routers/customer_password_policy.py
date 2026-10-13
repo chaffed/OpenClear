@@ -10,21 +10,27 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, customer_service
-from openclear.web.deps import WebNotFound, render_template, require_web_permission
+from openclear.web.deps import WebNotFound, render_template, require_any_web_permission
 from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/password-policy", tags=["web-customer-password-policy"])
+# The bank (customer:manage), or the customer's own administrators for their own customer
+# while the bank lets it manage its sign-on (customer_sso:manage; CUSTOMER_ADMIN_PLAN.md CA-D8).
+# Either way the policy can only be stricter than the bank's.
+_allowed = require_any_web_permission("customer:manage", "customer_sso:manage")
 
 
-def _get_customer_or_404(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID):
+def _get_customer_or_404(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, ctx: TenantContext | None = None):
     customer = customer_service.get_customer(db, tenant_id, customer_id)
     if customer is None:
+        raise WebNotFound()
+    if ctx is not None and ctx.customer_id is not None and (ctx.customer_id != customer_id or not customer.self_manages_sso):
         raise WebNotFound()
     return customer
 
 
 def _render_form(request: Request, db: Session, ctx: TenantContext, customer_id: uuid.UUID, *, error: str | None = None, status_code: int = 200) -> HTMLResponse:
-    customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    customer = _get_customer_or_404(db, ctx.tenant_id, customer_id, ctx)
     tenant = db.get(Tenant, ctx.tenant_id)
     return render_template(
         request, "customers/password_policy.html", ctx=ctx, customer=customer,
@@ -38,14 +44,14 @@ def _render_form(request: Request, db: Session, ctx: TenantContext, customer_id:
         customer_require_lowercase=customer.password_require_lowercase,
         customer_require_number=customer.password_require_number,
         customer_require_symbol=customer.password_require_symbol,
-        error=error, status_code=status_code,
+        error=error, status_code=status_code, back_url="/ui/sign-on" if ctx.customer_id else f"/ui/customers/{customer_id}",
     )
 
 
 @router.get("")
 def password_policy_form(
     request: Request, customer_id: uuid.UUID, db: Session = Depends(get_db),
-    ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+    ctx: TenantContext = Depends(_allowed),
 ) -> HTMLResponse:
     return _render_form(request, db, ctx, customer_id)
 
@@ -60,10 +66,10 @@ def update_password_policy(
     require_number: bool = Form(False),
     require_symbol: bool = Form(False),
     db: Session = Depends(get_db),
-    ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+    ctx: TenantContext = Depends(_allowed),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    _get_customer_or_404(db, ctx.tenant_id, customer_id, ctx)
 
     try:
         parsed_min_length = int(min_length) if min_length.strip() else None

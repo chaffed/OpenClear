@@ -232,6 +232,10 @@ def _user_for_email(session: Session, connection: SsoConnection, email: str) -> 
             raise ScimError(409, "Someone with that email already uses OpenClear elsewhere. An admin adds them here first; "
                                  "then the directory can manage them.", "uniqueness")
     if user is None:
+        from openclear.services import customer_sign_on_service
+
+        if not customer_sign_on_service.may_create_person(session, connection, email):
+            raise ScimError(409, "This directory can add people only in your organization's verified email domains.", "uniqueness")
         # Never usable for password sign-in: SCIM people sign in through the identity provider.
         user = User(email=email, hashed_password=hash_password(secrets.token_urlsafe(48)))
         session.add(user)
@@ -247,13 +251,17 @@ def _set_email(session: Session, scim_user: ScimUser, email: str) -> None:
     if taken:
         raise ScimError(409, "Another user already has that email.", "uniqueness")
     # A person's email belongs to them across banks; only change it if this bank's directory
-    # is the only place they're known.
-    other_banks = session.execute(
-        select(func.count()).select_from(TenantMembership).where(
-            TenantMembership.user_id == user.id, TenantMembership.tenant_id != scim_user.tenant_id,
-        )
-    ).scalar_one()
-    if other_banks:
+    # is the only place they're known (a customer's own directory: this customer). Counted with
+    # the RLS probe: a plain query here sees only this bank's memberships.
+    from openclear.db.tenancy import memberships_elsewhere
+    from openclear.services import customer_sign_on_service
+
+    connection = session.get(SsoConnection, scim_user.connection_id)
+    customer_managed = connection is not None and connection.managed_by == customer_sign_on_service.MANAGED_BY_CUSTOMER
+    if customer_managed and not customer_sign_on_service.may_create_person(session, connection, email):
+        raise ScimError(409, "This directory can use only your organization's verified email domains.", "mutability")
+    if memberships_elsewhere(session, user.id, scim_user.tenant_id, customer_id=connection.customer_id if customer_managed else None,
+                             within_customer=customer_managed):
         raise ScimError(409, "This person belongs to other organizations too, so their email can't be changed here.", "mutability")
     user.email = email
 

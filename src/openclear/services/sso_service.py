@@ -349,6 +349,13 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
     if not connection.auto_provision:
         return SsoLoginResult(outcome="not_provisioned")
 
+    from openclear.services import customer_sign_on_service
+
+    if not customer_sign_on_service.may_create_person(session, connection, claims.email):
+        # A customer's own identity provider can assert any email: it creates people only in
+        # the customer's verified domains (CUSTOMER_ADMIN_PLAN.md, guardrail 5).
+        return SsoLoginResult(outcome="not_provisioned")
+
     if user is not None:
         # An identity provider can assert any email. Linking it to an existing person who
         # isn't already a member here (in this connection's scope) would let one bank's, or one
