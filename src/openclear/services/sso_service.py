@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.crypto import encrypt_secret
 from openclear.auth.oidc_service import OidcClaims
 from openclear.domain.customer import Customer
+from openclear.config import get_settings
 from openclear.domain.sso_connection import SsoAssertionSeen, SsoConnection, SsoGroupMapping, SsoIdentity, SsoProtocol, SsoProvider
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
@@ -52,7 +53,10 @@ def _https_url(value: str | None, what: str, *, required: bool) -> str | None:
         if required:
             raise ValueError(f"The {what} is required.")
         return None
-    if not value.startswith("https://") or len(value) > 1000:
+    # http only for a test identity provider on this machine (oidc_allow_private_hosts, which
+    # production refuses to start with), as for OpenID Connect (auth/outbound_http.py).
+    local = get_settings().oidc_allow_private_hosts and value.startswith("http://")
+    if not (value.startswith("https://") or local) or len(value) > 1000:
         raise ValueError(f"The {what} must be an https:// URL.")
     return value
 
