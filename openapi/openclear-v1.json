@@ -1,6 +1,63 @@
 {
   "components": {
     "schemas": {
+      "AccountAccessRead": {
+        "properties": {
+          "account_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "all_accounts": {
+            "title": "All Accounts",
+            "type": "boolean"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "customer_id",
+          "all_accounts",
+          "account_ids"
+        ],
+        "title": "AccountAccessRead",
+        "type": "object"
+      },
+      "AccountAccessUpdate": {
+        "description": "`all_accounts`: true for every account of the customer (including ones added later);\nfalse for just `account_ids` (at least one, all the customer's).",
+        "properties": {
+          "account_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "all_accounts": {
+            "title": "All Accounts",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "all_accounts"
+        ],
+        "title": "AccountAccessUpdate",
+        "type": "object"
+      },
       "AccountRead": {
         "properties": {
           "account_number": {
@@ -914,6 +971,28 @@
       },
       "Body_token_api_v1_oauth_token_post": {
         "properties": {
+          "client_assertion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Assertion"
+          },
+          "client_assertion_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Assertion Type"
+          },
           "client_id": {
             "anyOf": [
               {
@@ -4205,6 +4284,20 @@
       "TenantUserRead": {
         "description": "One row per TenantMembership, mirroring web/routers/users.py's list page exactly\n\u2014 a user with several memberships in this tenant (bank-wide plus per-customer\nscopes) appears once per membership, matching how access is actually granted.",
         "properties": {
+          "account_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "all_accounts": {
+            "default": true,
+            "title": "All Accounts",
+            "type": "boolean"
+          },
           "customer_name": {
             "anyOf": [
               {
@@ -9467,7 +9560,7 @@
     },
     "/api/v1/oauth/token": {
       "post": {
-        "description": "`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic\nauth or as `client_id` and `client_secret` form fields. Returns a bearer access token\nfor every `/api/v1` endpoint the client's security group allows.\n\n`grant_type=urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) trades the ID\ntoken of a person signed in to the bank's online banking provider (`subject_token`,\n`subject_token_type=urn:ietf:params:oauth:token-type:id_token`) for a token that acts\nfor them: what both they and the client may do, recorded as theirs. The client must be\nallowed to act for users and linked to that provider's SSO connection; the ID token is\nverified against the provider's keys, and the person is matched (or provisioned) with\nthe connection's group mappings and customer claim, as at sign-in.",
+        "description": "`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic\nauth or as `client_id` and `client_secret` form fields; or, for a client that signs in\nwith a key pair, `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`\nand `client_assertion`: a JWT signed with its private key (`iss` and `sub` the client id,\n`aud` this endpoint's URL, `exp` within five minutes, a unique `jti`). Returns a bearer access token\nfor every `/api/v1` endpoint the client's security group allows.\n\n`grant_type=urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) trades the ID\ntoken of a person signed in to the bank's online banking provider (`subject_token`,\n`subject_token_type=urn:ietf:params:oauth:token-type:id_token`) for a token that acts\nfor them: what both they and the client may do, recorded as theirs. The client must be\nallowed to act for users and linked to that provider's SSO connection; the ID token is\nverified against the provider's keys, and the person is matched (or provisioned) with\nthe connection's group mappings and customer claim, as at sign-in.",
         "operationId": "token_api_v1_oauth_token_post",
         "requestBody": {
           "content": {
@@ -11207,6 +11300,112 @@
           }
         ],
         "summary": "List Users",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{membership_id}/accounts": {
+      "get": {
+        "description": "Which of the customer's accounts this customer membership sees.",
+        "operationId": "get_account_access_api_v1_users__membership_id__accounts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAccessRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Account Access",
+        "tags": [
+          "users"
+        ]
+      },
+      "put": {
+        "description": "Limits a customer membership to some of the customer's accounts, or lets it see all\nof them again. Takes effect on that person's next request.",
+        "operationId": "set_account_access_api_v1_users__membership_id__accounts_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountAccessUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAccessRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Account Access",
         "tags": [
           "users"
         ]

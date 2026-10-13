@@ -24,6 +24,21 @@ def _path(value: Any) -> str:
 # --- Models ----------------------------------------------------------------------------------
 
 
+class AccountAccessRead(TypedDict):
+    account_ids: list[str]
+    all_accounts: bool
+    customer_id: str
+    membership_id: str
+
+
+class AccountAccessUpdate(TypedDict):
+    """`all_accounts`: true for every account of the customer (including ones added later);
+false for just `account_ids` (at least one, all the customer's)."""
+
+    account_ids: NotRequired[list[str]]
+    all_accounts: bool
+
+
 class AccountRead(TypedDict):
     account_number: str
     ach_debit_block_mode: AchDebitBlockMode
@@ -669,6 +684,8 @@ class TenantUserRead(TypedDict):
 — a user with several memberships in this tenant (bank-wide plus per-customer
 scopes) appears once per membership, matching how access is actually granted."""
 
+    account_ids: NotRequired[list[str]]
+    all_accounts: NotRequired[bool]
     customer_name: str | None
     email: str
     is_active: bool
@@ -1990,6 +2007,25 @@ class UsersApi:
         never drift apart.
         """
         return self._c.call("GET", "/api/v1/users")
+
+    def get_account_access(self, membership_id: str) -> AccountAccessRead:
+        """Get Account Access.
+
+        GET /api/v1/users/{membership_id}/accounts
+
+        Which of the customer's accounts this customer membership sees.
+        """
+        return self._c.call("GET", f"/api/v1/users/{_path(membership_id)}/accounts")
+
+    def set_account_access(self, membership_id: str, body: AccountAccessUpdate) -> AccountAccessRead:
+        """Set Account Access.
+
+        PUT /api/v1/users/{membership_id}/accounts
+
+        Limits a customer membership to some of the customer's accounts, or lets it see all
+        of them again. Takes effect on that person's next request.
+        """
+        return self._c.call("PUT", f"/api/v1/users/{_path(membership_id)}/accounts", json=body)
 
 
 AREAS = {

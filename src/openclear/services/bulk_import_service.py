@@ -40,6 +40,7 @@ from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
 from openclear.bulk_import.zip_import import ZipImportError, parse_zip_manifest
 from openclear import storage
 from openclear.config import get_settings
+from openclear.db.account_scope import bind_for_member
 from openclear.domain.bulk_upload_file import (
     BulkUploadFile,
     BulkUploadKind,
@@ -451,6 +452,8 @@ def run_import(session: Session, upload_id: uuid.UUID, *, last_attempt: bool = F
     record = session.get(BulkUploadFile, upload_id)
     if record is None or record.status in (BulkUploadStatus.COMPLETED, BulkUploadStatus.REJECTED):
         return
+    # Only the accounts the uploader may see (db/account_scope.py).
+    bind_for_member(session, record.tenant_id, record.uploaded_by_user_id, record.customer_id)
     try:
         _import(session, record)
     except Exception as exc:
@@ -560,13 +563,18 @@ def _record_chunk(session: Session, record: BulkUploadFile, spec: ImportSpec, ou
     record.succeeded_count = (record.succeeded_count or 0) + succeeded
     record.failed_count = (record.failed_count or 0) + len(outcomes) - succeeded
     if created_ids and spec.resource_type in ("paid_item", "ach_transaction"):
+        from openclear.domain.ach_transaction import AchTransaction
+        from openclear.domain.paid_item import PaidItem
+
+        source = PaidItem if spec.resource_type == "paid_item" else AchTransaction
         counts = dict(record.exception_counts or {})
-        for (customer_id,) in session.execute(
-            select(ExceptionItem.customer_id).where(
+        # By customer and account, so a person who sees only some accounts is told only of theirs.
+        for customer_id, account_id in session.execute(
+            select(ExceptionItem.customer_id, source.account_id).join(source, source.id == ExceptionItem.source_item_id).where(
                 ExceptionItem.tenant_id == record.tenant_id, ExceptionItem.source_item_id.in_(created_ids)
             )
         ):
-            key = str(customer_id) if customer_id else ""
+            key = f"{customer_id or ''}:{account_id}"
             counts[key] = counts.get(key, 0) + 1
         record.exception_counts = counts  # reassigned, so the JSON column is saved
     session.flush()

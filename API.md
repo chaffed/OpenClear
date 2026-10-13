@@ -71,12 +71,42 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=client_credentials&client_id=occ_...&client_secret=ocs_...
 ```
 
-The id and secret can also go in HTTP Basic auth. The response is
+The id and secret can also go in HTTP Basic auth.
+
+**Signing in with a key pair instead (`private_key_jwt`, RFC 7523).** Under Admin → API
+clients, **Use a key pair** registers the client's public key (RSA of 2048 bits or more, or
+EC P-256/P-384, as PEM); from then on its secret no longer works. The client signs a short
+JWT with its private key, which never leaves its systems, and sends it instead of a secret:
+
+```
+POST /api/v1/oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT>
+```
+
+The JWT is signed with RS256/384/512, PS256/384/512 or ES256/384 and carries `iss` and `sub`
+(the client id), `aud` (the token endpoint's URL: `OPENCLEAR_PUBLIC_BASE_URL` +
+`/api/v1/oauth/token`, or the address the request arrived at), `iat`, `exp` (at most five
+minutes after `iat`) and a unique `jti`, which is accepted once. Anything else is
+`401 invalid_client`. **Use a secret instead** goes back, with a new secret shown once.
+
+The response is
 `{"access_token": "...", "token_type": "Bearer", "expires_in": 1800}`
 (`OPENCLEAR_API_CLIENT_TOKEN_MINUTES`, default 30); request a new one when it expires.
 Errors follow RFC 6749: `401 {"error": "invalid_client"}` for an unknown client, a wrong
 secret or a revoked client, and `400 {"error": "unsupported_grant_type"}`. The endpoint is
 rate-limited per address (`OPENCLEAR_OAUTH_TOKEN_RATE_LIMIT_PER_MINUTE`, 30).
+
+**Per-account access.** A customer's person (or a customer's API client) sees all of the
+customer's accounts until the bank limits them to some: Users → Edit → **Choose accounts**,
+or `PUT /api/v1/users/{membership_id}/accounts` with `{"all_accounts": false, "account_ids":
+[...]}` (`GET` the same path to read it; `GET /api/v1/users` shows each membership's
+`all_accounts` and `account_ids`). Limited, every endpoint returns only those accounts and
+what's on them, an item on another account is `404`, and their bulk uploads can add items
+only to those accounts.
 
 A client acts through its own service identity, so the token works on every endpoint its
 security group allows, limited to its customer if it has one, and everything it does is in

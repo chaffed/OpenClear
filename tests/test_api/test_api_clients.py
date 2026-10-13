@@ -273,3 +273,136 @@ def test_a_customer_scoped_client_acts_only_for_its_customers_users(client, db_s
 
     assert client.get("/api/v1/issued-items", headers={**scoped, "OpenClear-Act-As": "pat@acme.example.com"}).status_code == 200
     assert client.get("/api/v1/issued-items", headers={**scoped, "OpenClear-Act-As": users["viewer"].email}).status_code == 403
+
+
+# Signing in with a key pair (private_key_jwt, RFC 7523; auth/client_assertion.py).
+
+TOKEN_URL = "http://testserver/api/v1/oauth/token"
+
+
+def _key_pair(kind="rsa"):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, rsa
+
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048) if kind == "rsa" else ec.generate_private_key(ec.SECP256R1())
+    public = private.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    return private, public
+
+
+def _assertion(private, client_id, *, aud=TOKEN_URL, lifetime=120, jti=None, alg="RS256", **overrides):
+    import time
+    import uuid as _uuid
+
+    import jwt
+
+    now = int(time.time())
+    claims = {"iss": client_id, "sub": client_id, "aud": aud, "iat": now, "exp": now + lifetime, "jti": jti or _uuid.uuid4().hex, **overrides}
+    return jwt.encode(claims, private, algorithm=alg)
+
+
+def _assert_token(client, assertion, assertion_type="urn:ietf:params:oauth:client-assertion-type:jwt-bearer"):
+    return client.post("/api/v1/oauth/token", data={"grant_type": "client_credentials", "client_assertion_type": assertion_type,
+                                                    "client_assertion": assertion})
+
+
+def _key_client(db_session, tenant, kind="rsa"):
+    issued = _client(db_session, tenant)
+    private, public = _key_pair(kind)
+    api_client_service.use_key_pair(db_session, tenant.id, issued.client.id, public)
+    db_session.commit()
+    return issued, private
+
+
+@pytest.mark.parametrize("kind,alg", [("rsa", "RS256"), ("rsa", "PS384"), ("ec", "ES256")])
+def test_a_key_pair_client_signs_in_with_an_assertion(client, db_session, tenant_factory, kind, alg):
+    tenant, account, _users = tenant_factory.make(slug=f"apic-kp-{alg.lower()}")
+    issued, private = _key_client(db_session, tenant, kind)
+    resp = _assert_token(client, _assertion(private, issued.client.client_id, alg=alg))
+    assert resp.status_code == 200, resp.text
+    headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    assert client.get("/api/v1/issued-items", headers=headers).status_code == 200
+    # Its secret no longer works.
+    assert _token(client, issued.client.client_id, issued.secret).status_code == 401
+
+
+def test_an_assertion_works_once_and_must_be_short_lived_and_addressed_here(client, db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="apic-kp-refuse")
+    issued, private = _key_client(db_session, tenant)
+    cid = issued.client.client_id
+    once = _assertion(private, cid)
+    assert _assert_token(client, once).status_code == 200
+    assert _assert_token(client, once).json()["error"] == "invalid_client"  # a replay
+
+    refused = {
+        "another audience": _assertion(private, cid, aud="https://elsewhere.example/token"),
+        "expired": _assertion(private, cid, lifetime=-120),
+        "lives too long": _assertion(private, cid, lifetime=3600),
+        "sub not the client": _assertion(private, cid, sub="someone-else"),
+        "signed with another key": _assertion(_key_pair()[0], cid),
+    }
+    import jwt as _jwt
+    import time
+
+    now = int(time.time())
+    refused["no jti"] = _jwt.encode({"iss": cid, "sub": cid, "aud": TOKEN_URL, "iat": now, "exp": now + 60}, private, algorithm="RS256")
+    refused["unsigned"] = _jwt.encode({"iss": cid, "sub": cid, "aud": TOKEN_URL, "iat": now, "exp": now + 60, "jti": "x"}, None, algorithm="none")
+    for why, assertion in refused.items():
+        resp = _assert_token(client, assertion)
+        assert resp.status_code == 401 and resp.json()["error"] == "invalid_client", why
+
+    assert _assert_token(client, _assertion(private, cid), assertion_type="urn:other").json()["error"] == "invalid_request"
+
+
+def test_a_secret_client_cannot_use_an_assertion_and_a_bad_key_is_refused(client, db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="apic-kp-mixed")
+    issued = _client(db_session, tenant)
+    private, _public = _key_pair()
+    assert _assert_token(client, _assertion(private, issued.client.client_id)).status_code == 401
+    weak = _key_pair_rsa_bits(1024)
+    for pem, message in ((weak, "2048 bits"), ("not a key", "PEM public key")):
+        with pytest.raises(api_client_service.ApiClientError, match=message):
+            api_client_service.use_key_pair(db_session, tenant.id, issued.client.id, pem)
+
+
+def _key_pair_rsa_bits(bits):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+    return key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+
+
+def test_the_public_base_url_is_an_accepted_audience(client, db_session, tenant_factory, monkeypatch):
+    from openclear.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "public_base_url", "https://bank.example/")
+    tenant, _account, _users = tenant_factory.make(slug="apic-kp-aud")
+    issued, private = _key_client(db_session, tenant)
+    assert _assert_token(client, _assertion(private, issued.client.client_id, aud="https://bank.example/api/v1/oauth/token")).status_code == 200
+
+
+def test_the_admin_page_switches_a_client_to_a_key_pair_and_back(client, db_session, tenant_factory):
+    from openclear.services import controls_service
+
+    tenant, _account, users = tenant_factory.make(slug="apic-kp-web")
+    issued = _client(db_session, tenant)
+    csrf = _web_login(client, tenant, users["admin"].email)
+    assert "Use a key pair" in client.get("/ui/admin/api-clients").text
+    form = client.get(f"/ui/admin/api-clients/{issued.client.id}/key")
+    assert form.status_code == 200 and "BEGIN PUBLIC KEY" in form.text
+
+    bad = client.post(f"/ui/admin/api-clients/{issued.client.id}/key", data={"csrf_token": csrf, "public_key_pem": "nope"})
+    assert bad.status_code == 422 and "PEM public key" in bad.text
+    private, public = _key_pair()
+    saved = client.post(f"/ui/admin/api-clients/{issued.client.id}/key", data={"csrf_token": csrf, "public_key_pem": public}, follow_redirects=False)
+    assert saved.status_code == 303
+    assert _assert_token(client, _assertion(private, issued.client.client_id)).status_code == 200
+    db_session.expire_all()
+    evidence = {c.key: c for c in controls_service.status(db_session, tenant.id)}["api_client_secrets"].evidence
+    assert evidence["signing_in_with_a_key_pair"] == 1
+
+    back = client.post(f"/ui/admin/api-clients/{issued.client.id}/use-secret", data={"csrf_token": csrf})
+    assert back.status_code == 200 and "ocs_" in back.text and back.headers["cache-control"] == "no-store"
+    assert _assert_token(client, _assertion(private, issued.client.client_id)).status_code == 401
+    db_session.expire_all()
+    assert api_client_service.get_client(db_session, tenant.id, issued.client.id).public_key_pem is None

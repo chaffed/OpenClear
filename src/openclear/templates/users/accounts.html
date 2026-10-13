@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Account access — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About account access{% endblock %}
+{% block help_body %}
+<p>A customer's person sees all of the customer's accounts unless you limit them to some. Limited,
+  they see only those accounts' issued items, stop payments, paid items, ACH rules and transactions,
+  and exceptions, and are told only about those. Their bulk uploads can only add items to those
+  accounts. It takes effect on their very next request.</p>
+{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/users/{{ access.membership.id }}/edit">Edit entitlements</a></p>
+<div class="card card-narrow">
+  <h1>Account access</h1>
+  <p>{{ member_user.email }}{% if customer %} · {{ customer.name }} ({{ customer.customer_number }}){% endif %}</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/users/{{ access.membership.id }}/accounts">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Which accounts can they see?</legend>
+      <label><input type="radio" name="scope" value="all" {{ "checked" if access.all_accounts and error is none else "" }}>
+        All of the customer's accounts, including ones added later</label>
+      <label><input type="radio" name="scope" value="some" {{ "checked" if not access.all_accounts or error else "" }}>
+        Only the accounts chosen below</label>
+    </fieldset>
+    {% if access.customer_accounts %}
+    <fieldset>
+      <legend>Accounts</legend>
+      {% for account in access.customer_accounts %}
+      <label><input type="checkbox" name="account_id" value="{{ account.id }}" {{ "checked" if account.id in chosen else "" }}>
+        {{ account.account_number }} — {{ account.name }}</label>
+      {% endfor %}
+    </fieldset>
+    {% else %}
+    <p class="hint">This customer has no accounts yet.</p>
+    {% endif %}
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+</div>
+{% endblock %}

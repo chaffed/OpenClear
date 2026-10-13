@@ -173,12 +173,41 @@ def authenticate(session: Session, client_id: str, secret: str) -> ApiClient | N
     client = session.execute(select(ApiClient).where(ApiClient.client_id == client_id)).scalar_one_or_none()
     if client is None or client.revoked_at is not None or not hmac.compare_digest(client.secret_hash, _hash(secret)):
         return None
+    if client.token_auth_method == "private_key_jwt":
+        return None  # signs in with its key pair only (auth/client_assertion.py)
     membership = session.get(TenantMembership, client.membership_id)
     user = session.get(User, client.user_id)
     if membership is None or not membership.is_active or user is None or not user.is_active:
         return None
     client.last_used_at = datetime.now(timezone.utc)
     return client
+
+
+def use_key_pair(session: Session, tenant_id: uuid.UUID, api_client_id: uuid.UUID, public_key_pem: str) -> ApiClient:
+    """From now on the client signs in with an assertion signed by this key's private half
+    (auth/client_assertion.py); its secret no longer works."""
+    from openclear.auth.client_assertion import UnusableKey, load_public_key
+
+    client = get_client(session, tenant_id, api_client_id)
+    if client is None or client.revoked_at is not None:
+        raise ApiClientError("API client not found.")
+    try:
+        load_public_key(public_key_pem)
+    except UnusableKey as exc:
+        raise ApiClientError(str(exc)) from None
+    client.public_key_pem, client.token_auth_method = public_key_pem.strip(), "private_key_jwt"
+    session.flush()
+    return client
+
+
+def use_secret(session: Session, tenant_id: uuid.UUID, api_client_id: uuid.UUID) -> IssuedSecret:
+    """Back to a secret: a new one, shown once; the key pair no longer works."""
+    client = get_client(session, tenant_id, api_client_id)
+    if client is None or client.revoked_at is not None:
+        raise ApiClientError("API client not found.")
+    client.token_auth_method, client.public_key_pem = "client_secret", None
+    session.flush()
+    return rotate_secret(session, tenant_id, api_client_id)
 
 
 def describe(session: Session, client: ApiClient) -> dict:
@@ -190,7 +219,7 @@ def describe(session: Session, client: ApiClient) -> dict:
     return {
         "id": client.id, "name": client.name, "client_id": client.client_id,
         "security_group": group.name if group else None, "customer": customer.name if customer else None,
-        "can_act_for_users": client.can_act_for_users, "read_only": client.read_only, "created_by": creator.email if creator else None,
+        "can_act_for_users": client.can_act_for_users, "read_only": client.read_only, "token_auth_method": client.token_auth_method, "created_by": creator.email if creator else None,
         "sso_connection_id": client.sso_connection_id,
         "created_at": client.created_at, "secret_rotated_at": client.secret_rotated_at,
         "last_used_at": client.last_used_at, "revoked_at": client.revoked_at,

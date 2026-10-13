@@ -252,8 +252,11 @@ def _api_client_secrets(session: Session, tenant_id: uuid.UUID) -> Control:
 
     cutoff = _now() - timedelta(days=SECRET_MAX_AGE_DAYS)
     clients = session.execute(select(ApiClient).where(ApiClient.tenant_id == tenant_id, ApiClient.revoked_at.is_(None))).scalars().all()
-    old = [c.name for c in clients if _aware(c.secret_rotated_at or c.created_at) and _aware(c.secret_rotated_at or c.created_at) < cutoff]
-    evidence = {"active_clients": len(clients), "older_than_a_year": old}
+    # A client signing in with a key pair has no shared secret to rotate: its private key
+    # never leaves the bank's own systems.
+    with_secrets = [c for c in clients if c.token_auth_method != "private_key_jwt"]
+    old = [c.name for c in with_secrets if _aware(c.secret_rotated_at or c.created_at) and _aware(c.secret_rotated_at or c.created_at) < cutoff]
+    evidence = {"active_clients": len(clients), "signing_in_with_a_key_pair": len(clients) - len(with_secrets), "older_than_a_year": old}
     if old:
         return Control("api_client_secrets", "Integration secrets rotated", WARN,
                        f"{len(old)} API clients haven't had their secret rotated in over a year: {', '.join(old[:10])}.", evidence)
@@ -313,6 +316,58 @@ def _event_delivery(session: Session, tenant_id: uuid.UUID) -> Control:
 
 
 def status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
+    controls = _status(session, tenant_id)
+    record_changes(tenant_id, controls)
+    return controls
+
+
+def record_changes(tenant_id: uuid.UUID, controls: list[Control]) -> list[tuple[str, str | None, str]]:
+    """Keeps each control's last status, and records a `control.status.changed` security event
+    when one changes (to WARN or FAIL, or back to PASS), so a bank's SIEM can alert on it
+    (SIEM_PLAN.md). The first status seen for a control is kept without an event. In its own
+    transaction: the controls are mostly read on requests that change nothing. Never raises.
+    Returns the changes (key, old, new)."""
+    import logging
+
+    from sqlalchemy.exc import IntegrityError
+
+    from openclear.db.tenancy import bind_session_to_tenant
+    from openclear.domain.control_status import ControlStatus
+    from openclear.services import security_events
+
+    changes: list[tuple[str, str | None, str]] = []
+    try:
+        from openclear.db.session import get_session_factory
+
+        session = (security_events._detached_factory or get_session_factory())()
+        try:
+            bind_session_to_tenant(session, tenant_id)
+            known = {row.key: row for row in session.execute(select(ControlStatus).where(ControlStatus.tenant_id == tenant_id)).scalars()}
+            for control in controls:
+                row = known.get(control.key)
+                if row is None:
+                    session.add(ControlStatus(tenant_id=tenant_id, key=control.key, status=control.status))
+                    continue
+                if row.status == control.status:
+                    continue
+                changes.append((control.key, row.status, control.status))
+                severity_reason = f"{row.status}_to_{control.status}".lower()
+                security_events.emit(session, "control.status.changed", tenant_id=tenant_id, outcome="failure" if control.status == FAIL else "success",
+                                     reason=severity_reason, actor_type="system", target_type="control", target_id=control.key,
+                                     target_label=control.title, details={"from": row.status, "to": control.status, "detail": control.detail[:300]},
+                                     channel="system")
+                row.status, row.changed_at = control.status, _now()
+            session.commit()
+        except IntegrityError:  # another request recorded the same first status at the same moment
+            session.rollback()
+        finally:
+            session.close()
+    except Exception:  # noqa: BLE001 -- reading the controls must never fail because a change couldn't be recorded
+        logging.getLogger(__name__).exception("Couldn't record control status changes")
+    return changes
+
+
+def _status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
     return [
         _field_encryption(session, tenant_id),
         _storage_encryption(),

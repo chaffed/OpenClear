@@ -156,7 +156,8 @@ def send_due(session: Session, now: datetime | None = None) -> int:
     from openclear.services import notification_service
 
     now = now or datetime.now(timezone.utc)
-    rows = session.execute(select(ExceptionItem.id, ExceptionItem.tenant_id, ExceptionItem.customer_id, ExceptionItem.decision_deadline).where(
+    rows = session.execute(select(ExceptionItem.id, ExceptionItem.tenant_id, ExceptionItem.customer_id, ExceptionItem.source_item_id,
+                                  ExceptionItem.decision_deadline).where(
         ExceptionItem.status.in_(list(NEEDS_ATTENTION)), ExceptionItem.decision_deadline.is_not(None),
         ExceptionItem.decision_deadline > now, ExceptionItem.decision_deadline <= now + timedelta(minutes=MAX_OFFSET_MINUTES),
     )).all()
@@ -185,7 +186,8 @@ def _send_for_bank(session: Session, tenant_id: uuid.UUID, items: list, now: dat
             DeadlineReminder.exception_item_id.in_([i.id for i in items]))).all():
         sent[exception_item_id].add(offset)
 
-    due_by_customer: dict[uuid.UUID | None, list[datetime]] = defaultdict(list)
+    accounts = _accounts(session, [i.source_item_id for i in items])
+    due_by_customer: dict[tuple, list[datetime]] = defaultdict(list)
     for item in items:
         try:
             offsets = customer_offsets(tenant, customers.get(item.customer_id))
@@ -197,7 +199,7 @@ def _send_for_bank(session: Session, tenant_id: uuid.UUID, items: list, now: dat
             continue
         for offset in crossed:
             session.add(DeadlineReminder(tenant_id=tenant_id, exception_item_id=item.id, offset_minutes=offset))
-        due_by_customer[item.customer_id].append(deadline)
+        due_by_customer[(item.customer_id, accounts.get(item.source_item_id))].append(deadline)
     if not due_by_customer:
         return 0
     return _notify(session, tenant, due_by_customer, now, notification_service)
@@ -205,13 +207,15 @@ def _send_for_bank(session: Session, tenant_id: uuid.UUID, items: list, now: dat
 
 def _notify(session: Session, tenant: Tenant, due_by_customer: dict, now: datetime, notification_service) -> int:
     """One message per person: the items due that they can see, and the soonest deadline
-    (None for items with no deadline). Returns how many people."""
+    (None for items with no deadline). `due_by_customer` is keyed by (customer, account), so
+    a person who sees only some accounts counts only theirs. Returns how many people."""
     tenant_id = tenant.id
     per_person: dict[uuid.UUID, tuple] = {}
-    for customer_id, deadlines in due_by_customer.items():
+    for (customer_id, account_id), deadlines in due_by_customer.items():
         recipients = {}
         for permission in ("exception:recommend", "exception:decide"):
-            for user in notification_service._recipients_for_permission(session, tenant_id, permission, customer_id=customer_id):
+            for user in notification_service._recipients_for_permission(session, tenant_id, permission, customer_id=customer_id,
+                                                                        account_id=account_id):
                 recipients[user.id] = user
         dated = [d for d in deadlines if d is not None]
         for user in recipients.values():
@@ -242,10 +246,26 @@ def remind_customer_now(session: Session, tenant_id: uuid.UUID, customer_id: uui
 
     now = now or datetime.now(timezone.utc)
     tenant = session.get(Tenant, tenant_id)
-    deadlines = [_aware(d) if d is not None else None for d in session.execute(select(ExceptionItem.decision_deadline).where(
+    rows = session.execute(select(ExceptionItem.source_item_id, ExceptionItem.decision_deadline).where(
         ExceptionItem.tenant_id == tenant_id, ExceptionItem.customer_id == customer_id,
-        ExceptionItem.status.in_(list(NEEDS_ATTENTION)))).scalars()]
-    if not deadlines:
+        ExceptionItem.status.in_(list(NEEDS_ATTENTION)))).all()
+    if not rows:
         return 0, 0
-    return len(deadlines), _notify(session, tenant, {customer_id: deadlines}, now, notification_service)
+    accounts = _accounts(session, [r.source_item_id for r in rows])
+    due: dict[tuple, list] = defaultdict(list)
+    for row in rows:
+        due[(customer_id, accounts.get(row.source_item_id))].append(_aware(row.decision_deadline) if row.decision_deadline else None)
+    return len(rows), _notify(session, tenant, due, now, notification_service)
+
+
+def _accounts(session: Session, source_item_ids: list[uuid.UUID]) -> dict[uuid.UUID, uuid.UUID]:
+    """The account each exception's paid item or ACH transaction is on."""
+    from openclear.domain.ach_transaction import AchTransaction
+    from openclear.domain.paid_item import PaidItem
+
+    found: dict[uuid.UUID, uuid.UUID] = {}
+    for model in (PaidItem, AchTransaction):
+        for start in range(0, len(source_item_ids), 1000):
+            found.update(session.execute(select(model.id, model.account_id).where(model.id.in_(source_item_ids[start:start + 1000]))).tuples().all())
+    return found
 

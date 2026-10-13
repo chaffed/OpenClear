@@ -11,9 +11,12 @@ bulk upload files, data export archives and ML model artifacts.
 - "s3": an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, ...), so several
   instances (and workers) share files without a shared disk. Needs `pip install
   openclear[s3]`.
+- "azure": an Azure Blob Storage container, the same way. Needs `pip install
+  openclear[azure]` (and azure-identity to sign in with a managed identity).
 
 The database stores a reference to each file, never the bytes. A local file's
-reference is its path, exactly as before S6; an object's is `s3://bucket/key`. Reads go
+reference is its path, exactly as before S6; an object's is `s3://bucket/key` or
+`azblob://container/name`. Reads go
 by the reference, not the setting, so files written before a switch to S3 stay readable
 (while the disk is still there), and `scripts/move_files_to_object_storage.py` moves
 them over and rewrites the references.
@@ -34,6 +37,7 @@ from typing import BinaryIO
 from openclear.config import get_settings
 
 _S3_PREFIX = "s3://"
+_AZURE_PREFIX = "azblob://"
 _CHUNK = 1024 * 1024
 
 # Each kind of file and the setting naming its local directory.
@@ -198,6 +202,128 @@ class S3Storage:
                 self.client.delete_objects(Bucket=self.bucket, Delete={"Objects": keys})
 
 
+class AzureBlobStorage:
+    """An Azure Blob Storage container. Signs in with `azure_storage_connection_string`, or
+    with the account URL and whatever credentials azure-identity finds (a managed identity,
+    the environment, the Azure CLI)."""
+
+    def __init__(self, service=None) -> None:
+        settings = get_settings()
+        if not settings.azure_storage_container:
+            raise RuntimeError("storage_backend is 'azure' but azure_storage_container isn't set")
+        self.container = settings.azure_storage_container
+        self.prefix = settings.azure_storage_prefix.strip("/")
+        self.service = service or self._service(settings)
+
+    @staticmethod
+    def _service(settings):
+        try:
+            from azure.storage.blob import BlobServiceClient
+        except ImportError as exc:  # pragma: no cover -- depends on the install
+            raise RuntimeError("storage_backend is 'azure' but azure-storage-blob isn't installed: pip install 'openclear[azure]'") from exc
+        if settings.azure_storage_connection_string:
+            return BlobServiceClient.from_connection_string(settings.azure_storage_connection_string)
+        if not settings.azure_storage_account_url:
+            raise RuntimeError("storage_backend is 'azure' but neither a connection string nor an account URL is set")
+        try:
+            from azure.identity import DefaultAzureCredential
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError("Signing in to Azure without a connection string needs azure-identity: pip install azure-identity") from exc
+        return BlobServiceClient(account_url=settings.azure_storage_account_url, credential=DefaultAzureCredential())
+
+    def _name(self, area: str, key: str) -> str:
+        return "/".join(part for part in (self.prefix, area, key) if part)
+
+    def _ref(self, name: str) -> str:
+        return f"{_AZURE_PREFIX}{self.container}/{name}"
+
+    @staticmethod
+    def _split(ref: str) -> tuple[str, str]:
+        container, _, name = ref[len(_AZURE_PREFIX):].partition("/")
+        return container, name
+
+    def _blob(self, container: str, name: str):
+        return self.service.get_blob_client(container=container, blob=name)
+
+    def put(self, area: str, key: str, data: bytes, *, read_only: bool = False) -> str:
+        name = self._name(area, key)
+        self._blob(self.container, name).upload_blob(data, overwrite=True)
+        return self._ref(name)
+
+    def put_file(self, area: str, key: str, source: Path, *, read_only: bool = False) -> str:
+        name = self._name(area, key)
+        with open(source, "rb") as handle:
+            # The SDK uploads a stream in blocks, so a large file isn't held in memory.
+            self._blob(self.container, name).upload_blob(handle, overwrite=True)
+        Path(source).unlink(missing_ok=True)
+        return self._ref(name)
+
+    def put_stream(self, area: str, key: str, stream: BinaryIO, *, read_only: bool = False) -> tuple[str, int, bytes]:
+        with tempfile.NamedTemporaryFile(delete=False) as spool:
+            digest, size = hashlib.sha256(), 0
+            while chunk := stream.read(_CHUNK):
+                digest.update(chunk)
+                size += len(chunk)
+                spool.write(chunk)
+        return self.put_file(area, key, Path(spool.name)), size, digest.digest()
+
+    def open(self, ref: str) -> BinaryIO:
+        container, name = self._split(ref)
+        return _ChunkReader(self._blob(container, name).download_blob().chunks())
+
+    @contextlib.contextmanager
+    def local_path(self, ref: str) -> Iterator[Path]:
+        container, name = self._split(ref)
+        handle, temp = tempfile.mkstemp(suffix=Path(name).suffix)
+        try:
+            with os.fdopen(handle, "wb") as out:
+                self._blob(container, name).download_blob().readinto(out)
+            yield Path(temp)
+        finally:
+            Path(temp).unlink(missing_ok=True)
+
+    def size(self, ref: str) -> int:
+        container, name = self._split(ref)
+        return int(self._blob(container, name).get_blob_properties().size)
+
+    def delete(self, ref: str) -> None:
+        container, name = self._split(ref)
+        self._blob(container, name).delete_blob()
+
+    def delete_tenant(self, area: str, tenant_id) -> None:
+        container = self.service.get_container_client(self.container)
+        for blob in container.list_blobs(name_starts_with=self._name(area, f"{tenant_id}/")):
+            container.delete_blob(blob.name)
+
+
+class _ChunkReader:
+    """A file-like reader over a download's chunks, so a blob is streamed, not read whole."""
+
+    def __init__(self, chunks) -> None:
+        self._chunks, self._buffer = iter(chunks), b""
+
+    def read(self, size: int = -1) -> bytes:
+        while size < 0 or len(self._buffer) < size:
+            chunk = next(self._chunks, None)
+            if chunk is None:
+                break
+            self._buffer += chunk
+        if size < 0:
+            data, self._buffer = self._buffer, b""
+        else:
+            data, self._buffer = self._buffer[:size], self._buffer[size:]
+        return data
+
+    def close(self) -> None:
+        self._chunks, self._buffer = iter(()), b""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
+
 _local = LocalStorage()
 
 
@@ -211,7 +337,18 @@ def _s3() -> S3Storage:
     return _s3_for(settings.s3_bucket, settings.s3_endpoint_url, settings.s3_prefix)
 
 
-def backend() -> LocalStorage | S3Storage:
+@lru_cache(maxsize=4)
+def _azure_for(container: str, connection: str, account_url: str, prefix: str) -> AzureBlobStorage:
+    return AzureBlobStorage()
+
+
+def _azure() -> AzureBlobStorage:
+    settings = get_settings()
+    return _azure_for(settings.azure_storage_container, settings.azure_storage_connection_string,
+                      settings.azure_storage_account_url, settings.azure_storage_prefix)
+
+
+def backend() -> LocalStorage | S3Storage | AzureBlobStorage:
     """Where new files go: the backend named by `storage_backend`, "local" and "s3" built
     in, others from plugins (plugins/__init__.py)."""
     name = get_settings().storage_backend
@@ -219,18 +356,24 @@ def backend() -> LocalStorage | S3Storage:
         return _local
     if name == "s3":
         return _s3()
+    if name == "azure":
+        return _azure()
     from openclear import plugins
 
     return plugins.lookup("storage_backends", name, what="storage backend")()
 
 
-def for_ref(ref: str) -> LocalStorage | S3Storage:
+def for_ref(ref: str) -> LocalStorage | S3Storage | AzureBlobStorage:
     """Where an existing file is, from its stored reference."""
-    return _s3() if is_object_ref(ref) else _local
+    if ref.startswith(_S3_PREFIX):
+        return _s3()
+    if ref.startswith(_AZURE_PREFIX):
+        return _azure()
+    return _local
 
 
 def is_object_ref(ref: str) -> bool:
-    return ref.startswith(_S3_PREFIX)
+    return ref.startswith((_S3_PREFIX, _AZURE_PREFIX))
 
 
 # --- The calls the rest of the app makes ----------------------------------------------------
@@ -291,3 +434,5 @@ def delete_tenant(area: str, tenant_id) -> None:
     _local.delete_tenant(area, tenant_id)
     if get_settings().storage_backend == "s3":
         _s3().delete_tenant(area, tenant_id)
+    if get_settings().storage_backend == "azure":
+        _azure().delete_tenant(area, tenant_id)

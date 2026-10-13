@@ -140,7 +140,7 @@ def test_one_summary_notification_per_upload(db_session, tenant_factory):
     jobs.drain(db_session.get_bind())
 
     record = _fresh(db_session, BulkUploadFile, record.id)
-    assert record.exception_counts == {"": 3}
+    assert record.exception_counts == {f":{account.id}": 3}  # by customer (none) and account
     emails = db_session.execute(
         select(Notification).where(
             Notification.tenant_id == tenant.id,

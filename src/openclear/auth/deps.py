@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from openclear.auth.permissions import CUSTOMER_SCOPE_MASKED_PERMISSIONS
 from openclear.auth.security import decode_token
+from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.customer import Customer
@@ -108,6 +109,10 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     ).scalar_one_or_none()
     if membership is None or not membership.is_active:
         raise AccessRevoked("Membership in this organization is no longer active")
+    # Per-account access (db/account_scope.py): a customer's person limited to some of the
+    # customer's accounts sees only those, on every query this request makes.
+    account_ids = membership_accounts(db, membership)
+    bind_session_to_accounts(db, account_ids, user_id=user_id)
 
     # The membership's CURRENT group, not the token's security_group_id claim — otherwise
     # reassigning a user to a less-privileged group (e.g. Admin -> Viewer) would leave the
@@ -158,6 +163,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         has_favicon=branding.has_favicon,
         customer_id=customer_id,
         customer_name=customer_name,
+        account_ids=account_ids,
         access_token_expire_minutes=branding.access_token_expire_minutes,
         refresh_token_expire_minutes=branding.refresh_token_expire_minutes,
         support_email=branding.support_email,

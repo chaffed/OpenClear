@@ -278,6 +278,10 @@ def run_export_job(engine: Engine, job_id: uuid.UUID, tenant_id: uuid.UUID) -> N
         job = session.get(DataExportJob, job_id)
         if job is None:
             return
+        # Only the accounts the requester may see (db/account_scope.py).
+        from openclear.db.account_scope import bind_for_member
+
+        bind_for_member(session, tenant_id, job.requested_by_user_id, job.customer_id)
         job.status = DataExportJobStatus.RUNNING
         session.commit()
         _apply_rls_tenant(session, tenant_id)  # commit resets the transaction-local setting

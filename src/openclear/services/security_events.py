@@ -105,6 +105,7 @@ CATALOG: dict[str, EventType] = {
     # integrity
     "anomaly_capture.failed": EventType("integrity", "high"),
     "secrets.reencrypted": EventType("integrity", "medium"),
+    "control.status.changed": EventType("integrity", "high"),
 }
 
 # Action-log actions that are also security events (event name, and the setting changed for settings.*).
@@ -115,6 +116,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "user.unlock": "user.unlocked",
     "user.grant_cross_tenant_access": "user.cross_tenant_access.granted",
     "user.update_membership": "membership.changed",
+    "user.account_access": "membership.changed",
     "user.password_change": "auth.password.changed",
     "user.password_reset": "auth.password.reset",
     "user.sign_out_everywhere": "auth.session.revoked",

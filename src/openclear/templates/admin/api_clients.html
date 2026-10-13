@@ -25,16 +25,21 @@
       <tr>
         <td>{{ c.name }}</td>
         <td><code>{{ c.client_id }}</code></td>
-        <td>{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}</td>
+        <td>{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}{% if c.token_auth_method == "private_key_jwt" %} <span class="badge">key pair</span>{% endif %}</td>
         <td>{{ c.customer or "All (bank-wide)" }}</td>
         <td>{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}</td>
         <td><span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span></td>
         <td>
           {% if not c.revoked_at %}
+          {% if c.token_auth_method == "private_key_jwt" %}
+          <a href="/ui/admin/api-clients/{{ c.id }}/key">Key pair</a>
+          {% else %}
           <form method="post" action="/ui/admin/api-clients/{{ c.id }}/rotate" class="inline-form" data-confirm="Make a new secret? The old one stops working for new tokens at once.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Rotate secret</button>
           </form>
+          <a href="/ui/admin/api-clients/{{ c.id }}/key">Use a key pair</a>
+          {% endif %}
           <form method="post" action="/ui/admin/api-clients/{{ c.id }}/revoke" class="inline-form" data-confirm="Revoke {{ c.name }}? It stops working at once, and this can't be undone.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Revoke</button>

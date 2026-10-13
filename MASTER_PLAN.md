@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md). Waiting for a first client (who'd also fund them): user-testing sessions, a real Cloudflare zone to confirm M7, and publishing the SDKs to package registries.**
+**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md); M9 (1.14.0) adds control-status events, per-account access, key-pair API clients and Azure storage. Waiting for a first client (who'd also fund them): user-testing sessions, a real Cloudflare zone to confirm M7, and publishing the SDKs to package registries.**
 
 ## How testing is kept down
 
@@ -45,6 +45,7 @@ waves are built together, in what order, and how each is tested.
 | **M5. Uploads** | UX 3 | • Issue-file layouts and the layout builder; their tiles.<br>• Fixing failed rows in the browser; drag and drop.<br>• The upload pages on phones, and their accessibility fixes. | Layouts and upload corrections | The upload journey: sample file, layout, import, correcting failed rows. | — |
 | **M6. Bank staff and operator** | UX 4 | • The customer hub.<br>• Bank-granted support access.<br>• The operator view, as a control panel at platform level. It shows every bank's controls, edge state and event delivery, which by now all exist. | `support_access_grant` | The customer hub; granting, using and expiring support access; the operator view. | — |
 | **M7. Edges** | WAF C | • The edge check script.<br>• The edge deployment guide, with WAF exclusions and bot-management bypasses for every path. By now all paths exist: layouts, support access, the operator view.<br>• Fixes for anything the real zone shows. | None expected | The edge check against a stub edge (a local proxy imitating Cloudflare and Akamai), in the suite and CI. | A real Cloudflare zone (and Akamai) later, to confirm; not needed to build M7 |
+| **M9. Bank readiness** | SIEM (catalog); access; storage | • `control.status.changed` security events: each control's last status kept, checked on every read and hourly.<br>• Per-account access for a customer's people, enforced on the request's session for every query, with its admin page and API.<br>• `private_key_jwt` for API clients.<br>• Azure Blob Storage. | `b5d7f9b1d3e6` | Choosing accounts for a person and signing in as them; switching an API client to a key pair. | Azurite (Azure's emulator), once |
 
 ## Releases
 
@@ -53,6 +54,8 @@ waves are built together, in what order, and how each is tested.
 | 1.10 | M1, M2, M3 | Security visibility, the fix for the misleading page-only filter, and the decision screens (M3 joined 1.10 since it was ready; released 2026-10-11). |
 | 1.11 | M4, M5 | The control panel, reminders and event shipping, then uploads. |
 | 1.12 | M6, M7 | The staff and operator tools, and the edge check and guide. |
+| 1.13 | (BI) | Reporting through each bank's BI platform. |
+| 1.14 | M9 | What banks' security and IT reviews ask for next. |
 
 
 ## Code shared across plans (built once)
@@ -112,4 +115,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-12 Deploying 1.12.0: the image upload from here to Fly's registry failed three times on one large layer, so the sandbox was built by Fly's remote builder instead (the base and sandbox Dockerfiles combined in the release copy). The first real run of the edge check, against the sandbox behind Fly's proxy, found the sandbox saw Fly's own address for every caller (the last X-Forwarded-For hop is Fly's): now `Fly-Client-IP`, trusted only from Fly's private network. The check and the Controls page's edge control now recognise Fly.
 - 2026-10-12 For reporting through the bank's BI platform (decided instead of a dashboard): the BI guide, `updated_since` with cursor paging on every list, read-only API clients, and the data export through the API. Suites at `e9dc65ec`: SQLite 1563, Postgres 1588, Linux 3.11 1545 with one failure, a bulk-upload test racing its background job, fixed. Released as 1.13.0.
 - 2026-10-12 Decided with the product owner: user testing, the Cloudflare confirmation and SDK publishing wait for a first client, who'd fund them. They're not blockers for building.
-
+- 2026-10-12 M9 built on branch `m9-bank-readiness`: `control.status.changed` (control_status kept per bank, recorded on every read in its own transaction and by an hourly job; first sight stored quietly), per-account access (`db/account_scope.py`: loader criteria on the request's session covering accounts, items, ACH, exceptions, decisions and check images, and the person's own uploads and exports; bound from the membership at sign-in and for their background imports and exports; notifications, bulk summaries and reminders by account; the Choose accounts page and `GET/PUT /api/v1/users/{id}/accounts`), `private_key_jwt` (RFC 7523, one use per `jti`, housekeeping of spent ids; the key-pair page), and Azure Blob storage (tested against a fake and once against Azurite). Migration `b5d7f9b1d3e6`. Tests for each, plus a guard that every table carrying an account is limited. Also fixed: a customer-hub test that failed after 23:00 UTC.

@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+What a bank's security and IT reviews ask for next: controls that alert, access by account,
+API clients without shared secrets, and Azure storage.
+
+- **A control changing status is a security event**: `control.status.changed`, when any
+  control (Settings → Controls) turns WARN or FAIL, and when it recovers, with the old and
+  new status. Recorded whenever the controls are read and checked hourly, so a SIEM can
+  alert on a FAIL nobody was looking at (docs/guides/siem.md).
+- **Per-account access**: the bank can limit one of a customer's people (or a customer's API
+  client) to some of the customer's accounts (Users → Edit → Choose accounts, or
+  `PUT /api/v1/users/{membership_id}/accounts`). They then see, change and are told about
+  only those accounts' items, on every page and endpoint, and their bulk uploads and data
+  exports cover only those accounts. The access review (`GET /api/v1/users`) shows it.
+- **API clients can sign in with a key pair** (`private_key_jwt`, RFC 7523): register the
+  client's public key, and it signs a short assertion with a private key that never leaves
+  its systems; each assertion is accepted once. Its secret stops working (API.md). The
+  "Integration secrets rotated" control no longer counts key-pair clients.
+- **Azure Blob Storage** for files: `OPENCLEAR_STORAGE_BACKEND=azure`, with a connection
+  string or a managed identity (`pip install 'openclear[azure]'`). Tested against Azurite.
+  `scripts/move_files_to_object_storage.py` moves existing files there too.
+- **Migration** `b5d7f9b1d3e6`: `control_status`, `client_assertion_use` and
+  `membership_account`; `api_client.token_auth_method` and `public_key_pem`;
+  `tenant_membership.all_accounts`.
+
 ## 1.13.0 — 2026-10-12
 
 Reporting through each bank's own business intelligence platform: a guide, and what a data

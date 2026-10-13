@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-"""Copies files written to local disk into S3-compatible storage and points the database
-at the copies (SCALE_PLAN.md S6). Run it after setting OPENCLEAR_STORAGE_BACKEND=s3 (and
-the OPENCLEAR_S3_* settings), from a machine that can see the old directories:
+"""Copies files written to local disk into S3-compatible or Azure Blob storage and points the database
+at the copies (SCALE_PLAN.md S6). Run it after setting OPENCLEAR_STORAGE_BACKEND=s3 or azure
+(and its settings), from a machine that can see the old directories:
 
     python scripts/move_files_to_object_storage.py --dry-run
     python scripts/move_files_to_object_storage.py
@@ -65,8 +65,8 @@ def main() -> None:
     from openclear.db.base import Base
     from openclear.db.session import get_session_factory
 
-    if get_settings().storage_backend != "s3":
-        sys.exit("Set OPENCLEAR_STORAGE_BACKEND=s3 (and OPENCLEAR_S3_BUCKET etc.) first.")
+    if get_settings().storage_backend not in ("s3", "azure"):
+        sys.exit("Set OPENCLEAR_STORAGE_BACKEND=s3 or azure (and its OPENCLEAR_S3_* or OPENCLEAR_AZURE_STORAGE_* settings) first.")
 
     tables = {mapper.class_.__tablename__: mapper.class_ for mapper in Base.registry.mappers}
     session = get_session_factory()()

@@ -47,7 +47,8 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
 
 
 def _recipients_for_permission(
-    session: Session, tenant_id: uuid.UUID, permission: str, *, customer_id: uuid.UUID | None
+    session: Session, tenant_id: uuid.UUID, permission: str, *, customer_id: uuid.UUID | None,
+    account_id: uuid.UUID | None = None,
 ) -> list[User]:
     """Every active membership in scope whose security group holds `permission` --
     tenant-wide staff (membership.customer_id IS NULL) always included, customer-scoped
@@ -58,7 +59,10 @@ def _recipients_for_permission(
     auth/deps.py::decode_and_build_context -- this does NOT apply
     CUSTOMER_SCOPE_MASKED_PERMISSIONS's masking, so it must only ever be called with a
     permission that's never masked (true of exception:recommend/exception:decide, the
-    only two callers today)."""
+    only two callers today).
+
+    A customer's person limited to some accounts (db/account_scope.py) is included only
+    when `account_id`, the account the news is about, is one of theirs."""
     scope_filter = (
         TenantMembership.customer_id.is_(None)
         if customer_id is None
@@ -71,11 +75,39 @@ def _recipients_for_permission(
         .where(TenantMembership.tenant_id == tenant_id, TenantMembership.is_active.is_(True), scope_filter)
     ).all()
 
+    limited = _limited_memberships(session, [m for m, _g, _u in rows])
     recipients: dict[uuid.UUID, User] = {}
     for membership, group, user in rows:
+        if membership.id in limited and account_id not in limited[membership.id]:
+            continue
         if permission in group.permissions:
             recipients[user.id] = user
     return list(recipients.values())
+
+
+def _limited_memberships(session: Session, memberships: list[TenantMembership]) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """The memberships among these that see only some accounts, and those accounts."""
+    from openclear.domain.tenant_membership import MembershipAccount
+
+    ids = [m.id for m in memberships if m.customer_id is not None and not m.all_accounts]
+    limited: dict[uuid.UUID, set[uuid.UUID]] = {i: set() for i in ids}
+    if ids:
+        for membership_id, account in session.execute(
+                select(MembershipAccount.membership_id, MembershipAccount.account_id).where(MembershipAccount.membership_id.in_(ids))):
+            limited[membership_id].add(account)
+    return limited
+
+
+def exception_account_id(session: Session, exception_item: ExceptionItem) -> uuid.UUID | None:
+    """The account an exception is on, from its paid item or ACH transaction."""
+    from openclear.domain.ach_transaction import AchTransaction
+    from openclear.domain.paid_item import PaidItem
+
+    for model in (PaidItem, AchTransaction):
+        account = session.execute(select(model.account_id).where(model.id == exception_item.source_item_id)).scalar_one_or_none()
+        if account is not None:
+            return account
+    return None
 
 
 def _effective_preference(session: Session, user_id: uuid.UUID, notification_type: NotificationType) -> tuple[bool, bool]:
@@ -181,14 +213,18 @@ def notify_exceptions_created_summary(
     session: Session, tenant_id: uuid.UUID, counts_by_customer: dict[str, int], *, source_label: str
 ) -> None:
     """One EXCEPTION_CREATED notification per recipient for a whole bulk upload.
-    `counts_by_customer` maps a customer id (or "" for none) to how many new exceptions
-    it got; each recipient's count covers only the customers they can see."""
+    `counts_by_customer` maps "customer id:account id" (the customer's "" for none; uploads
+    from before 1.14 have no account) to how many new exceptions it got; each recipient's
+    count covers only the customers and accounts they can see."""
     totals: dict[uuid.UUID, tuple[User, int]] = {}
-    for customer_key, count in counts_by_customer.items():
+    for key, count in counts_by_customer.items():
         if not count:
             continue
+        customer_key, _, account_key = key.partition(":")
         customer_id = uuid.UUID(customer_key) if customer_key else None
-        for recipient in _recipients_for_permission(session, tenant_id, "exception:recommend", customer_id=customer_id):
+        account_id = uuid.UUID(account_key) if account_key else None
+        for recipient in _recipients_for_permission(session, tenant_id, "exception:recommend", customer_id=customer_id,
+                                                    account_id=account_id):
             previous = totals.get(recipient.id, (recipient, 0))[1]
             totals[recipient.id] = (recipient, previous + count)
     for recipient, count in totals.values():
@@ -207,7 +243,8 @@ def notify_exception_created(session: Session, exception_item: ExceptionItem) ->
     if _summarizing_exceptions.get():
         return
     recipients = _recipients_for_permission(
-        session, exception_item.tenant_id, "exception:recommend", customer_id=exception_item.customer_id
+        session, exception_item.tenant_id, "exception:recommend", customer_id=exception_item.customer_id,
+        account_id=exception_account_id(session, exception_item),
     )
     context = {
         "network_code": exception_item.network_code,
@@ -229,7 +266,8 @@ def notify_exception_created(session: Session, exception_item: ExceptionItem) ->
 
 def notify_recommendation_awaiting_approval(session: Session, exception_item: ExceptionItem) -> None:
     recipients = _recipients_for_permission(
-        session, exception_item.tenant_id, "exception:decide", customer_id=exception_item.customer_id
+        session, exception_item.tenant_id, "exception:decide", customer_id=exception_item.customer_id,
+        account_id=exception_account_id(session, exception_item),
     )
     context = {
         "network_code": exception_item.network_code,
@@ -259,7 +297,8 @@ def notify_exception_auto_decided(session: Session, exception_item: ExceptionIte
     human decider -- recipients are the same people who'd normally have finalized it
     themselves (exception:decide), so no one is surprised to see it already closed."""
     recipients = _recipients_for_permission(
-        session, exception_item.tenant_id, "exception:decide", customer_id=exception_item.customer_id
+        session, exception_item.tenant_id, "exception:decide", customer_id=exception_item.customer_id,
+        account_id=exception_account_id(session, exception_item),
     )
     context = {
         "network_code": exception_item.network_code,

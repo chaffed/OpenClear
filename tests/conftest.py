@@ -178,8 +178,14 @@ def engine(request):
 
 
 @pytest.fixture
-def session_factory(engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+def session_factory(engine) -> Generator[sessionmaker[Session], None, None]:
+    from openclear.services import security_events
+
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    # Rows written in their own transaction (security events, control status) go to the test database.
+    security_events.use_session_factory(factory)
+    yield factory
+    security_events.use_session_factory(None)
 
 
 @pytest.fixture

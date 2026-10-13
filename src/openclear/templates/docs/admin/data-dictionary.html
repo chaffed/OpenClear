@@ -233,6 +233,22 @@ which carries its security group and optional customer.</p>
 <tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>created_at / secret_rotated_at / last_used_at / revoked_at</td><td>Timestamp</td><td>varies</td><td></td><td>Revoking is one-way.</td></tr>
 <tr><td>read_only</td><td>Boolean</td><td>no</td><td></td><td>Only ever reads (and runs the full data export), whatever its group allows.</td></tr>
+<tr><td>token_auth_method</td><td>String(20)</td><td>no</td><td></td><td><code>client_secret</code> (the default) or <code>private_key_jwt</code>: signs in with an assertion signed by its private key, and its secret no longer works.</td></tr>
+<tr><td>public_key_pem</td><td>Text</td><td>yes</td><td></td><td>The public key a <code>private_key_jwt</code> client's assertions are checked with (RSA of 2048 bits or more, or EC P-256/P-384).</td></tr>
+</tbody>
+</table>
+
+<h3>client_assertion_use</h3>
+<p>The <code>jti</code> of each key-pair assertion accepted at the token endpoint, so none is
+accepted twice. Housekeeping deletes them five minutes after the assertion expires.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>api_client_id</td><td>UUID</td><td>no</td><td>FK → api_client.id</td><td></td></tr>
+<tr><td>jti</td><td>String(200)</td><td>no</td><td></td><td>Unique per client.</td></tr>
+<tr><td>expires_at</td><td>Timestamp</td><td>no</td><td></td><td>The assertion's <code>exp</code>.</td></tr>
 </tbody>
 </table>
 
@@ -294,10 +310,25 @@ scope) and a security group. One user can hold several of these.</p>
 <tr><td>security_group_id</td><td>UUID</td><td>no</td><td>FK → security_group.id</td><td></td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>require_webauthn</td><td>Boolean</td><td>no</td><td></td><td>Forces a passkey check even where the tenant/customer otherwise allows SSO or password-only login.</td></tr>
+<tr><td>all_accounts</td><td>Boolean</td><td>no</td><td></td><td>For a customer membership: sees all of the customer's accounts (the default), or only those in membership_account.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
 <p class="hint">Unique constraint on (user_id, tenant_id, customer_id) — one user can't hold two identical-scope memberships.</p>
+
+<h3>membership_account</h3>
+<p>An account a customer membership may see, when it isn't for all of the customer's accounts
+(per-account access; db/account_scope.py).</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>membership_id</td><td>UUID</td><td>no</td><td>FK → tenant_membership.id</td><td></td></tr>
+<tr><td>account_id</td><td>UUID</td><td>no</td><td>FK → account.id</td><td>One of the membership's customer's accounts.</td></tr>
+</tbody>
+</table>
+<p class="hint">Unique constraint on (membership_id, account_id).</p>
 
 <h3>security_group</h3>
 <p>A named, per-tenant, fully custom set of permissions — replaces a fixed role enum.</p>
@@ -983,7 +1014,7 @@ erDiagram
 <tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>received / queued / processing / completed / rejected (nothing imported) / failed (the import gave up; committed rows stay).</td></tr>
 <tr><td>total_rows / processed_rows</td><td>Integer</td><td>yes / no</td><td></td><td>Progress of a background import. processed_rows commits with each chunk, so a retried import resumes after it.</td></tr>
 <tr><td>options</td><td>JSON</td><td>yes</td><td></td><td>The file format and the uploader's choices (create missing accounts).</td></tr>
-<tr><td>exception_counts</td><td>JSON</td><td>yes</td><td></td><td>New exceptions per customer, for the one summary notification sent when the import finishes.</td></tr>
+<tr><td>exception_counts</td><td>JSON</td><td>yes</td><td></td><td>New exceptions per customer and account, for the one summary notification sent when the import finishes.</td></tr>
 <tr><td>error</td><td>Text</td><td>yes</td><td></td><td>Why the file was rejected, or why the import failed.</td></tr>
 <tr><td>started_at / completed_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
 <tr><td>uploaded_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
@@ -1192,6 +1223,21 @@ and every read filters by bank.</p>
 </tbody>
 </table>
 
+<h3>control_status</h3>
+<p>Each control's last status (services/controls_service.py), so a change is recorded as a
+<code>control.status.changed</code> security event. Updated whenever the controls are read, and hourly.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>key</td><td>String(60)</td><td>no</td><td></td><td>The control, e.g. <code>audit_chain</code>.</td></tr>
+<tr><td>status</td><td>String(10)</td><td>no</td><td></td><td>PASS, WARN or FAIL.</td></tr>
+<tr><td>changed_at</td><td>Timestamp</td><td>no</td><td></td><td>When it last changed (or was first seen).</td></tr>
+</tbody>
+</table>
+<p class="hint">Unique constraint on (tenant_id, key).</p>
+
 <h3>security_event_destination</h3>
 <p>Where security events are delivered (services/siem/): syslog, Splunk HEC or HTTPS. A bank's
 own (one per bank) receives only that bank's events; the row with no bank is the
@@ -1259,7 +1305,7 @@ audit_log_entry chains onto <code>through_entry_hash</code>.</p>
 <tr><td>first_sequence / through_sequence</td><td>BigInteger</td><td>no</td><td>UK (through, with tenant_id)</td><td>The range of entries archived.</td></tr>
 <tr><td>through_entry_hash</td><td>String(200)</td><td>no</td><td></td><td>The last archived entry's hash: where the live chain carries on from.</td></tr>
 <tr><td>entry_count</td><td>BigInteger</td><td>no</td><td></td><td></td></tr>
-<tr><td>archive_ref</td><td>String(1000)</td><td>no</td><td></td><td>The gzipped JSON Lines file (a local path or s3://...).</td></tr>
+<tr><td>archive_ref</td><td>String(1000)</td><td>no</td><td></td><td>The gzipped JSON Lines file (a local path, s3://... or azblob://...).</td></tr>
 <tr><td>archive_sha256 / archive_signature</td><td>String</td><td>no</td><td></td><td>The file's fingerprint and its ECDSA signature (file-signing key), checked by "Verify".</td></tr>
 <tr><td>oldest_occurred_at / newest_occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>

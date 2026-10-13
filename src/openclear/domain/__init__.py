@@ -22,6 +22,7 @@ from openclear.domain import (  # noqa: F401
     check_image,
     conformance,
     control_run,
+    control_status,
     customer,
     customer_disposition_setting,
     customer_ml_setting,

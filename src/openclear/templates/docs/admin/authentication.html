@@ -49,6 +49,10 @@ customer's data, that customer. Copy the secret when it's shown: it's shown only
   <li><strong>Rotate</strong> a secret you think may have leaked: the old one stops working
   for new tokens at once. <strong>Revoke</strong> a client you no longer use: it stops
   working at once, and can't be undone.</li>
+  <li><strong>Use a key pair</strong> instead of a secret where your system supports it
+  (<code>private_key_jwt</code>): you register only its public key, and it signs each
+  sign-in with a private key that never leaves it. Its secret stops working; <strong>Use a
+  secret instead</strong> goes back.</li>
   <li>Review your API clients alongside your users: the page shows when each was last
   used.</li>
 </ul>

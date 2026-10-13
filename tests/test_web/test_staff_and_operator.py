@@ -53,7 +53,7 @@ def test_the_customer_hub_puts_customers_with_items_first(client, db_session, te
     db_session.commit()
     exception = _make_exception(db_session, tenant, account, users, "9101", "100.00", "150.00")
     exception.customer_id = busy.id
-    exception.decision_deadline = datetime.now(timezone.utc) + timedelta(hours=1)
+    exception.decision_deadline = datetime.now(timezone.utc) - timedelta(minutes=5)  # due today at any hour (an hour ahead is tomorrow after 23:00 UTC)
     db_session.add(BulkUploadFile(tenant_id=tenant.id, customer_id=busy.id, kind=BulkUploadKind.ISSUED_ITEMS, original_filename="i.csv",
                                   storage_path="x", size_bytes=1, sha256_hex="0" * 64, signature_hex="0",
                                   uploaded_at=datetime.now(timezone.utc) - timedelta(days=2)))

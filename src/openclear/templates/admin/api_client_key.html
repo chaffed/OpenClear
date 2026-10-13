@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Key pair for {{ client.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/admin/api-clients">API clients</a></p>
+<div class="card card-narrow">
+  <h1>Sign in with a key pair</h1>
+  <p><strong>{{ client.name }}</strong> (<code>{{ client.client_id }}</code>)</p>
+  <p>Instead of a secret, the client signs a short assertion with its own private key, which never
+    leaves its systems; you register only the public key. Once saved, the client's secret stops working.</p>
+  <p class="hint">The client sends <code>client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer</code> and
+    <code>client_assertion</code>: a JWT signed with RS256, PS256 or ES256 (or the 384/512 variants), with <code>iss</code> and
+    <code>sub</code> its client id, <code>aud</code> the token endpoint's address, <code>exp</code> within five minutes, and a
+    unique <code>jti</code>. RSA keys need 2048 bits or more; elliptic-curve keys P-256 or P-384.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/admin/api-clients/{{ client.id }}/key">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Public key (PEM)
+      <textarea name="public_key_pem" rows="9" required placeholder="-----BEGIN PUBLIC KEY-----">{{ public_key_pem }}</textarea>
+    </label>
+    <button type="submit">{{ icon("vpn_key") }}Save and stop accepting the secret</button>
+  </form>
+  {% if client.token_auth_method == "private_key_jwt" %}
+  <form method="post" action="/ui/admin/api-clients/{{ client.id }}/use-secret" class="card-section"
+    data-confirm="Go back to a secret? A new one is made and shown once; the key pair stops working." data-confirm-yes="Use a secret">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Use a secret instead</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

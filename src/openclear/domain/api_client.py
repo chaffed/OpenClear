@@ -4,7 +4,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -43,6 +43,11 @@ class ApiClient(Base):
     # client only ever has its *:read permissions (auth/deps.py). For a data pipeline, and for
     # handing a customer a feed of its own data (with customer_id set on its membership).
     read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # How the client signs in at the token endpoint: "client_secret" (the default), or
+    # "private_key_jwt" (RFC 7523): an assertion signed with the private key whose public half
+    # is here, and no secret accepted (auth/client_assertion.py).
+    token_auth_method: Mapped[str] = mapped_column(String(20), nullable=False, default="client_secret", server_default="client_secret")
+    public_key_pem: Mapped[str | None] = mapped_column(Text, nullable=True)
     # The online banking provider's SSO connection whose ID tokens this client may exchange
     # for a token acting for that person (RFC 8693; api/v1/oauth.py), and whose subject ids
     # OpenClear-Act-As-Subject refers to. Needs can_act_for_users.
@@ -52,3 +57,18 @@ class ApiClient(Base):
     secret_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ClientAssertionUse(Base):
+    """A client assertion's `jti`, kept until the assertion expires, so it can't be used twice
+    (auth/client_assertion.py). Housekeeping clears expired ones."""
+
+    __tablename__ = "client_assertion_use"
+    __table_args__ = (UniqueConstraint("api_client_id", "jti"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    api_client_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("api_client.id"), nullable=False)
+    jti: Mapped[str] = mapped_column(String(200), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+

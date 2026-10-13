@@ -45,6 +45,16 @@ def _basic_credentials(request: Request) -> tuple[str, str] | None:
     return client_id, secret
 
 
+def _token_endpoint_urls(request: Request) -> list[str]:
+    """What a client assertion's `aud` may name: this endpoint's public address, and the
+    address the request arrived at."""
+    urls = [str(request.url).split("?", 1)[0]]
+    base = get_settings().public_base_url
+    if base:
+        urls.append(base.rstrip("/") + "/api/v1/oauth/token")
+    return urls
+
+
 TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
 ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"
 ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token"
@@ -59,11 +69,16 @@ def token(
     subject_token: str | None = Form(None),
     subject_token_type: str | None = Form(None),
     requested_token_type: str | None = Form(None),
+    client_assertion_type: str | None = Form(None),
+    client_assertion: str | None = Form(None),
     db: Session = Depends(get_db),
     _rate_limit: None = Depends(rate_limit("oauth_token", limit_setting="oauth_token_rate_limit_per_minute")),
 ) -> JSONResponse:
     """`grant_type=client_credentials`, with the client's id and secret either in HTTP Basic
-    auth or as `client_id` and `client_secret` form fields. Returns a bearer access token
+    auth or as `client_id` and `client_secret` form fields; or, for a client that signs in
+    with a key pair, `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`
+    and `client_assertion`: a JWT signed with its private key (`iss` and `sub` the client id,
+    `aud` this endpoint's URL, `exp` within five minutes, a unique `jti`). Returns a bearer access token
     for every `/api/v1` endpoint the client's security group allows.
 
     `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) trades the ID
@@ -75,10 +90,19 @@ def token(
     the connection's group mappings and customer claim, as at sign-in."""
     if grant_type not in ("client_credentials", TOKEN_EXCHANGE):
         return _error("unsupported_grant_type", "Supported: client_credentials and token exchange.", 400)
-    basic = _basic_credentials(request)
-    if basic is not None:
-        client_id, client_secret = basic
-    client = api_client_service.authenticate(db, client_id or "", client_secret or "")
+    if client_assertion_type is not None or client_assertion is not None:
+        # A key-pair client (private_key_jwt, RFC 7523): a signed assertion instead of a secret.
+        from openclear.auth import client_assertion as assertions
+
+        if client_assertion_type != assertions.ASSERTION_TYPE or not client_assertion:
+            return _error("invalid_request", f"Send client_assertion with client_assertion_type={assertions.ASSERTION_TYPE}.", 400)
+        client = assertions.verify(db, client_assertion, audiences=_token_endpoint_urls(request))
+        client_id = client.client_id if client is not None else client_id
+    else:
+        basic = _basic_credentials(request)
+        if basic is not None:
+            client_id, client_secret = basic
+        client = api_client_service.authenticate(db, client_id or "", client_secret or "")
     if client is None:
         db.rollback()
         # Sampled per client id and source, so a flood of bad secrets is one event a minute.

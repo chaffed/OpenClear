@@ -13,6 +13,23 @@ public static partial class ApiInfo
     public const string Version = "v1";
 }
 
+public sealed record AccountAccessRead
+{
+    [JsonPropertyName("account_ids")] public IReadOnlyList<string> AccountIds { get; init; } = default!;
+    [JsonPropertyName("all_accounts")] public bool AllAccounts { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("membership_id")] public string MembershipId { get; init; } = default!;
+}
+
+/// <summary>
+/// `all_accounts`: true for every account of the customer (including ones added later); false for just `account_ids` (at least one, all the customer's).
+/// </summary>
+public sealed record AccountAccessUpdate
+{
+    [JsonPropertyName("account_ids")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<string>? AccountIds { get; init; }
+    [JsonPropertyName("all_accounts")] public bool AllAccounts { get; init; } = default!;
+}
+
 public sealed record AccountRead
 {
     [JsonPropertyName("account_number")] public string AccountNumber { get; init; } = default!;
@@ -668,6 +685,8 @@ public sealed record SwitchLockClearedRead
 /// </summary>
 public sealed record TenantUserRead
 {
+    [JsonPropertyName("account_ids")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<string>? AccountIds { get; init; }
+    [JsonPropertyName("all_accounts")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? AllAccounts { get; init; }
     [JsonPropertyName("customer_name")] public string CustomerName { get; init; } = default!;
     [JsonPropertyName("email")] public string Email { get; init; } = default!;
     [JsonPropertyName("is_active")] public bool IsActive { get; init; } = default!;
@@ -2165,6 +2184,27 @@ public sealed partial class UsersApi
     /// </summary>
     public Task<IReadOnlyList<TenantUserRead>> ListUsersAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<TenantUserRead>>("GET", "/api/v1/users", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Account Access.
+    ///
+    /// GET /api/v1/users/{membership_id}/accounts
+    ///
+    /// Which of the customer's accounts this customer membership sees.
+    /// </summary>
+    public Task<AccountAccessRead> GetAccountAccessAsync(string membershipId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AccountAccessRead>("GET", $"/api/v1/users/{Uri.EscapeDataString(membershipId.ToString()!)}/accounts", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Set Account Access.
+    ///
+    /// PUT /api/v1/users/{membership_id}/accounts
+    ///
+    /// Limits a customer membership to some of the customer's accounts, or lets it see all
+    /// of them again. Takes effect on that person's next request.
+    /// </summary>
+    public Task<AccountAccessRead> SetAccountAccessAsync(string membershipId, AccountAccessUpdate body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AccountAccessRead>("PUT", $"/api/v1/users/{Uri.EscapeDataString(membershipId.ToString()!)}/accounts", json: body, cancellationToken: cancellationToken);
 }
 
 public partial class OpenClearClient

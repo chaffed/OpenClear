@@ -64,3 +64,19 @@ def test_production_environment_refuses_private_oidc_hosts():
     settings = Settings(environment="production", oidc_allow_private_hosts=True, **_OVERRIDDEN)
     with pytest.raises(RuntimeError, match="OIDC_ALLOW_PRIVATE_HOSTS"):
         assert_production_safe(settings)
+
+
+@pytest.mark.parametrize("settings_given", [
+    {"azure_storage_account_url": "https://acct.blob.core.windows.net"},  # no container
+    {"azure_storage_container": "files"},  # nothing to sign in with
+])
+def test_production_environment_refuses_azure_storage_half_configured(settings_given):
+    settings = Settings(environment="production", storage_backend="azure", **settings_given, **_OVERRIDDEN)
+    with pytest.raises(RuntimeError, match="AZURE_STORAGE_CONTAINER"):
+        assert_production_safe(settings)
+
+
+def test_production_environment_passes_with_azure_storage_configured():
+    settings = Settings(environment="production", storage_backend="azure", azure_storage_container="files",
+                        azure_storage_account_url="https://acct.blob.core.windows.net", **_OVERRIDDEN)
+    assert_production_safe(settings)  # must not raise

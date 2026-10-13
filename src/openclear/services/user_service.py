@@ -525,6 +525,10 @@ def update_membership(
         raise ValueError("This user already has a separate membership scoped to that customer")
 
     membership.security_group_id = security_group_id
+    if membership.customer_id != customer_id:
+        from openclear.services import account_access_service
+
+        account_access_service.reset(session, membership)  # another customer's accounts: all of them, until limited again
     membership.customer_id = customer_id
     session.flush()
     return membership

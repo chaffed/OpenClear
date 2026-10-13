@@ -44,6 +44,9 @@ class TenantContext:
     has_favicon: bool
     customer_id: uuid.UUID | None
     customer_name: str | None
+    # Per-account access (db/account_scope.py): the accounts a customer's person is limited
+    # to, or None when they see every account their customer scope allows.
+    account_ids: frozenset[uuid.UUID] | None = None
 
     # Per-tenant session-length override (services/tenant_service.py::set_session_timeouts)
     # — None means "use config.Settings.jwt_access/refresh_token_expire_minutes", the same

@@ -50,4 +50,22 @@ class TenantMembership(Base):
     # WebAuthn second factor). See services/user_service.py::grant_multi_customer_access,
     # the only place this is currently settable.
     require_webauthn: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Per-account access (services/account_access_service.py): a customer's person sees all
+    # of the customer's accounts (True, the default), or only those in membership_account.
+    # Only meaningful for a customer membership; bank staff always see the whole bank.
+    all_accounts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MembershipAccount(Base):
+    """An account a customer's person may see, when their membership isn't for all of the
+    customer's accounts (TenantMembership.all_accounts)."""
+
+    __tablename__ = "membership_account"
+    __table_args__ = (UniqueConstraint("membership_id", "account_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    membership_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant_membership.id"), nullable=False, index=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("account.id"), nullable=False)
+

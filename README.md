@@ -550,6 +550,16 @@ issued-item/ACH bulk uploads already resolve account numbers. A customer-scoped 
 can only ever create rows in their own scope — a `customer_number` column that names a
 different customer is rejected, not silently reassigned.
 
+**Per-account access.** Within a customer, the bank can limit one of the customer's people
+to some of its accounts (Users → Edit → Choose accounts, or
+`PUT /api/v1/users/{membership_id}/accounts`; `services/account_access_service.py`). It's
+applied to the request's database session, like the tenant binding (`db/account_scope.py`):
+every query on that session sees only those accounts and what's on them (issued items, stop
+payments, paid items, ACH rules and transactions, exceptions, decisions and check images),
+and only their own bulk uploads and data exports. Their background imports and exports run
+under the same limit, and notifications and deadline reminders reach them only for those
+accounts. Moving the person to another customer puts them back to all accounts.
+
 Not yet done, documented as an accepted v1 limitation: Postgres RLS policies on the six
 customer-scoped tables enforce `tenant_id` only, not `customer_id` — the repository layer
 above is the primary, tested enforcement point, same posture as tenant isolation's own RLS
@@ -710,7 +720,9 @@ password: an admin creates an **API client** (Settings → API clients) with a s
 and, optionally, a customer, and the system exchanges its client id and secret for a
 short-lived token at `POST /api/v1/oauth/token` (OAuth 2.0 client credentials; API.md).
 It acts through a service identity nobody can sign in as, with exactly its group's
-permissions; revoking it takes effect at once.
+permissions; revoking it takes effect at once. Instead of a secret, a client can sign in
+with a key pair (`private_key_jwt`: it signs a short assertion with a private key that never
+leaves its systems; API.md).
 
 **People** sign in with username + password (bcrypt-hashed) issuing JWTs (`api/v1/auth.py`), with an optional
 FIDO2/WebAuthn second factor (`api/v1/webauthn.py`, `auth/webauthn_service.py`):
@@ -1137,9 +1149,17 @@ By default, run **one** app process. `scripts/launcher.py`, the Docker image and
     `OPENCLEAR_S3_SECRET_ACCESS_KEY` (leave them empty to use boto3's own credentials:
     the environment, or an instance role). Give the credentials read, write, list and
     delete on that bucket (or prefix) only.
+  - `azure`: an Azure Blob Storage container, the same way (`pip install 'openclear[azure]'`).
+    Set `OPENCLEAR_AZURE_STORAGE_CONTAINER`, optionally `OPENCLEAR_AZURE_STORAGE_PREFIX`, and
+    either `OPENCLEAR_AZURE_STORAGE_CONNECTION_STRING` or `OPENCLEAR_AZURE_STORAGE_ACCOUNT_URL`
+    (`https://<account>.blob.core.windows.net`), which signs in with a managed identity, the
+    environment or the Azure CLI (azure-identity). Give that identity the *Storage Blob Data
+    Contributor* role on the container only. The app refuses to start in production with
+    `azure` and no container or credentials.
 
-  The database stores a reference to each file: a local path, or `s3://bucket/key`.
-  Reads go by the reference, so switching to `s3` doesn't break files already on disk.
+  The database stores a reference to each file: a local path, `s3://bucket/key` or
+  `azblob://container/name`. Reads go by the reference, so switching to `s3` or `azure`
+  doesn't break files already on disk.
   To move them, run `python scripts/move_files_to_object_storage.py --dry-run`, then
   without `--dry-run`, then with `--delete-local` once you've checked. It's safe to run
   again. The dropbox inbox (`auto_import_dropbox_dir`) is still a directory: put it on the

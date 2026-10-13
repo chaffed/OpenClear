@@ -12,6 +12,7 @@ from openclear.config import get_settings
 from openclear.workers.leader_lock import run_exclusively
 from openclear.workers.tasks import (
     anomaly_capture_job,
+    controls_watch_job,
     verify_action_logs_job,
     demo_reset_job,
     dropbox_import_job,
@@ -51,6 +52,7 @@ def start_scheduler() -> BackgroundScheduler:
     if settings.enable_control_test_scheduler:
         _add_job(_scheduler, "anomaly_capture_job", anomaly_capture_job, CronTrigger(hour=settings.control_test_cron_hour, minute=15))
         _add_job(_scheduler, "verify_action_logs_job", verify_action_logs_job, CronTrigger(hour=settings.control_test_cron_hour, minute=45))
+        _add_job(_scheduler, "controls_watch_job", controls_watch_job, CronTrigger(minute=5))
     if demo_reset_enabled(settings):
         _add_job(_scheduler, "demo_reset_job", demo_reset_job, IntervalTrigger(minutes=settings.demo_tenant_reset_interval_minutes))
     _scheduler.start()

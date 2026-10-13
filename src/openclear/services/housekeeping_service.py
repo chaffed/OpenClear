@@ -83,6 +83,14 @@ def run(session: Session) -> HousekeepingResult:
             or_(Destination.tenant_id.is_(None), Destination.tenant_id == SecurityEvent.tenant_id))
         result.deleted["security_events"] = _delete_in_batches(session, SecurityEvent, SecurityEvent.occurred_at < cutoff, ~undelivered)
 
+    # Client assertions' ids, once the assertions themselves have expired (auth/client_assertion.py):
+    # an expired assertion is refused anyway, so its jti needn't be remembered.
+    from openclear.domain.api_client import ClientAssertionUse
+
+    now = session.execute(select(func.now())).scalar_one()
+    if spent := _delete_in_batches(session, ClientAssertionUse, ClientAssertionUse.expires_at < now - timedelta(minutes=5)):
+        result.deleted["client_assertion_ids"] = spent
+
     # Vendor sandboxes past their lifetime (services/sandbox_service.py).
     from openclear.services import sandbox_service
 

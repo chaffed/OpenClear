@@ -159,13 +159,20 @@ class Settings(BaseSettings):
     # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
     # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.
     # With the key settings empty, boto3 finds credentials itself (environment, role).
-    storage_backend: str = "local"  # "local", "s3", or one a plugin provides
+    storage_backend: str = "local"  # "local", "s3", "azure", or one a plugin provides
     s3_bucket: str = ""
     s3_prefix: str = ""
     s3_endpoint_url: str = ""
     s3_region: str = ""
     s3_access_key_id: str = ""
     s3_secret_access_key: str = ""
+    # "azure": Azure Blob Storage (pip install 'openclear[azure]'). Either a connection string,
+    # or the account's URL (https://<account>.blob.core.windows.net) with credentials found by
+    # azure-identity (a managed identity, the environment, or the Azure CLI).
+    azure_storage_connection_string: str = ""
+    azure_storage_account_url: str = ""
+    azure_storage_container: str = ""
+    azure_storage_prefix: str = ""
 
     # Resource-exhaustion guards (main.py's request middleware, bulk_import/zip_import.py).
     max_request_body_bytes: int = 50 * 1024 * 1024
@@ -541,6 +548,10 @@ def assert_production_safe(settings: Settings) -> None:
 
     if settings.storage_backend == "s3" and not settings.s3_bucket:
         raise RuntimeError("Refusing to start: OPENCLEAR_STORAGE_BACKEND is s3 but OPENCLEAR_S3_BUCKET isn't set.")
+    if settings.storage_backend == "azure" and not (settings.azure_storage_container
+                                                    and (settings.azure_storage_connection_string or settings.azure_storage_account_url)):
+        raise RuntimeError("Refusing to start: OPENCLEAR_STORAGE_BACKEND is azure but OPENCLEAR_AZURE_STORAGE_CONTAINER and a "
+                           "connection string or account URL aren't set.")
     if settings.rate_limit_backend == "redis" and not settings.rate_limit_redis_url:
         raise RuntimeError("Refusing to start: OPENCLEAR_RATE_LIMIT_BACKEND is redis but OPENCLEAR_RATE_LIMIT_REDIS_URL isn't set.")
 

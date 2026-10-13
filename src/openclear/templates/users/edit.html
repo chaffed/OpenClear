@@ -33,6 +33,12 @@
     </label>
     <button type="submit">{{ icon("save") }}Save</button>
   </form>
+  {% if account_access %}
+  <section class="card-section">
+    <h2>Accounts</h2>
+    <p>{{ account_access }}. <a href="/ui/users/{{ membership.id }}/accounts">Choose accounts</a></p>
+  </section>
+  {% endif %}
   <p><a href="/ui/users">Cancel</a></p>
 </div>
 {% endblock %}

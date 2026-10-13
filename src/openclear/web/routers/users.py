@@ -22,6 +22,7 @@ from openclear.domain.tenant_membership import TenantMembership
 from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 from openclear.repositories.user_repo import UserRepository
 from openclear.services import (
+    account_access_service,
     audit_log_service,
     bulk_upload_file_service,
     bulk_upload_reversal_service,
@@ -617,9 +618,63 @@ def edit_user_form(
     member_user = UserRepository(db).get(membership.user_id)
     groups = security_group_service.list_security_groups(db, ctx.tenant_id)
     customers = customer_service.list_customers(db, ctx.tenant_id)
+    access = account_access_service.get_access(db, ctx.tenant_id, membership.id) if membership.customer_id else None
     return render_template(
-        request, "users/edit.html", ctx=ctx, membership=membership, member_user=member_user, groups=groups, customers=customers
+        request, "users/edit.html", ctx=ctx, membership=membership, member_user=member_user, groups=groups, customers=customers,
+        account_access=account_access_service.describe(access) if access else None,
     )
+
+
+@router.get("/{membership_id}/accounts", dependencies=[Depends(_people_only)])
+def account_access_form(
+    request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")),
+) -> HTMLResponse:
+    """Which of the customer's accounts this person sees (services/account_access_service.py)."""
+    try:
+        access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
+    except account_access_service.AccountAccessError:
+        raise WebNotFound() from None
+    return _account_access_page(request, db, ctx, access)
+
+
+def _account_access_page(request: Request, db: Session, ctx: TenantContext, access, *, error: str | None = None,
+                         chosen: set | None = None, status_code: int = 200) -> HTMLResponse:
+    return render_template(
+        request, "users/accounts.html", ctx=ctx, access=access, member_user=UserRepository(db).get(access.membership.user_id),
+        customer=customer_service.get_customer(db, ctx.tenant_id, access.membership.customer_id),
+        chosen=chosen if chosen is not None else access.account_ids, error=error, status_code=status_code,
+    )
+
+
+@router.post("/{membership_id}/accounts", dependencies=[Depends(_people_only)])
+async def save_account_access(
+    request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")), _csrf: None = Depends(verify_csrf),
+) -> Response:
+    form = await request.form()
+    all_accounts = form.get("scope") != "some"
+    try:
+        account_ids = [uuid.UUID(str(v)) for v in form.getlist("account_id")]
+        access = account_access_service.set_access(db, ctx.tenant_id, membership_id, all_accounts=all_accounts, account_ids=account_ids)
+    except (account_access_service.AccountAccessError, ValueError) as exc:
+        db.rollback()
+        try:
+            access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
+        except account_access_service.AccountAccessError:
+            raise WebNotFound() from None
+        message = str(exc) if isinstance(exc, account_access_service.AccountAccessError) else "Choose accounts from the list."
+        chosen = {str(v) for v in form.getlist("account_id")}
+        return _account_access_page(request, db, ctx, access, error=message, status_code=422,
+                                    chosen={a.id for a in access.customer_accounts if str(a.id) in chosen})
+    member = UserRepository(db).get(access.membership.user_id)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.account_access",
+        summary=f"Account access for {member.email if member else access.membership.user_id}: {account_access_service.describe(access)}",
+        resource_type="user", resource_id=access.membership.user_id,
+    )
+    db.commit()
+    return RedirectResponse("/ui/users?flash=" + quote("Account access saved."), status_code=303)
 
 
 @router.post("/{membership_id}", dependencies=[Depends(_people_only)])

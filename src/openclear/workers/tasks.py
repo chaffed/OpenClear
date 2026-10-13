@@ -405,6 +405,26 @@ def security_event_delivery_job() -> None:
         session.close()
 
 
+def controls_watch_job() -> None:
+    """Hourly: works out every bank's controls, so a change (to FAIL, say) is recorded as a
+    security event even when nobody opens the Controls page (services/controls_service.py)."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import controls_service
+
+    session = get_session_factory()()
+    try:
+        for tenant_id in list(session.execute(select(Tenant.id).where(Tenant.is_active.is_(True), Tenant.is_sandbox.is_(False))).scalars()):
+            try:
+                bind_session_to_tenant(session, tenant_id)
+                controls_service.status(session, tenant_id)
+                session.rollback()  # the controls only read; changes are recorded in their own transaction
+            except Exception:  # noqa: BLE001 -- one bank's failure never stops another's
+                session.rollback()
+                logger.exception("Controls watch failed for bank %s", tenant_id)
+    finally:
+        session.close()
+
+
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
     jobs, sent notifications, old bulk-upload row results and expired export archives."""

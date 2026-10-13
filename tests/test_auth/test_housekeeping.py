@@ -95,3 +95,21 @@ def test_zero_keeps_everything(db_session, monkeypatch):
 
     assert housekeeping_service.run(db_session).deleted == {}
     assert _count(db_session, Job) == 1
+
+
+def test_spent_client_assertion_ids_are_forgotten(db_session, tenant_factory):
+    from datetime import datetime, timedelta, timezone
+
+    from openclear.domain.api_client import ClientAssertionUse
+    from openclear.services import api_client_service, security_group_service
+
+    tenant, _account, _users = tenant_factory.make(slug="hk-jti")
+    group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    client = api_client_service.create_client(db_session, tenant.id, name="Core", security_group_id=group.id).client
+    now = datetime.now(timezone.utc)
+    for jti, expires in (("old", now - timedelta(hours=1)), ("live", now + timedelta(minutes=2))):
+        db_session.add(ClientAssertionUse(tenant_id=tenant.id, api_client_id=client.id, jti=jti, expires_at=expires))
+    db_session.commit()
+
+    assert housekeeping_service.run(db_session).deleted["client_assertion_ids"] == 1
+    assert [row.jti for row in db_session.query(ClientAssertionUse)] == ["live"]

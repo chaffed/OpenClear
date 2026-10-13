@@ -8,6 +8,19 @@ export const API_VERSION = "v1";
 
 // --- Models ----------------------------------------------------------------------------------
 
+export interface AccountAccessRead {
+  account_ids: Array<string>;
+  all_accounts: boolean;
+  customer_id: string;
+  membership_id: string;
+}
+
+/** `all_accounts`: true for every account of the customer (including ones added later); false for just `account_ids` (at least one, all the customer's). */
+export interface AccountAccessUpdate {
+  account_ids?: Array<string>;
+  all_accounts: boolean;
+}
+
 export interface AccountRead {
   account_number: string;
   ach_debit_block_mode: AchDebitBlockMode;
@@ -627,6 +640,8 @@ export interface SwitchLockClearedRead {
 
 /** One row per TenantMembership, mirroring web/routers/users.py's list page exactly — a user with several memberships in this tenant (bank-wide plus per-customer scopes) appears once per membership, matching how access is actually granted. */
 export interface TenantUserRead {
+  account_ids?: Array<string>;
+  all_accounts?: boolean;
   customer_name: string | null;
   email: string;
   is_active: boolean;
@@ -2260,6 +2275,29 @@ export class UsersApi {
    */
   listUsers(): Promise<Array<TenantUserRead>> {
     return this.c.call<Array<TenantUserRead>>("GET", `/api/v1/users`, {  });
+  }
+
+  /**
+   * Get Account Access.
+   *
+   * GET /api/v1/users/{membership_id}/accounts
+   *
+   * Which of the customer's accounts this customer membership sees.
+   */
+  getAccountAccess(membershipId: string): Promise<AccountAccessRead> {
+    return this.c.call<AccountAccessRead>("GET", `/api/v1/users/${encodeURIComponent(String(membershipId))}/accounts`, {  });
+  }
+
+  /**
+   * Set Account Access.
+   *
+   * PUT /api/v1/users/{membership_id}/accounts
+   *
+   * Limits a customer membership to some of the customer's accounts, or lets it see all
+   * of them again. Takes effect on that person's next request.
+   */
+  setAccountAccess(membershipId: string, body: AccountAccessUpdate): Promise<AccountAccessRead> {
+    return this.c.call<AccountAccessRead>("PUT", `/api/v1/users/${encodeURIComponent(String(membershipId))}/accounts`, { json: body });
   }
 }
 

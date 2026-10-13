@@ -92,3 +92,76 @@ def test_the_api_and_the_page(client, db_session, tenant_factory):
                                    "csrf_token": csrf, "next": "/ui/"})
     page = client.get("/ui/admin/controls")
     assert page.status_code == 200 and "Action log intact" in page.text and "badge-warn" in page.text
+
+
+def _events(db_session, tenant, name="control.status.changed"):
+    from sqlalchemy import select
+
+    from openclear.domain.security_event import SecurityEvent
+
+    db_session.expire_all()
+    return list(db_session.execute(select(SecurityEvent).where(SecurityEvent.tenant_id == tenant.id, SecurityEvent.name == name)
+                                   .order_by(SecurityEvent.id)).scalars())
+
+
+def test_a_control_changing_status_is_a_security_event(db_session, tenant_factory):
+    """So a bank's SIEM can alert on a control turning FAIL, and on it recovering."""
+    tenant, _account, _users = tenant_factory.make(slug="controls-events")
+
+    def control(status):
+        return controls_service.Control("audit_chain", "Audit log intact", status, f"now {status}", {})
+
+    assert controls_service.record_changes(tenant.id, [control("PASS")]) == []  # first seen: kept, no event
+    assert controls_service.record_changes(tenant.id, [control("PASS")]) == []
+    assert _events(db_session, tenant) == []
+
+    assert controls_service.record_changes(tenant.id, [control("FAIL")]) == [("audit_chain", "PASS", "FAIL")]
+    assert controls_service.record_changes(tenant.id, [control("FAIL")]) == []  # still failing: once only
+    assert controls_service.record_changes(tenant.id, [control("PASS")]) == [("audit_chain", "FAIL", "PASS")]
+    failed, recovered = _events(db_session, tenant)
+    assert (failed.outcome, failed.severity, failed.actor_type, failed.target_type, failed.target_id) == (
+        "failure", "high", "system", "control", "audit_chain")
+    assert failed.details["from"] == "PASS" and failed.details["to"] == "FAIL" and failed.details["detail"] == "now FAIL"
+    assert failed.reason == "pass_to_fail" and recovered.outcome == "success" and recovered.details["to"] == "PASS"
+
+
+def test_reading_the_controls_records_their_status(db_session, tenant_factory, monkeypatch):
+    from sqlalchemy import select
+
+    from openclear.domain.control_status import ControlStatus
+
+    tenant, _account, _users = tenant_factory.make(slug="controls-watch")
+    _by_key(db_session, tenant)
+    stored = {row.key: row.status for row in db_session.execute(select(ControlStatus).where(ControlStatus.tenant_id == tenant.id)).scalars()}
+    assert stored["anomaly_capture"] == "WARN" and stored["audit_chain"] == "PASS"
+
+    mrm_service.anomaly_capture(db_session, tenant.id, user_id=None)
+    db_session.commit()
+    assert _by_key(db_session, tenant)["anomaly_capture"].status == "PASS"
+    (event,) = _events(db_session, tenant)
+    assert event.target_id == "anomaly_capture" and event.details == {**event.details, "from": "WARN", "to": "PASS"}
+
+
+def test_the_hourly_watch_records_changes_nobody_looked_at(db_session, session_factory, tenant_factory, monkeypatch):
+    from openclear.workers import tasks
+
+    tenant, _account, _users = tenant_factory.make(slug="controls-hourly")
+    monkeypatch.setattr(tasks, "get_session_factory", lambda: session_factory)
+    tasks.controls_watch_job()  # first look: statuses kept quietly
+    mrm_service.anomaly_capture(db_session, tenant.id, user_id=None)
+    db_session.commit()
+    tasks.controls_watch_job()
+    assert [e.target_id for e in _events(db_session, tenant)] == ["anomaly_capture"]
+
+
+def test_a_recording_failure_never_breaks_the_controls(db_session, tenant_factory, monkeypatch, caplog):
+    from openclear.services import security_events
+
+    tenant, _account, _users = tenant_factory.make(slug="controls-broken")
+
+    def broken():
+        raise RuntimeError("database away")
+
+    monkeypatch.setattr(security_events, "_detached_factory", broken)
+    assert _by_key(db_session, tenant)["audit_chain"].status == "PASS"
+    assert "Couldn't record control status changes" in caplog.text

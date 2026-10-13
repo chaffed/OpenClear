@@ -6,6 +6,7 @@ services/api_client_service.py). A new or rotated secret is shown on the page th
 creates it, once, and never again."""
 
 import uuid
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -115,3 +116,53 @@ def revoke_api_client(
     )
     db.commit()
     return RedirectResponse("/ui/admin/api-clients?flash=API+client+revoked.", status_code=303)
+
+
+@router.get("/{api_client_id}/key")
+def key_pair_form(request: Request, api_client_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
+    """Sign in with a key pair instead of a secret (private_key_jwt; auth/client_assertion.py)."""
+    client = api_client_service.get_client(db, ctx.tenant_id, api_client_id)
+    if client is None or client.revoked_at is not None:
+        raise WebNotFound()
+    return render_template(request, "admin/api_client_key.html", ctx=ctx, client=client, public_key_pem=client.public_key_pem or "")
+
+
+@router.post("/{api_client_id}/key")
+def set_key_pair(
+    request: Request, api_client_id: uuid.UUID, public_key_pem: str = Form(""), db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf),
+) -> Response:
+    try:
+        client = api_client_service.use_key_pair(db, ctx.tenant_id, api_client_id, public_key_pem)
+    except api_client_service.ApiClientError as exc:
+        db.rollback()
+        client = api_client_service.get_client(db, ctx.tenant_id, api_client_id)
+        if client is None:
+            raise WebNotFound() from None
+        return render_template(request, "admin/api_client_key.html", ctx=ctx, client=client, public_key_pem=public_key_pem,
+                               error=str(exc), status_code=422)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="api_client.rotate_secret",
+        summary=f"API client {client.name} now signs in with a key pair; its secret no longer works", resource_type="api_client",
+        resource_id=client.id,
+    )
+    db.commit()
+    return RedirectResponse("/ui/admin/api-clients?flash=" + quote(f"{client.name} now signs in with its key pair."), status_code=303)
+
+
+@router.post("/{api_client_id}/use-secret")
+def back_to_secret(
+    request: Request, api_client_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    try:
+        issued = api_client_service.use_secret(db, ctx.tenant_id, api_client_id)
+    except api_client_service.ApiClientError:
+        raise WebNotFound() from None
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="api_client.rotate_secret",
+        summary=f"API client {issued.client.name} signs in with a secret again; its key pair no longer works", resource_type="api_client",
+        resource_id=issued.client.id,
+    )
+    db.commit()
+    return _secret_page(request, ctx, issued, rotated=True)
