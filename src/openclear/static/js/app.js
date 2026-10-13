@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // the no-JS / no-history fallback.
   initDecisionKeys();
   initBulkDecisions();
+  initImageSides();
 
   // <time datetime="..." data-local-time> shows the reviewer's own local time instead of
   // the server's UTC fallback text; data-relative-time adds "in 2h 13m" / "overdue".
@@ -554,6 +555,45 @@ function initDecisionKeys() {
       const link = rows[current].querySelector("a[href]");
       if (link) link.focus();
     }
+  });
+}
+
+// A check's front and back (exceptions/detail.html's data-image-sides): on a phone, one at a
+// time with Front and Back buttons; wider, both, as before. Each still opens full size.
+function initImageSides() {
+  document.querySelectorAll("[data-image-sides]").forEach((box) => {
+    const sides = Array.from(box.querySelectorAll(":scope > a"));
+    if (sides.length < 2) return;
+    const phone = window.OpenClear.breakpoint("phone");
+    let bar = null;
+    const show = (index) => {
+      sides.forEach((side, i) => { side.hidden = i !== index; });
+      bar.querySelectorAll("button").forEach((button, i) => button.setAttribute("aria-pressed", String(i === index)));
+    };
+    const place = () => {
+      if (phone.matches && !bar) {
+        bar = document.createElement("div");
+        bar.className = "image-sides";
+        bar.setAttribute("role", "group");
+        bar.setAttribute("aria-label", "Side of the check");
+        ["Front", "Back"].forEach((label, i) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "secondary";
+          button.textContent = label;
+          button.addEventListener("click", () => show(i));
+          bar.appendChild(button);
+        });
+        box.parentNode.insertBefore(bar, box);
+        show(0);
+      } else if (!phone.matches && bar) {
+        bar.remove();
+        bar = null;
+        sides.forEach((side) => { side.hidden = false; });
+      }
+    };
+    place();
+    phone.addEventListener("change", place);
   });
 }
 

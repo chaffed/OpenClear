@@ -283,6 +283,9 @@ def exception_detail(
     )
     tenant = db.get(Tenant, ctx.tenant_id)
     evidence = exception_evidence.build_evidence(db, item, source_item, scope_customer_id=ctx.customer_id)
+    # The item's own action log (MOBILE_PLAN.md R2), for those who may read the action log;
+    # never in a customer's session (it names the bank's people).
+    history = _history(db, ctx.tenant_id, item.id) if "audit_log:read" in ctx.permissions and ctx.customer_id is None else []
 
     return render_template(
         request,
@@ -299,7 +302,24 @@ def exception_detail(
         return_reasons=return_reasons,
         recommended_return_reason_id=recommended_ach_return_reason_id or next(
             (r.id for r in return_reasons if r.reason_text == item.recommended_reason_code), None),
+        history=history,
     )
+
+
+_HISTORY_LIMIT = 50
+
+
+def _history(db: Session, tenant_id: uuid.UUID, exception_id: uuid.UUID) -> list[dict[str, Any]]:
+    """The exception's entries in the action log, newest first, with who did each."""
+    from openclear.domain.audit_log_entry import AuditLogEntry
+
+    rows = db.execute(
+        select(AuditLogEntry, User.email).outerjoin(User, User.id == AuditLogEntry.actor_user_id)
+        .where(AuditLogEntry.tenant_id == tenant_id, AuditLogEntry.resource_id == exception_id,
+               AuditLogEntry.resource_type == "exception_item")
+        .order_by(AuditLogEntry.sequence.desc()).limit(_HISTORY_LIMIT)
+    ).all()
+    return [{"entry": entry, "actor_email": email or "(system)"} for entry, email in rows]
 
 
 @router.post("/bulk")

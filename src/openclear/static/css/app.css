@@ -578,8 +578,17 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Phones and narrow embedded frames (UX_PLAN.md U6): the list becomes cards, and the
    decision buttons are full-width and stay in reach at the bottom of the screen. */
+.item-history .history-latest { display: block; margin: .25rem 0 0 1.1rem; color: var(--text-muted); font-size: .9rem; }
+.item-history[open] .history-latest { display: none; }
+.history-list { list-style: none; padding: 0; margin: .75rem 0; display: grid; gap: .5rem; }
+.history-list li { display: grid; gap: .1rem; border-left: 3px solid var(--border); padding-left: .6rem; }
+.history-list time { font-size: .85rem; color: var(--text-faint); }
+.image-sides { display: flex; gap: .5rem; margin-bottom: .5rem; }
+.image-sides button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 @media (max-width: 639.98px) {
   .decide-layout.has-image { grid-template-columns: minmax(0, 1fr); }
+  /* On a phone the check comes first, one side at a time. */
+  .decide-layout.has-image > .decide-image { order: -1; }
   /* The bulk bar: the count, then Pay and Return side by side (Return's reasons in a sheet). */
   .bulk-bar:not([hidden]) { display: grid; grid-template-columns: 1fr 1fr; }
   .bulk-bar [data-bulk-count] { grid-column: 1 / -1; }

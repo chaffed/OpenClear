@@ -6,7 +6,8 @@ filters in a bottom sheet. The browser tests use Playwright's Chromium and are s
 where it isn't installed."""
 
 from openclear.domain.exception_item import ExceptionItem
-from tests.test_ml.test_per_customer_ml import _make_exception
+from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.test_web.test_deciding import _login
 from tests.test_web.test_mobile_components import _sign_in, browser_page  # noqa: F401 -- a fixture
 
 
@@ -135,3 +136,81 @@ def test_pay_on_a_phone_asks_first_when_the_risk_is_high(client, db_session, ten
     confirm.get_by_role("button", name="Cancel").click()
     db_session.expire_all()
     assert db_session.get(ExceptionItem, item.id).status.value == "open"
+
+
+def _png(colour: str) -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGB", (600, 260), colour).save(out, format="PNG")
+    return out.getvalue()
+
+
+def test_the_item_on_a_phone_image_first_one_side_at_a_time(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    from openclear.networks.check.ocr_processing import create_check_image
+
+    tenant, account, users = tenant_factory.make(slug="item-phone")
+    item = _make_exception(db_session, tenant, account, users, "9001", "10.00", "99.00")
+    create_check_image(db_session, tenant.id, front_bytes=_png("white"), back_bytes=_png("grey"), paid_item_id=item.source_item_id)
+    db_session.commit()
+    _sign_in(client, tenant, users)
+
+    page = browser_page(1280)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    front, back = page.get_by_role("img", name="Front of the check"), page.get_by_role("img", name="Back of the check")
+    assert front.is_visible() and back.is_visible() and page.locator(".image-sides").count() == 0
+
+    page = browser_page(360, 780)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    front, back = page.get_by_role("img", name="Front of the check"), page.get_by_role("img", name="Back of the check")
+    image_top = page.locator(".decide-image").bounding_box()["y"]
+    assert image_top < page.locator("table.evidence").bounding_box()["y"]  # the check comes first
+    sides = page.get_by_role("group", name="Side of the check")
+    assert front.is_visible() and not back.is_visible()
+    assert sides.get_by_role("button", name="Front").get_attribute("aria-pressed") == "true"
+    sides.get_by_role("button", name="Back").click()
+    assert back.is_visible() and not front.is_visible()
+    assert sides.get_by_role("button", name="Back").bounding_box()["height"] >= 44
+    # Wider again, both sides show and the buttons go.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.wait_for_function("document.querySelector('.image-sides') === null")
+    assert front.is_visible() and back.is_visible()
+
+
+def test_the_items_action_log_collapsed_with_the_newest_showing(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    from openclear.services import security_group_service, user_service
+    from tests.conftest import TenantFactory
+
+    tenant, account, users = tenant_factory.make(slug="item-log", require_dual_control=True)
+    item = _make_exception(db_session, tenant, account, users, "9101", "10.00", "99.00")
+    _sign_in(client, tenant, users)
+    csrf = client.cookies.get("csrf_token")
+    client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay", "notes": "first look"})
+    client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay", "notes": "second look"})
+
+    page = browser_page(360, 780)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    log = page.locator("details.item-history")
+    assert log.get_attribute("open") is None
+    latest = log.locator(".history-latest")
+    assert latest.is_visible() and "Recommended pay" in latest.inner_text() and users["admin"].email in latest.inner_text()
+    log.locator("summary").click()
+    assert log.locator(".history-list li").count() == 2 and not latest.is_visible()
+
+    # Someone who can't read the action log, and a customer's own people, don't see it.
+    _login(client, tenant, users["approver"].email)
+    assert "item-history" not in client.get(f"/ui/exceptions/{item.id}").text
+    customer, customer_account = _make_customer_with_account(db_session, tenant, "NG-1")
+    theirs = _make_exception(db_session, tenant, customer_account, users, "9102", "10.00", "99.00")
+    admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    clerk = user_service.create_user_with_membership(db_session, tenant.id, email="clerk@ng-1.example.com", password=TenantFactory.PASSWORD,
+                                                     security_group_id=admin_group.id, customer_id=customer.id)
+    db_session.commit()
+    csrf = _login(client, tenant, users["admin"].email)
+    client.post(f"/ui/exceptions/{theirs.id}/recommend", data={"csrf_token": csrf, "outcome": "pay"})
+    assert "item-history" in client.get(f"/ui/exceptions/{theirs.id}").text
+    _login(client, tenant, clerk.email)
+    page = client.get(f"/ui/exceptions/{theirs.id}")
+    assert page.status_code == 200 and "item-history" not in page.text

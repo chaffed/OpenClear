@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -36,7 +36,10 @@ class AuditLogEntry(Base):
     # One chain per bank, numbered 1, 2, 3... The unique constraint is what stops two
     # concurrent writers from both chaining onto the same entry (a fork that verify_chain
     # would report as tampering): the second insert fails and retries instead.
-    __table_args__ = (UniqueConstraint("tenant_id", "sequence", name="uq_audit_log_entry_tenant_sequence"),)
+    # The resource index: one thing's history (an exception's action log, who presented an
+    # item for segregation of duties, a customer's activity) without reading the whole chain.
+    __table_args__ = (UniqueConstraint("tenant_id", "sequence", name="uq_audit_log_entry_tenant_sequence"),
+                      Index("ix_audit_log_entry_tenant_resource", "tenant_id", "resource_id"))
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

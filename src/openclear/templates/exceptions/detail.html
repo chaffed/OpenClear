@@ -153,7 +153,7 @@
   {% if evidence and evidence.check_image and can(ctx, "check_image:read") %}
   <div class="decide-image card">
     <h2>Check image</h2>
-    <div class="check-images">
+    <div class="check-images" data-image-sides>
       <a href="/ui/check-images/{{ evidence.check_image.id }}/front" target="_blank" rel="noopener">
         <img src="/ui/check-images/{{ evidence.check_image.id }}/front" alt="Front of the check" loading="lazy"></a>
       {% if evidence.check_image.back_image_path %}
@@ -165,6 +165,23 @@
   </div>
   {% endif %}
 </div>
+
+{% if history %}
+{# The item's action log, collapsed; its newest entry shows while it is. #}
+{% set newest = history[0] %}
+<details class="card more-details item-history">
+  <summary><h2>Action log</h2>
+    <span class="history-latest">{{ newest.entry.summary }} · {{ newest.actor_email }} ·
+      <time datetime="{{ newest.entry.occurred_at | iso_utc }}" data-local-time>{{ newest.entry.occurred_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></span></summary>
+  <ol class="history-list">
+    {% for row in history %}
+    <li><time datetime="{{ row.entry.occurred_at | iso_utc }}" data-local-time>{{ row.entry.occurred_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+      <span>{{ row.entry.summary }}</span> <span class="text-muted">{{ row.actor_email }}, {{ row.entry.channel.value }}</span></li>
+    {% endfor %}
+  </ol>
+  <p><a href="/ui/audit-log">The whole action log</a></p>
+</details>
+{% endif %}
 
 <details class="card more-details">
   <summary><h2>More about this exception</h2></summary>

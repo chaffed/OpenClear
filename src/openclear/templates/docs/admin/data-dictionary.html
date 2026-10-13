@@ -1193,7 +1193,7 @@ erDiagram
 <tr><td>channel</td><td>String(10) enum</td><td>no</td><td></td><td>web / api.</td></tr>
 <tr><td>action</td><td>String(100)</td><td>no</td><td></td><td>Dotted action name, e.g. <code>issued_item.void</code>.</td></tr>
 <tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td>Human-readable one-liner.</td></tr>
-<tr><td>resource_type / resource_id</td><td>String(50) / UUID</td><td>varies</td><td></td><td></td></tr>
+<tr><td>resource_type / resource_id</td><td>String(50) / UUID</td><td>varies</td><td>resource_id indexed with tenant_id</td><td>One thing's history: an exception's action log on its page.</td></tr>
 <tr><td>metadata_json</td><td>JSON</td><td>yes</td><td></td><td></td></tr>
 <tr><td>prev_entry_hash</td><td>String(200)</td><td>yes</td><td></td><td>Null only for the very first entry in the chain.</td></tr>
 <tr><td>entry_hash</td><td>String(200)</td><td>no</td><td></td><td>Covers this entry's own fields plus prev_entry_hash — the hash chain "Verify chain" recomputes from scratch.</td></tr>
