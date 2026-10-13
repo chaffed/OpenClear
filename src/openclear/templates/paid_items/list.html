@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% import "_macros/list_search.html" as ls %}
 {% from "_macros/icon.html" import icon %}
@@ -26,26 +27,21 @@
   {{ ls.search_form("/ui/paid-items", search, number_label="Check number", date_label="Presented", q_hint="Check number or amount") }}
   <p class="list-tools">{{ ls.export_link("/ui/paid-items", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
-  <table data-server-list>
-    <thead><tr>
-      {{ ls.sort_th("Check #", "number", search, "/ui/paid-items") }}
-      {{ ls.sort_th("Presented amount", "amount", search, "/ui/paid-items", numeric=True) }}
-      {{ ls.sort_th("Presented date", "date", search, "/ui/paid-items") }}
-      {{ ls.sort_th("Match status", "match", search, "/ui/paid-items") }}
-      {{ ls.sort_th("Settlement", "settlement", search, "/ui/paid-items") }}
-    </tr></thead>
-    <tbody>
-      {% for item in page_obj.items %}
-      <tr>
-        <td><a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a></td>
-        <td>{{ item.presented_amount | currency }}</td>
-        <td>{{ item.presented_date }}</td>
-        <td><span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span></td>
-        <td>{{ item.settlement_status.value }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "number", "label": "Check #", "role": "primary", "sort": "number"},
+    {"key": "amount", "label": "Presented amount", "role": "money", "sort": "amount", "numeric": True},
+    {"key": "date", "label": "Presented date", "sort": "date"},
+    {"key": "match", "label": "Match status", "role": "status", "sort": "match"},
+    {"key": "settlement", "label": "Settlement", "sort": "settlement"},
+  ] %}
+  {% call(item, col, part="cell") rt.responsive_table(columns, page_obj.items, search=search, action="/ui/paid-items", attrs="data-server-list") -%}
+    {%- if col.key == "number" %}<a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a>
+    {%- elif col.key == "amount" %}{{ item.presented_amount | currency }}
+    {%- elif col.key == "date" %}{{ item.presented_date }}
+    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span>
+    {%- elif col.key == "settlement" %}{{ item.settlement_status.value }}
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   {{ ls.empty_state(search.active, "No checks have been presented yet. They arrive from the bank's core, or as a file.",

@@ -9,7 +9,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | exceptions | 3 small | 4 small | ✓ | ✓ |
 | exception | ✓ | ✓ | ✓ | ✓ |
 | issued_items | 1 small | 2 small | ✓ | ✓ |
-| paid_items | 2 small | 2 small | ✓ | ✓ |
+| paid_items | 1 small | 2 small | ✓ | ✓ |
 | ach_transactions | 1 small | 1 small | ✓ | ✓ |
 | action_log | ✓ | ✓ | ✓ | ✓ |
 | users | ✓ | ✓ | ✓ | ✓ |
@@ -41,8 +41,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 - small target: a "#####" (42x, e.g. 42x17)
 
 ### paid_items at 360px
-- small target: a "####" (1x, e.g. 33x17)
-- small target: a "#####" (42x, e.g. 42x17)
+- small target: a "####" (1x, e.g. 40x44)
 
 ### paid_items at 768px
 - small target: a "####" (1x, e.g. 33x17)
