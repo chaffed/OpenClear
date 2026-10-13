@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.14.0 — 2026-10-13
 
 What a bank's security and IT reviews ask for next: controls that alert, access by account,
 API clients without shared secrets, and Azure storage.
