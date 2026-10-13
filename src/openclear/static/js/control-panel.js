@@ -199,7 +199,7 @@
       if (error) {
         error.setAttribute("tabindex", "-1");
         error.focus();
-      } else if (first && window.matchMedia("(min-width: 640px)").matches) {
+      } else if (first && !window.OpenClear.breakpoint("phone").matches) {
         first.focus();
       } else {
         dialog.querySelector("[data-dialog-close]").focus();

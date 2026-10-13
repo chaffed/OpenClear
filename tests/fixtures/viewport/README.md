@@ -27,5 +27,6 @@ When a phase fixes problems, or the desktop is deliberately changed, rewrite all
 OPENCLEAR_VIEWPORT_WRITE_BASELINE=1 .venv/bin/python -m pytest -q tests/test_web/test_viewports.py
 ```
 
-and check in the diff: the baseline should only shrink, and a changed picture should be one
+(`OPENCLEAR_VIEWPORT_SHOTS=1` also saves every page at every width in
+`.openclear-run/viewport-shots/`, to look at) and check in the diff: the baseline should only shrink, and a changed picture should be one
 you meant to change.

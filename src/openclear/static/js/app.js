@@ -146,19 +146,48 @@ function initBannerCarousel() {
   });
 }
 
-// Mobile-only hamburger toggle (see base.html's .sidenav-header / #sidenav-panel and
-// app.css's @media (max-width: 720px) rules) -- the button and panel only exist so this
-// is a no-op at desktop widths where CSS keeps the panel always visible regardless of
-// the "open" class. No "close on navigate" handling needed: this is a server-rendered
-// multi-page app, so every link click is a full page load that resets the toggle state.
+// The navigation drawer below desktop width (base.html's #nav-toggle / #sidenav-panel, app.css's
+// drawer rules; MOBILE_PLAN.md R1). Open, the page behind it is inert, so focus stays in the
+// drawer; Escape, the close button or a tap on the backdrop closes it, and focus goes back to
+// the menu button. At desktop width CSS shows the panel as the sidebar whatever its class.
+// No "close on navigate": every link is a full page load.
 function initNavToggle() {
   const toggle = document.getElementById("nav-toggle");
   const panel = document.getElementById("sidenav-panel");
   if (!toggle || !panel) return;
+  const page = document.getElementById("main-content");
+  let backdrop = null;
 
-  toggle.addEventListener("click", () => {
-    const isOpen = panel.classList.toggle("open");
-    toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  const close = (returnFocus = true) => {
+    if (!panel.classList.contains("open")) return;
+    panel.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("nav-open");
+    if (page) page.inert = false;
+    if (backdrop) backdrop.remove();
+    backdrop = null;
+    if (returnFocus) toggle.focus();
+  };
+  const open = () => {
+    panel.classList.add("open");
+    toggle.setAttribute("aria-expanded", "true");
+    document.body.classList.add("nav-open");
+    if (page) page.inert = true;
+    backdrop = document.createElement("div");
+    backdrop.className = "nav-backdrop";
+    backdrop.addEventListener("click", () => close());
+    document.body.appendChild(backdrop);
+    const first = panel.querySelector("a[href], input:not([type=hidden])");
+    if (first) first.focus();
+  };
+
+  toggle.addEventListener("click", () => (panel.classList.contains("open") ? close() : open()));
+  panel.querySelectorAll("[data-nav-close]").forEach((button) => button.addEventListener("click", () => close()));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && panel.classList.contains("open")) close();
+  });
+  window.OpenClear.breakpoint("tablet").addEventListener("change", (event) => {
+    if (!event.matches) close(false);
   });
 }
 

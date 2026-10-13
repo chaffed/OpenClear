@@ -45,6 +45,7 @@ BASELINE = HERE / "baseline.json"
 REPORT = HERE / "REPORT.md"
 SCREENSHOTS = HERE / sys.platform  # compared on SQLite only: Postgres breaks ties between rows differently
 DIFFS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-diffs"
+SHOTS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-shots"  # OPENCLEAR_VIEWPORT_SHOTS=1: every width, to look at
 
 VIEWPORTS = {360: 780, 768: 1024, 1024: 768, 1280: 800}  # width: height
 REFERENCE_WIDTH = 1280
@@ -294,6 +295,9 @@ def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_fac
                 found[name][str(width)] = sorted(set(measured["problems"])) + _axe_problems(results)
                 details[name][str(width)] = measured["details"]
 
+                if os.environ.get("OPENCLEAR_VIEWPORT_SHOTS"):
+                    SHOTS.mkdir(parents=True, exist_ok=True)
+                    page.screenshot(path=SHOTS / f"{name}-{width}.png", full_page=True, animations="disabled", caret="hide")
                 if width == REFERENCE_WIDTH:
                     page.evaluate(STEADY)
                     taken = page.screenshot(full_page=True, animations="disabled", caret="hide")
