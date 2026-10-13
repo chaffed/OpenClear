@@ -10,7 +10,12 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | exception | ✓ | ✓ | ✓ | ✓ |
 | issued_items | 1 small | 2 small | ✓ | ✓ |
 | paid_items | 1 small | 2 small | ✓ | ✓ |
+| stop_payments | ✓ | ✓ | ✓ | ✓ |
 | ach_transactions | 1 small | 1 small | ✓ | ✓ |
+| ach_authorizations | ✓ | ✓ | ✓ | ✓ |
+| accounts | ✓ | ✓ | ✓ | ✓ |
+| customers | ✓ | ✓ | ✓ | ✓ |
+| api_clients | ✓ | ✓ | ✓ | ✓ |
 | action_log | ✓ | ✓ | ✓ | ✓ |
 | users | ✓ | ✓ | ✓ | ✓ |
 | sign_on | ✓ | ✓ | ✓ | ✓ |

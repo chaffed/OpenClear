@@ -39,7 +39,7 @@ from openclear.domain.paid_item import PaidItem  # noqa: E402
 from openclear.domain.tenant_membership import TenantMembership  # noqa: E402
 from openclear.domain.user import User  # noqa: E402
 from openclear.repositories.exception_repo import ExceptionRepository  # noqa: E402
-from openclear.services import demo_tenant_service, security_group_service, user_service  # noqa: E402
+from openclear.services import api_client_service, demo_tenant_service, security_group_service, user_service  # noqa: E402
 from tests.conftest import TenantFactory  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -61,7 +61,12 @@ PAGES = [
     ("exception", "{exception}", "bank"),
     ("issued_items", "/ui/issued-items", "bank"),
     ("paid_items", "/ui/paid-items", "bank"),
+    ("stop_payments", "/ui/stop-payments", "bank"),
     ("ach_transactions", "/ui/ach/transactions", "bank"),
+    ("ach_authorizations", "/ui/ach/authorizations", "bank"),
+    ("accounts", "/ui/accounts", "bank"),
+    ("customers", "/ui/customers", "bank"),
+    ("api_clients", "/ui/admin/api-clients", "bank"),
     ("action_log", "/ui/audit-log", "bank"),
     ("users", "/ui/users", "bank"),
     ("sign_on", "/ui/admin/sso", "bank"),
@@ -178,6 +183,11 @@ def _seed(client, db_session, tenant_factory):
     customer.self_manages_users = True
     role = security_group_service.create_security_group(db_session, tenant.id, security_group_service.SecurityGroupInput(
         name="Customer admin", permissions=["customer_user:manage", "issued_item:read", "issued_item:write"], offered_to_customers=True))
+    groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
+    for number, (name, group, read_only) in enumerate((("Accounting system", "Preparer", False), ("Reporting", "Viewer", True)), start=1):
+        issued = api_client_service.create_client(db_session, tenant.id, name=name, read_only=read_only,
+                                                  security_group_id=groups[group].id)
+        issued.client.client_id = f"oc_viewport_client_{number}"  # made at random; fixed for the pictures
     customer_admin = user_service.create_user_with_membership(db_session, tenant.id, email="dana@dental.example.com",
                                                               password=TenantFactory.PASSWORD, security_group_id=role.id,
                                                               customer_id=customer.id)
