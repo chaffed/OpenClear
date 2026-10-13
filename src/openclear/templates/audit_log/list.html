@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Action Log — {{ ctx.tenant_name }}{% endblock %}
@@ -43,20 +44,22 @@
   </p>
   {% endif %}
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Time</th><th>Actor</th><th>Channel</th><th>Action</th><th>Summary</th></tr></thead>
-    <tbody>
-      {% for row in rows %}
-      <tr>
-        <td>{{ row.entry.occurred_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
-        <td>{{ row.actor_email }}</td>
-        <td><span class="badge">{{ row.entry.channel.value }}</span></td>
-        <td><code>{{ row.entry.action }}</code></td>
-        <td>{{ row.entry.summary }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {# On a phone the summary is each card's title. #}
+  {% set columns = [
+    {"key": "time", "label": "Time"},
+    {"key": "actor", "label": "Actor"},
+    {"key": "channel", "label": "Channel", "role": "status"},
+    {"key": "action", "label": "Action"},
+    {"key": "summary", "label": "Summary", "role": "primary"},
+  ] %}
+  {% call(row, col, part="cell") rt.responsive_table(columns, rows, attrs="data-sortable") -%}
+    {%- if col.key == "time" %}{{ row.entry.occurred_at.strftime("%Y-%m-%d %H:%M:%S") }}
+    {%- elif col.key == "actor" %}{{ row.actor_email }}
+    {%- elif col.key == "channel" %}<span class="badge">{{ row.entry.channel.value }}</span>
+    {%- elif col.key == "action" %}<code>{{ row.entry.action }}</code>
+    {%- elif col.key == "summary" %}{{ row.entry.summary }}
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No actions recorded yet.</p>
