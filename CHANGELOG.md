@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+Phones and tablets (MOBILE_PLAN.md R0–R1). The desktop (1024px and wider) is unchanged.
+
+- **Navigation drawer**: below 1024px the sidebar is a bar with the bank's name and a menu
+  button; the links slide in from the left (Escape, the close button or a tap outside closes
+  it).
+- **Lists as cards on a phone**: issued items, paid items, stop payments, ACH transactions and
+  authorizations, accounts, customers, the action log, Users, People and API clients. Each row
+  is a card (the item as its title, the amount beside it); the column headers stay above the
+  cards as sort buttons. Users' and API clients' actions open from a ⋯ button.
+- **More filters** on a list opens as a sheet from the bottom of a phone's screen.
+- **Touch targets**: below 1024px every button, link in a list, field and menu entry is at
+  least 44×44px, and the theme and Help controls no longer cover the first card.
+- **Fixed**: lists sorted by when rows were made (issued items, paid items, ACH transactions,
+  exceptions, Users) could swap rows made in the same second between pages; every sort now
+  ends with a tie-breaker.
+
 ## 1.15.0 — 2026-10-13
 
 Customers can manage their own people and sign-on, when their bank allows it

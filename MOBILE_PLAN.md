@@ -203,8 +203,8 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
     buttons, 16–32px): R1's actions column (a ⋯ sheet when more than two).
 - **Noticed, not a layout problem:** lists sorted by when rows were made (issued items,
   paid items, ACH transactions, Users) have no tie-breaker, so rows made in the same second
-  come in a different order on SQLite and Postgres (and could move between pages). A
-  secondary sort on the id would settle it; left for R1, since the lists are being touched.
+  come in a different order on SQLite and Postgres (and could move between pages). Fixed in
+  R1: every list sort ends with the id.
 
 ## Testing
 
@@ -225,3 +225,28 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
   `tests/fixtures/viewport/baseline.json`, and compares 1280px screenshots with
   `tests/fixtures/viewport/darwin/`. Results in "R0 baseline" above: only touch targets fail,
   at 360 and 768px. No UI changes. Next: R1.
+- 2026-10-13 R1 done (branch `mobile-r1`, a commit per piece, the 1280px screenshots
+  unchanged after each):
+  - Breakpoints defined once (`--bp-phone-max` / `--bp-tablet-max` in app.css,
+    `static/js/breakpoints.js`); the old 640/720px queries moved onto them;
+    `tests/test_web/test_mobile_components.py` refuses any other width. Below 1024px: 44px targets everywhere, and the theme/Help controls get a
+    strip of their own.
+  - `nav_drawer` lives in base.html (one place already, so not a macro): the old phone
+    dropdown is now an off-canvas drawer below 1024px; the page is `inert` while it's open.
+  - `bottom_sheet` (`_macros/bottom_sheet.html`): content in place on wider screens (a
+    `display: contents` wrapper, so the layout is the same), moved into a `<dialog>` below
+    its breakpoint by JS. Used for the lists' More filters and row action menus.
+  - `responsive_table` (`_macros/responsive_table.html`), with roles as planned; on a phone
+    the sortable headers stay as a row of buttons above the cards. Moved, one per commit:
+    issued items, paid items, stop payments, ACH transactions, ACH authorizations, accounts,
+    customers, the action log, Users (⋯ sheet), People and invitations, API clients (⋯ sheet).
+    There is no bulk uploads list page (an upload is reached from its list's upload form);
+    the exception queue moves in R2.
+  - Every list sort ends with the id (`web/list_search.py` `tie_breaker`, Users).
+  - The viewport test covers 19 pages now; its seed gives rows distinct recent times, so the
+    reference pictures are stable. Remaining baseline: the exception queue's checkboxes (R2)
+    and the upload page's back link (R3).
+  - Not done, deliberately: tablet rows folding the remaining columns into an expandable
+    row. `hide-tablet` drops a column below 1024px instead (the item's page has it); no list
+    needed either yet, since they fit at 768px. Revisit in R3 if one doesn't.
+  Next: R2.

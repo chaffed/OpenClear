@@ -3,7 +3,7 @@
      phone   (max-width: 639.98px)    one column, lists as cards
      tablet  (max-width: 1023.98px)   phones too: the navigation drawer, 44px touch targets
    Desktop is 1024px and up. JS reads the same values from --bp-*-max
-   (static/js/breakpoints.js), and tests/test_web/test_breakpoints.py refuses any other. */
+   (static/js/breakpoints.js), and tests/test_web/test_mobile_components.py refuses any other. */
 :root {
   --bp-phone-max: 639.98px;
   --bp-tablet-max: 1023.98px;
