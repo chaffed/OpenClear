@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.15.0 — 2026-10-13
 
 Customers can manage their own people and sign-on, when their bank allows it
 (CUSTOMER_ADMIN_PLAN.md).
