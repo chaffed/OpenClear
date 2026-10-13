@@ -124,8 +124,10 @@ MEASURE = """({width, touch, decision}) => {
   }
 
   if (decision) {
-    ['[data-decision-panel] .button-pay', '[data-decision-panel] .decision-return > summary'].forEach((selector) => {
-      const el = document.querySelector(selector);
+    // Return is its <summary> on a desktop, and a button opening the reasons' sheet below it.
+    ['[data-decision-panel] .button-pay',
+     '[data-decision-panel] .decision-return > summary, [data-decision-panel] > .sheet-trigger.button-return'].forEach((selector) => {
+      const el = Array.from(document.querySelectorAll(selector)).find(shown);
       if (!el) { problems.push('decision button missing: ' + selector); return; }
       const r = el.getBoundingClientRect();
       if (r.top < 0 || r.bottom > H) {

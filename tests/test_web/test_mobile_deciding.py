@@ -76,3 +76,62 @@ def test_the_queue_on_a_desktop_is_a_table_with_row_keys(client, db_session, ten
     assert page.evaluate("document.activeElement.textContent").startswith("Check #87")
     page.locator("thead [data-select-all]").check()
     assert page.locator("[data-bulk-bar]").is_visible() and "2 selected" in page.locator("[data-bulk-count]").inner_text()
+
+
+def test_the_decision_bar_on_a_phone(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    tenant, account, users = tenant_factory.make(slug="decision-bar")
+    item = _make_exception(db_session, tenant, account, users, "8901", "10.00", "99.00")
+    item.ml_score = 0.2  # an 80% chance it should be returned: High
+    db_session.commit()
+    _sign_in(client, tenant, users)
+
+    page = browser_page(1280)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    assert not page.locator(".decision-score").is_visible()
+    assert page.locator(".decision-return > summary").is_visible()
+    assert not page.locator("[data-sheet-open='return-decide']").is_visible()
+
+    page = browser_page(360, 780)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    bar = page.locator(".decision-card").bounding_box()
+    assert bar["y"] + bar["height"] <= 780 + 1 and bar["height"] < 160  # stuck to the bottom, and small
+    score = page.locator(".decision-score")
+    pay = page.get_by_role("button", name="Pay", exact=True)
+    ret = page.locator("[data-sheet-open='return-decide']")
+    assert "High · 80%" in score.inner_text()
+    boxes = [score.bounding_box(), pay.bounding_box(), ret.bounding_box()]
+    assert boxes[0]["x"] < boxes[1]["x"] < boxes[2]["x"] and abs(boxes[1]["y"] - boxes[2]["y"]) < 2  # one row
+    assert all(b["height"] >= 44 for b in boxes[1:])
+
+    # R opens the reasons in a sheet, the first one focused; returning from it works.
+    page.keyboard.press("r")
+    sheet = page.get_by_role("dialog", name="Why is it being returned?")
+    assert sheet.is_visible()
+    assert page.evaluate("document.activeElement.name") == "return_reason_id"
+    sheet.get_by_label("Stop payment").check()
+    with page.expect_response(f"**/ui/exceptions/{item.id}/decide") as answer:
+        sheet.get_by_role("button", name="Return it").click()
+    assert "Decision+recorded" in answer.value.headers["location"]
+    db_session.expire_all()
+    assert db_session.get(ExceptionItem, item.id).status.value == "return"
+
+
+def test_pay_on_a_phone_asks_first_when_the_risk_is_high(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    tenant, account, users = tenant_factory.make(slug="decision-confirm")
+    item = _make_exception(db_session, tenant, account, users, "8902", "10.00", "99.00")
+    item.ml_score = 0.2
+    db_session.commit()
+    _sign_in(client, tenant, users)
+
+    page = browser_page(360, 780)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}")
+    page.get_by_role("button", name="Pay", exact=True).click()
+    confirm = page.locator("dialog.confirm-dialog")
+    assert confirm.is_visible()
+    box = confirm.bounding_box()
+    assert box["x"] >= 0 and box["x"] + box["width"] <= 360
+    for name in ("Cancel", "Pay it"):
+        assert confirm.get_by_role("button", name=name).bounding_box()["height"] >= 44
+    confirm.get_by_role("button", name="Cancel").click()
+    db_session.expire_all()
+    assert db_session.get(ExceptionItem, item.id).status.value == "open"

@@ -9,9 +9,14 @@
 {# The decision panel (UX_PLAN.md U4): Pay and Return as two buttons. Pay needs no reason;
    Return opens the bank's list of reasons for this kind of item. `mode` is decide,
    recommend or approve (approving a recommendation, where the recommended choice is marked). #}
-{% macro decision_panel(item, action, mode, return_reasons, preselect_reason, pay_confirm) %}
+{# Below desktop the panel is a compact bar stuck to the bottom of the screen: the fraud risk
+   beside Pay and Return (MOBILE_PLAN.md R2), and Return's reasons in a bottom sheet
+   (_macros/bottom_sheet.html), still inside their form. #}
+{% macro decision_panel(item, action, mode, return_reasons, preselect_reason, pay_confirm, risk=None) %}
 {% set recommended = item.recommended_outcome if mode == "approve" else None %}
+{% set return_label = "Recommend returning" if mode == "recommend" else "Return" %}
 <div class="decision-panel" data-decision-panel>
+  {% if risk %}<p class="decision-score"><span class="fact-label">Fraud risk</span> <span class="badge {{ risk.badge }}">{{ risk.level }} · {{ risk.return_percent }}%</span></p>{% endif %}
   <form method="post" action="{{ action }}" class="decision-pay"{% if pay_confirm %} data-confirm="{{ pay_confirm }}" data-confirm-title="Pay a high-risk item?" data-confirm-yes="Pay it"{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="outcome" value="pay">
@@ -20,14 +25,15 @@
       <label>Note (optional) <input type="text" name="notes" maxlength="500"></label>
     </details>
   </form>
-  <details class="decision-return"{% if recommended == "return" %} open{% endif %}>
-    <summary class="button button-return" data-key="r">{{ icon("block") }}{{ "Recommend returning" if mode == "recommend" else "Return" }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</summary>
+  <button type="button" class="sheet-trigger button-return" data-sheet-open="return-{{ mode }}" aria-haspopup="dialog" aria-controls="return-{{ mode }}" hidden>{{ icon("block") }}{{ return_label }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</button>
+  <details class="decision-return" id="return-{{ mode }}" data-sheet="tablet" data-sheet-title="Why is it being returned?"{% if recommended == "return" %} open{% endif %}>
+    <summary class="button button-return" data-key="r">{{ icon("block") }}{{ return_label }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</summary>
     <form method="post" action="{{ action }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="outcome" value="return">
       {% if return_reasons %}
       <fieldset class="reason-list">
-        <legend>Why is it being returned?</legend>
+        <legend class="sheet-hidden">Why is it being returned?</legend>
         {% for reason in return_reasons %}
         <label><input type="radio" name="return_reason_id" value="{{ reason.id }}" required {{ "checked" if reason.id == preselect_reason else "" }}> {{ reason.reason_text }}</label>
         {% endfor %}
@@ -115,9 +121,9 @@
 
     {% if show_recommend %}
     <div class="card decision-card">
-      <h2>{{ "Revise recommendation" if item.status.value == "pending_approval" else "Recommend a decision" }}</h2>
+      <h2 class="decision-heading">{{ "Revise recommendation" if item.status.value == "pending_approval" else "Recommend a decision" }}</h2>
       {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/recommend", "recommend", return_reasons,
-                        recommended_return_reason_id if item.status.value == "pending_approval" else None, pay_confirm) }}
+                        recommended_return_reason_id if item.status.value == "pending_approval" else None, pay_confirm, risk) }}
     </div>
     {% endif %}
 
@@ -134,10 +140,10 @@
       </div>
       {% else %}
       <div class="card decision-card">
-        <h2>{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
-        {% if item.status.value != "pending_approval" %}<p class="hint">Pay releases it as if it had matched; Return sends it back unpaid. A decision can't be changed afterwards.</p>{% endif %}
+        <h2 class="decision-heading">{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
+        {% if item.status.value != "pending_approval" %}<p class="hint decision-hint">Pay releases it as if it had matched; Return sends it back unpaid. A decision can't be changed afterwards.</p>{% endif %}
         {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decide", "approve" if item.status.value == "pending_approval" else "decide",
-                          return_reasons, recommended_return_reason_id, pay_confirm) }}
+                          return_reasons, recommended_return_reason_id, pay_confirm, risk) }}
       </div>
       {% endif %}
     {% endif %}

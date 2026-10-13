@@ -540,6 +540,9 @@ function initDecisionKeys() {
       const ret = panel.querySelector("details.decision-return");
       if (ret) {
         event.preventDefault();
+        // Below desktop the reasons are in a bottom sheet: open it first.
+        const trigger = panel.querySelector(".sheet-trigger.button-return:not([hidden])");
+        if (trigger) trigger.click();
         ret.open = true;
         const first = ret.querySelector('input[type="radio"], input[type="text"]');
         if (first) first.focus();
