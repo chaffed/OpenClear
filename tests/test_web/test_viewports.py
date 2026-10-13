@@ -39,7 +39,7 @@ from openclear.domain.paid_item import PaidItem  # noqa: E402
 from openclear.domain.tenant_membership import TenantMembership  # noqa: E402
 from openclear.domain.user import User  # noqa: E402
 from openclear.repositories.exception_repo import ExceptionRepository  # noqa: E402
-from openclear.services import api_client_service, demo_tenant_service, security_group_service, user_service  # noqa: E402
+from openclear.services import api_client_service, customer_people_service, demo_tenant_service, security_group_service, user_service  # noqa: E402
 from tests.conftest import TenantFactory  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -191,6 +191,8 @@ def _seed(client, db_session, tenant_factory):
     customer_admin = user_service.create_user_with_membership(db_session, tenant.id, email="dana@dental.example.com",
                                                               password=TenantFactory.PASSWORD, security_group_id=role.id,
                                                               customer_id=customer.id)
+    customer_people_service.invite(db_session, tenant.id, customer.id, email="sam@dental.example.com", security_group_id=role.id,
+                                   invited_by_user_id=customer_admin.id, accept_base_url="http://testserver")
     # Lists sort by when people were added; made in one go, some tie, so give each its own time.
     rows = db_session.execute(select(TenantMembership, User.email).join(User, User.id == TenantMembership.user_id)
                               .where(TenantMembership.tenant_id == tenant.id).order_by(User.email)).all()
