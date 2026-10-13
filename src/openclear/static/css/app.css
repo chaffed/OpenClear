@@ -377,7 +377,11 @@ public-demo notice, the tenant banner), which otherwise ran underneath page-cont
 .session-dialog [data-session-countdown] { font-variant-numeric: tabular-nums; }
 
 @media (max-width: 1023.98px) {
+  /* The theme and Help controls get a strip of their own above the content, instead of
+     sitting over the first card's corner. */
   .page-controls { top: 1rem; right: 1rem; }
+  .page { padding-top: 4.25rem; }
+  .page > .toolbar, .page > :is(.flash, .banner-carousel):first-child { margin-top: 0; }
 }
 
 .app-footer {
@@ -669,6 +673,46 @@ fieldset { min-width: 0; }
 .support-banner { background: var(--badge-warn-bg); color: var(--badge-warn-fg); border-bottom: 2px solid var(--badge-warn-fg);
   padding: 0.5rem 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between; }
 .support-banner form { margin: 0; }
+
+/* Responsive tables (templates/_macros/responsive_table.html; MOBILE_PLAN.md §1). Desktop:
+   an ordinary table. Below desktop, hide-tablet columns go; on a phone, hide-phone columns
+   too, and each row is a card: the primary cell is its title with the money beside it, then
+   the status, "label: value" lines, and the actions along the bottom. The sortable headers
+   stay, as a row of buttons above the cards. */
+@media (max-width: 1023.98px) {
+  table.responsive .hide-tablet { display: none; }
+}
+@media (max-width: 639.98px) {
+  table.responsive .hide-phone { display: none; }
+  table.responsive, table.responsive > tbody { display: block; width: 100%; }
+  table.responsive > thead { display: block; }
+  table.responsive > thead > tr { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+  table.responsive > thead th { border: 0; padding: 0; }
+  table.responsive > thead th:not(:has(.sort-link, .sort-button)) { display: none; }
+  table.responsive > thead th :is(.sort-link, .sort-button) {
+    padding: 0 0.75rem; border: 1px solid var(--border); border-radius: 999px; text-transform: none;
+  }
+  table.responsive > tbody > tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.15rem 0.75rem; position: relative;
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.75rem 0.6rem; margin-bottom: 0.6rem;
+  }
+  table.responsive > tbody > tr > td { display: block; grid-column: 1 / -1; border: 0; padding: 0; overflow-wrap: anywhere; }
+  table.responsive td.cell-primary { grid-column: 1; grid-row: 1; font-size: 1.05rem; font-weight: 600; }
+  table.responsive td.cell-primary a { display: inline-flex; align-items: center; min-height: 44px; }
+  table.responsive td.cell-money { grid-column: 2; grid-row: 1; align-self: center; text-align: right; font-weight: 700; }
+  table.responsive td.cell-meta::before { content: attr(data-label) ": "; color: var(--text-faint); font-size: 0.85rem; }
+  table.responsive td.cell-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 0.35rem; }
+  table.responsive td.cell-actions:empty { display: none; }
+  table.responsive td.cell-actions a:not(.button) { display: inline-flex; align-items: center; min-height: 44px; }
+  table.responsive td.cell-select { position: absolute; top: 0.4rem; right: 0.5rem; width: auto; }
+  table.responsive td.cell-select label, table.responsive td.cell-select input { margin: 0; }
+  table.responsive tr:has(td.cell-select) td.cell-primary { padding-right: 3rem; }
+  .row-menu { width: 44px; justify-content: center; padding: 0; }
+  .bottom-sheet .sheet-content :is(a, .link-button) {
+    display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 0.25rem; border-bottom: 1px solid var(--border);
+  }
+  .bottom-sheet .sheet-content .inline-form { display: block; }
+}
 
 /* Bottom sheets (templates/_macros/bottom_sheet.html): in place, the wrapper isn't there for
    layout; in the sheet (phones), a panel along the bottom of the screen. */

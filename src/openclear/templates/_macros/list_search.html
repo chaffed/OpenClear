@@ -28,9 +28,9 @@
 </form>
 {% endmacro %}
 
-{% macro sort_th(label, column, search, action, numeric=False) %}
+{% macro sort_th(label, column, search, action, numeric=False, extra_class="") %}
 {%- set state = search.sort_state(column) -%}
-<th{% if numeric %} data-type="number"{% endif %}{% if state %} aria-sort="{{ state }}"{% endif %}><a class="sort-link{{ ' sort-' ~ ('desc' if state == 'descending' else 'asc') if state else '' }}" href="{{ action }}?{{ search.sort_link(column) }}">{{ label }}</a></th>
+<th{% if extra_class %} class="{{ extra_class }}"{% endif %}{% if numeric %} data-type="number"{% endif %}{% if state %} aria-sort="{{ state }}"{% endif %}><a class="sort-link{{ ' sort-' ~ ('desc' if state == 'descending' else 'asc') if state else '' }}" href="{{ action }}?{{ search.sort_link(column) }}">{{ label }}</a></th>
 {%- endmacro %}
 
 {% macro export_link(action, search, total) %}

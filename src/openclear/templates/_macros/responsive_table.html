@@ -1,0 +1,56 @@
+{# One table that reads as cards on a phone (MOBILE_PLAN.md §1). It stays a real table, so
+   screen readers, sorting, CSV export and the server-side list filters all keep working; CSS
+   (app.css "Responsive tables") does the rest. On a desktop it renders what a hand-written
+   table would.
+
+   columns: a list of dicts, one per column:
+     key     what the caller block switches on
+     label   the header, and the "label:" before a meta value on a card
+     role    primary (the card's title), money (beside the title), status (a badge line),
+             meta (a "label: value" line), actions (the card's footer), select (a checkbox
+             in the card's corner)
+     sort    a server-side sort key (web/list_search.py), when `search` and `action` are given
+     numeric True for a column that sorts as a number
+     hide    "phone" or "tablet": dropped below that width (the item's own page has it)
+     sheet   actions only: on a phone, a ⋯ button opening the actions in a bottom sheet
+             (for more than two)
+     th      extra header attributes, as a string (data-no-sort, a class)
+     class   extra cell classes
+   The caller block renders a cell: {% call(row, col, part="cell") responsive_table(...) %}.
+   For a column with `sheet`, it's also called with part="title": the sheet's title for that
+   row, e.g. "Actions for dana@example.com". #}
+{% import "_macros/list_search.html" as ls %}
+{% from "_macros/bottom_sheet.html" import bottom_sheet, sheet_trigger %}
+
+{% macro responsive_table(columns, rows, search=None, action=None, attrs="", id="rows") -%}
+<table class="responsive"{% if attrs %} {{ attrs }}{% endif %}>
+    <thead><tr>
+      {%- for col in columns %}
+      {%- set classes = ("hide-" ~ col.hide) if col.hide else "" %}
+      {%- if col.sort and search is not none %}
+      {{ ls.sort_th(col.label, col.sort, search, action, numeric=col.numeric, extra_class=classes) }}
+      {%- else %}
+      <th{% if col.numeric %} data-type="number"{% endif %}{% if classes %} class="{{ classes }}"{% endif %}{% if col.th %} {{ col.th }}{% endif %}>{{ col.label }}</th>
+      {%- endif %}
+      {%- endfor %}
+    </tr></thead>
+    <tbody>
+      {%- for row in rows %}
+      {%- set row_index = loop.index %}
+      <tr>
+        {%- for col in columns %}
+        <td data-label="{{ col.label }}" class="cell-{{ col.role or 'meta' }}{{ ' hide-' ~ col.hide if col.hide else '' }}{{ ' ' ~ col.class if col.class else '' }}">
+          {%- if col.sheet %}
+          {%- set sheet_id = id ~ "-" ~ row_index ~ "-" ~ col.key %}
+          {%- set title = caller(row, col, "title") | trim %}
+          {%- set content = caller(row, col) %}
+          {{ sheet_trigger(sheet_id, "", "more_horiz", class="secondary row-menu", aria_label=title) }}
+          {%- call bottom_sheet(sheet_id, title) %}{{ content }}{% endcall %}
+          {%- else %}{{ caller(row, col) }}{% endif -%}
+        </td>
+        {%- endfor %}
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+{%- endmacro %}

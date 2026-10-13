@@ -8,7 +8,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | dashboard | ✓ | ✓ | ✓ | ✓ |
 | exceptions | 3 small | 4 small | ✓ | ✓ |
 | exception | ✓ | ✓ | ✓ | ✓ |
-| issued_items | 2 small | 2 small | ✓ | ✓ |
+| issued_items | 1 small | 2 small | ✓ | ✓ |
 | paid_items | 2 small | 2 small | ✓ | ✓ |
 | ach_transactions | 1 small | 1 small | ✓ | ✓ |
 | action_log | ✓ | ✓ | ✓ | ✓ |
@@ -34,8 +34,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 - small target: input[checkbox] "Select Gusto Payroll (##########)" (1x, e.g. 24x24)
 
 ### issued_items at 360px
-- small target: a "####" (1x, e.g. 32x17)
-- small target: a "#####" (42x, e.g. 42x17)
+- small target: a "####" (1x, e.g. 39x44)
 
 ### issued_items at 768px
 - small target: a "####" (1x, e.g. 32x17)

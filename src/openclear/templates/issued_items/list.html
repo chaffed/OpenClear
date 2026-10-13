@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
 {% import "_macros/list_search.html" as ls %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Issued Items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About issued items{% endblock %}
@@ -43,26 +44,21 @@
     {{ ls.export_link("/ui/issued-items", search, page_obj.total_count) }}
   </form>
   {% if page_obj.total_count > 0 %}
-  <table data-server-list>
-    <thead><tr>
-      {{ ls.sort_th("Check #", "number", search, "/ui/issued-items") }}
-      {{ ls.sort_th("Amount", "amount", search, "/ui/issued-items", numeric=True) }}
-      {{ ls.sort_th("Payee", "payee", search, "/ui/issued-items") }}
-      {{ ls.sort_th("Issue date", "date", search, "/ui/issued-items") }}
-      {{ ls.sort_th("Status", "status", search, "/ui/issued-items") }}
-    </tr></thead>
-    <tbody>
-      {% for item in page_obj.items %}
-      <tr>
-        <td><a href="/ui/issued-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a></td>
-        <td>{{ item.amount | currency }}</td>
-        <td>{{ item.payee_name }}</td>
-        <td>{{ item.issue_date }}</td>
-        <td><span class="badge {{ 'badge-ok' if item.status.value == 'outstanding' else 'badge-warn' if item.status.value in ['stale','stopped'] else 'badge-danger' if item.status.value == 'voided' else '' }}">{{ item.status.value }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "number", "label": "Check #", "role": "primary", "sort": "number"},
+    {"key": "amount", "label": "Amount", "role": "money", "sort": "amount", "numeric": True},
+    {"key": "payee", "label": "Payee", "sort": "payee"},
+    {"key": "date", "label": "Issue date", "sort": "date"},
+    {"key": "status", "label": "Status", "role": "status", "sort": "status"},
+  ] %}
+  {% call(item, col, part="cell") rt.responsive_table(columns, page_obj.items, search=search, action="/ui/issued-items", attrs="data-server-list") -%}
+    {%- if col.key == "number" %}<a href="/ui/issued-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a>
+    {%- elif col.key == "amount" %}{{ item.amount | currency }}
+    {%- elif col.key == "payee" %}{{ item.payee_name }}
+    {%- elif col.key == "date" %}{{ item.issue_date }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if item.status.value == 'outstanding' else 'badge-warn' if item.status.value in ['stale','stopped'] else 'badge-danger' if item.status.value == 'voided' else '' }}">{{ item.status.value }}</span>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   {{ ls.empty_state(search.active or status_filter, "No issued checks yet. Upload your issue file, or add a check by hand.",

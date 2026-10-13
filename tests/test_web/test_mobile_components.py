@@ -148,3 +148,38 @@ def test_more_filters_is_a_bottom_sheet_on_phones(client, tenant_factory, browse
     page.set_viewport_size({"width": 1280, "height": 800})
     page.wait_for_function("document.querySelector('dialog.bottom-sheet') === null")
     assert page.locator("details.list-search-more > summary").is_visible()
+
+
+def test_a_responsive_table_is_cards_on_a_phone(client, db_session, tenant_factory, browser_page):
+    from datetime import date
+    from decimal import Decimal
+
+    from openclear.services import issued_item_service
+
+    tenant, account, users = tenant_factory.make(slug="cards")
+    for number in ("501", "502"):
+        issued_item_service.create_issued_item(db_session, tenant.id, issued_item_service.IssuedItemInput(
+            account_id=account.id, check_number=number, amount=Decimal("12.50"), payee_name="Northgate", issue_date=date(2026, 6, 1)),
+            submitted_by_user_id=users["admin"].id)
+    db_session.commit()
+    _sign_in(client, tenant, users)
+
+    page = browser_page(1280)
+    page.goto("http://testserver/ui/issued-items")
+    assert page.evaluate("getComputedStyle(document.querySelector('table.responsive tbody tr')).display") == "table-row"
+    assert page.locator("table.responsive thead th").count() == 5
+
+    page = browser_page(360)
+    page.goto("http://testserver/ui/issued-items")
+    card = page.locator("table.responsive tbody tr").first
+    assert page.evaluate("getComputedStyle(document.querySelector('table.responsive tbody tr')).display") == "grid"
+    title, money = card.locator("td.cell-primary"), card.locator("td.cell-money")
+    t, m = title.bounding_box(), money.bounding_box()
+    assert t["y"] <= m["y"] + m["height"] / 2 <= t["y"] + t["height"] and m["x"] > t["x"]  # side by side
+    assert card.locator("td.cell-primary a").bounding_box()["height"] >= 44
+    assert page.evaluate("getComputedStyle(document.querySelector('td.cell-meta'), '::before').content") == '"Payee: "'
+    # Sorting still works: the headers are buttons above the cards.
+    sort = page.locator("table.responsive thead a.sort-link", has_text="Amount")
+    assert sort.is_visible() and sort.bounding_box()["height"] >= 44
+    sort.click()
+    page.wait_for_url("**sort=amount**")
