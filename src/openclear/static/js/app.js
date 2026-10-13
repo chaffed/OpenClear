@@ -102,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSortableTables();
   initHelpDialog();
   initNavToggle();
+  initBottomSheets();
   initBannerCarousel();
 });
 
@@ -188,6 +189,62 @@ function initNavToggle() {
   });
   window.OpenClear.breakpoint("tablet").addEventListener("change", (event) => {
     if (!event.matches) close(false);
+  });
+}
+
+// Bottom sheets (templates/_macros/bottom_sheet.html; MOBILE_PLAN.md §1). Below the content's
+// breakpoint it moves into a <dialog> with a title and a Close button, opened by its trigger;
+// above it, it goes back where it was (and the dialog is gone), so wider screens never see
+// the sheet. A <details> as the content is opened while it's in the sheet.
+function initBottomSheets() {
+  document.querySelectorAll("[data-sheet]").forEach((content) => {
+    const query = window.OpenClear.breakpoint(content.dataset.sheet);
+    const triggers = document.querySelectorAll(`[data-sheet-open="${content.id}"]`);
+    let dialog = null;
+    let wasOpen = false;
+
+    const place = () => {
+      if (query.matches && !dialog) {
+        dialog = document.createElement("dialog");
+        dialog.className = "bottom-sheet";
+        dialog.setAttribute("aria-labelledby", `${content.id}-title`);
+        const head = document.createElement("div");
+        head.className = "bottom-sheet-head";
+        const title = document.createElement("h2");
+        title.id = `${content.id}-title`;
+        title.textContent = content.dataset.sheetTitle || "";
+        const close = document.createElement("button");
+        close.type = "button";
+        close.className = "secondary bottom-sheet-close";
+        close.textContent = "Close";
+        close.addEventListener("click", () => dialog.close());
+        head.append(title, close);
+        content.parentNode.insertBefore(dialog, content);
+        dialog.append(head, content);
+        // A click on the dialog itself, not its content, is the backdrop.
+        dialog.addEventListener("click", (event) => {
+          if (event.target === dialog) dialog.close();
+        });
+        if (content.tagName === "DETAILS") {
+          wasOpen = content.open;
+          content.open = true;
+        }
+        triggers.forEach((trigger) => { trigger.hidden = false; });
+      } else if (!query.matches && dialog) {
+        if (dialog.open) dialog.close();
+        dialog.parentNode.insertBefore(content, dialog);
+        dialog.remove();
+        dialog = null;
+        if (content.tagName === "DETAILS") content.open = wasOpen;
+        triggers.forEach((trigger) => { trigger.hidden = true; });
+      }
+    };
+
+    triggers.forEach((trigger) => trigger.addEventListener("click", () => {
+      if (dialog && !dialog.open) dialog.showModal();
+    }));
+    place();
+    query.addEventListener("change", place);
   });
 }
 

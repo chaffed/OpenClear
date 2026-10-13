@@ -1,0 +1,16 @@
+{# A bottom sheet (MOBILE_PLAN.md §1): filters, reason lists and action menus on phones. On
+   wider screens the content shows in place, laid out as if the wrapper weren't there; below
+   `below` ("phone" or "tablet"), static/js/app.js initBottomSheets moves it into a <dialog>
+   that the trigger opens, so the focus trap and Escape come with it. Without JS it stays in
+   place, and the trigger stays hidden. Anything inside a form still submits with it.
+   An element of your own can be the content instead: give it id, data-sheet and
+   data-sheet-title (the lists' "More filters" <details>, opened in the sheet). #}
+{% from "_macros/icon.html" import icon %}
+
+{% macro sheet_trigger(id, label, icon_name=None, class="button secondary", aria_label=None) -%}
+<button type="button" class="sheet-trigger {{ class }}" data-sheet-open="{{ id }}" aria-haspopup="dialog" aria-controls="{{ id }}"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %} hidden>{% if icon_name %}{{ icon(icon_name) }}{% endif %}{{ label }}</button>
+{%- endmacro %}
+
+{% macro bottom_sheet(id, title, below="phone") -%}
+<div class="sheet-content" id="{{ id }}" data-sheet="{{ below }}" data-sheet-title="{{ title }}">{{ caller() }}</div>
+{%- endmacro %}

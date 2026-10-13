@@ -107,6 +107,7 @@ ICONS: dict[str, str] = {
     "extension": "tile: Plugins",
     "webhook": "tile: Webhooks",
     "verified_user": "tile: Controls",
+    "more_horiz": "responsive_table: a row's action menu on phones (_macros/responsive_table.html)",
 }
 
 

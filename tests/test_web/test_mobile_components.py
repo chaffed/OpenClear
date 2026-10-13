@@ -61,7 +61,7 @@ def browser_page(client):
     errors: list[str] = []
 
     def open_at(width: int, height: int = 800):
-        context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="reduce")
+        context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="reduce", bypass_csp=True)
         context.route("http://testserver/**", serve)
         page = context.new_page()
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -109,3 +109,42 @@ def test_the_navigation_drawer(client, tenant_factory, browser_page):
         toggle.click()
         link.click()
         page.wait_for_url("**/ui/issued-items")
+
+
+def test_more_filters_is_a_bottom_sheet_on_phones(client, tenant_factory, browser_page):
+    tenant, _account, users = tenant_factory.make(slug="sheet")
+    _sign_in(client, tenant, users)
+
+    page = browser_page(1280)
+    page.goto("http://testserver/ui/issued-items")
+    assert page.locator("details.list-search-more > summary").is_visible()
+    assert not page.locator("[data-sheet-open='list-search-more']").is_visible()
+    assert page.locator("dialog.bottom-sheet").count() == 0
+
+    page = browser_page(360)
+    page.goto("http://testserver/ui/issued-items")
+    trigger = page.locator("[data-sheet-open='list-search-more']")
+    number = page.locator("input[name='number']")
+    assert trigger.is_visible() and not number.is_visible()
+    assert trigger.bounding_box()["height"] >= 44
+
+    trigger.click()
+    sheet = page.locator("dialog.bottom-sheet")
+    assert sheet.is_visible() and number.is_visible()
+    assert sheet.get_attribute("aria-labelledby") and page.locator("#list-search-more-title").inner_text() == "More filters"
+    page.keyboard.press("Escape")
+    assert not sheet.is_visible()
+
+    trigger.click()
+    number.fill("1234")
+    sheet.get_by_role("button", name="Show results").click()
+    page.wait_for_url("**number=1234**")
+    # Back on the page with a filter set: the sheet still starts closed, the filter is kept.
+    assert not page.locator("dialog.bottom-sheet").is_visible()
+    trigger.click()
+    assert page.locator("dialog.bottom-sheet input[name='number']").input_value() == "1234"
+
+    # Turning the phone into a wide screen puts the filters back in the page.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.wait_for_function("document.querySelector('dialog.bottom-sheet') === null")
+    assert page.locator("details.list-search-more > summary").is_visible()

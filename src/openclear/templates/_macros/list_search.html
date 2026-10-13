@@ -1,5 +1,6 @@
 {# Server-side search, sorting and export for the main lists (web/list_search.py). #}
 {% from "_macros/icon.html" import icon %}
+{% from "_macros/bottom_sheet.html" import sheet_trigger %}
 
 {% macro search_form(action, search, number_label="Check number", date_label="Date", q_hint="Check number, payee or amount", hidden={}) %}
 <form method="get" action="{{ action }}" class="list-search" role="search">
@@ -8,9 +9,11 @@
   <div class="list-search-main">
     <label>Search <input type="search" name="q" value="{{ search.get('q') }}" placeholder="{{ q_hint }}"></label>
     <button type="submit">{{ icon("search") }}Search</button>
+    {{ sheet_trigger("list-search-more", "More filters", "tune") }}
     {% if search.active %}<a class="button secondary" href="{{ action }}?{{ search.query_string(q=None, number=None, amount_min=None, amount_max=None, date_from=None, date_to=None, account=None, page=None) }}">Clear</a>{% endif %}
   </div>
-  <details class="list-search-more" {{ "open" if search.get("number") or search.get("amount_min") or search.get("amount_max") or search.get("date_from") or search.get("date_to") or search.get("account") else "" }}>
+  {# On phones, a bottom sheet (_macros/bottom_sheet.html). #}
+  <details class="list-search-more" id="list-search-more" data-sheet="phone" data-sheet-title="More filters" {{ "open" if search.get("number") or search.get("amount_min") or search.get("amount_max") or search.get("date_from") or search.get("date_to") or search.get("account") else "" }}>
     <summary>More filters</summary>
     <div class="list-search-grid">
       <label>{{ number_label }} <input type="text" name="number" value="{{ search.get('number') }}"></label>
@@ -20,6 +23,7 @@
       <label>{{ date_label }} to <input type="date" name="date_to" value="{{ search.get('date_to') }}"></label>
       <label>Account number <input type="text" name="account" value="{{ search.get('account') }}"></label>
     </div>
+    <p class="sheet-only"><button type="submit">{{ icon("search") }}Show results</button></p>
   </details>
 </form>
 {% endmacro %}
