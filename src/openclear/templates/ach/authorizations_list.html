@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}ACH Authorizations — {{ ctx.tenant_name }}{% endblock %}
@@ -21,29 +22,29 @@
     {% if can(ctx, "ach_authorization:write") %}<a href="/ui/ach/authorizations/new" class="button">{{ icon("add") }}New authorization</a>{% endif %}
   </div>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Originator</th><th>Receiver scope</th><th data-type="number">Max amount</th><th data-type="number">Freq/30d</th><th>SEC codes</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for rule in page_obj.items %}
-      <tr>
-        <td>{{ rule.originator_name }} ({{ rule.originator_id }})</td>
-        <td>{{ rule.receiver_id or "any (blanket)" }}</td>
-        <td>{{ rule.max_amount | currency or "no limit" }}</td>
-        <td>{{ rule.frequency_limit or "no limit" }}</td>
-        <td>{{ rule.allowed_sec_codes | join(", ") if rule.allowed_sec_codes else "any" }}</td>
-        <td><span class="badge {{ 'badge-ok' if rule.status.value == 'active' else 'badge-danger' }}">{{ rule.status.value }}</span></td>
-        <td>
-          {% if rule.status.value == "active" and can(ctx, "ach_authorization:write") %}
+  {% set columns = [
+    {"key": "originator", "label": "Originator", "role": "primary"},
+    {"key": "receiver", "label": "Receiver scope"},
+    {"key": "max", "label": "Max amount", "role": "money", "numeric": True},
+    {"key": "frequency", "label": "Freq/30d", "numeric": True},
+    {"key": "sec", "label": "SEC codes"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(rule, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable") -%}
+    {%- if col.key == "originator" %}{{ rule.originator_name }} ({{ rule.originator_id }})
+    {%- elif col.key == "receiver" %}{{ rule.receiver_id or "any (blanket)" }}
+    {%- elif col.key == "max" %}{{ rule.max_amount | currency or "no limit" }}
+    {%- elif col.key == "frequency" %}{{ rule.frequency_limit or "no limit" }}
+    {%- elif col.key == "sec" %}{{ rule.allowed_sec_codes | join(", ") if rule.allowed_sec_codes else "any" }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if rule.status.value == 'active' else 'badge-danger' }}">{{ rule.status.value }}</span>
+    {%- elif col.key == "actions" and rule.status.value == "active" and can(ctx, "ach_authorization:write") %}
           <form method="post" action="/ui/ach/authorizations/{{ rule.id }}/revoke" class="inline-form" data-confirm="Revoke this authorization?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="danger">{{ icon("block") }}Revoke</button>
           </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No ACH authorizations yet.</p>
