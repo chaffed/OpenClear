@@ -11,7 +11,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | issued_items | 1 small | 2 small | ✓ | ✓ |
 | paid_items | 1 small | 2 small | ✓ | ✓ |
 | stop_payments | ✓ | ✓ | ✓ | ✓ |
-| ach_transactions | 1 small | 1 small | ✓ | ✓ |
+| ach_transactions | ✓ | 1 small | ✓ | ✓ |
 | ach_authorizations | ✓ | ✓ | ✓ | ✓ |
 | accounts | ✓ | ✓ | ✓ | ✓ |
 | customers | ✓ | ✓ | ✓ | ✓ |
@@ -51,9 +51,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 ### paid_items at 768px
 - small target: a "####" (1x, e.g. 33x17)
 - small target: a "#####" (42x, e.g. 42x17)
-
-### ach_transactions at 360px
-- small target: a "Gusto Payroll" (6x, e.g. 44x34)
 
 ### ach_transactions at 768px
 - small target: a "Gusto Payroll" (6x, e.g. 87x17)

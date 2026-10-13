@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/list_search.html" as ls %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
@@ -25,26 +26,21 @@
                      q_hint="Trace number, originator or amount") }}
   <p class="list-tools">{{ ls.export_link("/ui/ach/transactions", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
-  <table data-server-list>
-    <thead><tr>
-      {{ ls.sort_th("Originator", "originator", search, "/ui/ach/transactions") }}
-      <th>Type</th>
-      {{ ls.sort_th("Amount", "amount", search, "/ui/ach/transactions", numeric=True) }}
-      {{ ls.sort_th("Effective date", "date", search, "/ui/ach/transactions") }}
-      {{ ls.sort_th("Match status", "match", search, "/ui/ach/transactions") }}
-    </tr></thead>
-    <tbody>
-      {% for txn in page_obj.items %}
-      <tr>
-        <td><a href="/ui/ach/transactions/{{ txn.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ txn.originator_name }}</a></td>
-        <td>{{ txn.transaction_type.value }}</td>
-        <td>{{ txn.amount | currency }}</td>
-        <td>{{ txn.effective_date }}</td>
-        <td><span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status.value }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "originator", "label": "Originator", "role": "primary", "sort": "originator"},
+    {"key": "type", "label": "Type"},
+    {"key": "amount", "label": "Amount", "role": "money", "sort": "amount", "numeric": True},
+    {"key": "date", "label": "Effective date", "sort": "date"},
+    {"key": "match", "label": "Match status", "role": "status", "sort": "match"},
+  ] %}
+  {% call(txn, col, part="cell") rt.responsive_table(columns, page_obj.items, search=search, action="/ui/ach/transactions", attrs="data-server-list") -%}
+    {%- if col.key == "originator" %}<a href="/ui/ach/transactions/{{ txn.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ txn.originator_name }}</a>
+    {%- elif col.key == "type" %}{{ txn.transaction_type.value }}
+    {%- elif col.key == "amount" %}{{ txn.amount | currency }}
+    {%- elif col.key == "date" %}{{ txn.effective_date }}
+    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status.value }}</span>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   {{ ls.empty_state(search.active, "No ACH transactions yet. They arrive from the bank's core, or as a NACHA file.",
