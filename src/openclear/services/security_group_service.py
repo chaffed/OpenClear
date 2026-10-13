@@ -16,6 +16,9 @@ from openclear.repositories.security_group_repo import SecurityGroupRepository
 class SecurityGroupInput:
     name: str
     permissions: list[str]
+    # Whether customers' own administrators may give it to their people
+    # (CUSTOMER_ADMIN_PLAN.md). None leaves it as it is.
+    offered_to_customers: bool | None = None
 
 
 def _clean_permissions(permissions: list[str]) -> list[str]:
@@ -62,7 +65,8 @@ def get_security_group_by_name(session: Session, tenant_id: uuid.UUID, name: str
 
 def create_security_group(session: Session, tenant_id: uuid.UUID, data: SecurityGroupInput) -> SecurityGroup:
     repo = SecurityGroupRepository(session, tenant_id)
-    group = SecurityGroup(name=data.name, permissions=_clean_permissions(data.permissions))
+    group = SecurityGroup(name=data.name, permissions=_clean_permissions(data.permissions),
+                          offered_to_customers=bool(data.offered_to_customers))
     repo.add(group)
     session.flush()
     return group
@@ -77,5 +81,7 @@ def update_security_group(
         return None
     group.name = data.name
     group.permissions = _clean_permissions(data.permissions)
+    if data.offered_to_customers is not None:
+        group.offered_to_customers = data.offered_to_customers
     session.flush()
     return group

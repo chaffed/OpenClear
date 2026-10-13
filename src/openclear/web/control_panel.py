@@ -21,7 +21,7 @@ SECTIONS = ("Organization", "Security & access", "Decisions & rules", "Integrati
 # Who sees the panel at all: anyone holding a permission one of its tiles needs.
 BANK_PERMISSIONS = ("tenant:manage", "admin:manage", "user:manage", "security_group:manage", "api_client:manage",
                     "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read", "issued_item:write")
-CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write")
+CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write", "customer_user:manage", "customer_sso:manage")
 
 
 @dataclass
@@ -311,6 +311,14 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
                  "A message at the top of every page for your own people.", "Showing" if customer.banner_message else "None",
                  keywords="announcement message"),
         ]
+    if "customer_user:manage" in ctx.permissions:
+        from openclear.services import customer_people_service
+
+        active = sum(p.membership.is_active for p in customer_people_service.list_people(db, ctx.tenant_id, ctx.customer_id))
+        waiting = len(customer_people_service.pending_invitations(db, ctx.tenant_id, ctx.customer_id))
+        tiles.append(Tile("people", "Security & access", "People", "groups", "/ui/people",
+                          "Invite your people, choose their roles and accounts, and remove access when they leave.",
+                          f"{active} active" + (f", {waiting} invited" if waiting else ""), keywords="users invite team staff"))
     if "issued_item:write" in ctx.permissions:
         tiles.append(_layout_tile(db, ctx))
     if "billing:read" in ctx.permissions:

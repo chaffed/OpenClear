@@ -116,5 +116,6 @@ def refresh_session(session: Session, refresh_token: str) -> tuple[SessionTokens
         session_id=session_id,
         session_expires_at=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
         embed=claims.get("emb"),  # an embedded session stays one
+        confined=bool(claims.get("cfd")),  # and a confined one stays confined
     )
     return tokens, tenant

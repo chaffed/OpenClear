@@ -26,6 +26,8 @@ class NotificationType(str, enum.Enum):
     # services/reminder_service.py: items due soon, one message per person per reminder
     # (UX_PLAN.md U3).
     DEADLINE_REMINDER = "deadline_reminder"
+    # services/customer_people_service.py: a customer's administrator invited this person.
+    INVITATION = "invitation"
 
 
 class NotificationChannel(str, enum.Enum):
@@ -59,7 +61,9 @@ class Notification(Base):
     # any one tenant, since a brute force targets the one shared password regardless of
     # which tenant the login attempt was against (see User.failed_login_attempts).
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"), nullable=True, index=True)
-    recipient_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    # Nullable too: an invitation goes to an email nobody has signed in with yet
+    # (services/customer_people_service.py); `destination` is the address either way.
+    recipient_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True, index=True)
     notification_type: Mapped[NotificationType] = mapped_column(
         Enum(NotificationType, name="notification_type", native_enum=False, length=40), nullable=False
     )

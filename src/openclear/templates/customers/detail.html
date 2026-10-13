@@ -87,6 +87,26 @@
 </div>
 
 <div class="card">
+  <h1>Self-service</h1>
+  <p>Let {{ customer.name }}'s own administrators manage its people and sign-on. They can only give the roles
+    you mark "offered to customers" ({{ offered_group_count }} now; see <a href="/ui/security-groups">Security groups</a>),
+    and only within this customer. Turning either off stops it at once.</p>
+  <form method="post" action="/ui/customers/{{ customer.id }}/self-service">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="manages_users" value="true" {{ "checked" if customer.self_manages_users else "" }}>
+      Manages its own people (needs a role with <code>customer_user:manage</code>)</label>
+    <label><input type="checkbox" name="manages_sso" value="true" {{ "checked" if customer.self_manages_sso else "" }}>
+      Manages its own sign-on (needs a role with <code>customer_sso:manage</code>)</label>
+    <button type="submit" class="secondary">{{ icon("save") }}Save</button>
+  </form>
+  {% if customer_admins %}
+  <p>Its administrators: {{ customer_admins | join(", ") }}.</p>
+  {% elif customer.self_manages_users %}
+  <p class="flash flash-warn">No one at {{ customer.name }} can manage its people yet: give someone a role with <code>customer_user:manage</code> from Users.</p>
+  {% endif %}
+</div>
+
+<div class="card">
   <div class="toolbar">
     <h1>Single sign-on</h1>
     <a href="/ui/customers/{{ customer.id }}/sso" class="button secondary">{{ icon("tune") }}Manage</a>

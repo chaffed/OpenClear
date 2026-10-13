@@ -76,6 +76,7 @@ def create_security_group(
     request: Request,
     name: str = Form(...),
     permissions: list[str] = Form([]),
+    offered_to_customers: bool = Form(False),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("security_group:manage")),
     _csrf: None = Depends(verify_csrf),
@@ -84,7 +85,8 @@ def create_security_group(
         return refused
     try:
         group = security_group_service.create_security_group(
-            db, ctx.tenant_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions)
+            db, ctx.tenant_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions,
+                                                                             offered_to_customers=offered_to_customers)
         )
     except IntegrityError:
         db.rollback()
@@ -124,6 +126,7 @@ def update_security_group(
     group_id: uuid.UUID,
     name: str = Form(...),
     permissions: list[str] = Form([]),
+    offered_to_customers: bool = Form(False),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("security_group:manage")),
     _csrf: None = Depends(verify_csrf),
@@ -132,7 +135,8 @@ def update_security_group(
         return refused
     try:
         group = security_group_service.update_security_group(
-            db, ctx.tenant_id, group_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions)
+            db, ctx.tenant_id, group_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions,
+                                                                                         offered_to_customers=offered_to_customers)
         )
         db.flush()
     except IntegrityError:
@@ -145,7 +149,8 @@ def update_security_group(
             actor_user_id=ctx.user_id,
             channel="web",
             action="security_group.update",
-            summary=f"Updated security group {group.name} ({len(group.permissions)} permissions)",
+            summary=f"Updated security group {group.name} ({len(group.permissions)} permissions"
+                    f"{', offered to customers' if group.offered_to_customers else ''})",
             resource_type="security_group",
             resource_id=group.id,
         )

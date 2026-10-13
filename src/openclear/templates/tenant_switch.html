@@ -24,6 +24,8 @@
     <button type="submit">{{ icon("swap_horiz") }}{{ m.tenant.name }}{{ " — " ~ m.customer_name if m.customer_name else " (bank-wide)" }}{{ " (security key required)" if m.membership.require_webauthn else "" }}</button>
   </form>
   {% endfor %}
+  {% elif confined_message %}
+  <p>{{ confined_message }}</p>
   {% else %}
   <p>You don't belong to any other organization or customer scope.</p>
   {% endif %}

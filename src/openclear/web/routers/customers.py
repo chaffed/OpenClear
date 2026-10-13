@@ -183,11 +183,42 @@ def customer_detail(
         reminder_timing = reminder_service.describe(reminder_service.customer_offsets(tenant, customer))
     except reminder_service.ReminderError:
         reminder_timing = "Not valid"
+    from openclear.domain.user import User
+    from openclear.services import customer_people_service
+
+    admins = [db.get(User, m.user_id).email for m in customer_people_service.administrators(db, ctx.tenant_id, customer.id)]
     return render_template(
         request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, ml_summary=ml_summary,
         sso_connection_count=sso_connection_count, open_count=open_count, nearest_deadline=nearest_deadline,
-        reminder_timing=reminder_timing,
+        reminder_timing=reminder_timing, customer_admins=admins,
+        offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
     )
+
+
+@router.post("/{customer_id}/self-service")
+def set_self_service(
+    customer_id: uuid.UUID,
+    manages_users: bool = Form(False),
+    manages_sso: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Lets the customer's own administrators manage its people and sign-on, or stops them
+    at once (CUSTOMER_ADMIN_PLAN.md)."""
+    from openclear.services import customer_people_service
+
+    try:
+        customer = customer_people_service.set_self_service(db, ctx.tenant_id, customer_id, users=manages_users, sso=manages_sso)
+    except customer_people_service.PeopleError:
+        raise WebNotFound() from None
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.self_service",
+        summary=f"{customer.name} manages its own people: {'yes' if manages_users else 'no'}; its own sign-on: {'yes' if manages_sso else 'no'}",
+        resource_type="customer", resource_id=customer.id,
+    )
+    db.commit()
+    return RedirectResponse(f"/ui/customers/{customer.id}?flash=Self-service+saved.", status_code=303)
 
 
 @router.get("/{customer_id}/edit")

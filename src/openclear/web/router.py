@@ -32,6 +32,7 @@ from openclear.web.routers.branding import router as branding_router
 from openclear.web.routers.bulk_uploads import router as bulk_uploads_router
 from openclear.web.routers.check_images import router as check_images_router
 from openclear.web.routers.customer_banner import router as customer_banner_router
+from openclear.web.routers.people import router as people_router
 from openclear.web.routers.markdown_preview import router as markdown_preview_router
 from openclear.web.routers.customer_password_policy import router as customer_password_policy_router
 from openclear.web.routers.customers import router as customers_router
@@ -69,6 +70,7 @@ web_router.include_router(accounts_router)
 web_router.include_router(customers_router)
 web_router.include_router(customer_password_policy_router)
 web_router.include_router(customer_banner_router)
+web_router.include_router(people_router)
 web_router.include_router(markdown_preview_router)
 web_router.include_router(issued_items_router)
 web_router.include_router(stop_payments_router)

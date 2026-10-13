@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from openclear.auth.permissions import CUSTOMER_SCOPE_MASKED_PERMISSIONS
+from openclear.auth.permissions import CUSTOMER_SCOPE_MASKED_PERMISSIONS, CUSTOMER_SELF_SERVICE_PERMISSIONS
 from openclear.auth.security import decode_token
 from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
@@ -141,6 +141,10 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
             raise AccessRevoked("Customer no longer exists")
         customer_name = customer.name
         customer_banner_message = customer.banner_message
+        # Self-service only while the bank allows it (CUSTOMER_ADMIN_PLAN.md).
+        permissions = permissions - {p for p, flag in CUSTOMER_SELF_SERVICE_PERMISSIONS.items() if not getattr(customer, flag)}
+    else:
+        permissions = permissions - set(CUSTOMER_SELF_SERVICE_PERMISSIONS)
 
     if user.is_service_account:
         # A read-only API client (docs/guides/bi.md) only ever reads, whatever its group allows.
@@ -185,6 +189,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         if "exception:decide" in permissions
         else 0,
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
+        confined=bool(payload.get("cfd")),
     )
     # Who this request is for, for logs, rate limits and security events (web/request_context.py).
     from openclear.web import request_context

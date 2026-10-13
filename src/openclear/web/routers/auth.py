@@ -484,6 +484,8 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
         token_version=user.token_version,
         access_token_expire_minutes=login_tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=login_tenant.refresh_token_expire_minutes,
+        # A customer's sign-on vouches for this customer only (CUSTOMER_ADMIN_PLAN.md).
+        confined=membership.customer_id is not None,
     )
     response = RedirectResponse(safe_next_path(next_path), status_code=303)
     set_session_cookies(response, tokens)

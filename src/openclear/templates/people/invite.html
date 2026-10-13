@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Invite — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/people">People</a></p>
+<div class="card card-narrow">
+  <h1>Invite someone</h1>
+  <p>They get an email with a link that works once, for 7 days. Nothing is set up for them until they accept.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% if not groups %}
+  <p class="flash flash-warn">{{ ctx.tenant_name }} hasn't offered any roles yet. Ask them to.</p>
+  {% endif %}
+  <form method="post" action="/ui/people/invite">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Email <input type="email" name="email" required value="{{ values.email or '' }}" autocomplete="off"></label>
+    <label>Role
+      <select name="security_group_id" required>
+        {% for group in groups %}
+        <option value="{{ group.id }}" {{ "selected" if values.security_group_id == group.id|string else "" }}>{{ group.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% with scope=values.scope, chosen=values.account_ids or [] %}{% include "people/_accounts_fields.html" %}{% endwith %}
+    <label><input type="checkbox" name="require_webauthn" value="true" {{ "checked" if values.require_webauthn else "" }}> Require a passkey or security key</label>
+    <button type="submit">{{ icon("send") }}Send invitation</button>
+  </form>
+</div>
+<div class="card card-narrow">
+  <h2>Invite many from a file</h2>
+  <p>A CSV with the columns <code>email</code>, <code>role</code> (one of the roles above) and, optionally,
+    <code>accounts</code>: account numbers separated by semicolons, blank for all of them.</p>
+  <form method="post" action="/ui/people/invite/bulk" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>File <input type="file" name="file" accept=".csv,text/csv" required></label>
+    <button type="submit" class="secondary">{{ icon("upload_file") }}Send invitations</button>
+  </form>
+</div>
+{% endblock %}

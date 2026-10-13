@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Invitation — OpenClear{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  {% if not opened %}
+  <h1>This invitation can't be used</h1>
+  <p>It has already been accepted, was withdrawn, or has expired. Ask whoever invited you for a new one.</p>
+  {% else %}
+  <h1>Join {{ opened.customer.name }}</h1>
+  <p>{{ opened.customer.name }} invited <strong>{{ opened.invitation.email }}</strong> to OpenClear, {{ opened.tenant.name }}'s positive pay service.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if opened.existing_user %}
+    <p>You already have an OpenClear sign-in with this email. Confirm it's you with its password.</p>
+    <label>Your password <input type="password" name="current_password" required autocomplete="current-password"></label>
+    {% elif opened.password_sign_in %}
+    <label>Choose a password <input type="password" name="password" required autocomplete="new-password"></label>
+    <label>Again <input type="password" name="password_confirm" required autocomplete="new-password"></label>
+    {% else %}
+    <p>{{ opened.customer.name }} signs in through its own sign-on, so there's no password to choose.
+      After accepting, sign in with your organization's account.</p>
+    {% endif %}
+    <button type="submit">{{ icon("check_circle") }}Accept</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -19,6 +19,9 @@ from openclear.web.security import set_mfa_cookie, set_session_cookies, verify_c
 
 router = APIRouter(prefix="/ui/switch-tenant", tags=["web-tenant-switch"])
 
+_CONFINED = ("You signed in through your organization's sign-on, which can't open your other organizations. "
+             "Sign out, then sign in to the other organization.")
+
 
 @router.get("")
 def switch_tenant_form(
@@ -33,7 +36,8 @@ def switch_tenant_form(
         for m in user_service.list_memberships_for_user(db, ctx.user_id)
         if not (m.membership.tenant_id == ctx.tenant_id and m.membership.customer_id == ctx.customer_id)
     ]
-    return render_template(request, "tenant_switch.html", ctx=ctx, memberships=memberships)
+    return render_template(request, "tenant_switch.html", ctx=ctx, memberships=[] if ctx.confined else memberships,
+                           confined_message=_CONFINED if ctx.confined else None)
 
 
 @router.post("")
@@ -54,7 +58,13 @@ def switch_tenant(
     /ui/login/webauthn* challenge (or /setup, if no key exists yet in the TARGET tenant —
     credentials are tenant-scoped) used at login time, so a hijacked session cookie can't
     silently pivot into one of these scopes without proving possession of the key again.
-    Switching between two ordinary memberships is unaffected."""
+    Switching between two ordinary memberships is unaffected.
+
+    A session started through a customer's own sign-on can't switch at all
+    (CUSTOMER_ADMIN_PLAN.md, guardrail 1): that identity provider vouches for this customer
+    only, so going anywhere else means signing in there."""
+    if ctx.confined:
+        return RedirectResponse("/ui/switch-tenant?error=" + quote(_CONFINED), status_code=303)
     target = next(
         (m for m in user_service.list_memberships_for_user(db, ctx.user_id) if m.membership.id == membership_id), None
     )

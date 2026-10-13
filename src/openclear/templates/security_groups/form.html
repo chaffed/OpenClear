@@ -16,6 +16,8 @@
   <form method="post" action="{{ '/ui/security-groups/' ~ group.id if group else '/ui/security-groups' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Name <input type="text" name="name" value="{{ typed_name if typed_name is defined else (group.name if group else '') }}" required autofocus></label>
+    <label><input type="checkbox" name="offered_to_customers" value="true" {% if group and group.offered_to_customers %}checked{% endif %}>
+      Offered to customers: customers you let manage their own people can give this role to them</label>
     <fieldset>
       <legend>Permissions</legend>
       {% for key, label in catalog.items() %}

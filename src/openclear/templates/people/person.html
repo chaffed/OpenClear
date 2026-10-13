@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ person.user.email }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/people">People</a></p>
+<div class="card card-narrow">
+  <h1>{{ person.user.email }}</h1>
+  <p>
+    <span class="badge {{ 'badge-ok' if person.membership.is_active else 'badge-danger' }}">{{ 'active' if person.membership.is_active else 'deactivated' }}</span>
+    {% if person.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
+    {% if person.is_admin %}<span class="badge">administrator</span>{% endif %}
+    Last sign-in: {{ person.user.last_login_at.strftime("%Y-%m-%d %H:%M") if person.user.last_login_at else "never" }}
+  </p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Role
+      <select name="security_group_id" required>
+        {% for group in groups %}
+        <option value="{{ group.id }}" {{ "selected" if group.id == person.membership.security_group_id else "" }}>{{ group.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% with scope=("all" if access.all_accounts else "some"), chosen=(access.account_ids | map("string") | list) %}{% include "people/_accounts_fields.html" %}{% endwith %}
+    <label><input type="checkbox" name="require_webauthn" value="true" {{ "checked" if person.membership.require_webauthn else "" }}> Require a passkey or security key</label>
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+</div>
+
+<div class="card card-narrow">
+  <h2>Actions</h2>
+  {% if person.membership.is_active %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}/deactivate" class="inline-form"
+        data-confirm="Deactivate {{ person.user.email }}? They lose access to {{ ctx.customer_name }} on their next request.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Deactivate</button>
+  </form>
+  {% else %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}/reactivate" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Reactivate</button>
+  </form>
+  {% endif %}
+  {% if person.belongs_elsewhere %}
+  <p class="hint">{{ person.user.email }} also belongs to another organization, so only they or your bank can reset their
+    password, unlock them or sign them out everywhere.</p>
+  {% elif person.user.id != ctx.user_id %}
+  {% if person.user.locked_until %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}/unlock" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Unlock</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}/reset-password" class="inline-form"
+        data-confirm="Reset the password for {{ person.user.email }}? Their current password stops working and you'll see a one-time temporary password to give them.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Reset password</button>
+  </form>
+  <form method="post" action="/ui/people/{{ person.membership.id }}/sign-out" class="inline-form"
+        data-confirm="Sign {{ person.user.email }} out everywhere? Every session they have open ends.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">Sign out everywhere</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

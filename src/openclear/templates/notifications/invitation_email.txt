@@ -1,0 +1,7 @@
+{{ invited_by or "An administrator" }} invited you to join {{ organization }} on OpenClear, {{ bank_name }}'s positive pay service.
+
+Accept the invitation here:
+
+{{ link }}
+
+The link works once and expires in {{ expires_days }} days. If you weren't expecting this, ignore it: nothing is set up for you until you accept.

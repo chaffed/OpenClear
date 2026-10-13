@@ -15,7 +15,7 @@ from openclear.auth.security import hash_password, verify_password
 from openclear.bulk_import.fields import RowFieldError, optional_str, require_str
 from openclear.bulk_import.results import UserBulkRowResult
 from openclear.config import get_settings
-from openclear.db.tenancy import acting_as_tenant
+from openclear.db.tenancy import acting_as_tenant, memberships_elsewhere
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
@@ -467,8 +467,9 @@ def admin_reset_password(
         raise PasswordChangeError("User not found.")
     if user.id == actor_user_id:
         raise PasswordChangeError("To change your own password, use Security → Change password.")
-    other_orgs = [row for row in list_memberships_for_user(session, user.id) if row.membership.tenant_id != tenant_id]
-    if other_orgs:
+    # Counted with the RLS probe: under row-level security a plain query here would see only
+    # this bank's memberships and let the reset through (db/tenancy.py::memberships_elsewhere).
+    if memberships_elsewhere(session, user.id, tenant_id):
         raise PasswordChangeError(
             f"{user.email} also belongs to other organizations, so their password can't be reset from here. "
             "They must change it themselves from Security → Change password."

@@ -50,6 +50,11 @@ PERMISSION_CATALOG: dict[str, str] = {
     # customer's own scoped users. This is the first genuinely customer-self-service
     # permission in the catalog -- see web/routers/customer_banner.py.
     "customer_banner:manage": "Manage this customer's own settings: its banner message and reminders",
+    # Customers managing their own people and sign-on (CUSTOMER_ADMIN_PLAN.md). Held only
+    # in a customer-scoped session, and only while the bank lets that customer manage
+    # itself (Customer.self_manages_users / self_manages_sso; auth/deps.py).
+    "customer_user:manage": "Manage this customer's own people: invite, change, deactivate (when the bank allows it)",
+    "customer_sso:manage": "Manage this customer's own sign-on: its identity provider, email domains and SCIM (when the bank allows it)",
     # Billing (BILLING_PLAN.md). billing:read is also meant for a customer's own scoped
     # users, who see only their own customer's statement; billing:manage is bank-only.
     "billing:read": "View billing statements and reports",
@@ -71,6 +76,14 @@ CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
         "ach_return_reason:manage", "wsud:read", "billing:manage", "api_client:manage",
     }
 )
+
+# Customer self-service permissions (CUSTOMER_ADMIN_PLAN.md): the opposite of the masked
+# set above. They mean nothing to a bank-wide session, so they're dropped from one, and a
+# customer-scoped session keeps each only while the bank lets that customer manage itself.
+CUSTOMER_SELF_SERVICE_PERMISSIONS: dict[str, str] = {
+    "customer_user:manage": "self_manages_users",
+    "customer_sso:manage": "self_manages_sso",
+}
 
 # Deliberately excluded from _ALL/Admin's automatic grant — every OTHER permission in
 # this catalog is included in "Admin" purely by construction (_ALL = every catalog key),

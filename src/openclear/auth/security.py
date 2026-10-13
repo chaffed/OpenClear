@@ -45,6 +45,7 @@ def create_token(
     on_behalf_of: dict | None = None,
     embed: dict | None = None,
     support_grant_id: uuid.UUID | None = None,
+    confined: bool = False,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -110,6 +111,10 @@ def create_token(
         # A support session (services/support_access_service.py): built from this grant,
         # not from a membership (auth/deps.py).
         payload["sga"] = str(support_grant_id)
+    if confined:
+        # Started through a customer's own sign-on (CUSTOMER_ADMIN_PLAN.md, guardrail 1):
+        # stays in this customer; going to another organization means signing in there.
+        payload["cfd"] = 1
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 
@@ -139,6 +144,7 @@ def create_session_tokens(
     session_id: uuid.UUID | None = None,
     session_expires_at: datetime | None = None,
     embed: dict | None = None,
+    confined: bool = False,
     settings: Settings | None = None,
 ) -> SessionTokens:
     """Mints the access + refresh pair for one login session — every sign-in, refresh,
@@ -165,6 +171,7 @@ def create_session_tokens(
         session_id=session_id,
         session_expires_at=session_expires_at,
         embed=embed,
+        confined=confined,
         settings=settings,
     )
     return SessionTokens(

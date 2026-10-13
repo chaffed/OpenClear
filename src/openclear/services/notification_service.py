@@ -43,6 +43,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
     NotificationType.PASSWORD_CHANGED: "Your OpenClear password was changed",
     NotificationType.DEADLINE_REMINDER: "Items to decide before the cutoff",
+    NotificationType.INVITATION: "You're invited to OpenClear",
 }
 
 
@@ -354,6 +355,26 @@ def notify_password_changed(session: Session, user: User, *, reset_by_admin: boo
         resource_type="user",
         resource_id=user.id,
     )
+
+
+def notify_invitation(
+    session: Session, *, tenant_id: uuid.UUID, email: str, link: str, organization: str, bank_name: str,
+    invited_by: str | None, expires_days: int, invitation_id: uuid.UUID,
+) -> None:
+    """A customer administrator's invitation (services/customer_people_service.py). Sent to an
+    address, not a person: nobody has signed in with it here yet, or they're accepting for
+    an identity they'll prove is theirs. Always email: it carries the one-time link."""
+    session.add(Notification(
+        tenant_id=tenant_id, recipient_user_id=None, notification_type=NotificationType.INVITATION,
+        channel=NotificationChannel.EMAIL, destination=email,
+        subject=f"{organization} invites you to OpenClear at {bank_name}",
+        body=_render_body(NotificationType.INVITATION, NotificationChannel.EMAIL, {
+            "link": link, "organization": organization, "bank_name": bank_name, "invited_by": invited_by,
+            "expires_days": expires_days,
+        }),
+        resource_type="user_invitation", resource_id=invitation_id,
+    ))
+    session.flush()
 
 
 def get_preferences(session: Session, user_id: uuid.UUID) -> dict[NotificationType, NotificationPreference]:

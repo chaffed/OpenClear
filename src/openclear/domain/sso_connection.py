@@ -88,6 +88,10 @@ class SsoConnection(Base):
     scim_token_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     auto_provision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Who set it up: "bank", or "customer" (its own administrators, CUSTOMER_ADMIN_PLAN.md).
+    # A customer-managed connection auto-provisions only emails in the customer's verified
+    # domains (domain/customer_admin.py::CustomerEmailDomain).
+    managed_by: Mapped[str] = mapped_column(String(10), nullable=False, default="bank", server_default="bank")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Invitations sent — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/people">People</a></p>
+<div class="card">
+  <h1>{{ sent }} invitation{{ "s" if sent != 1 else "" }} sent</h1>
+  <table>
+    <thead><tr><th>Row</th><th>Email</th><th>Result</th></tr></thead>
+    <tbody>
+      {% for line, email, error in results %}
+      <tr><td>{{ line }}</td><td>{{ email }}</td><td>{% if error %}<span class="badge badge-danger">not sent</span> {{ error }}{% else %}<span class="badge badge-ok">sent</span>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

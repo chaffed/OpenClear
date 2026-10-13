@@ -24,7 +24,7 @@
     <tbody>
       {% for group in page_obj.items %}
       <tr>
-        <td>{{ group.name }}</td>
+        <td>{{ group.name }}{% if group.offered_to_customers %} <span class="badge">offered to customers</span>{% endif %}</td>
         <td>
           {{ group.permissions | length }} of {{ catalog_size }}
           <span class="perm-bar"><span style="width: {{ ((group.permissions | length) / catalog_size * 100) | round }}%"></span></span>

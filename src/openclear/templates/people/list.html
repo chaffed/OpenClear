@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}People — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About people{% endblock %}
+{% block help_body %}
+<p>Everyone in {{ ctx.customer_name }} who can use OpenClear, and the invitations not yet accepted.
+  Invite people by email: they choose their own password, or confirm with the one they already have.
+  The roles you can give are the ones {{ ctx.tenant_name }} offers.</p>
+<p>A person who also belongs to another organization can't have their password reset, be unlocked
+  or be signed out everywhere from here; they do that themselves, or ask the bank.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>People</h1>
+    <div class="actions">
+      <a href="/ui/people/invite" class="button">{{ icon("person_add") }}Invite</a>
+      <a href="/ui/people/export.csv" class="button secondary">{{ icon("download") }}Export CSV</a>
+      <a href="/ui/people/activity" class="button secondary">{{ icon("history") }}Activity</a>
+    </div>
+  </div>
+  {% if people %}
+  <div class="table-scroll">
+  <table data-sortable>
+    <thead><tr><th>Email</th><th>Role</th><th>Accounts</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead>
+    <tbody>
+      {% for p in people %}
+      <tr>
+        <td>{{ p.user.email }}{% if p.user.id == ctx.user_id %} <span class="badge">you</span>{% endif %}</td>
+        <td>{{ p.group.name if p.group else "—" }}{% if p.is_admin %} <span class="badge">administrator</span>{% endif %}</td>
+        <td>{{ p.accounts }}</td>
+        <td>
+          <span class="badge {{ 'badge-ok' if p.membership.is_active else 'badge-danger' }}">{{ 'active' if p.membership.is_active else 'deactivated' }}</span>
+          {% if p.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
+        </td>
+        <td>{{ p.user.last_login_at.strftime("%Y-%m-%d") if p.user.last_login_at else "Never" }}</td>
+        <td><a href="/ui/people/{{ p.membership.id }}">Manage</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p>No one yet. Invite your first person.</p>
+  {% endif %}
+</div>
+
+{% if invitations %}
+<div class="card">
+  <h2>Invitations not yet accepted</h2>
+  <table>
+    <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
+    <tbody>
+      {% for i in invitations %}
+      <tr>
+        <td>{{ i.email }}</td>
+        <td>{{ groups.get(i.security_group_id, "—") }}</td>
+        <td>{{ i.expires_at.strftime("%Y-%m-%d") }}</td>
+        <td>
+          <form method="post" action="/ui/people/invitations/{{ i.id }}/revoke" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Withdraw</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

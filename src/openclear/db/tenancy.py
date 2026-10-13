@@ -47,6 +47,9 @@ class TenantContext:
     # Per-account access (db/account_scope.py): the accounts a customer's person is limited
     # to, or None when they see every account their customer scope allows.
     account_ids: frozenset[uuid.UUID] | None = None
+    # Signed in through a customer's own sign-on: the session can't switch to another
+    # organization (CUSTOMER_ADMIN_PLAN.md, guardrail 1; web/routers/tenant_switch.py).
+    confined: bool = False
 
     # Per-tenant session-length override (services/tenant_service.py::set_session_timeouts)
     # — None means "use config.Settings.jwt_access/refresh_token_expire_minutes", the same
@@ -160,6 +163,42 @@ def bind_session_to_tenant(session: Session, tenant_id: uuid.UUID, *, user_id: u
     session.info[_RLS_USER_KEY] = user_id
     if session.get_bind().dialect.name == "postgresql":
         _apply_rls(session.connection(), tenant_id, user_id)
+
+
+def memberships_elsewhere(session: Session, user_id: uuid.UUID, tenant_id: uuid.UUID, *, customer_id: uuid.UUID | None = None,
+                          within_customer: bool = False) -> int:
+    """How many of this person's memberships, active or not, are outside this bank (or,
+    with `within_customer`, outside this one customer of it, the bank's own staff
+    memberships included). For admin actions that reach a person's whole identity, such as
+    a password reset, which mustn't touch anyone who belongs somewhere else.
+
+    Under Postgres row-level security an admin's session sees only its own bank's
+    memberships, which would make every person look like they belong nowhere else. For this
+    one query the session names the person (`app.membership_probe_user`), which the
+    tenant_membership policy lets it see across banks (migration c6e8a0c2e4f7); only the
+    count leaves this function."""
+    from sqlalchemy import func, or_, select
+
+    from openclear.domain.tenant_membership import TenantMembership
+
+    # Spelled out rather than NOT(...): a bank-wide membership's customer_id is NULL, and
+    # NOT (customer_id = x) is NULL for it, which would leave the bank's own staff uncounted.
+    if not within_customer:
+        elsewhere = TenantMembership.tenant_id != tenant_id
+    elif customer_id is None:
+        elsewhere = or_(TenantMembership.tenant_id != tenant_id, TenantMembership.customer_id.is_not(None))
+    else:
+        elsewhere = or_(TenantMembership.tenant_id != tenant_id, TenantMembership.customer_id.is_(None),
+                        TenantMembership.customer_id != customer_id)
+    postgres = session.get_bind().dialect.name == "postgresql"
+    if postgres:
+        session.execute(text("SELECT set_config('app.membership_probe_user', :uid, true)"), {"uid": str(user_id)})
+    try:
+        return session.execute(select(func.count()).select_from(TenantMembership).where(
+            TenantMembership.user_id == user_id, elsewhere)).scalar_one()
+    finally:
+        if postgres:
+            session.execute(text("SELECT set_config('app.membership_probe_user', '', true)"))
 
 
 @contextmanager

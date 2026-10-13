@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}People activity — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/people">People</a></p>
+<div class="card">
+  <h1>Activity</h1>
+  <p>Changes to {{ ctx.customer_name }}'s people and sign-on, by your administrators and by {{ ctx.tenant_name }}. The latest 200.</p>
+  {% if entries %}
+  <table>
+    <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr><td>{{ e.occurred_at.strftime("%Y-%m-%d %H:%M") }}</td><td>{{ actors.get(e.actor_user_id, "System") }}</td><td>{{ e.summary }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nothing yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

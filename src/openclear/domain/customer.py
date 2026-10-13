@@ -33,6 +33,11 @@ class Customer(Base):
     # makes sense set False once this customer has at least one active SsoConnection
     # (enforced in services/sso_service.py).
     password_login_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Self-service (CUSTOMER_ADMIN_PLAN.md): the bank lets the customer's own administrators
+    # manage its people (customer_user:manage) and its sign-on (customer_sso:manage). Off
+    # until the bank turns them on; turning one off suspends it at once.
+    self_manages_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    self_manages_sso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # This customer's own ADDITIONAL password requirements, on top of the tenant's own
     # policy (domain/tenant.py) — see auth/password_policy.py::effective_policy. None
     # means "no additional minimum, just use the tenant's"; the 4 boolean flags default

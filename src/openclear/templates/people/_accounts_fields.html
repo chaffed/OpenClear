@@ -1,0 +1,10 @@
+<fieldset>
+  <legend>Accounts they can see</legend>
+  <label><input type="radio" name="scope" value="all" {{ "checked" if scope != "some" else "" }}> All of {{ ctx.customer_name }}'s accounts, including ones added later</label>
+  <label><input type="radio" name="scope" value="some" {{ "checked" if scope == "some" else "" }}> Only these:</label>
+  {% for account in accounts %}
+  <label><input type="checkbox" name="account_id" value="{{ account.id }}" {{ "checked" if account.id|string in chosen else "" }}> {{ account.account_number }} — {{ account.name }}</label>
+  {% else %}
+  <p class="hint">No accounts yet.</p>
+  {% endfor %}
+</fieldset>
