@@ -56,6 +56,18 @@ class CustomerRead(BaseModel):
     city: str | None
     state: str | None
     updated_at: datetime | None = None
+    # Self-service (CUSTOMER_ADMIN_PLAN.md): set with PUT /customers/{number}/self-service,
+    # not by the upsert, so a core's sync never changes them.
+    self_manages_users: bool = False
+    self_manages_sso: bool = False
+
+
+class SelfService(BaseModel):
+    """Whether the customer's own administrators manage its people and its sign-on."""
+
+    manages_people: bool
+    manages_sign_on: bool
+    administrators: list[str] = Field([], description="Read only: the customer's people who can manage its people")
 
 
 @router.get("", response_model=list[CustomerRead])
@@ -93,3 +105,45 @@ def upsert_customer(customer_number: str, payload: CustomerUpsert, db: Session =
     )
     db.commit()
     return JSONResponse(CustomerRead.model_validate(customer).model_dump(mode="json"), status_code=code)
+
+
+def _self_service(db: Session, ctx: TenantContext, customer: Customer) -> SelfService:
+    from openclear.domain.user import User
+    from openclear.services import customer_people_service
+
+    admins = [db.get(User, m.user_id).email for m in customer_people_service.administrators(db, ctx.tenant_id, customer.id)]
+    return SelfService(manages_people=customer.self_manages_users, manages_sign_on=customer.self_manages_sso, administrators=admins)
+
+
+def _by_number(db: Session, ctx: TenantContext, customer_number: str) -> Customer:
+    from fastapi import HTTPException
+
+    customer = customer_service.get_customer_by_number(db, ctx.tenant_id, customer_number)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+@router.get("/{customer_number}/self-service", response_model=SelfService)
+def get_self_service(customer_number: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> SelfService:
+    """Whether this customer's own administrators manage its people and sign-on, and who they are."""
+    return _self_service(db, ctx, _by_number(db, ctx, customer_number))
+
+
+@router.put("/{customer_number}/self-service", response_model=SelfService)
+def set_self_service(customer_number: str, payload: SelfService, db: Session = Depends(get_db),
+                     ctx: TenantContext = Depends(_manage)) -> SelfService:
+    """Lets the customer's own administrators manage its people and sign-on, or stops them at
+    once. They can give only the roles marked offered to customers."""
+    from openclear.services import customer_people_service
+
+    customer = _by_number(db, ctx, customer_number)
+    customer_people_service.set_self_service(db, ctx.tenant_id, customer.id, users=payload.manages_people, sso=payload.manages_sign_on)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="customer.self_service",
+        summary=f"{customer.name} manages its own people: {'yes' if payload.manages_people else 'no'}; "
+                f"its own sign-on: {'yes' if payload.manages_sign_on else 'no'}",
+        resource_type="customer", resource_id=customer.id,
+    )
+    db.commit()
+    return _self_service(db, ctx, customer)

@@ -36,6 +36,18 @@ its metadata URL.</p>
     that, link its API client to the connection.</li>
 </ul>
 
+<h2>Customers' own sign-on</h2>
+<p>A customer you let manage its own sign-on (its page, <em>Self-service</em>) can connect its
+identity provider itself, for its own people, from Settings &rarr; Sign-on. Its connections
+map only to the roles you offer to customers. Because a customer's identity provider can
+claim any email address, it creates people automatically (on sign-in or through SCIM) only
+in email domains the customer has verified with a DNS record; anyone else is invited first.
+The customer can turn off password sign-in only after signing in through its connection, and
+you can always turn it back on from the customer's sign-on page.</p>
+<p>Someone who signs in through a customer's connection stays in that customer: to reach
+another organization they belong to, they sign out and sign in there. One customer's
+identity provider never vouches for anywhere else.</p>
+
 <h2>API clients</h2>
 <p>To let one of your systems (your core, your online banking provider, your own
 middleware) use OpenClear's API, create an API client under

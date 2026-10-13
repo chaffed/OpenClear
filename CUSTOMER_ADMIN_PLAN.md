@@ -108,3 +108,14 @@ management is wanted sooner.
 
 (Newest last.)
 - 2026-10-13 Plan written. Nothing built yet.
+- 2026-10-13 Built on branch `ca-customer-admin`, all four phases, with the recommended
+  decisions (CA-D1–D8). Migration `c6e8a0c2e4f7`. Session confinement is a `cfd` token claim
+  set when a sign-on lands in a customer membership, kept through refresh, refused by the
+  switcher. Invitations create nothing until accepted, so an invitation can't squat on an
+  email either. Found and fixed while building CA1: under Postgres RLS the "belongs to
+  another bank?" checks (admin password reset, SCIM email change) only saw the bank's own
+  memberships; `db/tenancy.py::memberships_elsewhere` probes one named person's memberships
+  through a narrow policy addition, and an RLS test shows the old check failing. Also caught
+  by the tests: a NOT(customer_id = x) that skipped NULL (bank-wide) memberships.
+  Not done: the manual pass against Keycloak.
+

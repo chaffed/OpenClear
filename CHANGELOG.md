@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+Customers can manage their own people and sign-on, when their bank allows it
+(CUSTOMER_ADMIN_PLAN.md).
+
+- **The bank's switches**: on a customer's page, *Self-service* lets its own administrators
+  manage its people, its sign-on, or both (also `PUT /api/v1/customers/{number}/self-service`).
+  Security groups get *Offered to customers*: the only roles a customer can give. A new
+  control, *Customer self-service*, lists who manages themselves and warns when one has no
+  administrator. The customer's page links to its people and sign-on activity.
+- **People** (Settings → People, `customer_user:manage`): invite by email or from a CSV,
+  choosing role, accounts and passkey requirement; change, deactivate, reactivate; reset a
+  password, unlock or sign out everywhere for people who belong to that customer alone; export;
+  an activity log. Invitations create nothing until accepted: a new person chooses a password,
+  someone who already uses OpenClear confirms with theirs (a wrong one counts toward their
+  lockout). The last administrator can't be removed.
+- **Sign-on** (Settings → Sign-on, `customer_sso:manage`): the customer's own OIDC or SAML
+  connection, mapped only to offered roles; email domains verified by DNS TXT record, outside
+  which neither sign-in nor SCIM creates anyone; SCIM tokens; *Test sign-in*; password sign-in
+  turned off only from a session signed in through sign-on, and never leaving the customer
+  with no way in. Customers can also tighten their own password rules.
+- **Sessions from a customer's sign-on stay in that customer**: switching organization needs
+  a fresh sign-in there.
+- **Fixed**: under Postgres row-level security, the checks that stop a bank resetting the
+  password of (or SCIM changing the email of) someone who also belongs to another bank saw
+  only the bank's own memberships, so they let it through. They now count every bank's,
+  through a narrow policy addition for one named person.
+- **Migration** `c6e8a0c2e4f7`: `user_invitation`, `customer_email_domain`;
+  `customer.self_manages_users`/`self_manages_sso`, `security_group.offered_to_customers`,
+  `sso_connection.managed_by`; `notification.recipient_user_id` nullable; the
+  tenant_membership policy's probe.
+
 ## 1.14.0 — 2026-10-13
 
 What a bank's security and IT reviews ask for next: controls that alert, access by account,

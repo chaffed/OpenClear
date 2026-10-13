@@ -295,3 +295,32 @@ def test_a_customer_sign_on_sets_confinement(db_session, tenant_factory):
     cookie = next(v for k, v in response.raw_headers if k == b"set-cookie" and v.startswith(b"access_token="))
     token = cookie.split(b";")[0].split(b"=", 1)[1].decode()
     assert decode_token(token)["cfd"] == 1
+
+
+def test_the_bank_sees_who_manages_themselves(client, db_session, tenant_factory):
+    from openclear.services import controls_service
+
+    s = _setup(db_session, tenant_factory, slug="cp-oversight")
+    control = {c.key: c for c in controls_service.status(db_session, s["tenant"].id)}["customer_self_service"]
+    assert control.status == "PASS" and control.evidence["manage_their_people"] == ["Acme"]
+    s["admin_role"].permissions = ["issued_item:read"]  # nobody left who can manage its people
+    db_session.commit()
+    control = {c.key: c for c in controls_service.status(db_session, s["tenant"].id)}["customer_self_service"]
+    assert control.status == "WARN" and control.evidence["without_an_administrator"] == ["Acme"]
+
+    _login(client, s["tenant"], s["users"]["admin"].email)
+    activity = client.get(f"/ui/customers/{s['customer'].id}/activity")
+    assert activity.status_code == 200 and "Changes to Acme" in activity.text
+    from tests.conftest import login_headers
+
+    headers = login_headers(client, s["tenant"].slug, s["users"]["admin"].email)
+    got = client.get("/api/v1/customers/C-1/self-service", headers=headers).json()
+    assert got == {"manages_people": True, "manages_sign_on": False, "administrators": []}
+    put = client.put("/api/v1/customers/C-1/self-service", headers=headers, json={"manages_people": False, "manages_sign_on": True})
+    assert put.status_code == 200 and put.json()["manages_sign_on"] is True
+    listed = {c["customer_number"]: c for c in client.get("/api/v1/customers", headers=headers).json()}
+    assert listed["C-1"]["self_manages_users"] is False and listed["C-1"]["self_manages_sso"] is True
+    # The core's routine sync leaves the switches alone.
+    client.put("/api/v1/customers/C-1", headers=headers, json={"name": "Acme"})
+    assert client.get("/api/v1/customers/C-1/self-service", headers=headers).json()["manages_sign_on"] is True
+    assert client.get("/api/v1/customers/NOPE/self-service", headers=headers).status_code == 404

@@ -42,6 +42,7 @@ END_USER_DOC_PAGES: list[DocPage] = [
     DocPage("fraud-training", "Known-Fraud Training Data", "Labeling known-fraud items to improve the ML model."),
     DocPage("bulk-uploads", "Bulk File Uploads", "Uploading files in bulk, and undoing an upload if needed."),
     DocPage("billing-statement", "Your Billing Statement", "Reading your monthly statement of positive pay charges."),
+    DocPage("people-and-sign-on", "Your People & Sign-on", "For your administrators: inviting people, roles and accounts, and your own single sign-on."),
 ]
 END_USER_DOC_PAGES_BY_SLUG: dict[str, DocPage] = {p.slug: p for p in END_USER_DOC_PAGES}
 

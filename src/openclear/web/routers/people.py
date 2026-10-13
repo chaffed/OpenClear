@@ -161,17 +161,34 @@ def export(db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage))
     return Response(out.getvalue(), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="people.csv"'})
 
 
-@router.get("/ui/people/activity")
-def activity(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
-    """The customer's own people and sign-on changes, by its administrators and by the bank."""
+def _activity(request: Request, db: Session, ctx: TenantContext, customer_id: uuid.UUID, *, organization: str, back_url: str) -> HTMLResponse:
     entries = list(db.execute(select(AuditLogEntry).where(
         AuditLogEntry.tenant_id == ctx.tenant_id, AuditLogEntry.resource_type == "customer",
-        AuditLogEntry.resource_id == ctx.customer_id,
+        AuditLogEntry.resource_id == customer_id,
         AuditLogEntry.action.like("customer%")).order_by(AuditLogEntry.sequence.desc()).limit(200)).scalars())
     from openclear.domain.user import User
 
     actors = {u.id: u.email for u in db.execute(select(User).where(User.id.in_({e.actor_user_id for e in entries if e.actor_user_id}))).scalars()}
-    return render_template(request, "people/activity.html", ctx=ctx, entries=entries, actors=actors)
+    return render_template(request, "people/activity.html", ctx=ctx, entries=entries, actors=actors, organization=organization,
+                           back_url=back_url)
+
+
+@router.get("/ui/people/activity")
+def activity(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
+    """The customer's own people and sign-on changes, by its administrators and by the bank."""
+    return _activity(request, db, ctx, ctx.customer_id, organization=ctx.customer_name, back_url="/ui/people")
+
+
+@router.get("/ui/customers/{customer_id}/activity")
+def customer_activity(request: Request, customer_id: uuid.UUID, db: Session = Depends(get_db),
+                      ctx: TenantContext = Depends(require_web_permission("customer:manage"))) -> HTMLResponse:
+    """The same, for the bank: what a customer's administrators have changed."""
+    from openclear.services import customer_service
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    return _activity(request, db, ctx, customer.id, organization=customer.name, back_url=f"/ui/customers/{customer.id}")
 
 
 def _person_page(request: Request, db: Session, ctx: TenantContext, membership_id: uuid.UUID, *, error: str | None = None,

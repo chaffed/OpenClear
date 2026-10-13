@@ -15,7 +15,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -264,6 +264,41 @@ def _api_client_secrets(session: Session, tenant_id: uuid.UUID) -> Control:
                    f"All {len(clients)} active API clients rotated their secret within a year.", evidence)
 
 
+def _customer_self_service(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Which customers manage their own people and sign-on (CUSTOMER_ADMIN_PLAN.md), with
+    what, and whether each that manages its people has someone to do it."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_admin import CustomerEmailDomain
+    from openclear.domain.security_group import SecurityGroup
+    from openclear.domain.sso_connection import SsoConnection
+    from openclear.services import customer_people_service
+
+    title = "Customer self-service"
+    customers = session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.is_active.is_(True), or_(
+        Customer.self_manages_users.is_(True), Customer.self_manages_sso.is_(True)))).scalars().all()
+    if not customers:
+        return Control("customer_self_service", title, PASS, "No customer manages its own people or sign-on; the bank does.", {})
+    evidence = {
+        "manage_their_people": sorted(c.name for c in customers if c.self_manages_users),
+        "manage_their_sign_on": sorted(c.name for c in customers if c.self_manages_sso),
+        "roles_offered": sorted(session.execute(select(SecurityGroup.name).where(
+            SecurityGroup.tenant_id == tenant_id, SecurityGroup.offered_to_customers.is_(True))).scalars()),
+        "customer_managed_connections": session.execute(select(func.count()).select_from(SsoConnection).where(
+            SsoConnection.tenant_id == tenant_id, SsoConnection.managed_by == "customer", SsoConnection.is_active.is_(True))).scalar_one(),
+        "verified_email_domains": sorted(session.execute(select(CustomerEmailDomain.domain).where(
+            CustomerEmailDomain.tenant_id == tenant_id, CustomerEmailDomain.verified_at.is_not(None))).scalars()),
+    }
+    unattended = sorted(c.name for c in customers if c.self_manages_users
+                        and not customer_people_service.administrators(session, tenant_id, c.id))
+    evidence["without_an_administrator"] = unattended
+    if unattended:
+        return Control("customer_self_service", title, WARN,
+                       f"{len(unattended)} customers manage their own people but have no administrator to do it: {', '.join(unattended[:10])}.",
+                       evidence)
+    return Control("customer_self_service", title, PASS,
+                   f"{len(customers)} customers manage their own people or sign-on, within the roles you offer.", evidence)
+
+
 def _anomaly_capture(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.services import mrm_service
 
@@ -379,6 +414,7 @@ def _status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
         _parser_hardening(),
         _sla(session, tenant_id),
         _api_client_secrets(session, tenant_id),
+        _customer_self_service(session, tenant_id),
         _event_delivery(session, tenant_id),
         _production_safety(),
     ]

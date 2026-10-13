@@ -258,6 +258,8 @@ class CustomerRead(TypedDict):
     name: str
     phone: str | None
     primary_contact_name: str | None
+    self_manages_sso: NotRequired[bool]
+    self_manages_users: NotRequired[bool]
     state: str | None
     tax_id: str | None
     updated_at: NotRequired[str | None]
@@ -636,6 +638,14 @@ class RetrainResponse(TypedDict):
 
 class RunRequest(TypedDict):
     layout: NotRequired[str | None]
+
+
+class SelfService(TypedDict):
+    """Whether the customer's own administrators manage its people and its sign-on."""
+
+    administrators: NotRequired[list[str]]
+    manages_people: bool
+    manages_sign_on: bool
 
 
 class SharedModelSummaryRead(TypedDict):
@@ -1254,6 +1264,25 @@ class CustomersApi:
         `201` when it was created. Fields left out are cleared, as with any `PUT`.
         """
         return self._c.call("PUT", f"/api/v1/customers/{_path(customer_number)}", json=body)
+
+    def get_self_service(self, customer_number: str) -> SelfService:
+        """Get Self Service.
+
+        GET /api/v1/customers/{customer_number}/self-service
+
+        Whether this customer's own administrators manage its people and sign-on, and who they are.
+        """
+        return self._c.call("GET", f"/api/v1/customers/{_path(customer_number)}/self-service")
+
+    def set_self_service(self, customer_number: str, body: SelfService) -> SelfService:
+        """Set Self Service.
+
+        PUT /api/v1/customers/{customer_number}/self-service
+
+        Lets the customer's own administrators manage its people and sign-on, or stops them at
+        once. They can give only the roles marked offered to customers.
+        """
+        return self._c.call("PUT", f"/api/v1/customers/{_path(customer_number)}/self-service", json=body)
 
 
 class DataExportsApi:

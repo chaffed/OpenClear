@@ -21,6 +21,15 @@ existing one's permission set. Changes take effect immediately for anyone in tha
 <ul>
   <li><strong>Create or edit a user</strong> — from <a href="/ui/users">Users</a>, assign
   them a security group and (if applicable) a specific customer scope.</li>
+  <li><strong>Let a customer manage its own people</strong> — on the customer's page, under
+  <em>Self-service</em>. Its administrators (anyone you give a role with
+  <code>customer_user:manage</code>) can then invite people, change their roles and accounts,
+  and remove them, within that customer only. They can give only the roles you mark
+  <em>Offered to customers</em> on the security group, and can't edit roles. They can't
+  reset the password of, unlock or sign out anyone who also belongs elsewhere (your own
+  staff included), or remove their last administrator. Everything they do is in your
+  action log, and on the customer's page under <em>Its people and sign-on activity</em>.
+  Turning self-service off stops it at once.</li>
   <li><strong>Limit a customer's person to some accounts</strong> — from Edit, choose
   <em>Choose accounts</em>. They then see, change and are told about only those accounts'
   checks, ACH items and exceptions, and their bulk uploads reach only those accounts. It

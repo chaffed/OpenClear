@@ -560,6 +560,24 @@ and only their own bulk uploads and data exports. Their background imports and e
 under the same limit, and notifications and deadline reminders reach them only for those
 accounts. Moving the person to another customer puts them back to all accounts.
 
+**Customers managing themselves** (CUSTOMER_ADMIN_PLAN.md). Per customer, the bank can let
+the customer's own administrators manage its people (`customer_user:manage`; Settings →
+People: invitations by email, roles, accounts, deactivation) and its sign-on
+(`customer_sso:manage`; Settings → Sign-on: its own OIDC or SAML connection, verified email
+domains, SCIM, switching off passwords). Both permissions are masked unless the bank has
+turned that customer's switch on, and they never reach beyond the customer:
+- only roles the bank marks *offered to customers*, and no editing of roles;
+- nobody linked silently: people are invited, and someone who already exists accepts with
+  their own password;
+- a password reset, unlock or "sign out everywhere" only for someone who belongs to this
+  customer alone (`db/tenancy.py::memberships_elsewhere`, which also counts correctly under
+  Postgres RLS);
+- a customer-managed connection or directory creates people only in verified email domains;
+- password sign-in goes off only from a session signed in through sign-on, and the bank can
+  always turn it back on;
+- a session started through a customer's sign-on is confined to that customer (the `cfd`
+  token claim): switching organization means signing in again there.
+
 Not yet done, documented as an accepted v1 limitation: Postgres RLS policies on the six
 customer-scoped tables enforce `tenant_id` only, not `customer_id` — the repository layer
 above is the primary, tested enforcement point, same posture as tenant isolation's own RLS

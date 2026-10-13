@@ -1,0 +1,39 @@
+{% extends extend_from|default("docs/_layout.html") %}
+
+{% block doc_body %}
+<h1>Your People &amp; Sign-on</h1>
+<p>If your bank lets your organization manage itself, its administrators see <strong>People</strong>
+and <strong>Sign-on</strong> in Settings.</p>
+
+<h2>People</h2>
+<ul>
+  <li><strong>Invite</strong> someone by email, choosing their role (one your bank offers), which of
+  your accounts they see, and whether they need a passkey. They get a link that works once, for
+  7 days. A new person chooses their own password; someone who already uses OpenClear confirms
+  with theirs. Nothing is set up until they accept. To invite many, upload a CSV with
+  <code>email</code>, <code>role</code> and, optionally, <code>accounts</code> (account numbers
+  separated by semicolons).</li>
+  <li><strong>Manage</strong> a person to change their role, accounts or passkey requirement, or
+  to deactivate them. You can also reset their password, unlock them or sign them out
+  everywhere, unless they also belong to another organization: then only they, or your bank, can.</li>
+  <li>Your organization always keeps at least one administrator.</li>
+  <li><strong>Activity</strong> lists every change to your people and sign-on, by your
+  administrators and by your bank.</li>
+</ul>
+
+<h2>Sign-on</h2>
+<ul>
+  <li><strong>Add connection</strong> to connect your identity provider (Entra ID, Okta, Google
+  Workspace, or any OpenID Connect or SAML 2.0 provider), then map its groups to roles. Someone
+  in none of the mapped groups can't sign in.</li>
+  <li><strong>Email domains</strong>: add your domain and publish the TXT record shown, at the
+  domain or at <code>_openclear.</code> in front of it, then press <em>Verify</em>. Your
+  connection (and SCIM, if you use it) can then create people with addresses there the first
+  time they sign in. Anyone else needs an invitation.</li>
+  <li><strong>Passwords</strong>: once a connection works, use <em>Test sign-in</em> to sign in
+  through it, then turn off password sign-in from that session. Your bank can turn it back on
+  if you're ever locked out.</li>
+  <li>When you sign in through your organization's sign-on, you stay in your organization: to
+  reach another one you belong to, sign out and sign in there.</li>
+</ul>
+{% endblock %}

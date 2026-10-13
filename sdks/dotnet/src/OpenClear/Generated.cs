@@ -247,6 +247,8 @@ public sealed record CustomerRead
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
     [JsonPropertyName("phone")] public string Phone { get; init; } = default!;
     [JsonPropertyName("primary_contact_name")] public string PrimaryContactName { get; init; } = default!;
+    [JsonPropertyName("self_manages_sso")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SelfManagesSso { get; init; }
+    [JsonPropertyName("self_manages_users")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SelfManagesUsers { get; init; }
     [JsonPropertyName("state")] public string State { get; init; } = default!;
     [JsonPropertyName("tax_id")] public string TaxId { get; init; } = default!;
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
@@ -635,6 +637,16 @@ public sealed record RetrainResponse
 public sealed record RunRequest
 {
     [JsonPropertyName("layout")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Layout { get; init; }
+}
+
+/// <summary>
+/// Whether the customer's own administrators manage its people and its sign-on.
+/// </summary>
+public sealed record SelfService
+{
+    [JsonPropertyName("administrators")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<string>? Administrators { get; init; }
+    [JsonPropertyName("manages_people")] public bool ManagesPeople { get; init; } = default!;
+    [JsonPropertyName("manages_sign_on")] public bool ManagesSignOn { get; init; } = default!;
 }
 
 /// <summary>
@@ -1326,6 +1338,27 @@ public sealed partial class CustomersApi
     /// </summary>
     public Task<CustomerRead> UpsertCustomerAsync(string customerNumber, CustomerUpsert body, CancellationToken cancellationToken = default) =>
         _c.CallAsync<CustomerRead>("PUT", $"/api/v1/customers/{Uri.EscapeDataString(customerNumber.ToString()!)}", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Self Service.
+    ///
+    /// GET /api/v1/customers/{customer_number}/self-service
+    ///
+    /// Whether this customer's own administrators manage its people and sign-on, and who they are.
+    /// </summary>
+    public Task<SelfService> GetSelfServiceAsync(string customerNumber, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<SelfService>("GET", $"/api/v1/customers/{Uri.EscapeDataString(customerNumber.ToString()!)}/self-service", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Set Self Service.
+    ///
+    /// PUT /api/v1/customers/{customer_number}/self-service
+    ///
+    /// Lets the customer's own administrators manage its people and sign-on, or stops them at
+    /// once. They can give only the roles marked offered to customers.
+    /// </summary>
+    public Task<SelfService> SetSelfServiceAsync(string customerNumber, SelfService body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<SelfService>("PUT", $"/api/v1/customers/{Uri.EscapeDataString(customerNumber.ToString()!)}/self-service", json: body, cancellationToken: cancellationToken);
 }
 
 /// <summary>

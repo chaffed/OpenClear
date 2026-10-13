@@ -99,6 +99,7 @@
       Manages its own sign-on (needs a role with <code>customer_sso:manage</code>)</label>
     <button type="submit" class="secondary">{{ icon("save") }}Save</button>
   </form>
+  <p><a href="/ui/customers/{{ customer.id }}/activity">Its people and sign-on activity</a></p>
   {% if customer_admins %}
   <p>Its administrators: {{ customer_admins | join(", ") }}.</p>
   {% elif customer.self_manages_users %}

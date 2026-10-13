@@ -108,6 +108,13 @@ or `PUT /api/v1/users/{membership_id}/accounts` with `{"all_accounts": false, "a
 what's on them, an item on another account is `404`, and their bulk uploads can add items
 only to those accounts.
 
+**Customer self-service.** `GET`/`PUT /api/v1/customers/{customer_number}/self-service`
+with `{"manages_people": true, "manages_sign_on": false}` lets a customer's own
+administrators manage its people and sign-on (or stops them at once); the answer also lists
+its `administrators`. The customer upsert (`PUT /api/v1/customers/{customer_number}`) never
+changes these, so a core's sync leaves them alone; customer lists show them as
+`self_manages_users` and `self_manages_sso`.
+
 A client acts through its own service identity, so the token works on every endpoint its
 security group allows, limited to its customer if it has one, and everything it does is in
 the audit log under its name. Revoking it takes effect on its next request; rotating its

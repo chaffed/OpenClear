@@ -1674,6 +1674,16 @@
             ],
             "title": "Primary Contact Name"
           },
+          "self_manages_sso": {
+            "default": false,
+            "title": "Self Manages Sso",
+            "type": "boolean"
+          },
+          "self_manages_users": {
+            "default": false,
+            "title": "Self Manages Users",
+            "type": "boolean"
+          },
           "state": {
             "anyOf": [
               {
@@ -4029,6 +4039,34 @@
           }
         },
         "title": "RunRequest",
+        "type": "object"
+      },
+      "SelfService": {
+        "description": "Whether the customer's own administrators manage its people and its sign-on.",
+        "properties": {
+          "administrators": {
+            "default": [],
+            "description": "Read only: the customer's people who can manage its people",
+            "items": {
+              "type": "string"
+            },
+            "title": "Administrators",
+            "type": "array"
+          },
+          "manages_people": {
+            "title": "Manages People",
+            "type": "boolean"
+          },
+          "manages_sign_on": {
+            "title": "Manages Sign On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "manages_people",
+          "manages_sign_on"
+        ],
+        "title": "SelfService",
         "type": "object"
       },
       "SharedModelSummaryRead": {
@@ -7535,6 +7573,110 @@
           }
         ],
         "summary": "Upsert Customer",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_number}/self-service": {
+      "get": {
+        "description": "Whether this customer's own administrators manage its people and sign-on, and who they are.",
+        "operationId": "get_self_service_api_v1_customers__customer_number__self_service_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_number",
+            "required": true,
+            "schema": {
+              "title": "Customer Number",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfService"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Self Service",
+        "tags": [
+          "customers"
+        ]
+      },
+      "put": {
+        "description": "Lets the customer's own administrators manage its people and sign-on, or stops them at\nonce. They can give only the roles marked offered to customers.",
+        "operationId": "set_self_service_api_v1_customers__customer_number__self_service_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_number",
+            "required": true,
+            "schema": {
+              "title": "Customer Number",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfService"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelfService"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Self Service",
         "tags": [
           "customers"
         ]

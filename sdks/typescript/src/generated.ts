@@ -234,6 +234,8 @@ export interface CustomerRead {
   name: string;
   phone: string | null;
   primary_contact_name: string | null;
+  self_manages_sso?: boolean;
+  self_manages_users?: boolean;
   state: string | null;
   tax_id: string | null;
   updated_at?: string | null;
@@ -597,6 +599,13 @@ export interface RetrainResponse {
 
 export interface RunRequest {
   layout?: string | null;
+}
+
+/** Whether the customer's own administrators manage its people and its sign-on. */
+export interface SelfService {
+  administrators?: Array<string>;
+  manages_people: boolean;
+  manages_sign_on: boolean;
 }
 
 /** What a bank may see about the shared model — counts only, never other banks. */
@@ -1336,6 +1345,29 @@ export class CustomersApi {
    */
   upsertCustomer(customerNumber: string, body: CustomerUpsert): Promise<CustomerRead> {
     return this.c.call<CustomerRead>("PUT", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}`, { json: body });
+  }
+
+  /**
+   * Get Self Service.
+   *
+   * GET /api/v1/customers/{customer_number}/self-service
+   *
+   * Whether this customer's own administrators manage its people and sign-on, and who they are.
+   */
+  getSelfService(customerNumber: string): Promise<SelfService> {
+    return this.c.call<SelfService>("GET", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}/self-service`, {  });
+  }
+
+  /**
+   * Set Self Service.
+   *
+   * PUT /api/v1/customers/{customer_number}/self-service
+   *
+   * Lets the customer's own administrators manage its people and sign-on, or stops them at
+   * once. They can give only the roles marked offered to customers.
+   */
+  setSelfService(customerNumber: string, body: SelfService): Promise<SelfService> {
+    return this.c.call<SelfService>("PUT", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}/self-service`, { json: body });
   }
 }
 

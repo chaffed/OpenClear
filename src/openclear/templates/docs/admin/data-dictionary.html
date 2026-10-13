@@ -167,6 +167,7 @@ transactional record.</p>
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>Independent of the tenant's own flag — this customer's own SSO enforcement.</td></tr>
+<tr><td>self_manages_users / self_manages_sso</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators manage its people / its sign-on (customer_user:manage, customer_sso:manage).</td></tr>
 <tr><td>password_min_length</td><td>Integer</td><td>yes</td><td></td><td>This customer's additional minimum length; null = inherit the tenant's. Effective policy is always max(tenant, customer).</td></tr>
 <tr><td>password_require_uppercase / lowercase / number / symbol</td><td>Boolean</td><td>no</td><td></td><td>This customer's additional requirements; effective policy is tenant OR customer, so a customer can only add requirements, never remove one the tenant already sets.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
@@ -316,6 +317,39 @@ scope) and a security group. One user can hold several of these.</p>
 </table>
 <p class="hint">Unique constraint on (user_id, tenant_id, customer_id) — one user can't hold two identical-scope memberships.</p>
 
+<h3>user_invitation</h3>
+<p>A customer administrator's invitation to one person. Nothing exists for them until they accept: a new
+person chooses a password, someone who already uses OpenClear confirms with theirs. One use, 7 days.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id / customer_id</td><td>UUID</td><td>no</td><td>FK → tenant.id / customer.id</td><td></td></tr>
+<tr><td>email</td><td>String(320)</td><td>no</td><td></td><td></td></tr>
+<tr><td>security_group_id</td><td>UUID</td><td>no</td><td>FK → security_group.id</td><td>One the bank offers to customers.</td></tr>
+<tr><td>all_accounts / account_ids</td><td>Boolean / JSON</td><td>no</td><td></td><td>Which of the customer's accounts they'll see.</td></tr>
+<tr><td>require_webauthn</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
+<tr><td>token_hash</td><td>String(64)</td><td>no</td><td>UK</td><td>SHA-256 of the link's secret, which is only in the email.</td></tr>
+<tr><td>invited_by_user_id / accepted_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>created_at / expires_at / accepted_at / revoked_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>customer_email_domain</h3>
+<p>An email domain a customer says is its own, verified by a DNS TXT record
+(<code>openclear-verification=&lt;token&gt;</code>). A customer-managed sign-on connection creates people only in verified domains.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id / customer_id</td><td>UUID</td><td>no</td><td>FK → tenant.id / customer.id</td><td></td></tr>
+<tr><td>domain</td><td>String(253)</td><td>no</td><td></td><td>Lower case. One customer per domain within a bank.</td></tr>
+<tr><td>verification_token</td><td>String(64)</td><td>no</td><td></td><td></td></tr>
+<tr><td>verified_at / created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+<p class="hint">Unique constraint on (tenant_id, domain).</p>
+
 <h3>membership_account</h3>
 <p>An account a customer membership may see, when it isn't for all of the customer's accounts
 (per-account access; db/account_scope.py).</p>
@@ -339,6 +373,7 @@ scope) and a security group. One user can hold several of these.</p>
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
 <tr><td>name</td><td>String(100)</td><td>no</td><td>UK (with tenant_id)</td><td></td></tr>
 <tr><td>permissions</td><td>JSON</td><td>no</td><td></td><td>List of permission keys from the app's fixed catalog (auth/permissions.py).</td></tr>
+<tr><td>offered_to_customers</td><td>Boolean</td><td>no</td><td></td><td>Customers' own administrators may give this role to their people.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
@@ -365,7 +400,8 @@ one customer.</p>
 <tr><td>saml_sp_certificate / saml_sp_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: OpenClear's own key pair for this connection, generated when it's created; the key is encrypted.</td></tr>
 <tr><td>allow_idp_initiated</td><td>Boolean</td><td>no</td><td></td><td>Accept sign-in started at the identity provider (SAML). Off by default.</td></tr>
 <tr><td>scim_token_hash / scim_token_created_at</td><td>String(64) / Timestamp</td><td>yes</td><td></td><td>SCIM provisioning: the SHA-256 of the directory's bearer token (shown once). Null = SCIM off.</td></tr>
-<tr><td>auto_provision</td><td>Boolean</td><td>no</td><td></td><td>Create a OpenClear account automatically on first sign-in.</td></tr>
+<tr><td>auto_provision</td><td>Boolean</td><td>no</td><td></td><td>Create an OpenClear account automatically on first sign-in.</td></tr>
+<tr><td>managed_by</td><td>String(10)</td><td>no</td><td></td><td><code>bank</code> or <code>customer</code> (set up by the customer's own administrators; creates people only in its verified email domains).</td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at / updated_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
@@ -464,7 +500,7 @@ ceremonies.</p>
 <tr><td colspan="5"><strong>notification</strong> — one row per email/SMS actually sent (or attempted)</td></tr>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>recipient_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td></td></tr>
+<tr><td>recipient_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Null for an invitation, sent to an address before anyone has signed in with it.</td></tr>
 <tr><td>notification_type</td><td>String(40)</td><td>no</td><td></td><td>E.g. exception created, recommendation awaiting approval, account locked/unlocked, exception auto-decided, deadline reminder.</td></tr>
 <tr><td>channel</td><td>String(10)</td><td>no</td><td></td><td><code>email</code> or <code>sms</code>.</td></tr>
 <tr><td>destination</td><td>String(255)</td><td>no</td><td></td><td>Email address or phone number at send time.</td></tr>
