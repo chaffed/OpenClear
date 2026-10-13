@@ -179,6 +179,33 @@ with its own static JS, and is used by the tests.
 
 Release after R3 (phones and tablets), and after R6 (the rest), or together if they land close.
 
+### R0 baseline (2026-10-13)
+
+`tests/test_web/test_viewports.py` over 14 pages (the bank admin's 12, and the customer
+admin's People and control panel) at 360, 768, 1024 and 1280px; details in
+`tests/fixtures/viewport/REPORT.md`, the list the test holds the line on in `baseline.json`.
+
+- **Already fine at every width:** no page scrolls sideways (wide tables scroll inside
+  `.table-scroll`), axe is clean, and Pay and Return are on screen without scrolling on an
+  exception (M3's sticky decision card), even at 360×780.
+- **1024 and 1280px:** nothing fails. The 1280px screenshots are the desktop reference
+  (`tests/fixtures/viewport/darwin/`, compared on macOS with SQLite).
+- **What fails is touch targets** (4–17 kinds per page at 360px, 15–38 at 768px):
+  - 768px is worse than 360px because the tablet still gets the desktop sidebar: every nav
+    link is 30px tall (about 20 per page). R1's `nav_drawer` below 1024px fixes these.
+  - On every page at 360px: the menu button (31px), Help (32px), the theme select (29px).
+  - Lists: sort headers (`sort-button`, `sort-link`), the table filter, row checkboxes,
+    and toolbar buttons (`a.button`, 35px), the "More filters" summary (18px): R1's
+    `responsive_table`, filters in a `bottom_sheet`, and a 44px button size below 1024px.
+  - The exception page: "Back to exceptions", "Add a note" and "More about this exception"
+    (18px). The decision buttons themselves are 40–41px at 768px: R2.
+  - Users: each row's Deactivate, Sign out everywhere and Reset password (link-style
+    buttons, 16–32px): R1's actions column (a ⋯ sheet when more than two).
+- **Noticed, not a layout problem:** lists sorted by when rows were made (issued items,
+  paid items, ACH transactions, Users) have no tie-breaker, so rows made in the same second
+  come in a different order on SQLite and Postgres (and could move between pages). A
+  secondary sort on the id would settle it; left for R1, since the lists are being touched.
+
 ## Testing
 
 - R0's viewport checks run in the suite from then on, so every later phase is measured.
@@ -193,3 +220,8 @@ Release after R3 (phones and tablets), and after R6 (the rest), or together if t
 (Newest last.)
 - 2026-10-13 Plan written and decisions MB-D1–D3 made with the product owner. Nothing built yet.
   Next: R0.
+- 2026-10-13 R0 done: `tests/test_web/test_viewports.py` measures 14 pages at four widths
+  (sideways scroll, 44px targets below 1024px, Pay/Return above the fold, axe) against
+  `tests/fixtures/viewport/baseline.json`, and compares 1280px screenshots with
+  `tests/fixtures/viewport/darwin/`. Results in "R0 baseline" above: only touch targets fail,
+  at 360 and 768px. No UI changes. Next: R1.
