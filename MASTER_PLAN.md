@@ -119,3 +119,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-13 M9 merged into `main`. Suites at `f02fd527`: SQLite 1590 passed, Postgres 1615; Linux 3.11 1572 with one failure, an OCR test racing its queued job, fixed at `1f45b5c3` and rerun green (1573). Released as 1.14.0.
 - 2026-10-13 CUSTOMER_ADMIN_PLAN.md written and built on branch `ca-customer-admin` (customers managing their own people and sign-on), for 1.15.0.
 - 2026-10-13 Customer self-service (CUSTOMER_ADMIN_PLAN.md) merged into `main`. Suites at `07287e49`: SQLite 1608, Postgres 1635, Linux 3.11 1591, no failures. Keycloak live check (OIDC and SAML) passed. Released as 1.15.0.
+- 2026-10-13 MOBILE_PLAN.md written (phones and tablets, plugin UI slots, customer API clients, bank approval; mTLS scoped but hidden). Next: its R0.
