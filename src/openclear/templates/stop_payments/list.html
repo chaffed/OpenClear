@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Stop Payments — {{ ctx.tenant_name }}{% endblock %}
@@ -22,28 +23,27 @@
     {% if can(ctx, "stop_payment:write") %}<a href="/ui/stop-payments/new" class="button">{{ icon("add") }}New stop payment</a>{% endif %}
   </div>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Check #</th><th data-type="number">Amount</th><th>Effective</th><th>Expires</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for stop in page_obj.items %}
-      <tr>
-        <td>{{ stop.check_number }}</td>
-        <td>{{ stop.amount | currency or "any" }}</td>
-        <td>{{ stop.effective_date }}</td>
-        <td>{{ stop.expiration_date or "never" }}</td>
-        <td><span class="badge {{ 'badge-ok' if stop.status.value == 'active' else '' }}">{{ stop.status.value }}</span></td>
-        <td>
-          {% if stop.status.value == "active" and can(ctx, "stop_payment:write") %}
+  {% set columns = [
+    {"key": "number", "label": "Check #", "role": "primary"},
+    {"key": "amount", "label": "Amount", "role": "money", "numeric": True},
+    {"key": "effective", "label": "Effective"},
+    {"key": "expires", "label": "Expires"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(stop, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable") -%}
+    {%- if col.key == "number" %}{{ stop.check_number }}
+    {%- elif col.key == "amount" %}{{ stop.amount | currency or "any" }}
+    {%- elif col.key == "effective" %}{{ stop.effective_date }}
+    {%- elif col.key == "expires" %}{{ stop.expiration_date or "never" }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if stop.status.value == 'active' else '' }}">{{ stop.status.value }}</span>
+    {%- elif col.key == "actions" and stop.status.value == "active" and can(ctx, "stop_payment:write") %}
           <form method="post" action="/ui/stop-payments/{{ stop.id }}/cancel" class="inline-form" data-confirm="Cancel this stop payment?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="secondary">{{ icon("close") }}Cancel</button>
           </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No stop payments yet.</p>
