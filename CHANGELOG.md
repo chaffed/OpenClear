@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Phones and tablets (MOBILE_PLAN.md R0–R1). The desktop (1024px and wider) is unchanged.
+Phones and tablets (MOBILE_PLAN.md R0–R2). The desktop (1024px and wider) is unchanged.
 
 - **Navigation drawer**: below 1024px the sidebar is a bar with the bank's name and a menu
   button; the links slide in from the left (Escape, the close button or a tap outside closes
@@ -14,6 +14,21 @@ Phones and tablets (MOBILE_PLAN.md R0–R1). The desktop (1024px and wider) is u
 - **More filters** on a list opens as a sheet from the bottom of a phone's screen.
 - **Touch targets**: below 1024px every button, link in a list, field and menu entry is at
   least 44×44px, and the theme and Help controls no longer cover the first card.
+- **Deciding on a phone or tablet**:
+  - The exception queue is cards on a phone, a checkbox down each card's left edge;
+    Network and Status open as a sheet, and so do the reasons for returning several at once.
+  - On an exception, Pay and Return sit in a compact bar at the bottom of the screen with the
+    fraud risk beside them; Return's reasons open as a sheet (R still opens them).
+  - On a phone the check image comes first, front or back at a time.
+  - **Undo**: recommending a decision (one tap on Pay) shows a message with Undo, which takes
+    the recommendation back while nobody has approved it yet. The exception's page offers the
+    same as *Withdraw my recommendation*. A decision itself is never undone.
+  - A tablet held sideways shows the queue and the chosen item side by side; deciding there
+    keeps the queue in view, and Back works.
+- **Action log on an exception**: the exception's own entries, collapsed with the newest one
+  showing, for people who can read the action log (not a customer's own people).
+- **Fixed**: the bar for deciding several exceptions at once now stays at the bottom of the
+  screen while scrolling, as intended.
 - **Fixed**: lists sorted by when rows were made (issued items, paid items, ACH transactions,
   exceptions, Users) could swap rows made in the same second between pages; every sort now
   ends with a tie-breaker.

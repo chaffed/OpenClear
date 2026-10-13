@@ -63,7 +63,7 @@
   ] + ([{"key": "risk", "label": "Fraud risk", "sort": "score"}] if show_scores else [])
     + ([{"key": "deadline", "label": "Decide by", "sort": "deadline"}] if show_deadlines else [])
     + [{"key": "status", "label": "Status", "role": "status", "sort": "status"}] %}
-  {% call(row, col, part="cell") rt.responsive_table(columns, rows, search=search, action="/ui/exceptions", attrs="data-server-list", id="exceptions", row_attrs="data-row-link") -%}
+  {% call(row, col, part="cell") rt.responsive_table(columns, rows, search=search, action="/ui/exceptions", attrs="data-server-list data-queue", id="exceptions", row_attrs="data-row-link") -%}
     {%- if part == "header" %}<label class="select-target"><input type="checkbox" data-select-all aria-label="Select every item on this page that can be decided"></label>
     {%- elif col.key == "select" %}{% if row.exception.status.value in ["open", "pending_approval"] %}<label class="select-target"><input type="checkbox" name="exception_ids" value="{{ row.exception.id }}" form="bulk-form" data-amount="{{ row.summary.amount or 0 }}" aria-label="Select {{ row.summary.label }}"></label>{% endif %}
     {%- elif col.key == "item" %}<a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span>

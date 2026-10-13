@@ -1,63 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Wide tables scroll sideways inside their own card on narrow screens, instead of
-  // widening the whole page (which made every list page scroll horizontally on a phone).
-  // Done here once for every table rather than in each of the templates.
-  document.querySelectorAll("table").forEach((table) => {
-    if (table.parentElement && table.parentElement.classList.contains("table-scroll")) return;
-    const wrapper = document.createElement("div");
-    wrapper.className = "table-scroll";
-    table.parentNode.insertBefore(wrapper, table);
-    wrapper.appendChild(table);
-  });
-
-  // A table wider than its box scrolls inside it; keyboard users then need to reach the box
-  // to scroll it, so it's focusable and named, but only while it actually overflows.
-  const markScrollable = () => document.querySelectorAll(".table-scroll").forEach((box) => {
-    if (box.scrollWidth > box.clientWidth + 1) {
-      box.setAttribute("tabindex", "0");
-      box.setAttribute("role", "region");
-      box.setAttribute("aria-label", "Table, scrolls sideways");
-    } else {
-      box.removeAttribute("tabindex");
-      box.removeAttribute("role");
-      box.removeAttribute("aria-label");
-    }
-  });
-  markScrollable();
+  enhance(document);
   window.addEventListener("resize", markScrollable);
-
-  initConfirmations();
-  initBusyForms();
+  initBusyFormsRestore();
   initDropzones();
   initLazyStates();
-  initToasts();
   initPolling();
-
-  // A link with data-history-back returns to the previous page (e.g. error.html's "Go
-  // back", so a rejected form's typed values are still there) — wired up here rather
-  // than as a javascript: href, which the strict script-src CSP blocks. Its real href is
-  // the no-JS / no-history fallback.
   initDecisionKeys();
   initBulkDecisions();
-  initImageSides();
-
-  // <time datetime="..." data-local-time> shows the reviewer's own local time instead of
-  // the server's UTC fallback text; data-relative-time adds "in 2h 13m" / "overdue".
-  document.querySelectorAll("time[data-local-time]").forEach((el) => {
-    const when = new Date(el.getAttribute("datetime"));
-    if (Number.isNaN(when.getTime())) return;
-    let text = when.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-    if (el.hasAttribute("data-relative-time")) {
-      const minutes = Math.round((when.getTime() - Date.now()) / 60000);
-      if (minutes <= 0) {
-        text += " (overdue)";
-      } else {
-        const hours = Math.floor(minutes / 60);
-        text += ` (in ${hours ? `${hours}h ` : ""}${minutes % 60}m)`;
-      }
-    }
-    el.textContent = text;
-  });
+  initQueuePane();
 
   // A button with data-copy-target="<element id>" copies that element's text (e.g. the
   // one-time temporary password on users/reset_password_result.html) and briefly
@@ -84,13 +34,83 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // A <select>/<input> with data-auto-submit submits its enclosing form on change --
-  // used instead of an inline onchange="..." attribute so the app can run a strict,
-  // nonce-based script-src Content-Security-Policy (see web/security_headers.py) with no
-  // 'unsafe-inline'. data-auto-submit="request" uses requestSubmit() instead of submit()
-  // where a route relies on the submit button/native validation running (submit() skips
-  // both); plain data-auto-submit uses the plain, no-validation submit().
-  document.querySelectorAll("[data-auto-submit]").forEach((el) => {
+  initSortableTables();
+  initHelpDialog();
+  initNavToggle();
+  initBannerCarousel();
+});
+
+// What every page's content gets, and content put in later (the exception pane): run on
+// `root`, the document or the new content.
+function enhance(root) {
+  wrapTables(root);
+  markScrollable();
+  initConfirmations(root);
+  initBusyForms(root);
+  initToasts(root);
+  initLocalTimes(root);
+  initAutoSubmit(root);
+  initBottomSheets(root);
+  initImageSides(root);
+}
+
+// Wide tables scroll sideways inside their own card on narrow screens, instead of
+// widening the whole page (which made every list page scroll horizontally on a phone).
+// Done here once for every table rather than in each of the templates.
+function wrapTables(root) {
+  root.querySelectorAll("table").forEach((table) => {
+    if (table.parentElement && table.parentElement.classList.contains("table-scroll")) return;
+    const wrapper = document.createElement("div");
+    wrapper.className = "table-scroll";
+    table.parentNode.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
+  });
+}
+
+// A table wider than its box scrolls inside it; keyboard users then need to reach the box
+// to scroll it, so it's focusable and named, but only while it actually overflows.
+function markScrollable() {
+  document.querySelectorAll(".table-scroll").forEach((box) => {
+    if (box.scrollWidth > box.clientWidth + 1) {
+      box.setAttribute("tabindex", "0");
+      box.setAttribute("role", "region");
+      box.setAttribute("aria-label", "Table, scrolls sideways");
+    } else {
+      box.removeAttribute("tabindex");
+      box.removeAttribute("role");
+      box.removeAttribute("aria-label");
+    }
+  });
+}
+
+// <time datetime="..." data-local-time> shows the reviewer's own local time instead of
+// the server's UTC fallback text; data-relative-time adds "in 2h 13m" / "overdue".
+function initLocalTimes(root) {
+  root.querySelectorAll("time[data-local-time]").forEach((el) => {
+    const when = new Date(el.getAttribute("datetime"));
+    if (Number.isNaN(when.getTime())) return;
+    let text = when.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    if (el.hasAttribute("data-relative-time")) {
+      const minutes = Math.round((when.getTime() - Date.now()) / 60000);
+      if (minutes <= 0) {
+        text += " (overdue)";
+      } else {
+        const hours = Math.floor(minutes / 60);
+        text += ` (in ${hours ? `${hours}h ` : ""}${minutes % 60}m)`;
+      }
+    }
+    el.textContent = text;
+  });
+}
+
+// A <select>/<input> with data-auto-submit submits its enclosing form on change --
+// used instead of an inline onchange="..." attribute so the app can run a strict,
+// nonce-based script-src Content-Security-Policy (see web/security_headers.py) with no
+// 'unsafe-inline'. data-auto-submit="request" uses requestSubmit() instead of submit()
+// where a route relies on the submit button/native validation running (submit() skips
+// both); plain data-auto-submit uses the plain, no-validation submit().
+function initAutoSubmit(root) {
+  root.querySelectorAll("[data-auto-submit]").forEach((el) => {
     el.addEventListener("change", () => {
       if (el.dataset.autoSubmit === "request") {
         el.form.requestSubmit();
@@ -99,13 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-
-  initSortableTables();
-  initHelpDialog();
-  initNavToggle();
-  initBottomSheets();
-  initBannerCarousel();
-});
+}
 
 // templates/partials/_banner.html renders one .banner-slide per message that's actually
 // set (tenant's own, and/or the logged-in user's own customer's) -- 0 or 1 slides need no
@@ -197,8 +211,8 @@ function initNavToggle() {
 // breakpoint it moves into a <dialog> with a title and a Close button, opened by its trigger;
 // above it, it goes back where it was (and the dialog is gone), so wider screens never see
 // the sheet. A <details> as the content is opened while it's in the sheet.
-function initBottomSheets() {
-  document.querySelectorAll("[data-sheet]").forEach((content) => {
+function initBottomSheets(root = document) {
+  root.querySelectorAll("[data-sheet]").forEach((content) => {
     const query = window.OpenClear.breakpoint(content.dataset.sheet);
     const triggers = document.querySelectorAll(`[data-sheet-open="${content.id}"]`);
     let dialog = null;
@@ -432,8 +446,8 @@ function submitConfirmed(form, submitter) {
 
 // A form (or a submit button) with data-confirm="message" asks first. Add
 // data-confirm-yes="Void it" for the button's text and data-confirm-danger for a destructive one.
-function initConfirmations() {
-  document.querySelectorAll("form").forEach((form) => {
+function initConfirmations(root = document) {
+  root.querySelectorAll("form").forEach((form) => {
     form.addEventListener("submit", (event) => {
       if (form.dataset.confirmed === "1") return;
       const source = event.submitter && event.submitter.dataset.confirm ? event.submitter : form;
@@ -453,8 +467,8 @@ function initConfirmations() {
 // While a form is being sent, its submit buttons are disabled and say so, so a slow
 // upload or export can't be sent twice. Opt out with data-no-busy. A page shown again from
 // the back/forward cache gets its buttons back.
-function initBusyForms() {
-  document.querySelectorAll("form").forEach((form) => {
+function initBusyForms(root = document) {
+  root.querySelectorAll("form").forEach((form) => {
     if (form.hasAttribute("data-no-busy") || (form.method || "get").toLowerCase() !== "post") return;
     form.addEventListener("submit", (event) => {
       if (event.defaultPrevented) return;
@@ -471,6 +485,9 @@ function initBusyForms() {
       });
     });
   });
+}
+
+function initBusyFormsRestore() {
   window.addEventListener("pageshow", (event) => {
     if (!event.persisted) return;
     document.querySelectorAll("form[aria-busy]").forEach((form) => {
@@ -490,14 +507,14 @@ function initBusyForms() {
 // page marked data-undo, the toast has an Undo button that submits it (MOBILE_PLAN.md R2);
 // the page offers the same form without a time limit. While the pointer or focus is on the
 // toast it stays.
-function initToasts() {
+function initToasts(root = document) {
   const region = document.getElementById("toast-region");
   if (!region) return;
-  document.querySelectorAll("[data-toast]").forEach((el) => {
+  root.querySelectorAll("[data-toast]").forEach((el) => {
     const toast = document.createElement("div");
     toast.className = "toast";
     toast.textContent = el.textContent.trim();
-    const undoForm = el.dataset.undoForm ? document.getElementById(el.dataset.undoForm) : null;
+    const undoForm = el.dataset.undoForm ? root.querySelector(`form[id="${CSS.escape(el.dataset.undoForm)}"]`) : null;
     if (undoForm && undoForm.hasAttribute("data-undo")) {
       const undo = document.createElement("button");
       undo.type = "button";
@@ -548,13 +565,14 @@ function typingInField(event) {
 // Keys: on an exception's page, P pays (asking first where it would anyway) and R opens
 // the return reasons; on the list, J and K move between rows and Enter opens one.
 function initDecisionKeys() {
-  const panel = document.querySelector("[data-decision-panel]");
-  const rows = Array.from(document.querySelectorAll("tr[data-row-link]"));
-  if (!panel && !rows.length) return;
+  if (!document.querySelector("[data-decision-panel], tr[data-row-link]")) return;
   let current = -1;
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || typingInField(event) || document.querySelector("dialog[open]")) return;
     const key = event.key.toLowerCase();
+    // Looked up each time: the exception pane (initQueuePane) puts one in later.
+    const panel = document.querySelector("[data-decision-panel]");
+    const rows = Array.from(document.querySelectorAll("tr[data-row-link]"));
     if (panel && key === "p") {
       const pay = panel.querySelector('[data-key="p"]');
       if (pay) { event.preventDefault(); pay.click(); }
@@ -581,8 +599,8 @@ function initDecisionKeys() {
 
 // A check's front and back (exceptions/detail.html's data-image-sides): on a phone, one at a
 // time with Front and Back buttons; wider, both, as before. Each still opens full size.
-function initImageSides() {
-  document.querySelectorAll("[data-image-sides]").forEach((box) => {
+function initImageSides(root = document) {
+  root.querySelectorAll("[data-image-sides]").forEach((box) => {
     const sides = Array.from(box.querySelectorAll(":scope > a"));
     if (sides.length < 2) return;
     const phone = window.OpenClear.breakpoint("phone");
@@ -619,16 +637,19 @@ function initImageSides() {
 }
 
 // The exceptions list: tick items, then Pay or Return them together. The bar says how
-// many and how much, and the confirmation repeats it.
+// many and how much, and the confirmation repeats it. Rows can be replaced (the exception
+// pane refreshes them, then fires "openclear:rows-changed"), so the boxes are found each time.
 function initBulkDecisions() {
   const form = document.getElementById("bulk-form");
   if (!form) return;
-  const boxes = Array.from(document.querySelectorAll('input[name="exception_ids"][form="bulk-form"]'));
+  const selector = 'input[name="exception_ids"][form="bulk-form"]';
+  const boxes = () => Array.from(document.querySelectorAll(selector));
   const bar = form.querySelector("[data-bulk-bar]");
   const all = document.querySelector("[data-select-all]");
   const money = (n) => n.toLocaleString(undefined, { style: "currency", currency: "USD" });
   const update = () => {
-    const chosen = boxes.filter((b) => b.checked);
+    const every = boxes();
+    const chosen = every.filter((b) => b.checked);
     const total = chosen.reduce((sum, b) => sum + (parseFloat(b.dataset.amount) || 0), 0);
     bar.hidden = chosen.length === 0;
     form.querySelector("[data-bulk-count]").textContent = `${chosen.length} selected · ${money(total)}`;
@@ -639,11 +660,135 @@ function initBulkDecisions() {
       button.dataset.confirmTitle = `${verb} these ${noun}?`;
       button.dataset.confirmYes = `${verb} ${chosen.length}`;
     });
-    if (all) all.checked = chosen.length === boxes.length && boxes.length > 0;
+    if (all) all.checked = chosen.length === every.length && every.length > 0;
   };
-  boxes.forEach((b) => b.addEventListener("change", update));
-  if (all) all.addEventListener("change", () => { boxes.forEach((b) => (b.checked = all.checked)); update(); });
+  document.addEventListener("change", (event) => {
+    if (event.target.matches && event.target.matches(selector)) update();
+  });
+  document.addEventListener("openclear:rows-changed", update);
+  if (all) all.addEventListener("change", () => { boxes().forEach((b) => (b.checked = all.checked)); update(); });
   update();
+}
+
+// The exception queue on a landscape tablet (MOBILE_PLAN.md R2): the list on the left, the
+// chosen item on the right. A touch screen held sideways only (OpenClear.twoPane), so a
+// desktop with a mouse never sees it. Choosing an item loads its page's content into the
+// pane and puts its address in the location bar, so Back and reloading work; its forms are
+// sent from the pane, and the item's row in the list is refreshed afterwards. Turned
+// upright, or on a phone, an open item becomes its own page again.
+function initQueuePane() {
+  const table = document.querySelector("table[data-queue]");
+  if (!table) return;
+  const card = table.closest(".card");
+  const listUrl = location.href;
+  const query = window.OpenClear.twoPane();
+  let split = null;
+  let pane = null;
+
+  const empty = () => {
+    const note = document.createElement("p");
+    note.className = "queue-pane-empty text-muted";
+    note.textContent = "Choose an item to see it here.";
+    return note;
+  };
+  const markCurrent = (url) => {
+    const path = new URL(url, location.href).pathname;
+    table.querySelectorAll("td.cell-primary a").forEach((link) => {
+      if (new URL(link.href).pathname === path) link.setAttribute("aria-current", "true");
+      else link.removeAttribute("aria-current");
+    });
+  };
+  const show = (url, html) => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const view = doc.querySelector("[data-item-view]");
+    if (!view) { location.assign(url); return; } // signed out, an error page: show it whole
+    const messages = Array.from(doc.querySelectorAll("#main-content > .flash"));
+    pane.replaceChildren(...messages, view);
+    enhance(pane);
+    pane.scrollTop = 0;
+    markCurrent(url);
+    const heading = pane.querySelector("h1");
+    if (heading) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+  };
+  const load = (url, how) => fetch(url, { credentials: "same-origin" })
+    .then((response) => response.text().then((html) => {
+      if (how === "push") history.pushState({ queuePane: url }, "", url);
+      show(response.url, html);
+    }))
+    .catch(() => location.assign(url));
+  // After a decision: the item's row as the list now has it (gone, if it no longer matches).
+  const refreshRow = (itemUrl) => fetch(listUrl, { credentials: "same-origin" })
+    .then((response) => response.text())
+    .then((html) => {
+      const path = new URL(itemUrl, location.href).pathname;
+      const rowFor = (root) => Array.from(root.querySelectorAll("table[data-queue] td.cell-primary a"))
+        .find((link) => new URL(link.getAttribute("href"), location.href).pathname === path);
+      const old = rowFor(table);
+      if (!old) return;
+      const fresh = rowFor(new DOMParser().parseFromString(html, "text/html"));
+      if (fresh) old.closest("tr").replaceWith(document.importNode(fresh.closest("tr"), true));
+      else old.closest("tr").remove();
+      initLocalTimes(table);
+      markCurrent(itemUrl);
+      document.dispatchEvent(new Event("openclear:rows-changed"));
+    })
+    .catch(() => {});
+
+  const open = () => {
+    split = document.createElement("div");
+    split.className = "queue-split";
+    pane = document.createElement("section");
+    pane.className = "queue-pane";
+    pane.setAttribute("aria-label", "The chosen exception");
+    pane.appendChild(empty());
+    card.parentNode.insertBefore(split, card);
+    split.append(card, pane);
+    if (history.state && history.state.queuePane) load(history.state.queuePane);
+  };
+  const close = () => {
+    split.parentNode.insertBefore(card, split);
+    split.remove();
+    split = pane = null;
+    if (history.state && history.state.queuePane) location.assign(history.state.queuePane);
+  };
+  const place = () => {
+    const wanted = query.matches && !window.OpenClear.breakpoint("phone").matches;
+    if (wanted && !split) open();
+    else if (!wanted && split) close();
+  };
+
+  history.replaceState({ queueList: true }, "", listUrl);
+  table.addEventListener("click", (event) => {
+    const link = event.target.closest("td.cell-primary a");
+    if (!split || !link || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    load(link.href, "push");
+  });
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!pane || !pane.contains(form) || (form.method || "get").toLowerCase() !== "post") return;
+    event.preventDefault();
+    const itemUrl = (history.state && history.state.queuePane) || location.href;
+    const body = new URLSearchParams(new FormData(form, event.submitter));
+    fetch(form.action, { method: "POST", body, credentials: "same-origin" })
+      .then((response) => response.text().then((html) => {
+        show(itemUrl, html);
+        refreshRow(itemUrl);
+      }))
+      // Never sent again (it may have been done): show the item's page as it now is.
+      .catch(() => location.assign(itemUrl));
+  });
+  window.addEventListener("popstate", (event) => {
+    if (!split) return;
+    if (event.state && event.state.queuePane) load(event.state.queuePane);
+    else { pane.replaceChildren(empty()); markCurrent("about:blank"); }
+  });
+  place();
+  query.addEventListener("change", place);
+  window.OpenClear.breakpoint("phone").addEventListener("change", place);
 }
 
 // A file input with data-dropzone also takes a file dragged onto it (UX_PLAN.md U2). The

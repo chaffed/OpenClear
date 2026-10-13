@@ -286,3 +286,62 @@ def test_recommend_pay_with_one_tap_then_undo_on_a_phone(client, db_session, ten
     page.goto(f"http://testserver/ui/exceptions/{item.id}?flash=Hello&undo=return-recommend")
     assert page.locator("#return-recommend").count() == 1
     assert page.locator(".toast").is_visible() and page.locator(".toast-undo").count() == 0
+
+
+def test_two_panes_on_a_landscape_tablet(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    tenant, account, users = tenant_factory.make(slug="two-pane")
+    items = [_make_exception(db_session, tenant, account, users, f"94{n:02d}", "10.00", "99.00") for n in range(3)]
+    _sign_in(client, tenant, users)
+
+    # A desktop with a mouse, however wide: no pane, the link opens the item's page.
+    page = browser_page(1280)
+    page.goto("http://testserver/ui/exceptions")
+    assert page.locator(".queue-split").count() == 0
+
+    page = browser_page(1180, 820, has_touch=True, is_mobile=True)
+    page.goto("http://testserver/ui/exceptions")
+    pane = page.locator(".queue-pane")
+    assert pane.is_visible() and "Choose an item" in pane.inner_text()
+    list_box, pane_box = page.locator(".queue-split > .card").bounding_box(), pane.bounding_box()
+    assert list_box["x"] + list_box["width"] <= pane_box["x"]  # side by side
+
+    first = page.locator("td.cell-primary a").first
+    label = first.inner_text()
+    first.click()
+    page.wait_for_selector(".queue-pane [data-item-view]")
+    assert label in pane.locator("h1").inner_text() and "/ui/exceptions/" in page.url
+    first_path = page.evaluate("location.pathname")
+    assert first.get_attribute("aria-current") == "true"
+    assert page.evaluate("document.activeElement.tagName") == "H1"
+    pay = pane.get_by_role("button", name="Pay", exact=True)
+    assert pay.bounding_box()["height"] >= 44
+
+    # Deciding in the pane: the list stays, the item shows its decision, its row goes.
+    pay.click()
+    page.wait_for_selector(".toast")
+    assert "Decision recorded." in page.locator(".toast").inner_text()
+    assert "Decision: Pay" in pane.inner_text() and page.locator(".queue-split").count() == 1
+    page.wait_for_function("document.querySelectorAll('table[data-queue] tbody tr').length === 2")
+    db_session.expire_all()
+    assert sorted(db_session.get(ExceptionItem, i.id).status.value for i in items) == ["open", "open", "pay"]
+
+    # Back: the pane empties and the address is the list's again.
+    second = page.locator("td.cell-primary a").first
+    second.click()
+    page.wait_for_function("(label) => !document.querySelector('.queue-pane h1').textContent.includes(label)", arg=label)
+    page.go_back()  # to the first item, decided
+    page.wait_for_function("(path) => location.pathname === path", arg=first_path)
+    page.wait_for_function("() => document.querySelector('.queue-pane').textContent.includes('Decision: Pay')")
+    page.go_back()  # to the list
+    page.wait_for_function("() => location.pathname === '/ui/exceptions'")
+    assert "Choose an item" in pane.inner_text()
+
+    # Turned upright with an item open, the item becomes its own page.
+    second.click()
+    page.wait_for_selector(".queue-pane [data-item-view]")
+    item_path = page.evaluate("location.pathname")
+    page.keyboard.press("r")  # the keys work on an item in the pane too
+    assert pane.locator("details.decision-return").get_attribute("open") is not None
+    page.set_viewport_size({"width": 820, "height": 1180})
+    page.wait_for_selector("p.back-link")
+    assert page.evaluate("location.pathname") == item_path and page.locator(".queue-split").count() == 0

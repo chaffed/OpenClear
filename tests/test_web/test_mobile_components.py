@@ -43,7 +43,8 @@ def _sign_in(client, tenant, users):
 
 @pytest.fixture
 def browser_page(client):
-    """Returns open(width) -> a Playwright page at that width, served by the test client."""
+    """Returns open(width, height, **options) -> a Playwright page at that size, served by the
+    test client; options go to the browser context (has_touch and is_mobile, for a tablet)."""
     playwright = pytest.importorskip("playwright.sync_api")
     try:
         runner = playwright.sync_playwright().start()
@@ -53,15 +54,17 @@ def browser_page(client):
 
     def serve(route):
         request = route.request
+        # A redirect isn't routed back through here, so a script's fetch (the exception pane's
+        # forms) gets the page it leads to straight away, as a browser's fetch would.
         response = client.request(request.method, request.url.replace("http://testserver", ""),
                                   headers={k: v for k, v in request.headers.items() if k.lower() != "cookie"},
-                                  content=request.post_data_buffer, follow_redirects=False)
+                                  content=request.post_data_buffer, follow_redirects=request.resource_type == "fetch")
         route.fulfill(status=response.status_code, headers=dict(response.headers), body=response.content)
 
     errors: list[str] = []
 
-    def open_at(width: int, height: int = 800):
-        context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="reduce", bypass_csp=True)
+    def open_at(width: int, height: int = 800, **options):
+        context = browser.new_context(viewport={"width": width, "height": height}, reduced_motion="reduce", bypass_csp=True, **options)
         context.route("http://testserver/**", serve)
         page = context.new_page()
         page.on("pageerror", lambda error: errors.append(str(error)))

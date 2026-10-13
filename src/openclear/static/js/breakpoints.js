@@ -9,3 +9,7 @@ window.OpenClear.breakpoint = (name) => {
   const max = getComputedStyle(document.documentElement).getPropertyValue(`--bp-${name}-max`).trim();
   return window.matchMedia(`(max-width: ${max || (name === "phone" ? "639.98px" : "1023.98px")})`);
 };
+
+// Two panes (the exception queue beside the chosen item, MOBILE_PLAN.md R2): a touch screen
+// held sideways, at any width; callers leave phones out with breakpoint("phone").
+window.OpenClear.twoPane = () => window.matchMedia("(pointer: coarse) and (orientation: landscape)");

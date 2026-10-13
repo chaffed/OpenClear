@@ -59,6 +59,8 @@
   <em>different</em> person approves it. You can't approve your own recommendation.</p>
 {% endblock %}
 {% block content %}
+{# data-item-view: what the queue's pane on a landscape tablet shows (static/js/app.js initQueuePane). #}
+<div class="item-view" data-item-view>
 {% set risk = fraud_risk(item.ml_score) %}
 {% set actionable = item.status.value in ["open", "pending_approval"] %}
 <p class="back-link"><a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a></p>
@@ -209,4 +211,5 @@
   <p><a href="/ui/ach/authorizations/new?from_exception={{ item.id }}">Add this originator to the ACH allow list</a>. This authorizes future matching transactions; it doesn't decide this one.</p>
   {% endif %}
 </details>
+</div>
 {% endblock %}

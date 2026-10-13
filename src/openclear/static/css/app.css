@@ -597,6 +597,22 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
   .bottom-sheet .bulk-return-body { border: 0; padding: 0; margin: 0; min-width: 0; }
 }
 .decision-score { display: none; }
+.item-view { display: contents; }
+/* Two panes on a landscape tablet (static/js/app.js initQueuePane): the list, then the chosen
+   item, scrolling on its own. A touch screen, so targets are 44px here whatever the width. */
+.queue-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1rem; align-items: start; }
+.queue-split > .card, .queue-pane .card:last-child { margin-bottom: 0; }
+.queue-split table.responsive .hide-tablet { display: none; }
+.queue-split td.cell-primary a[aria-current] { font-weight: 700; }
+.queue-split tr:has(a[aria-current]) { background: var(--bg-muted); }
+.queue-pane { position: sticky; top: .5rem; max-height: calc(100dvh - 1rem); overflow-y: auto; overscroll-behavior: contain; }
+.queue-pane .item-view { display: block; }
+.queue-pane .back-link { display: none; }
+.queue-pane .decide-layout.has-image { grid-template-columns: minmax(0, 1fr); }
+.queue-pane .decide-layout.has-image > .decide-image { order: -1; }
+.queue-split :is(button, .button, summary, td a, select) { min-height: 44px; }
+.queue-split td a { display: inline-flex; align-items: center; }
+.queue-split label.select-target { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
 /* Below desktop the decision card is a compact bar along the bottom of the screen (MOBILE_PLAN.md
    R2): the fraud risk, Pay and Return in one row, a note below; Return's reasons in a sheet. */
 @media (max-width: 1023.98px) {

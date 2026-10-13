@@ -64,7 +64,9 @@ M2 all keep working); CSS does the conversion, generalising the `exception-table
 
 **Pay on a phone.** One tap posts the decision as today; the toast offers Undo for 8 seconds.
 Undo isn't a new kind of action: where the decision is final it's refused (the toast doesn't
-show), where it's a recommendation awaiting approval it withdraws it (the existing path). Banks
+show), where it's a recommendation awaiting approval it withdraws it. (There was no withdraw
+path after all; R2 added `decision_service.withdraw_recommendation`: its maker only, before
+approval.) Banks
 requiring a confirmation (dual control's checker step, segregation of duties) get the existing
 confirm dialog, sized for a phone.
 
@@ -250,3 +252,39 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
     row. `hide-tablet` drops a column below 1024px instead (the item's page has it); no list
     needed either yet, since they fit at 768px. Revisit in R3 if one doesn't.
   Next: R2.
+- 2026-10-13 R2 done (branch `mobile-r2`, a commit per piece, the 1280px screenshots
+  unchanged after each):
+  - The exception queue on `responsive_table` (new: `row_attrs` for the J/K keys, `header`
+    for a select-all box, `th_class`; `th` is no longer escaped, which had broken the
+    customers list's `scope="col"`). Checkboxes are a 44px label down each card's left edge;
+    Network and Status in a bottom sheet; the bulk bar's Return reasons in a sheet. The
+    bulk bar never stuck to the bottom of the screen: `.card`'s `overflow-x: auto` made the
+    card its scroll container. The queue's card is exempted (its table scrolls in
+    `.table-scroll`).
+  - The decision card below 1024px is a compact bar: the fraud risk, Pay and Return in one
+    row, a note below; the heading only for screen readers; Return's reasons in a sheet
+    (R opens it). With two cards (revising and approving), only the last sticks. The
+    confirmation dialog fits a phone.
+  - On a phone the check image comes first, with Front/Back buttons. The exception's own
+    action log entries, collapsed with the newest showing, for `audit_log:read` and never
+    in a customer's session. New index `ix_audit_log_entry_tenant_resource`
+    (tenant_id, resource_id), which SoD's "who presented it" and a customer's activity page
+    also query by.
+  - Undo: after a fresh recommendation the toast offers Undo (`?undo=<form id>`, only a
+    form marked `data-undo` on the page), which withdraws it; *Withdraw my recommendation*
+    on the page does the same with no time limit. A revision gets no Undo (it would withdraw
+    the earlier one too). Audited as `exception.recommendation_withdrawn`; not a security
+    event.
+  - Two panes: decided to key them on a touch screen held sideways
+    (`OpenClear.twoPane()`: `(pointer: coarse) and (orientation: landscape)`), not on
+    width, since landscape iPads are 1024px and wider and a desktop must not change. The
+    pane loads the item page's `[data-item-view]`; its forms are sent with fetch, the
+    item's row refreshed from the list afterwards; Back and reloading work; turned upright
+    the item becomes its own page. app.js's per-element setup now runs on a root
+    (`enhance(root)`), so content put in later gets confirmations, busy buttons, toasts,
+    local times, sheets. Inside the two panes targets are 44px whatever the width.
+  - Not done: a ≥1024px touch screen outside the two panes still gets desktop-sized
+    targets (no width query can tell it apart); `@media (pointer: coarse)` rules would.
+    Revisit in R3. The recommendation's "awaiting approval" notification isn't taken back
+    on Undo; the approver finds the item open again.
+  Next: R3.

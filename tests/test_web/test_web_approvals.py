@@ -148,7 +148,7 @@ def test_detail_page_shows_prefilled_decide_form_for_a_different_approver(client
     assert "Approve recommendation" in detail.text
     assert "<strong>Return</strong> (fraud)" in detail.text  # what was recommended
     assert 'value="flagged"' in detail.text  # the maker's note, carried into the return form
-    assert '<details class="decision-return" open>' in detail.text  # the recommended choice, opened
+    assert re.search(r'<details class="decision-return"[^>]* open>', detail.text)  # the recommended choice, opened
 
     # And actually approving it (a different user than the recommender) still works end to end.
     resp = client.post(
