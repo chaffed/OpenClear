@@ -14,30 +14,34 @@
      hide    "phone" or "tablet": dropped below that width (the item's own page has it)
      sheet   actions only: on a phone, a ⋯ button opening the actions in a bottom sheet
              (for more than two)
-     th      extra header attributes, as a string (data-no-sort, a class)
+     th      extra header attributes, as a string without quotes (data-no-sort)
+     th_class  classes for the header cell
+     header  True: the caller block renders the header too, called with part="header"
+             (a select-all checkbox)
      class   extra cell classes
+   row_attrs: attributes for every row, as a string (data-row-link, for the J/K keys).
    The caller block renders a cell: {% call(row, col, part="cell") responsive_table(...) %}.
    For a column with `sheet`, it's also called with part="title": the sheet's title for that
    row, e.g. "Actions for dana@example.com". #}
 {% import "_macros/list_search.html" as ls %}
 {% from "_macros/bottom_sheet.html" import bottom_sheet, sheet_trigger %}
 
-{% macro responsive_table(columns, rows, search=None, action=None, attrs="", id="rows") -%}
+{% macro responsive_table(columns, rows, search=None, action=None, attrs="", id="rows", row_attrs="") -%}
 <table class="responsive"{% if attrs %} {{ attrs }}{% endif %}>
     <thead><tr>
       {%- for col in columns %}
-      {%- set classes = ("hide-" ~ col.hide) if col.hide else "" %}
+      {%- set classes = ((("hide-" ~ col.hide) if col.hide else "") ~ " " ~ (col.th_class or "")) | trim %}
       {%- if col.sort and search is not none %}
       {{ ls.sort_th(col.label, col.sort, search, action, numeric=col.numeric, extra_class=classes) }}
       {%- else %}
-      <th{% if col.numeric %} data-type="number"{% endif %}{% if classes %} class="{{ classes }}"{% endif %}{% if col.th %} {{ col.th }}{% endif %}>{{ col.label }}</th>
+      <th{% if col.numeric %} data-type="number"{% endif %}{% if classes %} class="{{ classes }}"{% endif %}{% if col.th %} {{ col.th | safe }}{% endif %}>{% if col.header %}{{ caller(none, col, "header") }}{% else %}{{ col.label }}{% endif %}</th>
       {%- endif %}
       {%- endfor %}
     </tr></thead>
     <tbody>
       {%- for row in rows %}
       {%- set row_index = loop.index %}
-      <tr>
+      <tr{% if row_attrs %} {{ row_attrs }}{% endif %}>
         {%- for col in columns %}
         <td data-label="{{ col.label }}" class="cell-{{ col.role or 'meta' }}{{ ' hide-' ~ col.hide if col.hide else '' }}{{ ' ' ~ col.class if col.class else '' }}">
           {%- if col.sheet %}

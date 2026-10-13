@@ -62,17 +62,8 @@
   "exceptions": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: input[checkbox] \"Select Check #####\"",
-      "small target: input[checkbox] \"Select Check ######\"",
-      "small target: input[checkbox] \"Select Gusto Payroll (##########)\""
-    ],
-    "768": [
-      "small target: input[checkbox] \"Select Check #####\"",
-      "small target: input[checkbox] \"Select Check ######\"",
-      "small target: input[checkbox] \"Select Gusto Payroll (##########)\"",
-      "small target: input[checkbox] \"Select every item on this page that can \""
-    ]
+    "360": [],
+    "768": []
   },
   "issued_items": {
     "1024": [],

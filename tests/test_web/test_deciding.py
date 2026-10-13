@@ -122,9 +122,10 @@ def test_the_phone_layout_is_there(client, db_session, tenant_factory):
     _make_exception(db_session, tenant, account, users, "8501", "10.00", "99.00")
     _login(client, tenant, users["approver"].email)
     page = client.get("/ui/exceptions").text
-    assert 'class="exception-table"' in page and 'data-label="Amount"' in page and 'form="bulk-form"' in page
+    assert 'class="responsive"' in page and 'data-label="Amount"' in page and 'form="bulk-form"' in page
+    assert 'data-row-link' in page and 'data-sheet-open="queue-filters"' in page
     css = client.get("/static/css/app.css").text
-    assert "table.exception-table thead { display: none; }" in css and ".decision-card { position: sticky;" in css
+    assert ".decision-card { position: sticky;" in css
 
 
 def test_times_shown_in_the_readers_zone_are_marked_utc():

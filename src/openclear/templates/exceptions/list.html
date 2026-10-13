@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% import "_macros/list_search.html" as ls %}
 {% import "_macros/pagination.html" as pg %}
+{% import "_macros/responsive_table.html" as rt %}
+{% from "_macros/bottom_sheet.html" import bottom_sheet, sheet_trigger %}
 {% block title %}Exceptions — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About the exceptions queue{% endblock %}
 {% block help_body %}
@@ -21,7 +23,11 @@
 {% block content %}
 <div class="card">
   <h1>Exceptions</h1>
+  {# On a phone, Network and Status are in a bottom sheet; the button says what's chosen. #}
   <form method="get" action="/ui/exceptions" class="toolbar">
+    {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else status_filter | exception_status)
+                     ~ " · " ~ ({"check": "Checks", "ach": "ACH"}.get(network_filter) or "Checks and ACH"), "tune") }}
+    {% call bottom_sheet("queue-filters", "Network and status") %}
     <label style="max-width:180px;">Network
       <select name="network_code" data-auto-submit>
         <option value="">All</option>
@@ -38,6 +44,7 @@
         <option value="all" {{ "selected" if status_filter == "all" else "" }}>All</option>
       </select>
     </label>
+    {% endcall %}
     {% for name, value in search.values.items() %}{% if value and name not in ("status", "network_code") %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
   </form>
   {{ ls.search_form("/ui/exceptions", search, number_label="Check or trace number", date_label="Presented or effective",
@@ -46,34 +53,30 @@
   <p class="list-tools">{{ ls.export_link("/ui/exceptions", search, page_obj.total_count) }}</p>
 
   {% if page_obj.total_count > 0 %}
-  <table data-server-list class="exception-table">
-    <thead><tr>
-      {% if can_act %}<th class="select-col"><input type="checkbox" data-select-all aria-label="Select every item on this page that can be decided"></th>{% endif %}
-      <th>Item</th><th>Account</th>{% if show_customers %}<th>Customer</th>{% endif %}
-      <th data-type="number">Amount</th><th>Date</th><th>Why it's here</th>
-      {% if show_scores %}{{ ls.sort_th("Fraud risk", "score", search, "/ui/exceptions") }}{% endif %}
-      {% if show_deadlines %}{{ ls.sort_th("Decide by", "deadline", search, "/ui/exceptions") }}{% endif %}
-      {{ ls.sort_th("Status", "status", search, "/ui/exceptions") }}
-    </tr></thead>
-    <tbody>
-      {% for row in rows %}
-      {% set risk = fraud_risk(row.exception.ml_score) %}
-      {% set decidable = row.exception.status.value in ["open", "pending_approval"] %}
-      <tr data-row-link>
-        {% if can_act %}<td class="select-col" data-label="Select">{% if decidable %}<input type="checkbox" name="exception_ids" value="{{ row.exception.id }}" form="bulk-form" data-amount="{{ row.summary.amount or 0 }}" aria-label="Select {{ row.summary.label }}">{% endif %}</td>{% endif %}
-        <td data-label="Item"><a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span></td>
-        <td data-label="Account">{{ row.account }}</td>
-        {% if show_customers %}<td data-label="Customer">{{ row.customer }}</td>{% endif %}
-        <td data-label="Amount">{{ row.summary.amount | currency }}</td>
-        <td data-label="Date">{{ row.summary.date }}</td>
-        <td data-label="Why it's here">{{ row.exception.exception_types | exception_types }}</td>
-        {% if show_scores %}<td data-label="Fraud risk">{% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endif %}
-        {% if show_deadlines %}<td data-label="Decide by">{% if row.exception.decision_deadline and row.exception.status.value in ["open", "pending_approval"] %}<time datetime="{{ row.exception.decision_deadline | iso_utc }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}</td>{% endif %}
-        <td data-label="Status"><span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value in ['return','escalated'] else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = ([{"key": "select", "label": "Select", "role": "select", "header": True, "th_class": "select-col", "class": "select-col"}] if can_act else []) + [
+    {"key": "item", "label": "Item", "role": "primary"},
+    {"key": "account", "label": "Account", "hide": "tablet"},
+  ] + ([{"key": "customer", "label": "Customer"}] if show_customers else []) + [
+    {"key": "amount", "label": "Amount", "role": "money", "numeric": True},
+    {"key": "date", "label": "Date", "hide": "tablet"},
+    {"key": "why", "label": "Why it's here"},
+  ] + ([{"key": "risk", "label": "Fraud risk", "sort": "score"}] if show_scores else [])
+    + ([{"key": "deadline", "label": "Decide by", "sort": "deadline"}] if show_deadlines else [])
+    + [{"key": "status", "label": "Status", "role": "status", "sort": "status"}] %}
+  {% call(row, col, part="cell") rt.responsive_table(columns, rows, search=search, action="/ui/exceptions", attrs="data-server-list", id="exceptions", row_attrs="data-row-link") -%}
+    {%- if part == "header" %}<label class="select-target"><input type="checkbox" data-select-all aria-label="Select every item on this page that can be decided"></label>
+    {%- elif col.key == "select" %}{% if row.exception.status.value in ["open", "pending_approval"] %}<label class="select-target"><input type="checkbox" name="exception_ids" value="{{ row.exception.id }}" form="bulk-form" data-amount="{{ row.summary.amount or 0 }}" aria-label="Select {{ row.summary.label }}"></label>{% endif %}
+    {%- elif col.key == "item" %}<a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span>
+    {%- elif col.key == "account" %}{{ row.account }}
+    {%- elif col.key == "customer" %}{{ row.customer }}
+    {%- elif col.key == "amount" %}{{ row.summary.amount | currency }}
+    {%- elif col.key == "date" %}{{ row.summary.date }}
+    {%- elif col.key == "why" %}{{ row.exception.exception_types | exception_types }}
+    {%- elif col.key == "risk" %}{% set risk = fraud_risk(row.exception.ml_score) %}{% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+    {%- elif col.key == "deadline" %}{% if row.exception.decision_deadline and row.exception.status.value in ["open", "pending_approval"] %}<time datetime="{{ row.exception.decision_deadline | iso_utc }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value in ['return','escalated'] else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span>
+    {%- endif %}
+  {%- endcall %}
   {% if can_act %}
   {# Several at once (UX_PLAN.md U4): the boxes above belong to this form. Each item is still
      decided (or recommended) exactly as on its own page. #}
@@ -83,7 +86,9 @@
     <div class="bulk-bar" data-bulk-bar hidden>
       <strong data-bulk-count></strong>
       <button type="submit" name="outcome" value="pay" class="button-pay" data-bulk-outcome="pay">{{ icon("check_circle") }}Pay selected</button>
-      <details class="bulk-return">
+      {# On a phone the reasons are a bottom sheet (_macros/bottom_sheet.html), still in this form. #}
+      {{ sheet_trigger("bulk-return", "Return selected…", "block", class="button-return") }}
+      <details class="bulk-return" id="bulk-return" data-sheet="phone" data-sheet-title="Return the selected items">
         <summary class="button button-return">{{ icon("block") }}Return selected…</summary>
         <div class="bulk-return-body">
           {% if bulk_check_reasons %}<label>Reason for checks

@@ -6,7 +6,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | Page | 360px | 768px | 1024px | 1280px |
 |---|---|---|---|---|
 | dashboard | ✓ | ✓ | ✓ | ✓ |
-| exceptions | 3 small | 4 small | ✓ | ✓ |
+| exceptions | ✓ | ✓ | ✓ | ✓ |
 | exception | ✓ | ✓ | ✓ | ✓ |
 | issued_items | ✓ | ✓ | ✓ | ✓ |
 | paid_items | ✓ | ✓ | ✓ | ✓ |
@@ -26,17 +26,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 
 ## Details
-
-### exceptions at 360px
-- small target: input[checkbox] "Select Check ######" (3x, e.g. 24x24)
-- small target: input[checkbox] "Select Check #####" (1x, e.g. 24x24)
-- small target: input[checkbox] "Select Gusto Payroll (##########)" (1x, e.g. 24x24)
-
-### exceptions at 768px
-- small target: input[checkbox] "Select every item on this page that can " (1x, e.g. 24x24)
-- small target: input[checkbox] "Select Check ######" (3x, e.g. 24x24)
-- small target: input[checkbox] "Select Check #####" (1x, e.g. 24x24)
-- small target: input[checkbox] "Select Gusto Payroll (##########)" (1x, e.g. 24x24)
 
 ### upload at 360px
 - small target: a "Back to issued items" (1x, e.g. 149x18)
