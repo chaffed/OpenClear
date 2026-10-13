@@ -8,7 +8,7 @@ from tests.test_ocr.conftest import make_check_image
 # isolated_filesystem_settings autouse fixture.
 
 
-def test_upload_check_image_runs_ocr_and_populates_fields(client, tenant_factory):
+def test_upload_check_image_runs_ocr_and_populates_fields(client, engine, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="ocr-upload")
     headers = login_headers(client, tenant.slug, users["preparer"].email)
 
@@ -22,9 +22,14 @@ def test_upload_check_image_runs_ocr_and_populates_fields(client, tenant_factory
     assert resp.status_code == 201, resp.text
     assert resp.json()["ocr_status"] == "pending"  # response reflects pre-background-task state
 
-    # By the time the background task (run synchronously under TestClient) has completed,
-    # a fresh fetch shows the final OCR result.
-    fetched = client.get(f"/api/v1/check-images/{resp.json()['id']}", headers=headers).json()
+    # Once the queued OCR job has run (finished here, so a slow machine can't race it), a
+    # fresh fetch shows the final OCR result.
+    from openclear.workers import jobs
+
+    jobs.drain(engine)
+    got = client.get(f"/api/v1/check-images/{resp.json()['id']}", headers=headers)
+    assert got.status_code == 200, got.text
+    fetched = got.json()
     assert fetched["ocr_status"] == "completed"
     assert fetched["ocr_extracted_payee"] == "Acme Test Vendor"
     assert fetched["ocr_extracted_amount"] == "250.00"
