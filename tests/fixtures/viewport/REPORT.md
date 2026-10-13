@@ -22,7 +22,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | control_panel | ✓ | ✓ | ✓ | ✓ |
 | upload_form | ✓ | ✓ | ✓ | ✓ |
 | upload | 1 small | 1 small | ✓ | ✓ |
-| people | 1 small | 1 small | ✓ | ✓ |
+| people | ✓ | 1 small | ✓ | ✓ |
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 
 ## Details
@@ -60,9 +60,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 
 ### upload at 768px
 - small target: a "Back to issued items" (1x, e.g. 149x18)
-
-### people at 360px
-- small target: a "Manage" (1x, e.g. 53x17)
 
 ### people at 768px
 - small target: a "Manage" (1x, e.g. 53x17)

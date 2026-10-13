@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}People — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About people{% endblock %}
@@ -21,24 +22,25 @@
   </div>
   {% if people %}
   <div class="table-scroll">
-  <table data-sortable>
-    <thead><tr><th>Email</th><th>Role</th><th>Accounts</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead>
-    <tbody>
-      {% for p in people %}
-      <tr>
-        <td>{{ p.user.email }}{% if p.user.id == ctx.user_id %} <span class="badge">you</span>{% endif %}</td>
-        <td>{{ p.group.name if p.group else "—" }}{% if p.is_admin %} <span class="badge">administrator</span>{% endif %}</td>
-        <td>{{ p.accounts }}</td>
-        <td>
+  {% set columns = [
+    {"key": "email", "label": "Email", "role": "primary"},
+    {"key": "role", "label": "Role"},
+    {"key": "accounts", "label": "Accounts"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "last", "label": "Last sign-in"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(p, col, part="cell") rt.responsive_table(columns, people, attrs="data-sortable", id="person") -%}
+    {%- if col.key == "email" %}{{ p.user.email }}{% if p.user.id == ctx.user_id %} <span class="badge">you</span>{% endif %}
+    {%- elif col.key == "role" %}{{ p.group.name if p.group else "—" }}{% if p.is_admin %} <span class="badge">administrator</span>{% endif %}
+    {%- elif col.key == "accounts" %}{{ p.accounts }}
+    {%- elif col.key == "status" %}
           <span class="badge {{ 'badge-ok' if p.membership.is_active else 'badge-danger' }}">{{ 'active' if p.membership.is_active else 'deactivated' }}</span>
           {% if p.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
-        </td>
-        <td>{{ p.user.last_login_at.strftime("%Y-%m-%d") if p.user.last_login_at else "Never" }}</td>
-        <td><a href="/ui/people/{{ p.membership.id }}">Manage</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- elif col.key == "last" %}{{ p.user.last_login_at.strftime("%Y-%m-%d") if p.user.last_login_at else "Never" }}
+    {%- elif col.key == "actions" %}<a href="/ui/people/{{ p.membership.id }}">Manage</a>
+    {%- endif %}
+  {%- endcall %}
   </div>
   {% else %}
   <p>No one yet. Invite your first person.</p>
@@ -48,24 +50,23 @@
 {% if invitations %}
 <div class="card">
   <h2>Invitations not yet accepted</h2>
-  <table>
-    <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
-    <tbody>
-      {% for i in invitations %}
-      <tr>
-        <td>{{ i.email }}</td>
-        <td>{{ groups.get(i.security_group_id, "—") }}</td>
-        <td>{{ i.expires_at.strftime("%Y-%m-%d") }}</td>
-        <td>
+  {% set columns = [
+    {"key": "email", "label": "Email", "role": "primary"},
+    {"key": "role", "label": "Role"},
+    {"key": "expires", "label": "Expires"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(i, col, part="cell") rt.responsive_table(columns, invitations, id="invitation") -%}
+    {%- if col.key == "email" %}{{ i.email }}
+    {%- elif col.key == "role" %}{{ groups.get(i.security_group_id, "—") }}
+    {%- elif col.key == "expires" %}{{ i.expires_at.strftime("%Y-%m-%d") }}
+    {%- elif col.key == "actions" %}
           <form method="post" action="/ui/people/invitations/{{ i.id }}/revoke" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Withdraw</button>
           </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
 </div>
 {% endif %}
 {% endblock %}
