@@ -708,6 +708,8 @@ fieldset { min-width: 0; }
   table.responsive td.cell-select label, table.responsive td.cell-select input { margin: 0; }
   table.responsive tr:has(td.cell-select) td.cell-primary { padding-right: 3rem; }
   .row-menu { width: 44px; justify-content: center; padding: 0; }
+  /* With no amount beside the title, the ⋯ button goes there instead of a row of its own. */
+  table.responsive tr:not(:has(td.cell-money)) td.cell-actions:has(> .row-menu) { grid-column: 2; grid-row: 1; margin-top: 0; align-self: start; }
   .bottom-sheet .sheet-content :is(a, .link-button) {
     display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 0.25rem; border-bottom: 1px solid var(--border);
   }

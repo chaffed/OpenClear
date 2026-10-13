@@ -183,3 +183,35 @@ def test_a_responsive_table_is_cards_on_a_phone(client, db_session, tenant_facto
     assert sort.is_visible() and sort.bounding_box()["height"] >= 44
     sort.click()
     page.wait_for_url("**sort=amount**")
+
+
+def test_a_rows_actions_in_a_sheet_on_a_phone(client, tenant_factory, browser_page):
+    tenant, _account, users = tenant_factory.make(slug="row-sheet")
+    _sign_in(client, tenant, users)
+
+    page = browser_page(1280)
+    page.goto("http://testserver/ui/users")
+    row = page.locator("table.responsive tbody tr", has_text=users["viewer"].email)
+    assert row.get_by_role("button", name="Reset password").is_visible()
+    assert not row.locator(".row-menu").is_visible()
+
+    page = browser_page(360)
+    page.goto("http://testserver/ui/users")
+    row = page.locator("table.responsive tbody tr", has_text=users["viewer"].email)
+    assert not row.get_by_role("button", name="Reset password").is_visible()
+    menu = row.get_by_role("button", name=f"Actions for {users['viewer'].email}")
+    box = menu.bounding_box()
+    assert box["width"] >= 44 and box["height"] >= 44
+    menu.click()
+    sheet = page.get_by_role("dialog", name=f"Actions for {users['viewer'].email}")
+    assert sheet.is_visible()
+    for name in ("Deactivate", "Sign out everywhere", "Reset password"):
+        assert sheet.get_by_role("button", name=name).bounding_box()["height"] >= 44
+    assert sheet.get_by_role("link", name="Edit").bounding_box()["height"] >= 44
+    # Its confirmation opens over the sheet; cancelling leaves the person as they were.
+    sheet.get_by_role("button", name="Sign out everywhere").click()
+    confirm = page.locator("dialog.confirm-dialog")
+    assert confirm.is_visible()
+    confirm.get_by_role("button", name="Cancel").click()
+    sheet.get_by_role("button", name="Close").click()
+    assert not sheet.is_visible()

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Users — {{ ctx.tenant_name }}{% endblock %}
@@ -25,19 +26,23 @@
     </div>
   </div>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Email</th><th>Security group</th><th>Customer</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for row in page_obj.items %}
-      <tr>
-        <td>{{ row.user.email }}</td>
-        <td>{{ row.security_group_name }}</td>
-        <td>{{ row.customer_name or "bank-wide" }}</td>
-        <td>
+  {# Up to five actions a row: on a phone, a ⋯ button opens them in a bottom sheet. #}
+  {% set columns = [
+    {"key": "email", "label": "Email", "role": "primary"},
+    {"key": "group", "label": "Security group"},
+    {"key": "customer", "label": "Customer"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "actions", "label": "", "role": "actions", "sheet": True},
+  ] %}
+  {% call(row, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable", id="user") -%}
+    {%- if part == "title" %}Actions for {{ row.user.email }}
+    {%- elif col.key == "email" %}{{ row.user.email }}
+    {%- elif col.key == "group" %}{{ row.security_group_name }}
+    {%- elif col.key == "customer" %}{{ row.customer_name or "bank-wide" }}
+    {%- elif col.key == "status" %}
           <span class="badge {{ 'badge-ok' if row.membership.is_active else 'badge-danger' }}">{{ 'active' if row.membership.is_active else 'deactivated' }}</span>
           {% if row.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
-        </td>
-        <td>
+    {%- elif col.key == "actions" %}
           <a href="/ui/users/{{ row.membership.id }}/edit">Edit</a>
           {% if row.membership.is_active %}
           <form method="post" action="/ui/users/{{ row.membership.id }}/deactivate" class="inline-form">
@@ -68,11 +73,8 @@
             <button type="submit" class="link-button">Unlock</button>
           </form>
           {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No users yet.</p>
