@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Customers — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About customers{% endblock %}
@@ -32,24 +33,25 @@
   </form>
   {% if rows %}
   <p class="hint">{{ total }} customer{{ "s" if total != 1 }}{% if quiet %} with no issue file in {{ quiet }} days{% endif %}.</p>
-  <table>
-    <thead><tr><th scope="col">Customer</th><th scope="col">Open</th><th scope="col">Due today</th><th scope="col">Next deadline</th>
-      <th scope="col">Last issue file</th><th scope="col">At the deadline</th><th scope="col">Status</th></tr></thead>
-    <tbody>
-      {% for r in rows %}
-      {% set days = r.days_since_issue_file(now) %}
-      <tr>
-        <td><a href="/ui/customers/{{ r.customer.id }}">{{ r.customer.name }}</a><br><span class="hint">{{ r.customer.customer_number }}</span></td>
-        <td>{% if r.open_count %}<a href="/ui/exceptions?customer={{ r.customer.id }}">{{ r.open_count }}</a>{% else %}0{% endif %}</td>
-        <td>{% if r.due_today %}<span class="badge badge-warn">{{ r.due_today }}</span>{% else %}0{% endif %}</td>
-        <td>{% if r.nearest_deadline %}<time datetime="{{ r.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ r.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}</td>
-        <td>{% if days is none %}<span class="hint">never</span>{% elif days == 0 %}today{% else %}{{ days }} day{{ "s" if days != 1 }} ago{% endif %}</td>
-        <td>{{ r.decision_default }}</td>
-        <td><span class="badge {{ 'badge-ok' if r.customer.is_active else '' }}">{{ 'active' if r.customer.is_active else 'inactive' }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "customer", "label": "Customer", "role": "primary", "th": 'scope="col"'},
+    {"key": "open", "label": "Open", "th": 'scope="col"'},
+    {"key": "due", "label": "Due today", "th": 'scope="col"'},
+    {"key": "deadline", "label": "Next deadline", "th": 'scope="col"'},
+    {"key": "file", "label": "Last issue file", "th": 'scope="col"'},
+    {"key": "default", "label": "At the deadline", "th": 'scope="col"'},
+    {"key": "status", "label": "Status", "role": "status", "th": 'scope="col"'},
+  ] %}
+  {% call(r, col, part="cell") rt.responsive_table(columns, rows) -%}
+    {%- if col.key == "customer" %}<a href="/ui/customers/{{ r.customer.id }}">{{ r.customer.name }}</a><br><span class="hint">{{ r.customer.customer_number }}</span>
+    {%- elif col.key == "open" %}{% if r.open_count %}<a href="/ui/exceptions?customer={{ r.customer.id }}">{{ r.open_count }}</a>{% else %}0{% endif %}
+    {%- elif col.key == "due" %}{% if r.due_today %}<span class="badge badge-warn">{{ r.due_today }}</span>{% else %}0{% endif %}
+    {%- elif col.key == "deadline" %}{% if r.nearest_deadline %}<time datetime="{{ r.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ r.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}
+    {%- elif col.key == "file" %}{% set days = r.days_since_issue_file(now) %}{% if days is none %}<span class="hint">never</span>{% elif days == 0 %}today{% else %}{{ days }} day{{ "s" if days != 1 }} ago{% endif %}
+    {%- elif col.key == "default" %}{{ r.decision_default }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if r.customer.is_active else '' }}">{{ 'active' if r.customer.is_active else 'inactive' }}</span>
+    {%- endif %}
+  {%- endcall %}
   {% if pages > 1 %}
   <nav class="pagination" aria-label="Pages">
     {% if page > 1 %}<a href="?page={{ page - 1 }}&q={{ q | urlencode }}&quiet={{ quiet or '' }}">Previous</a>{% endif %}
