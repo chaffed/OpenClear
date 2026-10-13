@@ -681,6 +681,7 @@ fieldset { min-width: 0; }
    stay, as a row of buttons above the cards. */
 @media (max-width: 1023.98px) {
   table.responsive .hide-tablet { display: none; }
+  table.responsive > tbody td a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 }
 @media (max-width: 639.98px) {
   table.responsive .hide-phone { display: none; }
