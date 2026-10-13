@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}API clients — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About API clients{% endblock %}
@@ -18,19 +19,24 @@
     <a href="/ui/admin/api-clients/new" class="button">{{ icon("add") }}New API client</a>
   </div>
   {% if clients %}
-  <table data-sortable>
-    <thead><tr><th>Name</th><th>Client id</th><th>Security group</th><th>Customer</th><th>Last used</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for c in clients %}
-      <tr>
-        <td>{{ c.name }}</td>
-        <td><code>{{ c.client_id }}</code></td>
-        <td>{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}{% if c.token_auth_method == "private_key_jwt" %} <span class="badge">key pair</span>{% endif %}</td>
-        <td>{{ c.customer or "All (bank-wide)" }}</td>
-        <td>{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}</td>
-        <td><span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span></td>
-        <td>
-          {% if not c.revoked_at %}
+  {% set columns = [
+    {"key": "name", "label": "Name", "role": "primary"},
+    {"key": "client_id", "label": "Client id"},
+    {"key": "group", "label": "Security group"},
+    {"key": "customer", "label": "Customer"},
+    {"key": "last_used", "label": "Last used"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "actions", "label": "", "role": "actions", "sheet": True},
+  ] %}
+  {% call(c, col, part="cell") rt.responsive_table(columns, clients, attrs="data-sortable", id="client") -%}
+    {%- if part == "title" %}Actions for {{ c.name }}
+    {%- elif col.key == "name" %}{{ c.name }}
+    {%- elif col.key == "client_id" %}<code>{{ c.client_id }}</code>
+    {%- elif col.key == "group" %}{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}{% if c.token_auth_method == "private_key_jwt" %} <span class="badge">key pair</span>{% endif %}
+    {%- elif col.key == "customer" %}{{ c.customer or "All (bank-wide)" }}
+    {%- elif col.key == "last_used" %}{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span>
+    {%- elif col.key == "actions" and not c.revoked_at %}
           {% if c.token_auth_method == "private_key_jwt" %}
           <a href="/ui/admin/api-clients/{{ c.id }}/key">Key pair</a>
           {% else %}
@@ -44,12 +50,8 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Revoke</button>
           </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
   {% else %}
   <p>No API clients yet.</p>
   {% endif %}
