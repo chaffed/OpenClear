@@ -198,6 +198,14 @@ def _seed(client, db_session, tenant_factory):
     return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, f"/ui/exceptions/{exception.id}", upload
 
 
+def _identical(reference: Path, taken: bytes) -> bool:
+    from PIL import Image, ImageChops
+
+    old = Image.open(reference).convert("RGB")
+    new = Image.open(io.BytesIO(taken)).convert("RGB")
+    return old.size == new.size and ImageChops.difference(old, new).getbbox() is None
+
+
 def _same_picture(reference: Path, taken: bytes, diff_to: Path) -> str | None:
     """None when the screenshot matches the reference, otherwise what differs (and the
     difference saved as a picture to look at)."""
@@ -304,7 +312,8 @@ def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_fac
                     reference = SCREENSHOTS / f"{name}.png"
                     if writing:
                         SCREENSHOTS.mkdir(parents=True, exist_ok=True)
-                        reference.write_bytes(taken)
+                        if not (reference.exists() and _identical(reference, taken)):  # PNG bytes vary when pixels don't
+                            reference.write_bytes(taken)
                     elif reference.exists() and db_session.get_bind().dialect.name == "sqlite":
                         difference = _same_picture(reference, taken, DIFFS / f"{name}.png")
                         if difference:
