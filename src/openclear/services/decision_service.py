@@ -30,6 +30,9 @@ class DecisionError(str, enum.Enum):
     # completely unaffected by these two.
     RETURN_REASON_REQUIRED = "return_reason_required"
     INVALID_RETURN_REASON = "invalid_return_reason"
+    # withdraw_recommendation: only its maker, only while it awaits approval.
+    NOT_PENDING_APPROVAL = "not_pending_approval"
+    NOT_YOUR_RECOMMENDATION = "not_your_recommendation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +122,28 @@ def submit_recommendation(
     exception.status = ExceptionStatus.PENDING_APPROVAL
     session.flush()
     notification_service.notify_recommendation_awaiting_approval(session, exception)
+    return ServiceResult(None, exception, None)
+
+
+def withdraw_recommendation(session: Session, tenant_id: uuid.UUID, exception_id: uuid.UUID, ctx: TenantContext) -> ServiceResult:
+    """Takes back one's own recommendation before anyone has approved it (MOBILE_PLAN.md R2: a
+    phone's Undo): the exception is open again, as if it had never been recommended. A
+    decision is never undone, and nobody withdraws someone else's recommendation."""
+    exception = ExceptionRepository(session, tenant_id, ctx.customer_id).get(exception_id)
+    if exception is None:
+        return ServiceResult(None, None, DecisionError.NOT_FOUND)
+    if exception.status != ExceptionStatus.PENDING_APPROVAL:
+        return ServiceResult(None, None, DecisionError.NOT_PENDING_APPROVAL)
+    if exception.recommended_by_user_id != ctx.user_id:
+        return ServiceResult(None, None, DecisionError.NOT_YOUR_RECOMMENDATION)
+    exception.recommended_outcome = None
+    exception.recommended_reason_code = None
+    exception.recommended_return_transaction_code = None
+    exception.recommended_notes = None
+    exception.recommended_ach_return_reason_id = None
+    exception.recommended_by_user_id = None
+    exception.status = ExceptionStatus.OPEN
+    session.flush()
     return ServiceResult(None, exception, None)
 
 

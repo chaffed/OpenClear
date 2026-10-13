@@ -526,6 +526,7 @@ th a.sort-link:focus-visible { outline: 2px solid var(--accent); outline-offset:
 button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .toast-region { position: fixed; right: 1rem; bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 1000; max-width: min(24rem, calc(100vw - 2rem)); }
 .toast { background: var(--badge-ok-bg); color: var(--badge-ok-fg); border: 1px solid var(--ok); border-radius: 6px; padding: 0.6rem 2.2rem 0.6rem 0.9rem; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.toast-undo { margin-left: .75rem; background: none; border: 1px solid currentColor; color: inherit; border-radius: 6px; padding: .2rem .7rem; font-weight: 700; cursor: pointer; }
 .toast-close { position: absolute; top: 0.2rem; right: 0.3rem; background: none; border: none; color: inherit; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
 form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
 
@@ -617,6 +618,9 @@ tr.row-focused { outline: 2px solid var(--accent); outline-offset: -2px; }
   .bottom-sheet .sheet-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .bottom-sheet .reason-list label { min-height: 44px; }
   .confirm-dialog { width: calc(100vw - 2rem); }
+  .toast-undo { min-height: 44px; min-width: 44px; }
+  .toast-close { min-width: 44px; min-height: 44px; top: 0; right: 0; }
+  .toast { padding-right: 2.9rem; display: flex; align-items: center; justify-content: space-between; }
   .confirm-dialog .actions button { flex: 1 1 0; }
 }
 @media (max-width: 639.98px) {

@@ -486,7 +486,10 @@ function initBusyForms() {
 }
 
 // A "saved" message (data-toast) moves to the corner, is announced politely, and fades
-// after a few seconds. Errors stay where they are.
+// after a few seconds. Errors stay where they are. With data-undo-form naming a form on the
+// page marked data-undo, the toast has an Undo button that submits it (MOBILE_PLAN.md R2);
+// the page offers the same form without a time limit. While the pointer or focus is on the
+// toast it stays.
 function initToasts() {
   const region = document.getElementById("toast-region");
   if (!region) return;
@@ -494,6 +497,18 @@ function initToasts() {
     const toast = document.createElement("div");
     toast.className = "toast";
     toast.textContent = el.textContent.trim();
+    const undoForm = el.dataset.undoForm ? document.getElementById(el.dataset.undoForm) : null;
+    if (undoForm && undoForm.hasAttribute("data-undo")) {
+      const undo = document.createElement("button");
+      undo.type = "button";
+      undo.className = "toast-undo";
+      undo.textContent = "Undo";
+      undo.addEventListener("click", () => {
+        undo.disabled = true;
+        undoForm.requestSubmit();
+      });
+      toast.appendChild(undo);
+    }
     const close = document.createElement("button");
     close.type = "button";
     close.className = "toast-close";
@@ -503,7 +518,13 @@ function initToasts() {
     toast.appendChild(close);
     region.appendChild(toast);
     el.remove();
-    setTimeout(() => toast.remove(), 8000);
+    let timer = setTimeout(() => toast.remove(), 8000);
+    const hold = () => clearTimeout(timer);
+    const release = () => { if (!toast.matches(":hover, :focus-within")) timer = setTimeout(() => toast.remove(), 4000); };
+    toast.addEventListener("pointerenter", hold);
+    toast.addEventListener("focusin", hold);
+    toast.addEventListener("pointerleave", release);
+    toast.addEventListener("focusout", release);
   });
 }
 

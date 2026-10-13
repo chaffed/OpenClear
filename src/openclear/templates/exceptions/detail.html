@@ -84,6 +84,13 @@
   {% if item.recommended_outcome %}
   <p class="recommendation">Recommended by <strong>{{ recommended_by.email if recommended_by else "someone no longer on this account" }}</strong>:
     <strong>{{ item.recommended_outcome | capitalize }}</strong> ({{ item.recommended_reason_code }}{% if item.recommended_return_transaction_code %}, code {{ item.recommended_return_transaction_code }}{% endif %}){% if item.recommended_notes %}. {{ item.recommended_notes }}{% endif %}</p>
+  {# Its maker can take it back until it's approved; the toast after recommending offers the same (data-undo). #}
+  {% if item.status.value == "pending_approval" and item.recommended_by_user_id == ctx.user_id and can(ctx, "exception:recommend") %}
+  <form method="post" action="/ui/exceptions/{{ item.id }}/recommendation/withdraw" id="withdraw-recommendation" data-undo>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("undo") }}Withdraw my recommendation</button>
+  </form>
+  {% endif %}
   {% endif %}
   {% if decision %}
   <p class="recommendation">Decision: <strong>{{ decision.outcome.value | capitalize }}</strong> ({{ decision.reason_code }}{% if decision.return_transaction_code %}, code {{ decision.return_transaction_code }}{% endif %}){% if decision.notes %}. {{ decision.notes }}{% endif %}, decided {{ decision.decided_at.strftime("%Y-%m-%d %H:%M") }}</p>

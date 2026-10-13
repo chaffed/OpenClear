@@ -43,6 +43,8 @@ _DECISION_ERROR_MESSAGES = {
     DecisionError.WITHDRAWN: "This exception was withdrawn because its underlying item was backed out.",
     DecisionError.RETURN_REASON_REQUIRED: "Select a return reason from the list — freeform text isn't accepted for ACH returns.",
     DecisionError.INVALID_RETURN_REASON: "That return reason no longer exists or has been deactivated — pick another.",
+    DecisionError.NOT_PENDING_APPROVAL: "There's no recommendation awaiting approval to withdraw; it may have been decided already.",
+    DecisionError.NOT_YOUR_RECOMMENDATION: "Only the person who made a recommendation can withdraw it.",
 }
 
 
@@ -426,6 +428,10 @@ def recommend(
     reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, outcome, reason_code, return_reason_id or ach_return_reason_id)
     if problem:
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(problem)}", status_code=303)
+    # A fresh recommendation can be undone from the toast that confirms it; a revised one
+    # can't (undoing it would withdraw the earlier one too).
+    before = exception_service.get_exception(db, ctx.tenant_id, exception_id, customer_id=ctx.customer_id)
+    fresh = before is not None and before.status == ExceptionStatus.OPEN
     result = decision_service.submit_recommendation(
         db, ctx.tenant_id, exception_id, ctx, outcome=outcome, reason_code=reason_code, notes=notes or None,
         ach_return_reason_id=reason_id, check_return_reason_id=reason_id,
@@ -445,7 +451,29 @@ def recommend(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(message)}", status_code=303)
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.&event=exception-recommended", status_code=303)
+    undo = "&undo=withdraw-recommendation" if fresh else ""
+    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.&event=exception-recommended{undo}", status_code=303)
+
+
+@router.post("/{exception_id}/recommendation/withdraw")
+def withdraw_recommendation(
+    exception_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("exception:recommend")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Undo (MOBILE_PLAN.md R2): one's own recommendation, before it's approved."""
+    result = decision_service.withdraw_recommendation(db, ctx.tenant_id, exception_id, ctx)
+    if result.error is not None:
+        db.rollback()
+        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_DECISION_ERROR_MESSAGES[result.error])}", status_code=303)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="exception.recommendation_withdrawn",
+        summary="Withdrew their recommendation; the exception is open again",
+        resource_type="exception_item", resource_id=exception_id,
+    )
+    db.commit()
+    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+withdrawn.", status_code=303)
 
 
 @router.post("/{exception_id}/decide")

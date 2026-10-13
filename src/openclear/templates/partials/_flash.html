@@ -1,4 +1,6 @@
 {% set flash = request.query_params.get("flash") %}
 {% set error = request.query_params.get("error") %}
-{% if flash %}<div class="flash flash-ok" data-toast role="status">{{ flash }}</div>{% endif %}
+{# ?undo=<form id>: the toast gets an Undo button submitting that form, if the page has it (data-undo). #}
+{% set undo = request.query_params.get("undo") %}
+{% if flash %}<div class="flash flash-ok" data-toast role="status"{% if undo %} data-undo-form="{{ undo }}"{% endif %}>{{ flash }}</div>{% endif %}
 {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}

@@ -5,6 +5,9 @@
 filters in a bottom sheet. The browser tests use Playwright's Chromium and are skipped
 where it isn't installed."""
 
+from sqlalchemy import select
+
+from openclear.domain.audit_log_entry import AuditLogEntry
 from openclear.domain.exception_item import ExceptionItem
 from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
 from tests.test_web.test_deciding import _login
@@ -214,3 +217,72 @@ def test_the_items_action_log_collapsed_with_the_newest_showing(client, db_sessi
     _login(client, tenant, clerk.email)
     page = client.get(f"/ui/exceptions/{theirs.id}")
     assert page.status_code == 200 and "item-history" not in page.text
+
+
+def test_undo_withdraws_ones_own_recommendation_only_before_approval(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="undo-rules", require_dual_control=True)
+    item = _make_exception(db_session, tenant, account, users, "9201", "10.00", "99.00")
+    csrf = _login(client, tenant, users["preparer"].email)
+
+    first = client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay"}, follow_redirects=False)
+    assert "undo=withdraw-recommendation" in first.headers["location"]
+    page = client.get(first.headers["location"]).text
+    assert 'data-undo-form="withdraw-recommendation"' in page and 'id="withdraw-recommendation" data-undo' in page
+    # Revising it offers no Undo: that would withdraw the first one too.
+    again = client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay", "notes": "sure"},
+                        follow_redirects=False)
+    assert "undo=" not in again.headers["location"]
+
+    # Nobody else can withdraw it, not even someone who can approve it.
+    csrf = _login(client, tenant, users["admin"].email)
+    refused = client.post(f"/ui/exceptions/{item.id}/recommendation/withdraw", data={"csrf_token": csrf}, follow_redirects=False)
+    assert "Only%20the%20person" in refused.headers["location"]
+    assert "withdraw-recommendation" not in client.get(f"/ui/exceptions/{item.id}").text
+    db_session.expire_all()
+    assert db_session.get(ExceptionItem, item.id).status.value == "pending_approval"
+
+    csrf = _login(client, tenant, users["preparer"].email)
+    done = client.post(f"/ui/exceptions/{item.id}/recommendation/withdraw", data={"csrf_token": csrf}, follow_redirects=False)
+    assert "Recommendation+withdrawn" in done.headers["location"]
+    db_session.expire_all()
+    withdrawn = db_session.get(ExceptionItem, item.id)
+    assert withdrawn.status.value == "open" and withdrawn.recommended_by_user_id is None and withdrawn.recommended_outcome is None
+    entries = db_session.execute(select(AuditLogEntry.action).where(AuditLogEntry.resource_id == item.id)
+                                 .order_by(AuditLogEntry.sequence)).scalars().all()
+    assert entries[-1] == "exception.recommendation_withdrawn"
+
+    # Once approved it's a decision, and a decision is never undone.
+    client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay"})
+    csrf = _login(client, tenant, users["approver"].email)
+    client.post(f"/ui/exceptions/{item.id}/decide", data={"csrf_token": csrf, "outcome": "pay"})
+    csrf = _login(client, tenant, users["preparer"].email)
+    late = client.post(f"/ui/exceptions/{item.id}/recommendation/withdraw", data={"csrf_token": csrf}, follow_redirects=False)
+    assert "no%20recommendation%20awaiting%20approval" in late.headers["location"]
+    db_session.expire_all()
+    assert db_session.get(ExceptionItem, item.id).status.value == "pay"
+
+
+def test_recommend_pay_with_one_tap_then_undo_on_a_phone(client, db_session, tenant_factory, browser_page):  # noqa: F811
+    tenant, account, users = tenant_factory.make(slug="undo-phone", require_dual_control=True)
+    item = _make_exception(db_session, tenant, account, users, "9301", "10.00", "99.00")
+    csrf = _login(client, tenant, users["preparer"].email)
+    # (The test's server doesn't follow redirects into the browser: open the page they lead to.)
+    after = client.post(f"/ui/exceptions/{item.id}/recommend", data={"csrf_token": csrf, "outcome": "pay"}, follow_redirects=False)
+
+    page = browser_page(360, 780)
+    page.goto("http://testserver" + after.headers["location"])
+    toast = page.locator(".toast")
+    assert "Recommendation submitted." in toast.inner_text()
+    undo = toast.get_by_role("button", name="Undo")
+    assert undo.bounding_box()["height"] >= 44
+    with page.expect_response(f"**/ui/exceptions/{item.id}/recommendation/withdraw") as answer:
+        undo.click()
+    assert "Recommendation+withdrawn" in answer.value.headers["location"]
+    db_session.expire_all()
+    assert db_session.get(ExceptionItem, item.id).status.value == "open"
+
+    # The toast's Undo only ever submits a form the page marked data-undo.
+    page = browser_page(360, 780)
+    page.goto(f"http://testserver/ui/exceptions/{item.id}?flash=Hello&undo=return-recommend")
+    assert page.locator("#return-recommend").count() == 1
+    assert page.locator(".toast").is_visible() and page.locator(".toast-undo").count() == 0
