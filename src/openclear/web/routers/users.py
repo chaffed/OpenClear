@@ -62,7 +62,7 @@ def list_users(
     page_obj = paginate(
         page=page,
         count_fn=lambda: user_service.count_tenant_users(db, ctx.tenant_id),
-        list_fn=lambda **kw: user_service.list_tenant_users(db, ctx.tenant_id, order_by=TenantMembership.created_at.desc(), **kw),
+        list_fn=lambda **kw: user_service.list_tenant_users(db, ctx.tenant_id, order_by=(TenantMembership.created_at.desc(), TenantMembership.id), **kw),
     )
     return render_template(request, "users/list.html", ctx=ctx, page_obj=page_obj)
 

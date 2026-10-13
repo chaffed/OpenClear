@@ -115,4 +115,10 @@ def test_issued_items_list_paginates(client, db_session, tenant_factory):
     out_of_range = client.get("/ui/issued-items?page=99")
     assert out_of_range.status_code == 200
     assert "Showing 51" in out_of_range.text
-    assert "9059" in out_of_range.text
+
+    # Made in the same second, the checks still keep one order from page to page: every one
+    # is on exactly one page.
+    import re
+
+    shown = re.findall(r">(9\d{3})</a>", page1.text) + re.findall(r">(9\d{3})</a>", page2.text)
+    assert sorted(shown) == [str(9000 + i) for i in range(60)]

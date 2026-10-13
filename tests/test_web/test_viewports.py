@@ -24,14 +24,17 @@ import shutil
 import sys
 from pathlib import Path
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 playwright = pytest.importorskip("playwright.sync_api")
 
+from openclear.domain.ach_transaction import AchTransaction  # noqa: E402
 from openclear.domain.customer import Customer  # noqa: E402
+from openclear.domain.exception_item import ExceptionItem  # noqa: E402
+from openclear.domain.issued_item import IssuedItem  # noqa: E402
 from openclear.domain.paid_item import PaidItem  # noqa: E402
 from openclear.domain.tenant_membership import TenantMembership  # noqa: E402
 from openclear.domain.user import User  # noqa: E402
@@ -49,6 +52,7 @@ SHOTS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-shots
 
 VIEWPORTS = {360: 780, 768: 1024, 1024: 768, 1280: 800}  # width: height
 REFERENCE_WIDTH = 1280
+TOLERANCE = 24  # per colour channel: anti-aliasing varies a little between runs
 TOUCH_TARGET = 44
 # (name, path, who): the bank's administrator, or the customer's (People is theirs).
 PAGES = [
@@ -195,6 +199,17 @@ def _seed(client, db_session, tenant_factory):
     response = client.post("/ui/issued-items/bulk", data={"csrf_token": csrf, "layout_id": ""},
                            files={"upload_file": ("june.csv", content, "text/csv")})
     upload = re.search(r"/ui/bulk-uploads/[0-9a-f-]+", str(response.url)).group(0)
+
+    # Lists sort newest first, then by id: rows made in the same second would come in a
+    # different order each run. Give each its own time, in the order they were made (recent,
+    # so "oldest item waiting" reads the same every day).
+    start = datetime.now(timezone.utc) - timedelta(minutes=30)
+    made_in_order = text("rowid") if db_session.get_bind().dialect.name == "sqlite" else None
+    for model in (IssuedItem, PaidItem, AchTransaction, ExceptionItem):
+        order = [model.created_at] + ([made_in_order] if made_in_order is not None else [model.id])
+        for seconds, row in enumerate(db_session.execute(select(model).where(model.tenant_id == tenant.id).order_by(*order)).scalars()):
+            row.created_at = start + timedelta(seconds=seconds)
+    db_session.commit()
     return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, f"/ui/exceptions/{exception.id}", upload
 
 
@@ -203,7 +218,7 @@ def _identical(reference: Path, taken: bytes) -> bool:
 
     old = Image.open(reference).convert("RGB")
     new = Image.open(io.BytesIO(taken)).convert("RGB")
-    return old.size == new.size and ImageChops.difference(old, new).getbbox() is None
+    return old.size == new.size and ImageChops.difference(old, new).point(lambda v: 255 if v > TOLERANCE else 0).getbbox() is None
 
 
 def _same_picture(reference: Path, taken: bytes, diff_to: Path) -> str | None:
@@ -217,7 +232,7 @@ def _same_picture(reference: Path, taken: bytes, diff_to: Path) -> str | None:
         diff_to.parent.mkdir(parents=True, exist_ok=True)
         new.save(diff_to.with_suffix(".new.png"))
         return f"size {old.size} became {new.size}"
-    box = ImageChops.difference(old, new).point(lambda v: 255 if v > 24 else 0).getbbox()
+    box = ImageChops.difference(old, new).point(lambda v: 255 if v > TOLERANCE else 0).getbbox()
     if box is None:
         return None
     diff_to.parent.mkdir(parents=True, exist_ok=True)

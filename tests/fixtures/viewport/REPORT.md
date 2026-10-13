@@ -42,12 +42,12 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 - small target: a "#####" (42x, e.g. 42x17)
 
 ### paid_items at 360px
-- small target: a "#####" (42x, e.g. 42x17)
 - small target: a "####" (1x, e.g. 33x17)
+- small target: a "#####" (42x, e.g. 42x17)
 
 ### paid_items at 768px
-- small target: a "#####" (42x, e.g. 42x17)
 - small target: a "####" (1x, e.g. 33x17)
+- small target: a "#####" (42x, e.g. 42x17)
 
 ### ach_transactions at 360px
 - small target: a "Gusto Payroll" (6x, e.g. 44x34)

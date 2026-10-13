@@ -92,15 +92,17 @@ class Spec:
     sorts: dict[str, Any]
     default_order: Callable[[], Any]
     export_columns: list[tuple[str, Callable[[Any], Any]]]
+    # Last in every order, so rows that tie (made in the same second, the same amount) keep
+    # one order from page to page.
+    tie_breaker: Any = None
 
     def where(self, search: Search) -> list:
         return self.conditions(search)
 
     def order_by(self, search: Search):
         column = self.sorts.get(search.get("sort"))
-        if column is None:
-            return self.default_order()
-        return [column.desc() if search.get("dir") == "desc" else column.asc()]
+        order = self.default_order() if column is None else [column.desc() if search.get("dir") == "desc" else column.asc()]
+        return [*order, self.tie_breaker] if self.tie_breaker is not None else order
 
 
 def _account_ids(number: str):
@@ -138,7 +140,8 @@ def issued_items_spec() -> Spec:
                              "status": I.status},
                 lambda: [I.created_at.desc()],
                 [("check_number", lambda r: r.check_number), ("amount", lambda r: r.amount), ("payee", lambda r: r.payee_name),
-                 ("issue_date", lambda r: r.issue_date), ("status", lambda r: r.status.value), ("account_id", lambda r: r.account_id)])
+                 ("issue_date", lambda r: r.issue_date), ("status", lambda r: r.status.value), ("account_id", lambda r: r.account_id)],
+                I.id)
 
 
 def paid_items_spec() -> Spec:
@@ -161,7 +164,8 @@ def paid_items_spec() -> Spec:
                 lambda: [P.created_at.desc()],
                 [("check_number", lambda r: r.check_number), ("amount", lambda r: r.presented_amount),
                  ("presented_date", lambda r: r.presented_date), ("match_status", lambda r: r.match_status.value),
-                 ("settlement_status", lambda r: r.settlement_status.value), ("account_id", lambda r: r.account_id)])
+                 ("settlement_status", lambda r: r.settlement_status.value), ("account_id", lambda r: r.account_id)],
+                P.id)
 
 
 def ach_transactions_spec() -> Spec:
@@ -185,7 +189,8 @@ def ach_transactions_spec() -> Spec:
                 [("trace_number", lambda r: r.trace_number), ("amount", lambda r: r.amount), ("type", lambda r: r.transaction_type.value),
                  ("originator_id", lambda r: r.originator_id), ("originator_name", lambda r: r.originator_name),
                  ("sec_code", lambda r: r.sec_code), ("effective_date", lambda r: r.effective_date),
-                 ("match_status", lambda r: r.match_status.value), ("account_id", lambda r: r.account_id)])
+                 ("match_status", lambda r: r.match_status.value), ("account_id", lambda r: r.account_id)],
+                T.id)
 
 
 def exceptions_spec() -> Spec:
@@ -221,7 +226,8 @@ def exceptions_spec() -> Spec:
                 lambda: [E.created_at.desc()],
                 [("exception_id", lambda r: r.id), ("network", lambda r: r.network_code), ("types", lambda r: r.exception_types),
                  ("status", lambda r: r.status.value), ("created_at", lambda r: r.created_at), ("decide_by", lambda r: r.decision_deadline),
-                 ("ml_score", lambda r: r.ml_score)])
+                 ("ml_score", lambda r: r.ml_score)],
+                E.id)
 
 
 # --- Export -----------------------------------------------------------------------------------
