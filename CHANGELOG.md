@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Phones and tablets (MOBILE_PLAN.md R0–R2). The desktop (1024px and wider) is unchanged.
+Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with a mouse) is unchanged.
 
 - **Navigation drawer**: below 1024px the sidebar is a bar with the bank's name and a menu
   button; the links slide in from the left (Escape, the close button or a tap outside closes
@@ -32,6 +32,16 @@ Phones and tablets (MOBILE_PLAN.md R0–R2). The desktop (1024px and wider) is u
 - **Fixed**: lists sorted by when rows were made (issued items, paid items, ACH transactions,
   exceptions, Users) could swap rows made in the same second between pages; every sort now
   ends with a tie-breaker.
+- **The rest of the bank's pages**: security groups, check and ACH return reasons, a
+  customer's accounts, Controls, the integration checklist, plugins, ML models and
+  segregation of duties read as cards on a phone; no table is cut off on a phone or tablet.
+  An upload form's column guide is one column per card. On an exception, what was expected
+  and what was presented fit a phone, each mismatch marked beside its label.
+- **Dashboard**: its figures are two to a row on a phone, so all of them fit on one screen.
+- **Tablets**: Users' and API clients' row actions open from the ⋯ button below 1024px, not
+  only on a phone; a touch screen 1024px or wider (a landscape iPad) gets 44px targets too.
+- **Fixed**: Retire on the check return reasons list was cut off on a phone.
+- **Fixed**: the notification preferences' checkboxes had no labels for screen readers.
 
 ## 1.15.0 — 2026-10-13
 

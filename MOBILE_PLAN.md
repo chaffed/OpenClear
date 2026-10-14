@@ -288,3 +288,32 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
     Revisit in R3. The recommendation's "awaiting approval" notification isn't taken back
     on Undo; the approver finds the item open again.
   Next: R3.
+- 2026-10-14 R3 done (branch `mobile-r3`, a commit per piece, the 1280px screenshots
+  unchanged after each):
+  - The viewport test measures 58 pages now: the bank's detail and admin pages, settings as
+    pages, a setting opened in its window, and the customer's People and Sign-on pages. It
+    also reports a table wider than its `.table-scroll` or card below desktop (the page
+    passed, but columns were cut off: Retire on check return reasons was off the edge).
+    The rate limiter is cleared between pages. The baseline is empty: no known problem on
+    any page at any width.
+  - On `responsive_table`: security groups, check and ACH return reasons, a customer's
+    accounts, Controls, the integration checklist, plugins, segregation of duties. ML models'
+    tables (one row has a colspan) carry the same classes by hand. New role `text` (a line
+    with no label); `sheet: "tablet"` puts row actions in the ⋯ sheet below desktop (Users,
+    API clients), and a responsive table's cells may break a long address below desktop, so
+    the action log narrows at 768px. The tablet's expandable rows weren't needed.
+  - Phone-only layouts: an upload form's column guide (`table.column-guide`, all eight), the
+    exception's expected-vs-presented (each label with its mismatch badge, then the values),
+    the fraud model comparison.
+  - 44px targets: a link on a line of its own (`.link-line`, 23 templates), key-value table
+    links, the settings window's Close, the colour picker. Checkbox labels below desktop are a
+    block with the box beside the first line (a flex label split the text around `<code>`).
+    The notification preferences' checkboxes had no labels (axe, every width): fixed.
+  - `@media (pointer: coarse)` gets the touch-target rules too, so a landscape iPad outside
+    the two panes has 44px targets; a mouse at desktop widths doesn't (tested at 1366px).
+  - Dashboard: its figures two to a row on a phone. It has no "Decide now" banner or
+    uploads/controls tiles to reorder (§2 assumed them); adding them would change the
+    desktop, so not done. The settings windows were already full screen on a phone (M4);
+    now tested.
+  Next: the manual pass on real devices (iPhone Safari, Android Chrome, iPad both ways, the
+  embedded frame), then the release for phones and tablets; R4 after.
