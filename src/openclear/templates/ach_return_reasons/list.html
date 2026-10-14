@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}ACH Return Reasons — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ACH return reasons{% endblock %}
@@ -20,32 +21,31 @@
     <a href="/ui/ach-return-reasons/new" class="button">{{ icon("add") }}New return reason</a>
   </div>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Reason</th><th>Transaction code</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for reason in page_obj.items %}
-      <tr>
-        <td>{{ reason.reason_text }}</td>
-        <td>{{ reason.transaction_code or "—" }}</td>
-        <td><span class="badge {{ 'badge-ok' if reason.is_active else 'badge-danger' }}">{{ 'active' if reason.is_active else 'deactivated' }}</span></td>
-        <td>
-          <a href="/ui/ach-return-reasons/{{ reason.id }}/edit">Edit</a>
+  {% set columns = [
+    {"key": "reason", "label": "Reason", "role": "primary"},
+    {"key": "code", "label": "Transaction code"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(reason, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable", id="reason") -%}
+    {%- if col.key == "reason" %}{{ reason.reason_text }}
+    {%- elif col.key == "code" %}{{ reason.transaction_code or "—" }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if reason.is_active else 'badge-danger' }}">{{ 'active' if reason.is_active else 'deactivated' }}</span>
+    {%- elif col.key == "actions" %}
+          <a href="/ui/ach-return-reasons/{{ reason.id }}/edit" aria-label="Edit {{ reason.reason_text }}">Edit</a>
           {% if reason.is_active %}
           <form method="post" action="/ui/ach-return-reasons/{{ reason.id }}/deactivate" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="link-button">Deactivate</button>
+            <button type="submit" class="link-button" aria-label="Deactivate {{ reason.reason_text }}">Deactivate</button>
           </form>
           {% else %}
           <form method="post" action="/ui/ach-return-reasons/{{ reason.id }}/reactivate" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="link-button">Reactivate</button>
+            <button type="submit" class="link-button" aria-label="Reactivate {{ reason.reason_text }}">Reactivate</button>
           </form>
           {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No return reasons yet.</p>

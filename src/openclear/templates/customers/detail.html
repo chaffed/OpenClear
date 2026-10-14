@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}{{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this page{% endblock %}
@@ -68,18 +69,17 @@
 <div class="card">
   <h1>Accounts</h1>
   {% if accounts %}
-  <table data-sortable>
-    <thead><tr><th>Account number</th><th>Name</th><th>ACH debit mode</th></tr></thead>
-    <tbody>
-      {% for a in accounts %}
-      <tr>
-        <td>{{ a.account_number }}</td>
-        <td>{{ a.name }}</td>
-        <td><span class="badge">{{ a.ach_debit_block_mode.value }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "number", "label": "Account number", "role": "primary"},
+    {"key": "name", "label": "Name"},
+    {"key": "mode", "label": "ACH debit mode"},
+  ] %}
+  {% call(a, col, part="cell") rt.responsive_table(columns, accounts, attrs="data-sortable", id="account") -%}
+    {%- if col.key == "number" %}{{ a.account_number }}
+    {%- elif col.key == "name" %}{{ a.name }}
+    {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode.value }}</span>
+    {%- endif %}
+  {%- endcall %}
   {% else %}
   <p>No accounts assigned to this customer yet.</p>
   {% endif %}

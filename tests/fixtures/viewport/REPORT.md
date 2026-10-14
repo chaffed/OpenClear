@@ -27,9 +27,9 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | user_edit | 1 small | 1 small | ✓ | ✓ |
 | user_new | ✓ | ✓ | ✓ | ✓ |
 | users_bulk | ✓ | ✓ | ✓ | ✓ |
-| security_groups | 1 small | 1 small | ✓ | ✓ |
+| security_groups | ✓ | ✓ | ✓ | ✓ |
 | security_group_edit | ✓ | ✓ | ✓ | ✓ |
-| check_return_reasons | 7 small | 7 small | ✓ | ✓ |
+| check_return_reasons | ✓ | ✓ | ✓ | ✓ |
 | ach_return_reasons | ✓ | ✓ | ✓ | ✓ |
 | check_images | ✓ | ✓ | ✓ | ✓ |
 | webhooks | ✓ | ✓ | ✓ | ✓ |
@@ -68,7 +68,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 - table scrolls sideways: "What was expected vs. what was presented" (324px in 278px)
 
 ### action_log at 768px
-- table scrolls sideways: "Action log" (788px in 686px)
+- table scrolls sideways: "Action log" (789px in 686px)
 
 ### users at 768px
 - table scrolls sideways: "Users" (692px in 686px)
@@ -84,7 +84,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 
 ### customer at 360px
 - table scrolls sideways: "Maple Street Dental" (290px in 278px)
-- table scrolls sideways: "Accounts" (352px in 278px)
 - small target: a "dana@dental.example.com" (1x, e.g. 178x17)
 - small target: a "View all accounts" (1x, e.g. 126x18)
 - small target: a "Its people and sign-on activity" (1x, e.g. 219x18)
@@ -103,34 +102,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 ### users_bulk at 360px
 - table scrolls sideways: "Bulk upload users" (372px in 278px)
 
-### security_groups at 360px
-- small target: a "Edit" (6x, e.g. 25x17)
-
-### security_groups at 768px
-- small target: a "Edit" (6x, e.g. 25x17)
-
-### check_return_reasons at 360px
-- table scrolls sideways: "Check Return Reasons" (327px in 278px)
-- small target: button.link-button "Retire Altered or fictitious item" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Duplicate presentment" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Not authorized" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Refer to maker" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Signature irregular" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Stale dated" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Stop payment" (1x, e.g. 38x44)
-
-### check_return_reasons at 768px
-- small target: button.link-button "Retire Altered or fictitious item" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Duplicate presentment" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Not authorized" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Refer to maker" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Signature irregular" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Stale dated" (1x, e.g. 38x44)
-- small target: button.link-button "Retire Stop payment" (1x, e.g. 38x44)
-
-### ach_return_reasons at 360px
-- table scrolls sideways: "ACH Return Reasons" (419px in 278px)
-
 ### webhook_new at 360px
 - small target: a "Back to webhooks" (1x, e.g. 132x18)
 
@@ -148,18 +119,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 
 ### sso_new at 768px
 - small target: a "Cancel" (1x, e.g. 50x18)
-
-### controls at 360px
-- table scrolls sideways: "Controls" (552px in 278px)
-
-### ml_models at 360px
-- table scrolls sideways: "Shared model" (421px in 278px)
-
-### plugins at 360px
-- table scrolls sideways: "Plugins" (376px in 278px)
-
-### integration at 360px
-- table scrolls sideways: "Integration checklist" (383px in 278px)
 
 ### wizard at 360px
 - small target: a "Go to Settings" (2x, e.g. 95x17)

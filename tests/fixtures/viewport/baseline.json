@@ -14,9 +14,7 @@
   "ach_return_reasons": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"ACH Return Reasons\""
-    ],
+    "360": [],
     "768": []
   },
   "ach_transactions": {
@@ -76,25 +74,8 @@
   "check_return_reasons": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: button.link-button \"Retire Altered or fictitious item\"",
-      "small target: button.link-button \"Retire Duplicate presentment\"",
-      "small target: button.link-button \"Retire Not authorized\"",
-      "small target: button.link-button \"Retire Refer to maker\"",
-      "small target: button.link-button \"Retire Signature irregular\"",
-      "small target: button.link-button \"Retire Stale dated\"",
-      "small target: button.link-button \"Retire Stop payment\"",
-      "table scrolls sideways: \"Check Return Reasons\""
-    ],
-    "768": [
-      "small target: button.link-button \"Retire Altered or fictitious item\"",
-      "small target: button.link-button \"Retire Duplicate presentment\"",
-      "small target: button.link-button \"Retire Not authorized\"",
-      "small target: button.link-button \"Retire Refer to maker\"",
-      "small target: button.link-button \"Retire Signature irregular\"",
-      "small target: button.link-button \"Retire Stale dated\"",
-      "small target: button.link-button \"Retire Stop payment\""
-    ]
+    "360": [],
+    "768": []
   },
   "control_panel": {
     "1024": [],
@@ -105,9 +86,7 @@
   "controls": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Controls\""
-    ],
+    "360": [],
     "768": []
   },
   "customer": {
@@ -117,7 +96,6 @@
       "small target: a \"Its people and sign-on activity\"",
       "small target: a \"View all accounts\"",
       "small target: a \"dana@dental.example.com\"",
-      "table scrolls sideways: \"Accounts\"",
       "table scrolls sideways: \"Maple Street Dental\""
     ],
     "768": [
@@ -161,9 +139,7 @@
   "integration": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Integration checklist\""
-    ],
+    "360": [],
     "768": []
   },
   "issued_items": {
@@ -181,9 +157,7 @@
   "ml_models": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Shared model\""
-    ],
+    "360": [],
     "768": []
   },
   "model_risk": {
@@ -301,9 +275,7 @@
   "plugins": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Plugins\""
-    ],
+    "360": [],
     "768": []
   },
   "search": {
@@ -321,12 +293,8 @@
   "security_groups": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Edit\""
-    ],
-    "768": [
-      "small target: a \"Edit\""
-    ]
+    "360": [],
+    "768": []
   },
   "setting_branding": {
     "1024": [],

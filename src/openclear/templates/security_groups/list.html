@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Security Groups — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About security groups{% endblock %}
@@ -19,21 +20,19 @@
     <a href="/ui/security-groups/new" class="button">{{ icon("add") }}New security group</a>
   </div>
   {% if page_obj.total_count > 0 %}
-  <table data-sortable>
-    <thead><tr><th>Name</th><th>Permissions</th><th></th></tr></thead>
-    <tbody>
-      {% for group in page_obj.items %}
-      <tr>
-        <td>{{ group.name }}{% if group.offered_to_customers %} <span class="badge">offered to customers</span>{% endif %}</td>
-        <td>
+  {% set columns = [
+    {"key": "name", "label": "Name", "role": "primary"},
+    {"key": "permissions", "label": "Permissions"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(group, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable", id="group") -%}
+    {%- if col.key == "name" %}{{ group.name }}{% if group.offered_to_customers %} <span class="badge">offered to customers</span>{% endif %}
+    {%- elif col.key == "permissions" %}
           {{ group.permissions | length }} of {{ catalog_size }}
           <span class="perm-bar"><span style="width: {{ ((group.permissions | length) / catalog_size * 100) | round }}%"></span></span>
-        </td>
-        <td><a href="/ui/security-groups/{{ group.id }}/edit">Edit</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    {%- elif col.key == "actions" %}<a href="/ui/security-groups/{{ group.id }}/edit" aria-label="Edit {{ group.name }}">Edit</a>
+    {%- endif %}
+  {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
   <p>No security groups yet.</p>

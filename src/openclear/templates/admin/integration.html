@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Integration checklist — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About the checklist{% endblock %}
@@ -12,19 +13,19 @@
   <h1>Integration checklist</h1>
   <p>{% if summary.certified %}<span class="badge badge-ok">Every required check passes</span>{% else %}
     {{ summary.required_passed }} of {{ summary.required_total }} required checks pass.{% endif %}</p>
-  <table>
-    <thead><tr><th>Check</th><th>Required</th><th>Status</th><th>Seen</th></tr></thead>
-    <tbody>
-      {% for c in summary.checks %}
-      <tr>
-        <td>{{ c.title }}</td>
-        <td>{{ "Yes" if c.required else "Optional" }}</td>
-        <td><span class="badge {{ 'badge-ok' if c.status == 'pass' else ('badge-danger' if c.status == 'fail' else '') }}">{{ c.status }}</span></td>
-        <td>{{ c.detail }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "title", "label": "Check", "role": "primary"},
+    {"key": "required", "label": "Required"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "detail", "label": "Seen", "role": "text"},
+  ] %}
+  {% call(c, col, part="cell") rt.responsive_table(columns, summary.checks, id="check") -%}
+    {%- if col.key == "title" %}{{ c.title }}
+    {%- elif col.key == "required" %}{{ "Yes" if c.required else "Optional" }}
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if c.status == 'pass' else ('badge-danger' if c.status == 'fail' else '') }}">{{ c.status }}</span>
+    {%- elif col.key == "detail" %}{{ c.detail }}
+    {%- endif %}
+  {%- endcall %}
   <form method="post" action="/ui/admin/integration/probe" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit">{{ icon("send") }}Probe my webhook receiver</button>

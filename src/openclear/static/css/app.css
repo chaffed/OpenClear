@@ -736,7 +736,7 @@ fieldset { min-width: 0; }
    stay, as a row of buttons above the cards. */
 @media (max-width: 1023.98px) {
   table.responsive .hide-tablet { display: none; }
-  table.responsive > tbody td a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  table.responsive > tbody td :is(a, .link-button) { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 }
 @media (max-width: 639.98px) {
   table.responsive .hide-phone { display: none; }
@@ -805,7 +805,12 @@ fieldset { min-width: 0; }
   .back-link a, th a.sort-link, th.sortable-col .sort-button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   .pagination a.button, .pagination span.button-disabled { display: inline-flex; align-items: center; min-height: 44px; }
   input[type="checkbox"], input[type="radio"] { width: 1.25rem; height: 1.25rem; }
-  label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) { display: flex; align-items: center; min-height: 44px; }
+  /* The box beside the first line, the text running on as one paragraph (a flex label would
+     split it around a <code> or a link). */
+  label:is(:has(> input[type="checkbox"]), :has(> input[type="radio"])):not(.select-target) {
+    display: block; position: relative; min-height: 44px; box-sizing: border-box; padding: 0.7rem 0 0.7rem 1.9rem;
+  }
+  label:not(.select-target) > :is(input[type="checkbox"], input[type="radio"]) { position: absolute; left: 0; top: 0.7rem; margin: 0; }
   .select-col input { width: 1.5rem; height: 1.5rem; }
   /* The checkbox's label is the target: 44px square around it. */
   label.select-target { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }

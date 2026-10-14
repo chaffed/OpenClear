@@ -16,11 +16,12 @@
 {% block content %}
 <div class="card">
   <h1>ML Models</h1>
-  <table>
+  {# Responsive tables written out (a shared model's row has a colspan): see _macros/responsive_table.html. #}
+  <table class="responsive">
     <thead><tr><th>Network</th><th>Your live decisions</th><th>Your fraud training examples</th></tr></thead>
     <tbody>
       {% for network_code, counts in backfill_counts.items() %}
-      <tr><td>{{ network_code }}</td><td>{{ counts.live }}</td><td>{{ counts.training_backfill }}</td></tr>
+      <tr><td data-label="Network" class="cell-primary">{{ network_code }}</td><td data-label="Your live decisions" class="cell-meta">{{ counts.live }}</td><td data-label="Your fraud training examples" class="cell-meta">{{ counts.training_backfill }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -36,20 +37,20 @@
   <p>Your organization uses the shared model, which the platform operator trains and
     activates. To use a model trained only on your own decisions, switch to a bank-only model
     in <a href="/ui/settings/fraud-model">Settings → Fraud scoring model</a>.</p>
-  <table>
+  <table class="responsive">
     <thead><tr><th>Network</th><th>Active version</th><th>Active since</th><th>Trained on</th><th>Banks contributing</th></tr></thead>
     <tbody>
       {% for summary in shared_summaries %}
       <tr>
-        <td>{{ summary.network_code }}</td>
+        <td data-label="Network" class="cell-primary">{{ summary.network_code }}</td>
         {% if summary.version %}
-        <td>{{ summary.version }}</td>
-        <td>{{ summary.activated_at.strftime("%Y-%m-%d") if summary.activated_at else "—" }}</td>
-        <td>{{ summary.trained_from_decision_count }} decisions</td>
+        <td data-label="Active version" class="cell-meta">{{ summary.version }}</td>
+        <td data-label="Active since" class="cell-meta">{{ summary.activated_at.strftime("%Y-%m-%d") if summary.activated_at else "—" }}</td>
+        <td data-label="Trained on" class="cell-meta">{{ summary.trained_from_decision_count }} decisions</td>
         {% else %}
-        <td colspan="3">No shared model yet. Exceptions aren't scored until one is trained.</td>
+        <td colspan="3" class="cell-text">No shared model yet. Exceptions aren't scored until one is trained.</td>
         {% endif %}
-        <td>{{ summary.contributing_bank_count }}</td>
+        <td data-label="Banks contributing" class="cell-meta">{{ summary.contributing_bank_count }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -67,18 +68,18 @@
   </form>
 
   {% if models %}
-  <table data-sortable>
+  <table class="responsive" data-sortable>
     <thead><tr><th>Network</th><th>Version</th><th>Status</th><th data-type="number">Trained on</th><th>Metrics</th><th>Why</th><th></th></tr></thead>
     <tbody>
       {% for m in models %}
       <tr>
-        <td>{{ m.network_code }}</td>
-        <td>{{ m.version }}</td>
-        <td><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status.value }}</span></td>
-        <td>{{ m.trained_from_decision_count }} decisions</td>
-        <td>{{ format_metrics(m.metrics_json) }}</td>
-        <td class="hint">{{ ((m.metrics_json or {}).get("evaluation") or {}).get("reason", "") }}</td>
-        <td>
+        <td data-label="Network" class="cell-primary">{{ m.network_code }}</td>
+        <td data-label="Version" class="cell-meta">{{ m.version }}</td>
+        <td data-label="Status" class="cell-status"><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status.value }}</span></td>
+        <td data-label="Trained on" class="cell-meta">{{ m.trained_from_decision_count }} decisions</td>
+        <td data-label="Metrics" class="cell-meta">{{ format_metrics(m.metrics_json) }}</td>
+        <td data-label="Why" class="cell-text hint">{{ ((m.metrics_json or {}).get("evaluation") or {}).get("reason", "") }}</td>
+        <td data-label="" class="cell-actions">
           {% if m.status.value not in ["active", "failed"] %}
           <form method="post" action="/ui/admin/ml/models/{{ m.id }}/activate" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

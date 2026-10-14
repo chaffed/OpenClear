@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Controls — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About controls{% endblock %}
@@ -24,18 +25,17 @@
   </div>
   <p>{{ result.counts.PASS }} pass, {{ result.counts.WARN }} need attention, {{ result.counts.FAIL }} fail.
     Checked {{ result.checked_at[:16]|replace("T", " ") }} UTC.</p>
-  <table>
-    <thead><tr><th>Control</th><th>Status</th><th>Detail</th></tr></thead>
-    <tbody>
-      {% for c in result.controls %}
-      <tr>
-        <td>{{ c.title }}</td>
-        <td><span class="badge {{ badge[c.status] }}">{{ c.status }}</span></td>
-        <td>{{ c.detail }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "title", "label": "Control", "role": "primary"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "detail", "label": "Detail", "role": "text"},
+  ] %}
+  {% call(c, col, part="cell") rt.responsive_table(columns, result.controls, id="control") -%}
+    {%- if col.key == "title" %}{{ c.title }}
+    {%- elif col.key == "status" %}<span class="badge {{ badge[c.status] }}">{{ c.status }}</span>
+    {%- elif col.key == "detail" %}{{ c.detail }}
+    {%- endif %}
+  {%- endcall %}
 </div>
 {% if export_run and export_state in ("queued", "running") %}
 <div class="card" data-poll-seconds="4" aria-busy="true">
