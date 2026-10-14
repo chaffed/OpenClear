@@ -40,6 +40,7 @@ from openclear.domain.tenant_membership import TenantMembership  # noqa: E402
 from openclear.domain.user import User  # noqa: E402
 from openclear.repositories.exception_repo import ExceptionRepository  # noqa: E402
 from openclear.services import api_client_service, customer_people_service, demo_tenant_service, security_group_service, user_service  # noqa: E402
+from openclear.web.rate_limit import limiter  # noqa: E402
 from tests.conftest import TenantFactory  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -73,9 +74,49 @@ PAGES = [
     ("control_panel", "/ui/settings", "bank"),
     ("upload_form", "/ui/issued-items/bulk", "bank"),
     ("upload", "{upload}", "bank"),
+    # R3: the rest of the bank's pages, and a setting opened in its window from the control panel.
+    ("approvals", "/ui/exceptions/approvals", "bank"),
+    ("customer", "{customer}", "bank"),
+    ("user_edit", "{member}/edit", "bank"),
+    ("user_new", "/ui/users/new", "bank"),
+    ("users_bulk", "/ui/users/bulk", "bank"),
+    ("security_groups", "/ui/security-groups", "bank"),
+    ("security_group_edit", "{group}/edit", "bank"),
+    ("check_return_reasons", "/ui/check-return-reasons", "bank"),
+    ("ach_return_reasons", "/ui/ach-return-reasons", "bank"),
+    ("check_images", "/ui/check-images", "bank"),
+    ("webhooks", "/ui/admin/webhooks", "bank"),
+    ("webhook_new", "/ui/admin/webhooks/new", "bank"),
+    ("api_client_new", "/ui/admin/api-clients/new", "bank"),
+    ("sso_new", "/ui/admin/sso/new", "bank"),
+    ("controls", "/ui/admin/controls", "bank"),
+    ("changes", "/ui/admin/changes", "bank"),
+    ("model_risk", "/ui/admin/model-risk", "bank"),
+    ("ml_models", "/ui/admin/ml-models", "bank"),
+    ("plugins", "/ui/admin/plugins", "bank"),
+    ("integration", "/ui/admin/integration", "bank"),
+    ("layouts", "/ui/layouts", "bank"),
+    ("billing", "/ui/billing", "bank"),
+    ("wizard", "/ui/wizard/bank", "bank"),
+    ("search", "/ui/search?q=Summit", "bank"),
+    ("my_security", "/ui/security", "bank"),
+    ("notifications", "/ui/security/notifications", "bank"),
+    ("setting_branding", "/ui/settings/branding", "bank"),
+    ("setting_password_policy", "/ui/settings/password-policy", "bank"),
+    ("setting_reminders", "/ui/settings/reminders", "bank"),
+    ("setting_security_events", "/ui/settings/security-events", "bank"),
+    ("setting_sod", "/ui/settings/segregation-of-duties", "bank"),
+    ("setting_support_access", "/ui/settings/support-access", "bank"),
+    ("setting_fraud_model", "/ui/settings/fraud-model", "bank"),
+    ("settings_dialog", "/ui/settings#timeouts", "bank"),
     ("people", "/ui/people", "customer"),
+    ("person", "{person}", "customer"),
+    ("people_invite", "/ui/people/invite", "customer"),
+    ("people_activity", "/ui/people/activity", "customer"),
     ("customer_control_panel", "/ui/settings", "customer"),
 ]
+# Pages measured after a step: (selector clicked, selector waited for).
+STEPS = {"settings_dialog": ('a.tile[data-key="timeouts"]', "#settings-dialog[open] [data-dialog-body] form")}
 
 # Run in the page: every problem at this width as a stable "kind: what" string (digits
 # become # so rows of the same kind collapse into one), and the details for the report.
@@ -224,7 +265,13 @@ def _seed(client, db_session, tenant_factory):
         for seconds, row in enumerate(db_session.execute(select(model).where(model.tenant_id == tenant.id).order_by(*order)).scalars()):
             row.created_at = start + timedelta(seconds=seconds)
     db_session.commit()
-    return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, f"/ui/exceptions/{exception.id}", upload
+    group = next(g for g in security_group_service.list_security_groups(db_session, tenant.id) if g.name == "Preparer")
+    preparer = db_session.execute(select(TenantMembership).join(User, User.id == TenantMembership.user_id)
+                                  .where(TenantMembership.tenant_id == tenant.id, User.email == users["preparer"].email)).scalar_one()
+    person = db_session.execute(select(TenantMembership).where(TenantMembership.user_id == customer_admin.id)).scalar_one()
+    paths = {"exception": f"/ui/exceptions/{exception.id}", "upload": upload, "customer": f"/ui/customers/{customer.id}",
+             "member": f"/ui/users/{preparer.id}", "group": f"/ui/security-groups/{group.id}", "person": f"/ui/people/{person.id}"}
+    return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, paths
 
 
 def _identical(reference: Path, taken: bytes) -> bool:
@@ -295,7 +342,7 @@ def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_fac
     except Exception as exc:  # noqa: BLE001 -- no browser installed here
         pytest.skip(f"Chromium isn't available: {exc}")
 
-    slug, people, exception_path, upload_path = _seed(client, db_session, tenant_factory)
+    slug, people, paths = _seed(client, db_session, tenant_factory)
 
     def serve(route):
         request = route.request
@@ -320,11 +367,16 @@ def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_fac
             page = context.new_page()
             page.on("pageerror", lambda error, w=width: errors.append(f"{w}px {page.url}: {error}"))
             for name, path, who in PAGES:
+                limiter._hits.clear()  # ~50 pages a width, each with its scripts: past the per-minute limit
                 if who != signed_in:
                     _sign_in(client, slug, people[who])
                     signed_in = who
-                response = page.goto("http://testserver" + path.format(exception=exception_path, upload=upload_path))
+                response = page.goto("http://testserver" + path.format(**paths).split("#")[0])
                 assert response.status == 200 and "/ui/login" not in page.url, f"{name}: {response.status} at {page.url}"
+                if name in STEPS:
+                    click, wait_for = STEPS[name]
+                    page.click(click)
+                    page.wait_for_selector(wait_for)
                 measured = page.evaluate(MEASURE, {"width": width, "touch": TOUCH_TARGET if width < 1024 else 0,
                                                    "decision": name == "exception"})
                 page.add_script_tag(content=axe)
