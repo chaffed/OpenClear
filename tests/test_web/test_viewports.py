@@ -145,6 +145,22 @@ MEASURE = """({width, touch, decision}) => {
       + Array.from(new Set(wide.slice(0, 8).map(name))).join(', '));
   }
 
+  // A table wider than its .table-scroll (below desktop): the page doesn't scroll, but
+  // columns are cut off until someone scrolls the table itself. Named by its heading.
+  if (touch) {
+    document.querySelectorAll('.table-scroll, .card').forEach((box) => {
+      const table = box.querySelector(':scope > table, :scope > .table-scroll > table');
+      if (!table || !shown(table) || table.scrollWidth <= box.clientWidth + 1 && table.getBoundingClientRect().right <= W + 1) return;
+      if (box.classList.contains('card') && table.closest('.table-scroll') && table.closest('.table-scroll') !== box) return;
+      let heading = null;
+      for (let el = table; el && !heading; el = el.parentElement) {
+        heading = Array.from(el.querySelectorAll('h1, h2, h3')).filter((h) => h.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).pop();
+      }
+      problems.push(`table scrolls sideways: "${heading ? label(heading) : ''}"`);
+      details.push(`table scrolls sideways: "${heading ? label(heading) : ''}" (${table.scrollWidth}px in ${box.clientWidth}px)`);
+    });
+  }
+
   if (touch) {
     const targets = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button]';
     const small = new Counter();

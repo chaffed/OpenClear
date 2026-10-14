@@ -5,6 +5,7 @@ Used by `tests/test_web/test_viewports.py`, which opens the key pages at 360, 76
 
 - **Sideways scroll**: the page is no wider than the screen (a table inside `.table-scroll`
   may scroll on its own).
+- **Tables scrolling sideways** (below 1024px, R3): a table wider than its `.table-scroll` or card, which cuts columns off.
 - **Touch targets** (below 1024px): links, buttons, fields, `<summary>` at least 44×44px. A
   checkbox or radio counts as the size of its label; a link inside a sentence is exempt
   (WCAG 2.5.8's exception).

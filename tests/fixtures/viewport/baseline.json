@@ -14,7 +14,9 @@
   "ach_return_reasons": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"ACH Return Reasons\""
+    ],
     "768": []
   },
   "ach_transactions": {
@@ -27,7 +29,9 @@
     "1024": [],
     "1280": [],
     "360": [],
-    "768": []
+    "768": [
+      "table scrolls sideways: \"Action log\""
+    ]
   },
   "api_client_new": {
     "1024": [],
@@ -79,7 +83,8 @@
       "small target: button.link-button \"Retire Refer to maker\"",
       "small target: button.link-button \"Retire Signature irregular\"",
       "small target: button.link-button \"Retire Stale dated\"",
-      "small target: button.link-button \"Retire Stop payment\""
+      "small target: button.link-button \"Retire Stop payment\"",
+      "table scrolls sideways: \"Check Return Reasons\""
     ],
     "768": [
       "small target: button.link-button \"Retire Altered or fictitious item\"",
@@ -100,7 +105,9 @@
   "controls": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Controls\""
+    ],
     "768": []
   },
   "customer": {
@@ -109,7 +116,9 @@
     "360": [
       "small target: a \"Its people and sign-on activity\"",
       "small target: a \"View all accounts\"",
-      "small target: a \"dana@dental.example.com\""
+      "small target: a \"dana@dental.example.com\"",
+      "table scrolls sideways: \"Accounts\"",
+      "table scrolls sideways: \"Maple Street Dental\""
     ],
     "768": [
       "small target: a \"Its people and sign-on activity\"",
@@ -138,7 +147,9 @@
   "exception": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"What was expected vs. what was presented\""
+    ],
     "768": []
   },
   "exceptions": {
@@ -150,7 +161,9 @@
   "integration": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Integration checklist\""
+    ],
     "768": []
   },
   "issued_items": {
@@ -168,7 +181,9 @@
   "ml_models": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Shared model\""
+    ],
     "768": []
   },
   "model_risk": {
@@ -286,7 +301,9 @@
   "plugins": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Plugins\""
+    ],
     "768": []
   },
   "search": {
@@ -325,7 +342,8 @@
     "1024": [],
     "1280": [],
     "360": [
-      "small target: a \"Back to settings\""
+      "small target: a \"Back to settings\"",
+      "table scrolls sideways: \"Fraud scoring model\""
     ],
     "768": [
       "small target: a \"Back to settings\""
@@ -412,7 +430,9 @@
   "upload_form": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Bulk upload issued items\""
+    ],
     "768": []
   },
   "user_edit": {
@@ -435,12 +455,16 @@
     "1024": [],
     "1280": [],
     "360": [],
-    "768": []
+    "768": [
+      "table scrolls sideways: \"Users\""
+    ]
   },
   "users_bulk": {
     "1024": [],
     "1280": [],
-    "360": [],
+    "360": [
+      "table scrolls sideways: \"Bulk upload users\""
+    ],
     "768": []
   },
   "webhook_new": {
