@@ -4,6 +4,7 @@
 """Settings → Fraud scoring model and the Admin page's model section (FIX_PLAN.md
 Phase 5.6) — web/routers/tenant_ml.py, web/routers/admin.py."""
 
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -129,4 +130,4 @@ def test_admin_page_counts_only_this_banks_decisions(client, db_session, tenant_
 
     page = client.get("/ui/admin/ml-models").text
 
-    assert "<td>check</td><td>0</td><td>0</td>" in page
+    assert re.search(r"<td[^>]*>check</td><td[^>]*>0</td><td[^>]*>0</td>", page)
