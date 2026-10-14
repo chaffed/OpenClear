@@ -32,8 +32,8 @@
         {% for row in rows %}
         <tr>
           <td>{{ row.label }}</td>
-          <td><input type="checkbox" name="email_{{ row.type.value }}" {{ "checked" if row.email_enabled else "" }}></td>
-          <td><input type="checkbox" name="sms_{{ row.type.value }}" {{ "checked" if row.sms_enabled else "" }} {{ "disabled" if not phone else "" }}></td>
+          <td><label class="select-target"><input type="checkbox" name="email_{{ row.type.value }}" {{ "checked" if row.email_enabled else "" }}><span class="visually-hidden">Email: {{ row.label }}</span></label></td>
+          <td><label class="select-target"><input type="checkbox" name="sms_{{ row.type.value }}" {{ "checked" if row.sms_enabled else "" }} {{ "disabled" if not phone else "" }}><span class="visually-hidden">Text message: {{ row.label }}</span></label></td>
         </tr>
         {% endfor %}
       </tbody>

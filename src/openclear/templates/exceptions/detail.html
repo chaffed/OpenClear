@@ -188,7 +188,7 @@
       <span>{{ row.entry.summary }}</span> <span class="text-muted">{{ row.actor_email }}, {{ row.entry.channel.value }}</span></li>
     {% endfor %}
   </ol>
-  <p><a href="/ui/audit-log">The whole action log</a></p>
+  <p class="link-line"><a href="/ui/audit-log">The whole action log</a></p>
 </details>
 {% endif %}
 
@@ -206,7 +206,7 @@
     {% if evidence and evidence.customer_name %}<div><span class="fact-label">Customer</span> {{ evidence.customer_name }}</div>{% endif %}
   </div>
   {% if item.network_code == "check" and not (evidence and evidence.check_image) %}<p class="hint">No check image has been uploaded for this item.</p>{% endif %}
-  {% if evidence and evidence.paid_item_id and can(ctx, "paid_item:read") %}<p><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
+  {% if evidence and evidence.paid_item_id and can(ctx, "paid_item:read") %}<p class="link-line"><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
   {% if item.network_code == "ach" and can(ctx, "ach_authorization:write") %}
   <p><a href="/ui/ach/authorizations/new?from_exception={{ item.id }}">Add this originator to the ACH allow list</a>. This authorizes future matching transactions; it doesn't decide this one.</p>
   {% endif %}

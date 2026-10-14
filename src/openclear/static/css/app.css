@@ -802,7 +802,10 @@ fieldset { min-width: 0; }
   .help-button { width: 44px; height: 44px; }
   .link-button { min-height: 44px; }
   summary { padding-block: 0.8rem; }
-  .back-link a, th a.sort-link, th.sortable-col .sort-button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  .back-link a, .link-line a, a.link-line, th a.sort-link, th.sortable-col .sort-button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  table.key-values td a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+  .settings-dialog-close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  input[type="color"] { width: 4rem; height: 44px; }
   .pagination a.button, .pagination span.button-disabled { display: inline-flex; align-items: center; min-height: 44px; }
   input[type="checkbox"], input[type="radio"] { width: 1.25rem; height: 1.25rem; }
   /* The box beside the first line, the text running on as one paragraph (a flex label would

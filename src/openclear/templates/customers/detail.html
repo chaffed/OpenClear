@@ -19,7 +19,7 @@
     <h1>{{ customer.name }}</h1>
     <a href="/ui/customers/{{ customer.id }}/edit" class="button secondary">{{ icon("edit") }}Edit</a>
   </div>
-  <table>
+  <table class="key-values">
     <tbody>
       <tr><th>Customer number</th><td>{{ customer.customer_number }}</td></tr>
       <tr><th>Status</th><td><span class="badge {{ 'badge-ok' if customer.is_active else '' }}">{{ 'active' if customer.is_active else 'inactive' }}</span></td></tr>
@@ -83,7 +83,7 @@
   {% else %}
   <p>No accounts assigned to this customer yet.</p>
   {% endif %}
-  <p><a href="/ui/accounts">View all accounts</a></p>
+  <p class="link-line"><a href="/ui/accounts">View all accounts</a></p>
 </div>
 
 <div class="card">
@@ -99,7 +99,7 @@
       Manages its own sign-on (needs a role with <code>customer_sso:manage</code>)</label>
     <button type="submit" class="secondary">{{ icon("save") }}Save</button>
   </form>
-  <p><a href="/ui/customers/{{ customer.id }}/activity">Its people and sign-on activity</a></p>
+  <p class="link-line"><a href="/ui/customers/{{ customer.id }}/activity">Its people and sign-on activity</a></p>
   {% if customer_admins %}
   <p>Its administrators: {{ customer_admins | join(", ") }}.</p>
   {% elif customer.self_manages_users %}

@@ -17,7 +17,7 @@
   <p>Effective date: {{ txn.effective_date }}</p>
   <p>Match status: <span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status.value }}</span></p>
   {% if txn.match_status.value == "exception" %}
-  <p><a href="/ui/exceptions">View in exceptions queue</a></p>
+  <p class="link-line"><a href="/ui/exceptions">View in exceptions queue</a></p>
   {% endif %}
 </div>
 {% endblock %}

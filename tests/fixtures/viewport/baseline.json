@@ -34,12 +34,8 @@
   "api_client_new": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Back to API clients\""
-    ],
-    "768": [
-      "small target: a \"Back to API clients\""
-    ]
+    "360": [],
+    "768": []
   },
   "api_clients": {
     "1024": [],
@@ -92,17 +88,8 @@
   "customer": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Its people and sign-on activity\"",
-      "small target: a \"View all accounts\"",
-      "small target: a \"dana@dental.example.com\"",
-      "table scrolls sideways: \"Maple Street Dental\""
-    ],
-    "768": [
-      "small target: a \"Its people and sign-on activity\"",
-      "small target: a \"View all accounts\"",
-      "small target: a \"dana@dental.example.com\""
-    ]
+    "360": [],
+    "768": []
   },
   "customer_control_panel": {
     "1024": [],
@@ -173,74 +160,10 @@
     "768": []
   },
   "notifications": {
-    "1024": [
-      "axe label (critical): input[name=\"email_account_unlocked\"]",
-      "axe label (critical): input[name=\"email_deadline_reminder\"]",
-      "axe label (critical): input[name=\"email_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"email_exception_created\"]",
-      "axe label (critical): input[name=\"sms_account_unlocked\"]",
-      "axe label (critical): input[name=\"sms_deadline_reminder\"]",
-      "axe label (critical): input[name=\"sms_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"sms_exception_created\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(2) > input[type=\"checkbox\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(3) > input[type=\"checkbox\"]"
-    ],
-    "1280": [
-      "axe label (critical): input[name=\"email_account_unlocked\"]",
-      "axe label (critical): input[name=\"email_deadline_reminder\"]",
-      "axe label (critical): input[name=\"email_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"email_exception_created\"]",
-      "axe label (critical): input[name=\"sms_account_unlocked\"]",
-      "axe label (critical): input[name=\"sms_deadline_reminder\"]",
-      "axe label (critical): input[name=\"sms_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"sms_exception_created\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(2) > input[type=\"checkbox\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(3) > input[type=\"checkbox\"]"
-    ],
-    "360": [
-      "small target: input[checkbox] \"email_account_unlocked\"",
-      "small target: input[checkbox] \"email_deadline_reminder\"",
-      "small target: input[checkbox] \"email_exception_auto_decided\"",
-      "small target: input[checkbox] \"email_exception_created\"",
-      "small target: input[checkbox] \"email_recommendation_awaiting_approval\"",
-      "small target: input[checkbox] \"sms_account_unlocked\"",
-      "small target: input[checkbox] \"sms_deadline_reminder\"",
-      "small target: input[checkbox] \"sms_exception_auto_decided\"",
-      "small target: input[checkbox] \"sms_exception_created\"",
-      "small target: input[checkbox] \"sms_recommendation_awaiting_approval\"",
-      "axe label (critical): input[name=\"email_account_unlocked\"]",
-      "axe label (critical): input[name=\"email_deadline_reminder\"]",
-      "axe label (critical): input[name=\"email_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"email_exception_created\"]",
-      "axe label (critical): input[name=\"sms_account_unlocked\"]",
-      "axe label (critical): input[name=\"sms_deadline_reminder\"]",
-      "axe label (critical): input[name=\"sms_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"sms_exception_created\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(2) > input[type=\"checkbox\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(3) > input[type=\"checkbox\"]"
-    ],
-    "768": [
-      "small target: input[checkbox] \"email_account_unlocked\"",
-      "small target: input[checkbox] \"email_deadline_reminder\"",
-      "small target: input[checkbox] \"email_exception_auto_decided\"",
-      "small target: input[checkbox] \"email_exception_created\"",
-      "small target: input[checkbox] \"email_recommendation_awaiting_approval\"",
-      "small target: input[checkbox] \"sms_account_unlocked\"",
-      "small target: input[checkbox] \"sms_deadline_reminder\"",
-      "small target: input[checkbox] \"sms_exception_auto_decided\"",
-      "small target: input[checkbox] \"sms_exception_created\"",
-      "small target: input[checkbox] \"sms_recommendation_awaiting_approval\"",
-      "axe label (critical): input[name=\"email_account_unlocked\"]",
-      "axe label (critical): input[name=\"email_deadline_reminder\"]",
-      "axe label (critical): input[name=\"email_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"email_exception_created\"]",
-      "axe label (critical): input[name=\"sms_account_unlocked\"]",
-      "axe label (critical): input[name=\"sms_deadline_reminder\"]",
-      "axe label (critical): input[name=\"sms_exception_auto_decided\"]",
-      "axe label (critical): input[name=\"sms_exception_created\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(2) > input[type=\"checkbox\"]",
-      "axe label (critical): tr:nth-child(2) > td:nth-child(3) > input[type=\"checkbox\"]"
-    ]
+    "1024": [],
+    "1280": [],
+    "360": [],
+    "768": []
   },
   "paid_items": {
     "1024": [],
@@ -299,23 +222,16 @@
   "setting_branding": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: input[color] \"Accent color\""
-    ],
-    "768": [
-      "small target: input[color] \"Accent color\""
-    ]
+    "360": [],
+    "768": []
   },
   "setting_fraud_model": {
     "1024": [],
     "1280": [],
     "360": [
-      "small target: a \"Back to settings\"",
       "table scrolls sideways: \"Fraud scoring model\""
     ],
-    "768": [
-      "small target: a \"Back to settings\""
-    ]
+    "768": []
   },
   "setting_password_policy": {
     "1024": [],
@@ -338,14 +254,8 @@
   "setting_sod": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Admin\"",
-      "small target: a \"Bookkeeper\""
-    ],
-    "768": [
-      "small target: a \"Admin\"",
-      "small target: a \"Bookkeeper\""
-    ]
+    "360": [],
+    "768": []
   },
   "setting_support_access": {
     "1024": [],
@@ -356,12 +266,8 @@
   "settings_dialog": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: button.settings-dialog-close \"Close\""
-    ],
-    "768": [
-      "small target: button.settings-dialog-close \"Close\""
-    ]
+    "360": [],
+    "768": []
   },
   "sign_on": {
     "1024": [],
@@ -372,12 +278,8 @@
   "sso_new": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Cancel\""
-    ],
-    "768": [
-      "small target: a \"Cancel\""
-    ]
+    "360": [],
+    "768": []
   },
   "stop_payments": {
     "1024": [],
@@ -388,12 +290,8 @@
   "upload": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Back to issued items\""
-    ],
-    "768": [
-      "small target: a \"Back to issued items\""
-    ]
+    "360": [],
+    "768": []
   },
   "upload_form": {
     "1024": [],
@@ -406,12 +304,8 @@
   "user_edit": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Cancel\""
-    ],
-    "768": [
-      "small target: a \"Cancel\""
-    ]
+    "360": [],
+    "768": []
   },
   "user_new": {
     "1024": [],
@@ -438,12 +332,8 @@
   "webhook_new": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Back to webhooks\""
-    ],
-    "768": [
-      "small target: a \"Back to webhooks\""
-    ]
+    "360": [],
+    "768": []
   },
   "webhooks": {
     "1024": [],
@@ -454,23 +344,7 @@
   "wizard": {
     "1024": [],
     "1280": [],
-    "360": [
-      "small target: a \"Add a customer\"",
-      "small target: a \"Add a user\"",
-      "small target: a \"Add an account\"",
-      "small target: a \"Go to Fraud scoring model\"",
-      "small target: a \"Go to Security Groups\"",
-      "small target: a \"Go to Settings\"",
-      "small target: a \"Go to Single Sign-On\""
-    ],
-    "768": [
-      "small target: a \"Add a customer\"",
-      "small target: a \"Add a user\"",
-      "small target: a \"Add an account\"",
-      "small target: a \"Go to Fraud scoring model\"",
-      "small target: a \"Go to Security Groups\"",
-      "small target: a \"Go to Settings\"",
-      "small target: a \"Go to Single Sign-On\""
-    ]
+    "360": [],
+    "768": []
   }
 }

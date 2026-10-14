@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Segregation of duties — {{ ctx.tenant_name }}{% endblock %}
 {% block content %}
@@ -14,14 +15,11 @@
   </ul>
   {% if conflicts %}
   <h2>Groups that combine separate duties</h2>
-  <table>
-    <thead><tr><th>Group</th><th>Breaks</th></tr></thead>
-    <tbody>
-      {% for g, rules_broken in conflicts %}
-      <tr><td><a href="/ui/security-groups/{{ g.id }}/edit">{{ g.name }}</a></td><td>{{ rules_broken | map(attribute="title") | join("; ") }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [{"key": "group", "label": "Group", "role": "primary"}, {"key": "breaks", "label": "Breaks", "role": "text"}] %}
+  {% call(conflict, col, part="cell") rt.responsive_table(columns, conflicts, id="conflict") -%}
+    {%- if col.key == "group" %}<a href="/ui/security-groups/{{ conflict[0].id }}/edit">{{ conflict[0].name }}</a>
+    {%- else %}{{ conflict[1] | map(attribute="title") | join("; ") }}{% endif %}
+  {%- endcall %}
   <p>Change these groups before turning on enforcement.</p>
   {% endif %}
   <form method="post" action="/ui/settings/segregation-of-duties">

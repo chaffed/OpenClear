@@ -15,7 +15,7 @@
   <p>Match status: <span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span></p>
   <p>Settlement status: {{ item.settlement_status.value }}</p>
   {% if item.match_status.value == "exception" %}
-  <p><a href="/ui/exceptions">View in exceptions queue</a></p>
+  <p class="link-line"><a href="/ui/exceptions">View in exceptions queue</a></p>
   {% endif %}
 </div>
 {% endblock %}
