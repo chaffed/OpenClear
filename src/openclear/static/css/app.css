@@ -777,6 +777,14 @@ fieldset { min-width: 0; }
   table.responsive tr:not(:has(td.cell-money)) td.cell-actions:has(> .row-menu) { grid-column: 2; grid-row: 1; margin-top: 0; align-self: start; }
 }
 
+/* The dashboard's and billing's figures on a phone: two to a row, so they fit on one screen. */
+@media (max-width: 639.98px) {
+  .stat-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .stat-card { min-width: 0; padding: 0.75rem 0.85rem; }
+  .stat-card .stat-value { font-size: 1.5rem; }
+  .stat-card .stat-value.stat-value-text { font-size: 1.1rem; white-space: normal; line-height: 1.3; min-height: 2.25rem; display: flex; align-items: center; }
+}
+
 /* On a phone: an upload form's column guide, one column per card; the evidence and
    comparison tables, narrower cells that may break a long value. */
 @media (max-width: 639.98px) {
@@ -822,8 +830,11 @@ fieldset { min-width: 0; }
 .bottom-sheet .sheet-only { display: inline-flex; }
 .bottom-sheet .list-search-grid { grid-template-columns: minmax(0, 1fr); }
 
-/* Touch targets (MOBILE_PLAN.md §1): below desktop, everything tapped is at least 44x44px. */
-@media (max-width: 1023.98px) {
+/* Touch targets (MOBILE_PLAN.md §1): below desktop, and on any touch screen however wide (a
+   landscape iPad is 1024px and up), everything tapped is at least 44x44px. A mouse at desktop
+   widths keeps the desktop's sizes. */
+@media (max-width: 1023.98px), (pointer: coarse) {
+  table.responsive > tbody td :is(a, .link-button) { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
   button, .button, select, .table-search,
   input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="hidden"]) { min-height: 44px; }
   .sidenav a, .sidenav .link-button { min-height: 44px; }

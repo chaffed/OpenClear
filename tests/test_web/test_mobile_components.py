@@ -227,3 +227,20 @@ def test_a_rows_actions_in_a_sheet_on_a_phone(client, tenant_factory, browser_pa
     confirm.get_by_role("button", name="Cancel").click()
     sheet.get_by_role("button", name="Close").click()
     assert not sheet.is_visible()
+
+
+def test_a_wide_touch_screen_gets_44px_targets(client, tenant_factory, browser_page):
+    """A landscape iPad is 1024px or more, so no width query catches it: (pointer: coarse)
+    does. The same width with a mouse keeps the desktop's sizes."""
+    tenant, _account, users = tenant_factory.make(slug="wide-touch")
+    _sign_in(client, tenant, users)
+
+    def heights(page):
+        page.goto("http://testserver/ui/users")
+        row = page.locator("table.responsive tbody tr", has_text=users["viewer"].email)
+        return (row.get_by_role("link", name="Edit").bounding_box()["height"],
+                row.get_by_role("button", name="Reset password").bounding_box()["height"],
+                page.locator(".help-button").bounding_box()["height"])
+
+    assert all(h >= 44 for h in heights(browser_page(1366, 1024, has_touch=True, is_mobile=True)))
+    assert all(h < 44 for h in heights(browser_page(1366, 1024)))
