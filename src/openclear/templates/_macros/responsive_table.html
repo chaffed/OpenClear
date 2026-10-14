@@ -13,7 +13,7 @@
      numeric True for a column that sorts as a number
      hide    "phone" or "tablet": dropped below that width (the item's own page has it)
      sheet   actions only: on a phone, a ⋯ button opening the actions in a bottom sheet
-             (for more than two)
+             (for more than two); "tablet": below desktop
      th      extra header attributes, as a string without quotes (data-no-sort)
      th_class  classes for the header cell
      header  True: the caller block renders the header too, called with part="header"
@@ -49,7 +49,7 @@
           {%- set title = caller(row, col, "title") | trim %}
           {%- set content = caller(row, col) %}
           {{ sheet_trigger(sheet_id, "", "more_horiz", class="secondary row-menu", aria_label=title) }}
-          {%- call bottom_sheet(sheet_id, title) %}{{ content }}{% endcall %}
+          {%- call bottom_sheet(sheet_id, title, below="tablet" if col.sheet == "tablet" else "phone") %}{{ content }}{% endcall %}
           {%- else %}{{ caller(row, col) }}{% endif -%}
         </td>
         {%- endfor %}

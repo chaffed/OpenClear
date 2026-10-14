@@ -63,21 +63,3 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 
 ## Details
-
-### exception at 360px
-- table scrolls sideways: "What was expected vs. what was presented" (324px in 278px)
-
-### action_log at 768px
-- table scrolls sideways: "Action log" (788px in 686px)
-
-### users at 768px
-- table scrolls sideways: "Users" (692px in 686px)
-
-### upload_form at 360px
-- table scrolls sideways: "Bulk upload issued items" (301px in 278px)
-
-### users_bulk at 360px
-- table scrolls sideways: "Bulk upload users" (372px in 278px)
-
-### setting_fraud_model at 360px
-- table scrolls sideways: "Fraud scoring model" (287px in 278px)

@@ -198,6 +198,15 @@ def test_a_rows_actions_in_a_sheet_on_a_phone(client, tenant_factory, browser_pa
     assert row.get_by_role("button", name="Reset password").is_visible()
     assert not row.locator(".row-menu").is_visible()
 
+    # Users' actions (sheet: "tablet") are in the sheet on a tablet too, the row still a row.
+    page = browser_page(768)
+    page.goto("http://testserver/ui/users")
+    row = page.locator("table.responsive tbody tr", has_text=users["viewer"].email)
+    assert page.evaluate("getComputedStyle(document.querySelector('table.responsive tbody tr')).display") == "table-row"
+    assert not row.get_by_role("button", name="Reset password").is_visible()
+    row.get_by_role("button", name=f"Actions for {users['viewer'].email}").click()
+    assert page.get_by_role("dialog", name=f"Actions for {users['viewer'].email}").get_by_role("button", name="Reset password").is_visible()
+
     page = browser_page(360)
     page.goto("http://testserver/ui/users")
     row = page.locator("table.responsive tbody tr", has_text=users["viewer"].email)

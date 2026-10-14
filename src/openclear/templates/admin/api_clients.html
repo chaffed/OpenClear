@@ -26,7 +26,7 @@
     {"key": "customer", "label": "Customer"},
     {"key": "last_used", "label": "Last used"},
     {"key": "status", "label": "Status", "role": "status"},
-    {"key": "actions", "label": "", "role": "actions", "sheet": True},
+    {"key": "actions", "label": "", "role": "actions", "sheet": "tablet"},
   ] %}
   {% call(c, col, part="cell") rt.responsive_table(columns, clients, attrs="data-sortable", id="client") -%}
     {%- if part == "title" %}Actions for {{ c.name }}

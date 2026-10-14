@@ -737,6 +737,15 @@ fieldset { min-width: 0; }
 @media (max-width: 1023.98px) {
   table.responsive .hide-tablet { display: none; }
   table.responsive > tbody td :is(a, .link-button) { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  /* A long address or code may break, so a table that doesn't fit narrows instead of
+     scrolling (a table that fits is laid out as before). */
+  table.responsive > tbody td { overflow-wrap: anywhere; }
+  /* Row actions in a sheet (a sheet: "tablet" column below desktop, the rest on phones). */
+  .row-menu { width: 44px; justify-content: center; padding: 0; }
+  .bottom-sheet .sheet-content :is(a, .link-button) {
+    display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 0.25rem; border-bottom: 1px solid var(--border);
+  }
+  .bottom-sheet .sheet-content .inline-form { display: block; }
 }
 @media (max-width: 639.98px) {
   table.responsive .hide-phone { display: none; }
@@ -764,13 +773,33 @@ fieldset { min-width: 0; }
   table.responsive > tbody > tr:has(> td.cell-select) { padding-left: 3rem; }
   table.responsive td.cell-select { position: absolute; top: 0.4rem; left: 0.15rem; width: auto; grid-column: auto; grid-row: auto; }
   table.responsive td.cell-select label, table.responsive td.cell-select input { margin: 0; }
-  .row-menu { width: 44px; justify-content: center; padding: 0; }
   /* With no amount beside the title, the ⋯ button goes there instead of a row of its own. */
   table.responsive tr:not(:has(td.cell-money)) td.cell-actions:has(> .row-menu) { grid-column: 2; grid-row: 1; margin-top: 0; align-self: start; }
-  .bottom-sheet .sheet-content :is(a, .link-button) {
-    display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 0.25rem; border-bottom: 1px solid var(--border);
-  }
-  .bottom-sheet .sheet-content .inline-form { display: block; }
+}
+
+/* On a phone: an upload form's column guide, one column per card; the evidence and
+   comparison tables, narrower cells that may break a long value. */
+@media (max-width: 639.98px) {
+  table.column-guide thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.column-guide, table.column-guide tbody, table.column-guide tr, table.column-guide td { display: block; }
+  table.column-guide tr { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+  table.column-guide td { border: 0; padding: 0.1rem 0; overflow-wrap: anywhere; }
+  table.column-guide td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+  table.column-guide td:nth-child(2)::before { content: "Required: "; color: var(--text-faint); font-size: 0.85rem; }
+  table.column-guide td:nth-child(3)::before { content: "Example: "; color: var(--text-faint); font-size: 0.85rem; }
+  table.evidence :is(th, td), table.comparison :is(th, td) { padding-inline: 0.35rem; }
+  table.evidence td, table.comparison td { overflow-wrap: anywhere; }
+  /* Each row's label with its mismatch badge on one line, expected and presented below. */
+  table.evidence, table.evidence > :is(thead, tbody) { display: block; }
+  table.evidence tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; border-bottom: 1px solid var(--border); }
+  table.evidence :is(th, td) { border: 0; }
+  table.evidence > thead th:is(:first-child, :last-child) { display: none; }
+  table.evidence > tbody th[scope="row"] { grid-row: 1; grid-column: 1; padding-bottom: 0; }
+  table.evidence > tbody td:nth-of-type(1) { grid-row: 2; grid-column: 1; }
+  table.evidence > tbody td:nth-of-type(2) { grid-row: 2; grid-column: 2; }
+  table.evidence > tbody td:nth-of-type(3) { grid-row: 1; grid-column: 2; justify-self: end; padding-bottom: 0; }
+  table.evidence > tbody td:nth-of-type(3):empty { display: none; }
+  table.evidence tr.mismatch { background: var(--badge-danger-bg); }
 }
 
 /* Bottom sheets (templates/_macros/bottom_sheet.html): in place, the wrapper isn't there for

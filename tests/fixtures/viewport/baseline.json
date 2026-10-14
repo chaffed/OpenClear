@@ -27,9 +27,7 @@
     "1024": [],
     "1280": [],
     "360": [],
-    "768": [
-      "table scrolls sideways: \"Action log\""
-    ]
+    "768": []
   },
   "api_client_new": {
     "1024": [],
@@ -112,9 +110,7 @@
   "exception": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"What was expected vs. what was presented\""
-    ],
+    "360": [],
     "768": []
   },
   "exceptions": {
@@ -228,9 +224,7 @@
   "setting_fraud_model": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Fraud scoring model\""
-    ],
+    "360": [],
     "768": []
   },
   "setting_password_policy": {
@@ -296,9 +290,7 @@
   "upload_form": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Bulk upload issued items\""
-    ],
+    "360": [],
     "768": []
   },
   "user_edit": {
@@ -317,16 +309,12 @@
     "1024": [],
     "1280": [],
     "360": [],
-    "768": [
-      "table scrolls sideways: \"Users\""
-    ]
+    "768": []
   },
   "users_bulk": {
     "1024": [],
     "1280": [],
-    "360": [
-      "table scrolls sideways: \"Bulk upload users\""
-    ],
+    "360": [],
     "768": []
   },
   "webhook_new": {

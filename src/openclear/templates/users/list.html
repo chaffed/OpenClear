@@ -32,7 +32,7 @@
     {"key": "group", "label": "Security group"},
     {"key": "customer", "label": "Customer"},
     {"key": "status", "label": "Status", "role": "status"},
-    {"key": "actions", "label": "", "role": "actions", "sheet": True},
+    {"key": "actions", "label": "", "role": "actions", "sheet": "tablet"},
   ] %}
   {% call(row, col, part="cell") rt.responsive_table(columns, page_obj.items, attrs="data-sortable", id="user") -%}
     {%- if part == "title" %}Actions for {{ row.user.email }}

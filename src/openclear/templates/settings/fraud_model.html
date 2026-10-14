@@ -25,7 +25,7 @@
     since {{ changed_at.strftime("%Y-%m-%d") }}{% if changed_by %} ({{ changed_by }}){% endif %}{% endif %}.
     {% if uses_bank_model %}Manage it in <a href="/ui/admin/ml-models">Settings → ML models</a>.{% endif %}</p>
 
-  <table>
+  <table class="comparison">
     <thead><tr><th></th><th>Shared model</th><th>Bank-only model</th></tr></thead>
     <tbody>
       <tr><th scope="row">Learns from</th><td>Every participating bank's decisions</td><td>Only your own decisions</td></tr>
