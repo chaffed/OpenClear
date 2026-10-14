@@ -113,6 +113,8 @@ PAGES = [
     ("person", "{person}", "customer"),
     ("people_invite", "/ui/people/invite", "customer"),
     ("people_activity", "/ui/people/activity", "customer"),
+    ("customer_sign_on", "/ui/sign-on", "customer"),
+    ("customer_sign_on_new", "/ui/sign-on/new", "customer"),
     ("customer_control_panel", "/ui/settings", "customer"),
 ]
 # Pages measured after a step: (selector clicked, selector waited for).
@@ -240,8 +242,10 @@ def _seed(client, db_session, tenant_factory):
                                           tenant_name="Riverside Community Bank")
     customer = db_session.execute(select(Customer).where(Customer.tenant_id == tenant.id)).scalar_one()
     customer.self_manages_users = True
+    customer.self_manages_sso = True
     role = security_group_service.create_security_group(db_session, tenant.id, security_group_service.SecurityGroupInput(
-        name="Customer admin", permissions=["customer_user:manage", "issued_item:read", "issued_item:write"], offered_to_customers=True))
+        name="Customer admin", permissions=["customer_user:manage", "customer_sso:manage", "issued_item:read", "issued_item:write"],
+        offered_to_customers=True))
     groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
     for number, (name, group, read_only) in enumerate((("Accounting system", "Preparer", False), ("Reporting", "Viewer", True)), start=1):
         issued = api_client_service.create_client(db_session, tenant.id, name=name, read_only=read_only,

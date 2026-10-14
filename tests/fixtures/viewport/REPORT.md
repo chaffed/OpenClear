@@ -60,6 +60,8 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | person | ✓ | ✓ | ✓ | ✓ |
 | people_invite | ✓ | ✓ | ✓ | ✓ |
 | people_activity | ✓ | ✓ | ✓ | ✓ |
+| customer_sign_on | ✓ | ✓ | ✓ | ✓ |
+| customer_sign_on_new | ✓ | ✓ | ✓ | ✓ |
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 
 ## Details

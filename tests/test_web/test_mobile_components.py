@@ -244,3 +244,22 @@ def test_a_wide_touch_screen_gets_44px_targets(client, tenant_factory, browser_p
 
     assert all(h >= 44 for h in heights(browser_page(1366, 1024, has_touch=True, is_mobile=True)))
     assert all(h < 44 for h in heights(browser_page(1366, 1024)))
+
+
+def test_a_setting_opens_full_screen_on_a_phone(client, tenant_factory, browser_page):
+    tenant, _account, users = tenant_factory.make(slug="setting-sheet")
+    _sign_in(client, tenant, users)
+
+    page = browser_page(360, 780)
+    page.goto("http://testserver/ui/settings")
+    page.click('a.tile[data-key="timeouts"]')
+    page.wait_for_selector("#settings-dialog[open] [data-dialog-body] form")
+    box = page.locator("#settings-dialog").bounding_box()
+    assert (box["x"], box["y"], box["width"], box["height"]) == (0, 0, 360, 780)
+    close = page.get_by_role("button", name="Close")
+    assert close.bounding_box()["height"] >= 44 and close.is_visible()
+    # The heading and Close stay at the top while the form scrolls under them.
+    page.locator("#settings-dialog").evaluate("(d) => { d.scrollTop = d.scrollHeight; }")
+    assert 0 <= close.bounding_box()["y"] < 60
+    close.click()
+    assert not page.locator("#settings-dialog").is_visible()
