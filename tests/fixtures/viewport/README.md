@@ -22,7 +22,8 @@ Files:
   Times and dates are replaced by fixed text before the picture is taken. A changed picture
   fails the test, with the new picture and the difference in `.openclear-run/viewport-diffs/`.
 
-When a phase fixes problems, or the desktop is deliberately changed, rewrite all three:
+When a phase fixes problems, or the desktop is deliberately changed, rewrite all three (each width is its own
+test; run all four together, as below, so REPORT.md is written):
 
 ```
 OPENCLEAR_VIEWPORT_WRITE_BASELINE=1 .venv/bin/python -m pytest -q tests/test_web/test_viewports.py

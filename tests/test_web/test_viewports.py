@@ -49,6 +49,7 @@ BASELINE = HERE / "baseline.json"
 REPORT = HERE / "REPORT.md"
 SCREENSHOTS = HERE / sys.platform  # compared on SQLite only: Postgres breaks ties between rows differently
 DIFFS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-diffs"
+RESULTS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-results"  # writing the baseline: each width's details
 SHOTS = Path(__file__).resolve().parents[2] / ".openclear-run" / "viewport-shots"  # OPENCLEAR_VIEWPORT_SHOTS=1: every width, to look at
 
 VIEWPORTS = {360: 780, 768: 1024, 1024: 768, 1280: 800}  # width: height
@@ -264,6 +265,8 @@ def _seed(client, db_session, tenant_factory):
                                             "issued_item:write", "compliance:read"],
         offered_to_customers=True))
     groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
+    # Groups list newest first; made in the same second as the defaults, this one would tie.
+    role.created_at = max(g.created_at for g in groups.values()) + timedelta(minutes=1)
     for number, (name, group, read_only) in enumerate((("Accounting system", "Preparer", False), ("Reporting", "Viewer", True)), start=1):
         issued = api_client_service.create_client(db_session, tenant.id, name=name, read_only=read_only,
                                                   security_group_id=groups[group].id)
@@ -380,7 +383,26 @@ def _write_report(found: dict, details: dict) -> None:
     REPORT.write_text("\n".join(lines).rstrip() + "\n")
 
 
-def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_factory):
+def _write_width(width: int, found: dict, details: dict) -> None:
+    """Writing the baseline: this width's problems replace its entries in baseline.json, and
+    its details are kept in .openclear-run/viewport-results/ until all four widths have been
+    written, when REPORT.md is written from them (the widths run as separate tests)."""
+    baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
+    for name, _path, _who in PAGES:
+        baseline.setdefault(name, {})[str(width)] = found[name]
+    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    (RESULTS / f"{width}.json").write_text(json.dumps(details, ensure_ascii=False))
+    written = {w: RESULTS / f"{w}.json" for w in VIEWPORTS}
+    if all(f.exists() for f in written.values()):
+        by_width = {w: json.loads(f.read_text()) for w, f in written.items()}
+        _write_report(baseline, {name: {str(w): by_width[w][name] for w in VIEWPORTS} for name, _path, _who in PAGES})
+        shutil.rmtree(RESULTS)
+
+
+@pytest.mark.parametrize("width", list(VIEWPORTS), ids=lambda width: f"{width}px")
+def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, tenant_factory):
+    """One width per test, so the four run side by side under xdist."""
     try:
         runner = playwright.sync_playwright().start()
         browser = runner.chromium.launch()
@@ -397,66 +419,65 @@ def test_key_pages_on_phones_tablets_and_desktops(client, db_session, tenant_fac
         route.fulfill(status=response.status_code, headers=dict(response.headers), body=response.content)
 
     writing = bool(os.environ.get("OPENCLEAR_VIEWPORT_WRITE_BASELINE"))
-    shutil.rmtree(DIFFS, ignore_errors=True)
+    if width == REFERENCE_WIDTH:
+        shutil.rmtree(DIFFS, ignore_errors=True)
     axe = (FIXTURES / "axe" / "axe.min.js").read_text()
-    found: dict[str, dict[str, list[str]]] = {name: {} for name, _path, _who in PAGES}
-    details: dict[str, dict[str, list[str]]] = {name: {} for name, _path, _who in PAGES}
+    found: dict[str, list[str]] = {}
+    details: dict[str, list[str]] = {}
     signed_in = "bank"
     changed_pictures: dict[str, str] = {}
     errors: list[str] = []
     try:
-        for width, height in VIEWPORTS.items():
-            context = browser.new_context(viewport={"width": width, "height": height}, bypass_csp=True,
-                                          color_scheme="light", reduced_motion="reduce")
-            context.route("http://testserver/**", serve)
-            page = context.new_page()
-            page.on("pageerror", lambda error, w=width: errors.append(f"{w}px {page.url}: {error}"))
-            for name, path, who in PAGES:
-                limiter._hits.clear()  # ~50 pages a width, each with its scripts: past the per-minute limit
-                if who != signed_in:
-                    _sign_in(client, slug, people[who])
-                    signed_in = who
-                response = page.goto("http://testserver" + path.format(**paths).split("#")[0])
-                assert response.status == 200 and "/ui/login" not in page.url, f"{name}: {response.status} at {page.url}"
-                if name in STEPS:
-                    click, wait_for = STEPS[name]
-                    page.click(click)
-                    page.wait_for_selector(wait_for)
-                measured = page.evaluate(MEASURE, {"width": width, "touch": TOUCH_TARGET if width < 1024 else 0,
-                                                   "decision": name == "exception"})
-                page.add_script_tag(content=axe)
-                results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']}})")
-                found[name][str(width)] = sorted(set(measured["problems"])) + _axe_problems(results)
-                details[name][str(width)] = measured["details"]
+        context = browser.new_context(viewport={"width": width, "height": VIEWPORTS[width]}, bypass_csp=True,
+                                      color_scheme="light", reduced_motion="reduce")
+        context.route("http://testserver/**", serve)
+        page = context.new_page()
+        page.on("pageerror", lambda error: errors.append(f"{width}px {page.url}: {error}"))
+        for name, path, who in PAGES:
+            limiter._hits.clear()  # ~50 pages, each with its scripts: past the per-minute limit
+            if who != signed_in:
+                _sign_in(client, slug, people[who])
+                signed_in = who
+            response = page.goto("http://testserver" + path.format(**paths).split("#")[0])
+            assert response.status == 200 and "/ui/login" not in page.url, f"{name}: {response.status} at {page.url}"
+            if name in STEPS:
+                click, wait_for = STEPS[name]
+                page.click(click)
+                page.wait_for_selector(wait_for)
+            measured = page.evaluate(MEASURE, {"width": width, "touch": TOUCH_TARGET if width < 1024 else 0,
+                                               "decision": name == "exception"})
+            page.add_script_tag(content=axe)
+            results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']}})")
+            found[name] = sorted(set(measured["problems"])) + _axe_problems(results)
+            details[name] = measured["details"]
 
-                if os.environ.get("OPENCLEAR_VIEWPORT_SHOTS"):
-                    SHOTS.mkdir(parents=True, exist_ok=True)
-                    page.screenshot(path=SHOTS / f"{name}-{width}.png", full_page=True, animations="disabled", caret="hide")
-                if width == REFERENCE_WIDTH:
-                    page.evaluate(STEADY)
-                    taken = page.screenshot(full_page=True, animations="disabled", caret="hide")
-                    reference = SCREENSHOTS / f"{name}.png"
-                    if writing:
-                        SCREENSHOTS.mkdir(parents=True, exist_ok=True)
-                        if not (reference.exists() and _identical(reference, taken)):  # PNG bytes vary when pixels don't
-                            reference.write_bytes(taken)
-                    elif reference.exists() and db_session.get_bind().dialect.name == "sqlite":
-                        difference = _same_picture(reference, taken, DIFFS / f"{name}.png")
-                        if difference:
-                            changed_pictures[name] = difference
-            context.close()
+            if os.environ.get("OPENCLEAR_VIEWPORT_SHOTS"):
+                SHOTS.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=SHOTS / f"{name}-{width}.png", full_page=True, animations="disabled", caret="hide")
+            if width == REFERENCE_WIDTH:
+                page.evaluate(STEADY)
+                taken = page.screenshot(full_page=True, animations="disabled", caret="hide")
+                reference = SCREENSHOTS / f"{name}.png"
+                if writing:
+                    SCREENSHOTS.mkdir(parents=True, exist_ok=True)
+                    if not (reference.exists() and _identical(reference, taken)):  # PNG bytes vary when pixels don't
+                        reference.write_bytes(taken)
+                elif reference.exists() and db_session.get_bind().dialect.name == "sqlite":
+                    difference = _same_picture(reference, taken, DIFFS / f"{name}.png")
+                    if difference:
+                        changed_pictures[name] = difference
+        context.close()
     finally:
         browser.close()
         runner.stop()
 
     if writing:
-        BASELINE.write_text(json.dumps(found, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
-        _write_report(found, details)
+        _write_width(width, found, details)
         return
     assert not errors, "Script errors:\n" + "\n".join(errors)
     baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
-    new = {f"{name} at {width}px": sorted(set(problems) - set(baseline.get(name, {}).get(width, [])))
-           for name, by_width in found.items() for width, problems in by_width.items()}
+    new = {f"{name} at {width}px": sorted(set(problems) - set(baseline.get(name, {}).get(str(width), [])))
+           for name, problems in found.items()}
     new = {where: problems for where, problems in new.items() if problems}
     assert not new, "New problems on phones, tablets or desktops (see tests/fixtures/viewport/README.md):\n" + json.dumps(new, indent=2, ensure_ascii=False)
     assert not changed_pictures, (f"The desktop ({REFERENCE_WIDTH}px) changed; the new pictures and differences are in {DIFFS}:\n"

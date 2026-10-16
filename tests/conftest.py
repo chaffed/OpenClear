@@ -18,6 +18,7 @@ os.environ.setdefault("OPENCLEAR_REENCRYPT_SECRETS_AT_STARTUP", "false")  # test
 import uuid
 from collections.abc import Generator
 
+import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
@@ -35,6 +36,12 @@ from openclear.services import ach_return_reason_service, security_group_service
 # openclear.domain's __init__ imports every model module, fully populating Base.metadata
 # before create_all — see its docstring for why this must be centralized in one place.
 import openclear.domain  # noqa: F401
+
+# Passwords hashed at bcrypt's lowest cost (4) rather than its default (12): each
+# TenantFactory.make() hashes four, and at full cost that was half the suite's time.
+# Hashes made at any cost still verify, so only the time changes.
+_gensalt = bcrypt.gensalt
+bcrypt.gensalt = lambda rounds=4, prefix=b"2b": _gensalt(rounds, prefix)
 
 
 @pytest.fixture(autouse=True)
