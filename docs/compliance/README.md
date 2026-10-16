@@ -8,6 +8,9 @@ for each point is.
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack
+- [Complementary user entity controls](cuecs.md): what OpenClear relies on the bank, its
+  customers and its host to do, each filed under its NIST SP 800-53 control, to map onto your
+  own control inventory
 
 **These pages are not legal advice.** They describe features and where to find evidence. Each
 bank's own risk assessment decides whether its use of OpenClear meets a requirement, and
@@ -39,8 +42,9 @@ bundle shows its SHA-256 and signature on the last page. The bundle contains:
 
 ## What the bank is responsible for
 
-OpenClear can only report what it can see. These stay with the bank, or with whoever hosts
-OpenClear for it:
+The full list, with a NIST SP 800-53 control for each, is the [CUEC inventory](cuecs.md).
+In short: OpenClear can only report what it can see. These stay with the bank, or with
+whoever hosts OpenClear for it:
 
 - **Hosting:** disk and database encryption, backups, network security, patching the
   operating system and database.

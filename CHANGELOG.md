@@ -49,6 +49,15 @@ Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with
   expected and what was presented, with *Upload an image* for people who can (it was only
   in the collapsed *More about this exception*).
 
+Controls (CONTROLS_PLAN.md CT0):
+
+- **Complementary user entity controls**: what OpenClear's controls rely on the bank, its
+  business customers and whoever hosts it to do, 57 in all, each filed under its NIST SP
+  800-53 Rev. 5 control (`B-AC-5-01`, `C-IA-2-01`, `H-SC-28(1)-01`). For each: what OpenClear
+  does that relies on it, how OpenClear can evidence it, and where. On the docs site
+  (Compliance → User entity controls), and as `docs/compliance/cuecs.json` and `cuecs.csv`
+  to map onto your own control inventory.
+
 ## 1.15.0 — 2026-10-13
 
 Customers can manage their own people and sign-on, when their bank allows it

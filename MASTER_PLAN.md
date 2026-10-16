@@ -122,3 +122,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-13 MOBILE_PLAN.md written (phones and tablets, plugin UI slots, customer API clients, bank approval; mTLS scoped but hidden). Next: its R0.
 - 2026-10-13 MOBILE_PLAN.md R0: viewport checks and the 1280px desktop reference in the suite; only touch targets fail (360 and 768px). Next: R1.
 - 2026-10-13 MOBILE_PLAN.md R1: breakpoints, navigation drawer, bottom sheet, responsive_table; eleven lists as cards on phones; desktop unchanged. Next: R2.
+- 2026-10-15 CONTROLS_PLAN.md written (control inventory, test history and deviations, CUEC mappings and attestations automated from test results, OSCAL and GRC exports). CT0 built: the CUEC inventory, 57 CUECs filed under NIST SP 800-53 Rev. 5, on the docs site and as JSON and CSV. Next: CT1.
