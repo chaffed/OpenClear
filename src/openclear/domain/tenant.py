@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -36,6 +36,11 @@ class Tenant(Base):
     # bank's approval (MOBILE_PLAN.md R6; services/customer_approval_service.py). Off by default;
     # each customer can follow it or override it (Customer.approve_users).
     approve_customer_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Control deviations (CONTROLS_PLAN.md CT2; services/control_results_service.py): how long a
+    # check may stay at FAIL before it counts against the control (CT-D6), and the checks whose
+    # WARN also opens a deviation (every check's FAIL does).
+    control_grace_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24, server_default="24")
+    control_warn_deviations: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

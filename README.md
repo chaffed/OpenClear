@@ -681,6 +681,12 @@ third-party risk guidance):
   OpenClear's controls, each filed under NIST SP 800-53 ([docs/compliance/controls.md](docs/compliance/controls.md),
   `GET /api/v1/compliance/controls`), and what they rely on the bank, its customers and its host
   to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)).
+  38 checks: some look at the bank as it is (hourly), some at every item in a period (nightly,
+  over the previous day: dual control, two-person changes, replays before changes, support
+  access, customers' timeliness). Every scheduled run is kept for seven years
+  (`OPENCLEAR_CONTROL_RESULT_RETENTION_DAYS`), with a 30-day strip on each check's page; a FAIL
+  opens a deviation, where someone with `compliance:manage` records the cause and the response;
+  and any past period can be tested on demand from the data OpenClear already keeps.
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
   PDF bundle for a period.
 - **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to

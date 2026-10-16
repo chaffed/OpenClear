@@ -40,10 +40,10 @@ def test_each_cuec_is_complete(c):
         assert c.check in cuecs.EXISTING_CHECKS | set(cuecs.PLANNED_CHECKS), c.check
 
 
-def test_existing_checks_are_on_the_controls_page():
-    source = (ROOT / "src" / "openclear" / "services" / "controls_service.py").read_text()
-    live = set(re.findall(r'Control\("(\w+)"', source))
-    assert cuecs.EXISTING_CHECKS <= live, cuecs.EXISTING_CHECKS - live
+def test_existing_checks_are_in_the_registry():
+    from openclear.compliance import checks
+
+    assert cuecs.EXISTING_CHECKS == {c.key for c in checks.registry()}
     assert not cuecs.EXISTING_CHECKS & set(cuecs.PLANNED_CHECKS)
 
 

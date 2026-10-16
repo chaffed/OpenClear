@@ -302,3 +302,20 @@ One merge per phase, at most one migration each, the three full suites once per 
   `/cuecs` (any signed-in caller, as it's published; a customer's session sees only its own).
   The Controls page is one card per family, controls as rows (cards on a phone). Until CT4's
   `compliance:read`, the controls endpoint uses `audit_log:read`, as `/controls/status` does.
+- 2026-10-16 CT1 released in 1.17.0.
+- 2026-10-16 CT2 built on branch `ct2-results`: `compliance/checks.py` (38 checks: kind, schedule,
+  scope, needs_request; `KEYS` for import-time readers), the 25 new checks in
+  `services/control_checks.py` (20 state, 5 population). `control_test_result` and
+  `control_deviation` (RLS), `scheduled_job_run` (installation-wide, no tenant), two tenant
+  settings; migration `a2c4e6f8b0d1`. `services/control_results_service.py`: record (every
+  scheduled run; a view only on change), deviations opened on FAIL (or WARN where the bank says)
+  and closed on recovery, responses, `test_period` on demand, the 30-day strip, retention in
+  housekeeping. `controls_watch_job` runs the hourly checks and records them; a new
+  `controls_nightly_job` runs the nightly ones and the population checks over the previous UTC
+  day. The edge check needs the request, so only page views record it (it used to flip between
+  view and schedule). `run_exclusively` records each job's runs; the scheduler's jobs are one
+  table (`_jobs`) for starting them and for the check. Pages: a check's history, deviations with
+  their responses, deviation settings, testing a past period; `compliance:manage`. Not built
+  from section 2: `software_currency` (no source of release dates without a network call),
+  left planned with CT3's. Installation checks are recorded per bank (CT-D12 is about
+  attestations). Next: CT3.

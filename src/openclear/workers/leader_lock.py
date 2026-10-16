@@ -17,6 +17,7 @@ deployments must stay a single process (see README, "Running more than one insta
 
 import hashlib
 import logging
+from datetime import datetime, timezone
 from collections.abc import Callable
 
 from sqlalchemy import Engine, text
@@ -32,11 +33,36 @@ def lock_key(job_id: str) -> int:
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
+def _note(engine: Engine, job_id: str, **values) -> None:
+    """Keep the job's last start or finish (domain/scheduled_job_run.py), for the scheduled_jobs
+    control check. Never fails the job."""
+    from openclear.domain.scheduled_job_run import ScheduledJobRun
+
+    table = ScheduledJobRun.__table__
+    try:
+        with engine.begin() as conn:
+            if not conn.execute(table.update().where(table.c.job_id == job_id).values(**values)).rowcount:
+                conn.execute(table.insert().values(job_id=job_id, **values))
+    except Exception:  # noqa: BLE001
+        logger.exception("Couldn't record a run of scheduled job %s", job_id)
+
+
+def _tracked(engine: Engine, job_id: str, job: Callable[[], None]) -> None:
+    _note(engine, job_id, last_started_at=datetime.now(timezone.utc))
+    try:
+        job()
+    except Exception as exc:
+        _note(engine, job_id, last_finished_at=datetime.now(timezone.utc), last_ok=False, last_error=f"{type(exc).__name__}: {exc}"[:2000])
+        raise
+    _note(engine, job_id, last_finished_at=datetime.now(timezone.utc), last_ok=True, last_error=None)
+
+
 def run_exclusively(job_id: str, job: Callable[[], None], *, engine: Engine | None = None) -> bool:
-    """Run `job` unless another instance is already running it. Returns whether it ran."""
+    """Run `job` unless another instance is already running it. Returns whether it ran. Each
+    run's start and finish are kept (ScheduledJobRun)."""
     engine = engine or get_engine()
     if engine.dialect.name != "postgresql":
-        job()
+        _tracked(engine, job_id, job)
         return True
 
     key = lock_key(job_id)
@@ -49,7 +75,7 @@ def run_exclusively(job_id: str, job: Callable[[], None], *, engine: Engine | No
             logger.info("Skipping scheduled job %s: another instance is running it", job_id)
             return False
         try:
-            job()
+            _tracked(engine, job_id, job)
         finally:
             try:
                 conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": key})

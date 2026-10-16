@@ -90,6 +90,8 @@ PAGES = [
     ("api_client_new", "/ui/admin/api-clients/new", "bank"),
     ("sso_new", "/ui/admin/sso/new", "bank"),
     ("controls", "/ui/admin/controls", "bank"),
+    ("control_deviations", "/ui/admin/controls/deviations", "bank"),
+    ("control_check", "/ui/admin/controls/checks/sla", "bank"),
     ("changes", "/ui/admin/changes", "bank"),
     ("model_risk", "/ui/admin/model-risk", "bank"),
     ("ml_models", "/ui/admin/ml-models", "bank"),

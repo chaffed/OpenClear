@@ -568,6 +568,12 @@ form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
 .control-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
 .control-check { margin: 0 0 0.35rem; }
 .nowrap { white-space: nowrap; }
+/* A check's last 30 days (templates/admin/control_check.html): the worst status each day. */
+.status-strip { display: flex; gap: 3px; list-style: none; padding: 0; margin: 0.5rem 0 0; }
+.status-day { flex: 1 1 0; height: 1.5rem; border-radius: 3px; background: var(--border); }
+.status-pass { background: var(--badge-ok-fg); }
+.status-warn { background: var(--badge-warn-fg); }
+.status-fail { background: var(--badge-danger-fg); }
 /* Plugins' UI slots (templates/plugins/_slot.html). */
 .plugin-toolbar { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.75rem; }
 .plugin-row-actions { display: block; font-size: 0.85rem; }

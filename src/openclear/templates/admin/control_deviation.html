@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ title }} deviation — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+{% set badge = {"PASS": "badge-ok", "WARN": "badge-warn", "FAIL": "badge-danger"} %}
+<p class="back-link"><a href="/ui/admin/controls/deviations">Deviations</a></p>
+<div class="card">
+  <h1>{{ title }} <span class="badge {{ badge[deviation.status] }}">{{ deviation.status }}</span>{% if not deviation.closed_at %} <span class="badge">open</span>{% endif %}</h1>
+  <table>
+    <tbody>
+      <tr><th scope="row">Opened</th><td><time datetime="{{ deviation.opened_at | iso_utc }}" data-local-time>{{ deviation.opened_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>: {{ opened.summary }}</td></tr>
+      <tr><th scope="row">Closed</th><td>{% if closed %}<time datetime="{{ deviation.closed_at | iso_utc }}" data-local-time>{{ deviation.closed_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>: {{ closed.summary }}{% else %}Still open{% endif %}</td></tr>
+      <tr><th scope="row">Evidence digest</th><td><code>{{ opened.evidence_sha256 }}</code>{% if closed %}, <code>{{ closed.evidence_sha256 }}</code>{% endif %}</td></tr>
+    </tbody>
+  </table>
+  <p class="link-line"><a href="/ui/admin/controls/checks/{{ deviation.check_key }}">This check's history</a></p>
+</div>
+<div class="card card-narrow">
+  <h2>Cause and response</h2>
+  {% if deviation.response %}
+  <p><strong>Cause.</strong> {{ deviation.cause }}</p>
+  <p><strong>Response.</strong> {{ deviation.response }}</p>
+  <p class="hint">Recorded by {{ responder or "someone no longer here" }} on {{ deviation.responded_at.strftime("%Y-%m-%d") }}.</p>
+  {% endif %}
+  {% if can(ctx, "compliance:manage") %}
+  <form method="post" action="/ui/admin/controls/deviations/{{ deviation.id }}/respond">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>What caused it <textarea name="cause" rows="3" maxlength="4000" required>{{ deviation.cause or "" }}</textarea></label>
+    <label>What you did about it <textarea name="response" rows="3" maxlength="4000" required>{{ deviation.response or "" }}</textarea></label>
+    <button type="submit">{{ icon("save") }}{{ "Update" if deviation.response else "Record" }}</button>
+  </form>
+  {% elif not deviation.response %}
+  <p class="text-muted">No response recorded yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

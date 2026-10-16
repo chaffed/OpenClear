@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Deviations — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About deviations{% endblock %}
+{% block help_body %}
+<p>A deviation is a stretch of time a check was at FAIL (or at WARN, for the checks you choose below),
+  from the result that opened it to the one that closed it. Record what caused each one and what you
+  did about it: that's what an examiner or auditor asks for.</p>
+<p>The grace period is how long a check may stay at FAIL before the deviation counts against the
+  control: the "Deviations dealt with" check fails while one is open longer than that.</p>
+{% endblock %}
+{% block content %}
+{% set badge = {"PASS": "badge-ok", "WARN": "badge-warn", "FAIL": "badge-danger"} %}
+<p class="back-link"><a href="/ui/admin/controls">Controls</a></p>
+<div class="card">
+  <h1>Deviations</h1>
+  {% if rows %}
+  {% set columns = [
+    {"key": "check", "label": "Check", "role": "primary"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "opened", "label": "Opened"},
+    {"key": "closed", "label": "Closed"},
+    {"key": "response", "label": "Response"},
+  ] %}
+  {% call(d, col, part="cell") rt.responsive_table(columns, rows, id="deviation") -%}
+    {%- if col.key == "check" %}<a href="/ui/admin/controls/deviations/{{ d.id }}">{{ titles.get(d.check_key, d.check_key) }}</a>
+    {%- elif col.key == "status" %}<span class="badge {{ badge[d.status] }}">{{ d.status }}</span>{% if not d.closed_at %} <span class="badge">open</span>{% endif %}
+    {%- elif col.key == "opened" %}<time datetime="{{ d.opened_at | iso_utc }}" data-local-time>{{ d.opened_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    {%- elif col.key == "closed" %}{% if d.closed_at %}<time datetime="{{ d.closed_at | iso_utc }}" data-local-time>{{ d.closed_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}
+    {%- elif col.key == "response" %}{{ "Recorded" if d.response else "Not yet" }}
+    {%- endif %}
+  {%- endcall %}
+  {% else %}
+  <p>No deviations: every check has held.</p>
+  {% endif %}
+</div>
+{% if can(ctx, "compliance:manage") %}
+<div class="card card-narrow">
+  <h2>How deviations are counted</h2>
+  <form method="post" action="/ui/admin/controls/deviations/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Grace period (hours) <input type="number" name="grace_hours" min="1" max="720" value="{{ grace_hours }}" required></label>
+    <details>
+      <summary>Checks whose warnings also count ({{ warn_checks | length }})</summary>
+      {% for c in checks %}<label><input type="checkbox" name="warn_check" value="{{ c.key }}" {{ "checked" if c.key in warn_checks else "" }}> {{ c.title }}</label>{% endfor %}
+    </details>
+    <button type="submit" class="secondary">{{ icon("save") }}Save</button>
+  </form>
+</div>
+<div class="card card-narrow">
+  <h2>Test a past period</h2>
+  <p>Runs every population check (dual control, two-person changes, replays before changes, support access, customers'
+    timeliness) over each day of a period you choose, from the data OpenClear already keeps, and records the results.</p>
+  <form method="post" action="/ui/admin/controls/test-period">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>From <input type="date" name="start" required max="{{ today }}"></label>
+    <label>To <input type="date" name="end" required max="{{ today }}"></label>
+    <button type="submit" class="secondary">{{ icon("science") }}Test the period</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

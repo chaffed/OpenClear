@@ -361,7 +361,20 @@ def status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
     return controls
 
 
-def record_changes(tenant_id: uuid.UUID, controls: list[Control]) -> list[tuple[str, str | None, str]]:
+def _record_results(session: Session, tenant_id: uuid.UUID, controls: list[Control], *, started_by: str) -> None:
+    """Results for the history (services/control_results_service.py): from a page view only the
+    state checks whose status changed; from the schedule, every one given."""
+    from openclear.compliance import checks
+    from openclear.services import control_results_service
+
+    kinds = {c.key: c for c in checks.registry()}
+    eligible = [c for c in controls if c.key in kinds and kinds[c.key].kind == "state"
+                and not (started_by == "schedule" and kinds[c.key].needs_request)]
+    control_results_service.record(session, tenant_id, [control_results_service.outcome_from(c) for c in eligible],
+                                   started_by=started_by, only_changes=started_by == "view")
+
+
+def record_changes(tenant_id: uuid.UUID, controls: list[Control], *, record_results: str | None = "view") -> list[tuple[str, str | None, str]]:
     """Keeps each control's last status, and records a `control.status.changed` security event
     when one changes (to WARN or FAIL, or back to PASS), so a bank's SIEM can alert on it
     (SIEM_PLAN.md). The first status seen for a control is kept without an event. In its own
@@ -382,6 +395,8 @@ def record_changes(tenant_id: uuid.UUID, controls: list[Control]) -> list[tuple[
         session = (security_events._detached_factory or get_session_factory())()
         try:
             bind_session_to_tenant(session, tenant_id)
+            if record_results:
+                _record_results(session, tenant_id, controls, started_by=record_results)
             known = {row.key: row for row in session.execute(select(ControlStatus).where(ControlStatus.tenant_id == tenant_id)).scalars()}
             for control in controls:
                 row = known.get(control.key)
@@ -408,21 +423,22 @@ def record_changes(tenant_id: uuid.UUID, controls: list[Control]) -> list[tuple[
 
 
 def _status(session: Session, tenant_id: uuid.UUID) -> list[Control]:
-    return [
-        _field_encryption(session, tenant_id),
-        _storage_encryption(),
-        _edge(),
-        _audit_chain(session, tenant_id),
-        _sod(session, tenant_id),
-        _admin_mfa(session, tenant_id),
-        _anomaly_capture(session, tenant_id),
-        _parser_hardening(),
-        _sla(session, tenant_id),
-        _api_client_secrets(session, tenant_id),
-        _customer_self_service(session, tenant_id),
-        _event_delivery(session, tenant_id),
-        _production_safety(),
-    ]
+    """Every check in the registry (compliance/checks.py), worked out now; a population check
+    shows its latest recorded result (nightly, over the previous day), or the last 24 hours when
+    it has none yet."""
+    from openclear.compliance import checks
+    from openclear.services import control_results_service
+
+    registry = checks.registry()
+    recorded = control_results_service.latest_by_key(session, tenant_id, [c.key for c in registry if c.kind == "population"])
+    out = []
+    for check in registry:
+        if check.kind == "population" and check.key in recorded:
+            result = recorded[check.key]
+            out.append(Control(check.key, check.title, result.status, result.summary, result.evidence))
+        else:
+            out.append(check.run_now(session, tenant_id))
+    return out
 
 
 def summary(controls: list[Control]) -> dict:

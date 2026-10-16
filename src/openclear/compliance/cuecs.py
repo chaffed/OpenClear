@@ -119,46 +119,20 @@ NIST_TITLES = {
 }
 NIST_ID = re.compile(r"^(AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(\(\d{1,2}\))?$")
 
-# The live control checks (services/controls_service.py) a CUEC's evidence comes from today.
-EXISTING_CHECKS = {
-    "admin_mfa", "anomaly_capture", "api_client_secrets", "customer_self_service", "edge", "event_delivery", "production_safety",
-    "segregation_of_duties", "sla", "storage_encryption",
-}
-# Checks CONTROLS_PLAN.md CT2 and CT3 add, each for the CUECs that name it.
+# The live control checks (compliance/checks.py) a CUEC's evidence can come from.
+from openclear.compliance.checks import KEYS as _LIVE  # noqa: E402
+
+EXISTING_CHECKS = frozenset(_LIVE)
+# Checks still to come (CONTROLS_PLAN.md CT3, and the host's software currency), each for the CUECs that name it.
 PLANNED_CHECKS = {
     "access_review": "A bank-wide access review recorded within the last quarter, every membership in it confirmed or changed",
-    "change_impact_replay": "Every rule or model change approved in the period had a replay run against it beforehand",
-    "control_response": "How long each control spent at WARN or FAIL in the period before it returned to PASS",
     "customer_access_review": "Each self-managing customer recorded an access review of its people within the last quarter",
-    "customer_api_client_secrets": "A customer's API clients: secrets rotated within a year, or key pairs",
-    "customer_decision_timeliness": "A customer's exceptions decided before their deadline over the period",
-    "customer_dormant_users": "A customer's people who haven't signed in for 90 days, and leavers still active",
-    "customer_mfa": "The share of customer people who sign in with a second factor or the customer's identity provider",
-    "customer_sod": "Customer people who can both submit issued items and decide exceptions",
-    "customer_sso": "A customer-managed identity provider in use, and when SCIM last changed anyone",
     "decision_delivery": "Every decision file delivered to the core before its cutoff, and acknowledged",
-    "default_dispositions": "Every account with positive pay has a default disposition for undecided exceptions",
-    "dormant_accounts": "Staff who haven't signed in for 90 days, and deactivations later than the bank's deadline",
-    "dual_control": "Dual control on, and every decision in the period made by a different person from its recommender",
-    "evidence_export": "An evidence export taken within the last quarter",
     "file_reconciliation": "Each presented-items file's item count and total, matched against the control totals the core sent",
-    "integration_tls": "Every webhook and delivery destination uses HTTPS",
     "key_age": "The signing and field-encryption keys' ages against the host's rotation period",
-    "model_pooling_acknowledged": "Someone with authority acknowledged the shared-model pooling disclosure",
     "outside_services": "The outside services turned on (email, SMS, OCR, storage, identity providers), with when each was reviewed",
     "password_policy": "The bank's password policy against the minimum the bank records as its standard",
-    "platform_staff": "The platform's staff, each with a second factor, and their support access in the period",
-    "privileged_accounts": "How many people hold admin permissions, and any who haven't signed in for 90 days",
-    "rejected_rows": "Upload rows rejected and not corrected or resubmitted within a business day",
-    "scheduled_jobs": "Each scheduled job's last run, against its schedule",
-    "scim_sync": "When SCIM or the identity provider last changed anyone, and staff the directory has disabled who are still active",
     "software_currency": "The running version's age, and releases since it",
-    "stale_ach_authorizations": "ACH authorizations unused for a year, or past their end date and not revoked",
-    "staff_mfa": "Everyone who can decide exceptions or change data signs in with a second factor or the bank's identity provider",
-    "support_access_review": "Support access grants in the period: each named, with a reason and an end, none open-ended",
-    "transport_security": "Requests arrive over HTTPS, with HSTS set",
-    "two_person_changes": "Every rule or model change in the period approved by a second admin",
-    "wsud_signed": "Every ACH debit returned as unauthorized has a signed Written Statement of Unauthorized Debit",
 }
 
 

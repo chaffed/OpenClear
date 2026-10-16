@@ -37,6 +37,8 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | api_client_new | ✓ | ✓ | ✓ | ✓ |
 | sso_new | ✓ | ✓ | ✓ | ✓ |
 | controls | ✓ | ✓ | ✓ | ✓ |
+| control_deviations | ✓ | ✓ | ✓ | ✓ |
+| control_check | ✓ | ✓ | ✓ | ✓ |
 | changes | ✓ | ✓ | ✓ | ✓ |
 | model_risk | ✓ | ✓ | ✓ | ✓ |
 | ml_models | ✓ | ✓ | ✓ | ✓ |

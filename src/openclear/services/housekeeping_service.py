@@ -83,6 +83,17 @@ def run(session: Session) -> HousekeepingResult:
             or_(Destination.tenant_id.is_(None), Destination.tenant_id == SecurityEvent.tenant_id))
         result.deleted["security_events"] = _delete_in_batches(session, SecurityEvent, SecurityEvent.occurred_at < cutoff, ~undelivered)
 
+    # Control test results and closed deviations past their retention (CONTROLS_PLAN.md CT2).
+    if cutoff := _cutoff(session, settings.control_result_retention_days):
+        from openclear.services import control_results_service
+
+        results, deviations = control_results_service.prune(session, older_than=cutoff)
+        session.commit()
+        if results:
+            result.deleted["control_results"] = results
+        if deviations:
+            result.deleted["control_deviations"] = deviations
+
     # Client assertions' ids, once the assertions themselves have expired (auth/client_assertion.py):
     # an expired assertion is refused anyway, so its jti needn't be remembered.
     from openclear.domain.api_client import ClientAssertionUse

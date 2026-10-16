@@ -43,11 +43,8 @@ NATURES = {
     "configurable": "depends on a bank's setting",
 }
 
-# The checks on the Controls page today (services/controls_service.py), in its order.
-LIVE_CHECKS = (
-    "field_encryption", "storage_encryption", "edge", "audit_chain", "segregation_of_duties", "admin_mfa", "anomaly_capture",
-    "parser_hardening", "sla", "api_client_secrets", "customer_self_service", "event_delivery", "production_safety",
-)
+# The checks on the Controls page (compliance/checks.py).
+from openclear.compliance.checks import KEYS as LIVE_CHECKS  # noqa: E402
 
 
 @dataclass(frozen=True)

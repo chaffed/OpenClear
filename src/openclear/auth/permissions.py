@@ -62,6 +62,9 @@ PERMISSION_CATALOG: dict[str, str] = {
     "billing:manage": "Manage the fee schedule and customer billing terms, and finalize statements",
     # API clients (SDK_PLAN.md P0): credentials for the bank's own systems. Bank-only.
     "api_client:manage": "Manage integrations: API clients and webhooks for the bank's systems",
+    # Control testing (CONTROLS_PLAN.md CT2): record a deviation's cause and response, and set the
+    # grace period and which checks' warnings count as deviations. Bank-only for now.
+    "compliance:manage": "Record the cause and response to control deviations, and set how deviations are counted",
 }
 
 # Masked out of TenantContext.permissions whenever the active membership is

@@ -445,6 +445,9 @@ class Settings(BaseSettings):
     # Security events (services/security_events.py) are kept this long for the pull API and,
     # later, for delivery; housekeeping removes older ones.
     security_event_retention_days: int = 30
+    # Control test results and closed deviations (CONTROLS_PLAN.md CT2, CT-D10): kept seven
+    # years by default, for examinations and attestations over past periods; 0 keeps them.
+    control_result_retention_days: int = 2555
     # Security event delivery (services/siem/; SIEM_PLAN.md S3). The installation's own
     # destination, which receives every bank's events: siem_kind is "syslog", "splunk_hec"
     # or "https" (empty: none). Syslog takes host, port, transport (tls, tcp or udp; udp only

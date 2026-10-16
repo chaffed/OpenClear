@@ -27,6 +27,11 @@
     Checked {{ result.checked_at[:16]|replace("T", " ") }} UTC.</p>
   <p class="hint">Each control is one of <a href="https://github.com/chaffed/OpenClear/blob/main/docs/compliance/controls.md">OpenClear's controls</a>, filed under the
     NIST SP 800-53 controls it carries out; its status is the worst of its checks. Checks marked planned arrive with later releases.</p>
+  {% if open_deviations %}
+  <p class="flash flash-warn">{{ open_deviations | length }} open {{ "deviation" if open_deviations | length == 1 else "deviations" }}:
+    {% for d in open_deviations %}<a href="/ui/admin/controls/deviations/{{ d.id }}">{{ check_titles.get(d.check_key, d.check_key) }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>
+  {% endif %}
+  <p class="link-line"><a href="/ui/admin/controls/deviations">Deviations and their responses</a></p>
 </div>
 {% for label, rows in families %}
 <div class="card">
@@ -43,7 +48,7 @@
     {%- elif col.key == "nist" %}{% for n in c.nist %}<abbr class="nowrap" title="{{ n.title }}">{{ n.id }}</abbr>{{ ", " if not loop.last }}{% endfor %}
     {%- elif col.key == "checks" %}
       {%- set planned = c.checks | selectattr("status", "equalto", "planned") | list %}
-      {%- for check in c.checks if check.status == "live" %}<p class="control-check"><span class="badge {{ badge[check.result] }}">{{ check.result }}</span> <strong>{{ check.title }}.</strong> {{ check.detail }}</p>{% endfor %}
+      {%- for check in c.checks if check.status == "live" %}<p class="control-check"><span class="badge {{ badge[check.result] }}">{{ check.result }}</span> <strong><a href="/ui/admin/controls/checks/{{ check.key }}">{{ check.title }}</a>.</strong> {{ check.detail }}</p>{% endfor %}
       {%- if planned %}<p class="control-check text-muted">{{ planned | length }} {{ "check" if planned | length == 1 else "checks" }} planned</p>{% endif %}
     {%- endif %}
   {%- endcall %}

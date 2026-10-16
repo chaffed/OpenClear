@@ -37,7 +37,12 @@ def controls_page(request: Request, db: Session = Depends(get_db),
     live = controls_service.status(db, ctx.tenant_id)
     rows = inventory(live)
     families = [(label, [c for c in rows if c["family"] == key and not c["withdrawn"]]) for key, label in inventory_module.FAMILIES.items()]
+    from openclear.services import control_results_service
+
+    open_deviations = [d for d in control_results_service.deviations(db, ctx.tenant_id, limit=50) if d.closed_at is None]
+    titles = {c.key: c.title for c in live}
     return render_template(request, "admin/controls.html", ctx=ctx, result=controls_service.summary(live), families=families,
+                           open_deviations=open_deviations, check_titles=titles,
                            default_start=today.replace(day=1).isoformat(), default_end=today.isoformat(),
                            export_run=export_run, export_state=long_runs.state(export_run) if export_run else None)
 

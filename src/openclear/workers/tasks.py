@@ -406,21 +406,40 @@ def security_event_delivery_job() -> None:
 
 
 def controls_watch_job() -> None:
-    """Hourly: works out every bank's controls, so a change (to FAIL, say) is recorded as a
-    security event even when nobody opens the Controls page (services/controls_service.py)."""
-    from openclear.domain.tenant import Tenant
-    from openclear.services import controls_service
+    """Hourly: runs every bank's hourly checks and keeps each result (CONTROLS_PLAN.md CT2;
+    services/control_results_service.py), so a change (to FAIL, say) is recorded, opens a
+    deviation and becomes a security event even when nobody opens the Controls page. Checks
+    that need a web request (the edge) are left to page views."""
+    _run_controls("hourly")
 
+
+def controls_nightly_job() -> None:
+    """Nightly: the nightly state checks, and every population check over the previous UTC day."""
+    _run_controls("nightly")
+
+
+def _run_controls(schedule: str) -> None:
+    from openclear.compliance import checks
+    from openclear.domain.tenant import Tenant
+    from openclear.services import control_results_service, controls_service
+
+    chosen = [c for c in checks.registry() if c.schedule == schedule and not c.needs_request]
     session = get_session_factory()()
     try:
         for tenant_id in list(session.execute(select(Tenant.id).where(Tenant.is_active.is_(True), Tenant.is_sandbox.is_(False))).scalars()):
             try:
                 bind_session_to_tenant(session, tenant_id)
-                controls_service.status(session, tenant_id)
-                session.rollback()  # the controls only read; changes are recorded in their own transaction
+                ran = control_results_service.run_checks(session, tenant_id, chosen, period=control_results_service.previous_day())
+                session.rollback()  # the checks only read
+                population = {c.key for c in chosen if c.kind == "population"}
+                controls_service.record_changes(tenant_id, [c for c, _o in ran], record_results="schedule")
+                if population:
+                    bind_session_to_tenant(session, tenant_id)
+                    control_results_service.record(session, tenant_id, [o for c, o in ran if c.key in population], started_by="schedule")
+                    session.commit()
             except Exception:  # noqa: BLE001 -- one bank's failure never stops another's
                 session.rollback()
-                logger.exception("Controls watch failed for bank %s", tenant_id)
+                logger.exception("Controls %s run failed for bank %s", schedule, tenant_id)
     finally:
         session.close()
 

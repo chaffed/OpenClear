@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+Control testing (CONTROLS_PLAN.md CT2):
+
+- **25 new checks**, from data OpenClear already keeps, bringing the Controls page to 38: dormant
+  staff and customer accounts, privileged accounts, staff's and customers' second factor, customers
+  who both issue and decide, customers' API client secrets, their own sign-on, directories in step,
+  integrations over HTTPS, the model-pooling acknowledgement, default dispositions, uncorrected
+  upload rows, stale ACH authorizations, unsigned unauthorized-debit statements, the quarter's
+  evidence export, scheduled jobs running, HTTPS and HSTS, platform staff's second factor, and
+  whether deviations are dealt with.
+- **Population checks** over every item in a period: dual control on every decision, rule and
+  model changes approved by a second admin, a replay before each change, support access granted
+  with care, and customers deciding in time. They run nightly over the previous day, and any past
+  period can be tested on demand (Controls → Deviations → Test a past period).
+- **Test history**: every scheduled run of every check is kept (a page view keeps only a change),
+  with its evidence and its SHA-256, for seven years by default. Each check has a page with its
+  last 30 days as a strip, its results and its deviations.
+- **Deviations**: a FAIL (or a WARN, for the checks you choose) opens one, and a return to PASS
+  closes it. Record the cause and your response (new permission `compliance:manage`); set the
+  grace period after which an open one fails the "Deviations dealt with" check.
+- Each scheduled job's last run is now recorded, for the scheduled jobs check.
+
 ## 1.17.0 — 2026-10-16
 
 Controls (CONTROLS_PLAN.md CT1):

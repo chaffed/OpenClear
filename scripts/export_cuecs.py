@@ -52,8 +52,8 @@ and owner.
 - **Evidence**: how OpenClear can show the CUEC operating.
 {evidence}
 - **Check**: the test that produces the evidence. *Live* checks are on the Controls page
-  today; *planned* ones arrive with CONTROLS_PLAN.md CT2 and CT3, after which an automated CUEC can be
-  attested from OpenClear's test history for a period.
+  today, each keeping a test history from which an automated CUEC can be attested for a period;
+  *planned* ones arrive with CONTROLS_PLAN.md CT3.
 """
 
 
@@ -119,7 +119,7 @@ Inventory version {version}. The same list, with each check's live status for yo
 - **Type**: {types}.
 - **Nature**: {natures}. A configurable control relies on the CUEC that sets it.
 - **Checks**: the tests of the control. *Live* checks are on the Controls page today;
-  *planned* ones arrive with CONTROLS_PLAN.md CT2 and CT3.
+  *planned* ones arrive with CONTROLS_PLAN.md CT3.
 """
 
 

@@ -13,38 +13,13 @@
   },
   "planned_checks": {
     "access_review": "A bank-wide access review recorded within the last quarter, every membership in it confirmed or changed",
-    "change_impact_replay": "Every rule or model change approved in the period had a replay run against it beforehand",
-    "control_response": "How long each control spent at WARN or FAIL in the period before it returned to PASS",
     "customer_access_review": "Each self-managing customer recorded an access review of its people within the last quarter",
-    "customer_api_client_secrets": "A customer's API clients: secrets rotated within a year, or key pairs",
-    "customer_decision_timeliness": "A customer's exceptions decided before their deadline over the period",
-    "customer_dormant_users": "A customer's people who haven't signed in for 90 days, and leavers still active",
-    "customer_mfa": "The share of customer people who sign in with a second factor or the customer's identity provider",
-    "customer_sod": "Customer people who can both submit issued items and decide exceptions",
-    "customer_sso": "A customer-managed identity provider in use, and when SCIM last changed anyone",
     "decision_delivery": "Every decision file delivered to the core before its cutoff, and acknowledged",
-    "default_dispositions": "Every account with positive pay has a default disposition for undecided exceptions",
-    "dormant_accounts": "Staff who haven't signed in for 90 days, and deactivations later than the bank's deadline",
-    "dual_control": "Dual control on, and every decision in the period made by a different person from its recommender",
-    "evidence_export": "An evidence export taken within the last quarter",
     "file_reconciliation": "Each presented-items file's item count and total, matched against the control totals the core sent",
-    "integration_tls": "Every webhook and delivery destination uses HTTPS",
     "key_age": "The signing and field-encryption keys' ages against the host's rotation period",
-    "model_pooling_acknowledged": "Someone with authority acknowledged the shared-model pooling disclosure",
     "outside_services": "The outside services turned on (email, SMS, OCR, storage, identity providers), with when each was reviewed",
     "password_policy": "The bank's password policy against the minimum the bank records as its standard",
-    "platform_staff": "The platform's staff, each with a second factor, and their support access in the period",
-    "privileged_accounts": "How many people hold admin permissions, and any who haven't signed in for 90 days",
-    "rejected_rows": "Upload rows rejected and not corrected or resubmitted within a business day",
-    "scheduled_jobs": "Each scheduled job's last run, against its schedule",
-    "scim_sync": "When SCIM or the identity provider last changed anyone, and staff the directory has disabled who are still active",
-    "software_currency": "The running version's age, and releases since it",
-    "stale_ach_authorizations": "ACH authorizations unused for a year, or past their end date and not revoked",
-    "staff_mfa": "Everyone who can decide exceptions or change data signs in with a second factor or the bank's identity provider",
-    "support_access_review": "Support access grants in the period: each named, with a reason and an end, none open-ended",
-    "transport_security": "Requests arrive over HTTPS, with HSTS set",
-    "two_person_changes": "Every rule or model change in the period approved by a second admin",
-    "wsud_signed": "Every ACH debit returned as unauthorized has a signed Written Statement of Unauthorized Debit"
+    "software_currency": "The running version's age, and releases since it"
   },
   "cuecs": [
     {
@@ -63,7 +38,7 @@
       "complements": "OpenClear grants only what a person's security group allows, records every membership change in the action log, and stops a deactivated person signing in or using a token at once.",
       "evidence": "assisted",
       "check": "dormant_accounts",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per event; reviewed quarterly",
       "where": "Users \u2192 Export (with last sign-in); user.* and membership.* in the action log",
       "withdrawn": false
@@ -83,7 +58,7 @@
       "complements": "OpenClear applies SCIM deactivations and group changes as they arrive, and refuses a sign-on the identity provider refuses.",
       "evidence": "assisted",
       "check": "scim_sync",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous; reviewed quarterly",
       "where": "Settings \u2192 Sign-on; scim.* in the action log",
       "withdrawn": false
@@ -123,7 +98,7 @@
       "complements": "OpenClear checks every request against the person's permissions, scope and account access.",
       "evidence": "assisted",
       "check": "privileged_accounts",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "Settings \u2192 Security groups; Users \u2192 Export",
       "withdrawn": false
@@ -161,7 +136,7 @@
       "complements": "OpenClear holds a recommended decision until a different person approves it, and records both.",
       "evidence": "automated",
       "check": "dual_control",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "Settings \u2192 Decisions; decision histories in the evidence export",
       "withdrawn": false
@@ -181,7 +156,7 @@
       "complements": "Under enforce, OpenClear holds a rule or model change until another admin approves it, and records both people.",
       "evidence": "automated",
       "check": "two_person_changes",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per change",
       "where": "Settings \u2192 Changes; the evidence export's changes",
       "withdrawn": false
@@ -201,7 +176,7 @@
       "complements": "OpenClear's replay runs the real matching code in a dry run that's rolled back, and keeps the report.",
       "evidence": "automated",
       "check": "change_impact_replay",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per change",
       "where": "Settings \u2192 Model risk; control runs in the evidence export",
       "withdrawn": false
@@ -240,7 +215,7 @@
       "complements": "OpenClear supports FIDO2 security keys and passkeys, and SSO-only sign-in per bank.",
       "evidence": "automated",
       "check": "staff_mfa",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "Users \u2192 Export; Settings \u2192 Sign-on",
       "withdrawn": false
@@ -298,7 +273,7 @@
       "complements": "OpenClear gives support staff no access to a bank except what the bank grants, under their own name, ending on time.",
       "evidence": "automated",
       "check": "support_access_review",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per event",
       "where": "Settings \u2192 Support access; support_access.* in the action log",
       "withdrawn": false
@@ -355,7 +330,7 @@
       "complements": "OpenClear enforces each customer's password policy, second factors and sign-on connection.",
       "evidence": "automated",
       "check": "customer_mfa",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "On change; reviewed yearly",
       "where": "Customers \u2192 Sign-on; Customers \u2192 Password policy",
       "withdrawn": false
@@ -391,7 +366,7 @@
       "complements": "OpenClear tests its controls hourly and raises a security event when one changes.",
       "evidence": "automated",
       "check": "control_response",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "Settings \u2192 Controls; control.status.changed security events",
       "withdrawn": false
@@ -450,7 +425,7 @@
       "complements": "OpenClear's evidence export is signed, so it can be checked years later without OpenClear.",
       "evidence": "assisted",
       "check": "evidence_export",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "Settings \u2192 Controls \u2192 Export evidence",
       "withdrawn": false
@@ -527,7 +502,7 @@
       "complements": "OpenClear applies each account's default disposition to undecided exceptions, and keeps the decisions to send once the core is back.",
       "evidence": "assisted",
       "check": "default_dispositions",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Yearly",
       "where": "Customers \u2192 Positive pay settings",
       "withdrawn": false
@@ -602,7 +577,7 @@
       "complements": "OpenClear pools nothing until the disclosure is acknowledged, records who acknowledged it, and offers a bank-only model.",
       "evidence": "automated",
       "check": "model_pooling_acknowledged",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Once, and on change",
       "where": "Settings \u2192 Fraud model",
       "withdrawn": false
@@ -622,7 +597,7 @@
       "complements": "OpenClear signs every webhook, and delivers only to a public HTTPS address.",
       "evidence": "assisted",
       "check": "integration_tls",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "On change",
       "where": "Settings \u2192 API clients and webhooks",
       "withdrawn": false
@@ -642,7 +617,7 @@
       "complements": "OpenClear keeps a customer's people to its own accounts and to the roles the bank offers, and records every change.",
       "evidence": "assisted",
       "check": "customer_dormant_users",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per event; reviewed quarterly",
       "where": "People; the customer's action log",
       "withdrawn": false
@@ -681,7 +656,7 @@
       "complements": "OpenClear accepts only the customer's verified email domains from its identity provider, and applies SCIM changes as they arrive.",
       "evidence": "assisted",
       "check": "customer_sso",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "Sign-on (customer)",
       "withdrawn": false
@@ -719,7 +694,7 @@
       "complements": "OpenClear never lets the person who submitted an item decide its exception.",
       "evidence": "automated",
       "check": "customer_sod",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "People",
       "withdrawn": false
@@ -739,7 +714,7 @@
       "complements": "OpenClear supports FIDO2 security keys and passkeys, and the customer's own identity provider.",
       "evidence": "automated",
       "check": "customer_mfa",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "People; Security",
       "withdrawn": false
@@ -758,7 +733,7 @@
       "complements": "OpenClear shows each secret only once, stores only its hash, and supports key pairs.",
       "evidence": "automated",
       "check": "customer_api_client_secrets",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "API clients (customer)",
       "withdrawn": false
@@ -796,7 +771,7 @@
       "complements": "OpenClear validates every row, rejects what it can't match on, and says why.",
       "evidence": "assisted",
       "check": "rejected_rows",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Every upload",
       "where": "Uploads \u2192 result",
       "withdrawn": false
@@ -815,7 +790,7 @@
       "complements": "OpenClear raises exceptions with their deadline, reminds before the cutoff, and applies the default disposition otherwise.",
       "evidence": "automated",
       "check": "customer_decision_timeliness",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Daily",
       "where": "Exceptions",
       "withdrawn": false
@@ -832,7 +807,7 @@
       "complements": "OpenClear raises an exception for an ACH debit no authorization covers.",
       "evidence": "assisted",
       "check": "stale_ach_authorizations",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "ACH authorizations",
       "withdrawn": false
@@ -851,7 +826,7 @@
       "complements": "OpenClear collects and keeps the signed statement with the return.",
       "evidence": "automated",
       "check": "wsud_signed",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Per event",
       "where": "Exceptions; Written statements",
       "withdrawn": false
@@ -966,7 +941,7 @@
       "complements": "OpenClear sets secure, SameSite cookies and a strict Content Security Policy.",
       "evidence": "automated",
       "check": "transport_security",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "scripts/edge_check.py",
       "withdrawn": false
@@ -1082,7 +1057,7 @@
       "complements": "OpenClear gives platform staff no way into a bank except a grant the bank makes.",
       "evidence": "assisted",
       "check": "platform_staff",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "Support access; the host's access records",
       "withdrawn": false
@@ -1121,7 +1096,7 @@
       "complements": "OpenClear reports its health and each scheduled job's last run.",
       "evidence": "assisted",
       "check": "scheduled_jobs",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Continuous",
       "where": "/health; Controls",
       "withdrawn": false

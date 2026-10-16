@@ -38,11 +38,15 @@ def test_each_control_is_complete(c):
         assert c.cuecs, f"{c.id} depends on a bank's setting, so it relies on the CUEC that sets it"
 
 
-def test_live_checks_are_the_controls_pages():
-    source = (ROOT / "src" / "openclear" / "services" / "controls_service.py").read_text()
-    assert set(re.findall(r'Control\("(\w+)"', source)) == set(controls.LIVE_CHECKS)
-    assert cuecs.EXISTING_CHECKS <= set(controls.LIVE_CHECKS)
+def test_live_checks_are_the_registrys():
+    from openclear.compliance import checks
+
+    assert [c.key for c in checks.registry()] == list(checks.KEYS) == list(controls.LIVE_CHECKS)
+    assert cuecs.EXISTING_CHECKS == set(controls.LIVE_CHECKS)
     assert not set(controls.LIVE_CHECKS) & set(cuecs.PLANNED_CHECKS)
+    for check in checks.registry():
+        assert check.kind in ("state", "population") and check.schedule in ("hourly", "nightly")
+        assert check.scope in ("bank", "installation")
 
 
 def test_every_live_check_tests_a_control():
@@ -63,4 +67,5 @@ def test_as_dict():
     data = controls.by_id()["OC-IA-02"].as_dict()
     assert data["family"] == "IA"
     assert data["nist"][0] == {"id": "IA-2(1)", "title": "Multi-factor Authentication to Privileged Accounts", "oscal_id": "ia-2.1"}
-    assert {"key": "admin_mfa", "status": "live"} in data["checks"] and {"key": "staff_mfa", "status": "planned"} in data["checks"]
+    assert {"key": "admin_mfa", "status": "live"} in data["checks"] and {"key": "staff_mfa", "status": "live"} in data["checks"]
+    assert {"key": "access_review", "status": "planned"} in controls.by_id()["OC-AC-02"].as_dict()["checks"]

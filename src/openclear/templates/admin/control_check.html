@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
+{% block title %}{{ check.title }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+{% set badge = {"PASS": "badge-ok", "WARN": "badge-warn", "FAIL": "badge-danger"} %}
+<p class="back-link"><a href="/ui/admin/controls">Controls</a></p>
+<div class="card">
+  <h1>{{ check.title }}</h1>
+  <p class="hint">{{ "Every item in a period" if check.kind == "population" else "The system as it is" }}, checked
+    {{ "nightly" if check.schedule == "nightly" else "hourly" }} and when the Controls page opens{% if check.scope == "installation" %}; the same for every bank on this installation{% endif %}.
+    Tests {% for c in tested_controls %}<span class="control-id">{{ c.id }}</span> {{ c.title }}{{ ", " if not loop.last }}{% endfor %}.</p>
+  <h2>The last 30 days</h2>
+  <ol class="status-strip" aria-label="The worst status recorded each day, oldest first">
+    {% for day, status in strip %}<li class="status-day {{ 'status-' ~ status | lower if status else 'status-none' }}" title="{{ day }}: {{ status or 'not recorded' }}"><span class="visually-hidden">{{ day }}: {{ status or "not recorded" }}</span></li>{% endfor %}
+  </ol>
+</div>
+{% if deviations %}
+<div class="card">
+  <h2>Deviations</h2>
+  <ul>{% for d in deviations %}<li><a href="/ui/admin/controls/deviations/{{ d.id }}">{{ d.status }} from {{ d.opened_at.strftime("%Y-%m-%d %H:%M") }}</a>{% if d.closed_at %} to {{ d.closed_at.strftime("%Y-%m-%d %H:%M") }}{% else %}, still open{% endif %}{% if not d.response %} (no response yet){% endif %}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+<div class="card">
+  <h2>Results</h2>
+  {% if results %}
+  {% set columns = [
+    {"key": "when", "label": "When", "role": "primary"},
+    {"key": "status", "label": "Status", "role": "status"},
+    {"key": "by", "label": "Run by"},
+    {"key": "summary", "label": "Result", "role": "text"},
+  ] %}
+  {% call(r, col, part="cell") rt.responsive_table(columns, results, id="result") -%}
+    {%- if col.key == "when" %}<time datetime="{{ r.recorded_at | iso_utc }}" data-local-time>{{ r.recorded_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    {%- elif col.key == "status" %}<span class="badge {{ badge[r.status] }}">{{ r.status }}</span>
+    {%- elif col.key == "by" %}{{ {"schedule": "Schedule", "view": "Page view", "person": "A person"}.get(r.started_by, r.started_by) }}
+    {%- elif col.key == "summary" %}{{ r.summary }}{% if r.period_start %} <span class="text-muted">({{ r.period_start.strftime("%Y-%m-%d") }} to {{ r.period_end.strftime("%Y-%m-%d") }})</span>{% endif %}
+    {%- endif %}
+  {%- endcall %}
+  {% else %}
+  <p>Nothing recorded yet. Results are kept from each scheduled run, and when a page view finds a change.</p>
+  {% endif %}
+</div>
+{% endblock %}
