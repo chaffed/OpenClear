@@ -224,6 +224,30 @@ def set_self_service(
     return RedirectResponse(f"/ui/customers/{customer.id}?flash=Self-service+saved.", status_code=303)
 
 
+@router.post("/{customer_id}/approval")
+def set_approval(
+    customer_id: uuid.UUID,
+    approve_users: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Whether new people this customer's side adds wait for the bank (MOBILE_PLAN.md R6): the
+    bank's setting, or this customer's own."""
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    value = {"": None, "true": True, "false": False}.get(approve_users)
+    customer.approve_users = value
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.approval",
+        summary=f"New people {customer.name} adds: " + {None: "as the bank's setting", True: "wait for the bank", False: "don't wait"}[value],
+        resource_type="customer", resource_id=customer.id,
+    )
+    db.commit()
+    return RedirectResponse(f"/ui/customers/{customer.id}?flash=Approval+setting+saved.", status_code=303)
+
+
 @router.get("/{customer_id}/edit")
 def edit_customer_form(
     request: Request,

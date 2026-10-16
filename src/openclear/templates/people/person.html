@@ -6,7 +6,7 @@
 <div class="card card-narrow">
   <h1>{{ person.user.email }}</h1>
   <p>
-    <span class="badge {{ 'badge-ok' if person.membership.is_active else 'badge-danger' }}">{{ 'active' if person.membership.is_active else 'deactivated' }}</span>
+    {% if person.membership.pending_approval_at %}<span class="badge badge-warn">waiting for your bank</span>{% else %}<span class="badge {{ 'badge-ok' if person.membership.is_active else 'badge-danger' }}">{{ 'active' if person.membership.is_active else 'deactivated' }}</span>{% endif %}
     {% if person.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
     {% if person.is_admin %}<span class="badge">administrator</span>{% endif %}
     Last sign-in: {{ person.user.last_login_at.strftime("%Y-%m-%d %H:%M") if person.user.last_login_at else "never" }}
@@ -29,7 +29,9 @@
 
 <div class="card card-narrow">
   <h2>Actions</h2>
-  {% if person.membership.is_active %}
+  {% if person.membership.pending_approval_at %}
+  <p class="hint">Waiting for {{ ctx.tenant_name }} to approve them. You'll be told when it decides.</p>
+  {% elif person.membership.is_active %}
   <form method="post" action="/ui/people/{{ person.membership.id }}/deactivate" class="inline-form"
         data-confirm="Deactivate {{ person.user.email }}? They lose access to {{ ctx.customer_name }} on their next request.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

@@ -124,6 +124,7 @@ erDiagram
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td>Display name, shown throughout the app and on the login page.</td></tr>
 <tr><td>slug</td><td>String(100)</td><td>no</td><td>UK</td><td>URL-safe identifier used in slug-based login links and branding URLs.</td></tr>
 <tr><td>require_dual_control</td><td>Boolean</td><td>no</td><td></td><td>If true, a different person must finalize an exception decision than whoever recommended it.</td></tr>
+<tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
 <tr><td>stale_date_threshold_days</td><td>Integer</td><td>no</td><td></td><td>Days after which an outstanding issued item is considered stale.</td></tr>
@@ -169,6 +170,7 @@ transactional record.</p>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>Independent of the tenant's own flag — this customer's own SSO enforcement.</td></tr>
 <tr><td>self_manages_users / self_manages_sso</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators manage its people / its sign-on (customer_user:manage, customer_sso:manage).</td></tr>
 <tr><td>self_manages_api_clients</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators make API clients for its own systems (customer_api_client:manage). Turning it off stops them managing clients; those made keep working until revoked.</td></tr>
+<tr><td>approve_users</td><td>Boolean</td><td>yes</td><td></td><td>Whether new people this customer's side adds wait for the bank's approval: null follows the bank (tenant.approve_customer_users), true or false overrides it.</td></tr>
 <tr><td>password_min_length</td><td>Integer</td><td>yes</td><td></td><td>This customer's additional minimum length; null = inherit the tenant's. Effective policy is always max(tenant, customer).</td></tr>
 <tr><td>password_require_uppercase / lowercase / number / symbol</td><td>Boolean</td><td>no</td><td></td><td>This customer's additional requirements; effective policy is tenant OR customer, so a customer can only add requirements, never remove one the tenant already sets.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
@@ -314,6 +316,7 @@ scope) and a security group. One user can hold several of these.</p>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>require_webauthn</td><td>Boolean</td><td>no</td><td></td><td>Forces a passkey check even where the tenant/customer otherwise allows SSO or password-only login.</td></tr>
 <tr><td>all_accounts</td><td>Boolean</td><td>no</td><td></td><td>For a customer membership: sees all of the customer's accounts (the default), or only those in membership_account.</td></tr>
+<tr><td>pending_approval_at</td><td>DateTime</td><td>yes</td><td></td><td>Set while the membership waits for the bank's approval (it stays inactive; only the bank's approval turns it on). Cleared on approval; a rejected membership is removed.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>

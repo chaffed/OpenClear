@@ -220,7 +220,7 @@ def remove_group_mapping(session: Session, tenant_id: uuid.UUID, mapping_id: uui
 
 @dataclass(frozen=True, slots=True)
 class SsoLoginResult:
-    outcome: Literal["success", "not_authorized", "not_provisioned"]
+    outcome: Literal["success", "not_authorized", "not_provisioned", "pending_approval"]
     user: User | None = None
     membership: TenantMembership | None = None
 
@@ -345,6 +345,10 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
     if existing_membership is not None:
         if existing_membership.security_group_id != resolved_group_id:
             existing_membership.security_group_id = resolved_group_id
+        if existing_membership.pending_approval_at is not None:
+            # Waiting for the bank (MOBILE_PLAN.md R6): only its approval turns this on.
+            session.flush()
+            return SsoLoginResult(outcome="pending_approval", user=user, membership=existing_membership)
         if not existing_membership.is_active:
             existing_membership.is_active = True
         session.flush()
@@ -378,6 +382,11 @@ def _complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoC
     new_membership = [
         m for m in TenantMembershipRepository(session, tenant_id).list(user_id=user.id) if m.customer_id == scope_customer_id
     ][0]
+    if connection.managed_by == "customer":
+        from openclear.services import customer_approval_service
+
+        if customer_approval_service.hold_if_required(session, new_membership):  # MOBILE_PLAN.md R6
+            return SsoLoginResult(outcome="pending_approval", user=user, membership=new_membership)
     return SsoLoginResult(outcome="success", user=user, membership=new_membership)
 
 

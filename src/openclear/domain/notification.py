@@ -28,6 +28,9 @@ class NotificationType(str, enum.Enum):
     DEADLINE_REMINDER = "deadline_reminder"
     # services/customer_people_service.py: a customer's administrator invited this person.
     INVITATION = "invitation"
+    # services/customer_approval_service.py: the bank approved or rejected someone the
+    # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
+    CUSTOMER_USER_DECIDED = "customer_user_decided"
 
 
 class NotificationChannel(str, enum.Enum):

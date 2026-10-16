@@ -48,6 +48,7 @@ SECTIONS = {
     "password-policy": "Password policy",
     "timeouts": "Timeouts",
     "dual-control": "Dual control",
+    "customer-approval": "New customer users",
     "reminders": "Reminders",
     "embedding": "Embedding in online banking",
     "decision-files": "Decision files",
@@ -125,6 +126,14 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         }
     if key == "dual-control":
         return {"require_dual_control": tenant.require_dual_control}
+    if key == "customer-approval":
+        from sqlalchemy import select
+
+        from openclear.domain.customer import Customer
+
+        overrides = db.execute(select(Customer).where(Customer.tenant_id == ctx.tenant_id, Customer.approve_users.is_not(None))
+                               .order_by(Customer.name)).scalars().all()
+        return {"approve_customer_users": tenant.approve_customer_users, "overrides": overrides}
     if key == "embedding":
         return {"embed_allowed_origins": tenant.embed_allowed_origins or ""}
     if key == "decision-files":
@@ -385,6 +394,26 @@ def update_embedding(
     _record(db, ctx, "tenant.update_embedding", f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}")
     db.commit()
     return _saved(request, key="embedding")
+
+
+@router.post("/customer-approval")
+def update_customer_approval(
+    request: Request,
+    approve_customer_users: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """New people a customer's side adds wait for the bank's approval (MOBILE_PLAN.md R6)."""
+    from openclear.domain.tenant import Tenant
+
+    tenant = db.get(Tenant, ctx.tenant_id)
+    if tenant.approve_customer_users != approve_customer_users:
+        tenant.approve_customer_users = approve_customer_users
+        _record(db, ctx, "tenant.update_customer_approval",
+                f"New customer users {'wait for the bank' if approve_customer_users else 'no longer wait for the bank'} (customers' own settings still apply)")
+    db.commit()
+    return _saved(request, key="customer-approval")
 
 
 @router.post("/dual-control")

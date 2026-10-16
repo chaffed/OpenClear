@@ -32,6 +32,10 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
     require_dual_control: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the
+    # bank's approval (MOBILE_PLAN.md R6; services/customer_approval_service.py). Off by default;
+    # each customer can follow it or override it (Customer.approve_users).
+    approve_customer_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

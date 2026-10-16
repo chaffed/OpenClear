@@ -569,6 +569,9 @@ Settings → API clients: credentials for its own systems, with an offered role,
 its accounts, read-only or not, a secret or a key pair; the bank sees them marked *theirs* and
 can revoke them). Each permission is masked unless the bank has turned that customer's switch
 on, and they never reach beyond the customer:
+- the bank can approve new people first (Settings → New customer users, or per customer):
+  anyone the customer's side adds waits, unable to sign in, until the bank approves them
+  under Approvals → New customer users;
 - only roles the bank marks *offered to customers*, and no editing of roles;
 - nobody linked silently: people are invited, and someone who already exists accepts with
   their own password;

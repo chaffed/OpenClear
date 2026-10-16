@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}New customer users — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About new customer users{% endblock %}
+{% block help_body %}
+<p>When you ask to approve new customer users (Settings → New customer users, or a customer's
+  own setting), someone a customer's side adds waits here: an invitation from its administrator,
+  its own sign-on or its SCIM directory. They can't sign in until you approve them.</p>
+<p>Rejecting removes their access to that customer; say why, for the customer's administrators,
+  who are told either way. People you add yourself never wait.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>New customer users</h1>
+  {% if rows %}
+  {% set columns = [
+    {"key": "email", "label": "Person", "role": "primary"},
+    {"key": "customer", "label": "Customer"},
+    {"key": "role", "label": "Role"},
+    {"key": "since", "label": "Waiting since"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(row, col, part="cell") rt.responsive_table(columns, rows, id="waiting") -%}
+    {%- if col.key == "email" %}{{ row.email }}
+    {%- elif col.key == "customer" %}<a href="/ui/customers/{{ row.customer.id }}">{{ row.customer.name }}</a>
+    {%- elif col.key == "role" %}{{ row.role or "—" }}
+    {%- elif col.key == "since" %}<time datetime="{{ row.since | iso_utc }}" data-local-time>{{ row.since.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    {%- elif col.key == "actions" %}
+      <form method="post" action="/ui/approvals/customer-users/{{ row.membership.id }}/approve" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">{{ icon("check_circle") }}Approve</button>
+      </form>
+      <details class="decision-note">
+        <summary>Reject…</summary>
+        <form method="post" action="/ui/approvals/customer-users/{{ row.membership.id }}/reject">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label>Why (the customer's administrators see this) <input type="text" name="reason" required maxlength="300"></label>
+          <button type="submit" class="secondary">Reject</button>
+        </form>
+      </details>
+    {%- endif %}
+  {%- endcall %}
+  {% else %}
+  <p>No one is waiting.</p>
+  {% endif %}
+</div>
+{% endblock %}

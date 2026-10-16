@@ -43,6 +43,19 @@ Plugin page additions (MOBILE_PLAN.md R5; PLUGIN_PLAN.md PL4):
 - **On a phone** a toolbar folds behind one "More" button and a panel starts closed.
 - The example plugin fills one slot of each kind (docs/PLUGINS.md).
 
+Bank approval of new customer users (MOBILE_PLAN.md R6), off by default:
+
+- **Settings → New customer users**, and each customer's own setting on its page (follow the
+  bank, approve, don't): people a customer's side adds (an invitation, its own sign-on or its
+  SCIM directory) wait for the bank before they can sign in, and are told so when they try.
+- **New customer users** in the menu when anyone is waiting: approve, or reject with a reason
+  (their access to that customer is removed). The customer's administrators are told either way
+  (a new notification), and both are in the action log as `user.approved` and `user.rejected`
+  security events.
+- Only the bank's approval lets a waiting person in: signing in again through the customer's
+  sign-on, its SCIM directory and the customer's administrators can't. People the bank adds
+  itself never wait.
+
 ## 1.16.0 — 2026-10-16
 
 Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with a mouse) is unchanged.

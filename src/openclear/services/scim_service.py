@@ -139,10 +139,16 @@ def sync_access(session: Session, connection: SsoConnection, scim_user: ScimUser
             user_id=scim_user.user_id, tenant_id=connection.tenant_id, customer_id=connection.customer_id, security_group_id=group_id,
         )
         session.add(membership)
+        session.flush()
+        if connection.managed_by == "customer":
+            from openclear.services import customer_approval_service
+
+            customer_approval_service.hold_if_required(session, membership)  # MOBILE_PLAN.md R6
     else:
         if membership.security_group_id != group_id:
             membership.security_group_id = group_id
-        membership.is_active = True
+        if membership.pending_approval_at is None:  # only the bank's approval turns on a waiting one
+            membership.is_active = True
     session.flush()
     return membership
 

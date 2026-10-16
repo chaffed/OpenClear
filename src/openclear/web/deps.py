@@ -98,6 +98,12 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
 
         count, nearest = exception_service.attention_summary(db, ctx.tenant_id, customer_id=ctx.customer_id)
         ctx = dataclasses.replace(ctx, needs_attention_count=count, nearest_deadline=nearest)
+    if ctx.customer_id is None and "customer:manage" in ctx.permissions:
+        import dataclasses
+
+        from openclear.services import customer_approval_service
+
+        ctx = dataclasses.replace(ctx, customer_users_waiting=customer_approval_service.waiting_count(db, ctx.tenant_id))
     if ctx.is_demo and is_locked_in_demo(request.method, request.url.path):
         raise WebForbidden(DEMO_LOCKED_MESSAGE, title="Turned off in the demo")
     if ctx.embed_parent_origin:

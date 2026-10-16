@@ -1,0 +1,5 @@
+{% if approved %}{{ bank }} approved {{ email }}. They can sign in to OpenClear now.{% else %}{{ bank }} didn't approve {{ email }}, so they can't sign in to OpenClear.
+
+Why: {{ reason }}{% endif %}
+
+You get this because you manage your organization's people in OpenClear.

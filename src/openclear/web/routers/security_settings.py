@@ -42,7 +42,15 @@ _NOTIFICATION_TYPE_LABELS = {
     NotificationType.ACCOUNT_UNLOCKED: "Your account was unlocked",
     NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
     NotificationType.DEADLINE_REMINDER: "Reminder: items to decide before the cutoff",
+    NotificationType.CUSTOMER_USER_DECIDED: "Your bank approved or rejected someone you added",
 }
+
+
+def _types_for(ctx: TenantContext) -> list[NotificationType]:
+    """The types this person can receive: the bank's decisions on new people only reach a
+    customer's administrators (MOBILE_PLAN.md R6)."""
+    managing = ctx.customer_id is not None and "customer_user:manage" in ctx.permissions
+    return [t for t in _PREFERENCE_TYPES if t != NotificationType.CUSTOMER_USER_DECIDED or managing]
 
 
 @router.get("")
@@ -177,7 +185,7 @@ def notification_settings(
             "email_enabled": preferences[t].email_enabled if t in preferences else True,
             "sms_enabled": preferences[t].sms_enabled if t in preferences else False,
         }
-        for t in _PREFERENCE_TYPES
+        for t in _types_for(ctx)
     ]
     return render_template(request, "security/notifications.html", ctx=ctx, phone=user.phone, rows=rows)
 
@@ -204,7 +212,7 @@ async def update_notification_preferences(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     form = await request.form()
-    for notification_type in _PREFERENCE_TYPES:
+    for notification_type in _types_for(ctx):
         notification_service.set_preference(
             db, ctx.user_id, notification_type,
             email_enabled=f"email_{notification_type.value}" in form,

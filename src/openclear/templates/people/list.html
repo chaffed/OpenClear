@@ -35,7 +35,7 @@
     {%- elif col.key == "role" %}{{ p.group.name if p.group else "—" }}{% if p.is_admin %} <span class="badge">administrator</span>{% endif %}
     {%- elif col.key == "accounts" %}{{ p.accounts }}
     {%- elif col.key == "status" %}
-          <span class="badge {{ 'badge-ok' if p.membership.is_active else 'badge-danger' }}">{{ 'active' if p.membership.is_active else 'deactivated' }}</span>
+          {% if p.membership.pending_approval_at %}<span class="badge badge-warn">waiting for your bank</span>{% else %}<span class="badge {{ 'badge-ok' if p.membership.is_active else 'badge-danger' }}">{{ 'active' if p.membership.is_active else 'deactivated' }}</span>{% endif %}
           {% if p.user.locked_until %}<span class="badge badge-danger">locked</span>{% endif %}
     {%- elif col.key == "last" %}{{ p.user.last_login_at.strftime("%Y-%m-%d") if p.user.last_login_at else "Never" }}
     {%- elif col.key == "actions" %}<a href="/ui/people/{{ p.membership.id }}">Manage</a>

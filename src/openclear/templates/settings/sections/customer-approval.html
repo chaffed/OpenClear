@@ -1,0 +1,16 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">When this is on, someone a customer's side adds (an invitation from its administrator, its own
+  sign-on or its SCIM directory) can't sign in until you approve them under <a href="/ui/approvals/customer-users">New
+  customer users</a>. The customer's administrators are told what you decide. People you add yourself never wait.</p>
+<form method="post" action="/ui/settings/customer-approval">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>
+    <input type="checkbox" name="approve_customer_users" value="true" {{ "checked" if approve_customer_users else "" }}>
+    Approve new customer users before they can sign in
+  </label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>
+{% if overrides %}
+<p>Customers with their own setting, which this doesn't change:
+  {% for c in overrides %}<a href="/ui/customers/{{ c.id }}">{{ c.name }}</a> ({{ "approve" if c.approve_users else "don't approve" }}){{ ", " if not loop.last }}{% endfor %}.</p>
+{% endif %}

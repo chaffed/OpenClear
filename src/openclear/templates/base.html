@@ -68,6 +68,7 @@
         <p class="nav-section">Review</p>
         {% if can(ctx, "exception:read") %}{{ nav_link("/ui/exceptions", "Exceptions", "flag", badge=ctx.needs_attention_count) }}{% endif %}
         {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
+        {% if ctx.customer_users_waiting %}{{ nav_link("/ui/approvals/customer-users", "New customer users", "how_to_reg", badge=ctx.customer_users_waiting) }}{% endif %}
         {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
 
         <p class="nav-section">Positive Pay</p>

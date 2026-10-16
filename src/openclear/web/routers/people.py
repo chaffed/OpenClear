@@ -324,17 +324,20 @@ def accept(request: Request, token: str, password: str = Form(""), password_conf
         return _accept_page(request, None, status_code=410)
     try:
         if opened.existing_user is not None:
-            user, _membership = customer_people_service.accept_as_existing(db, opened, current_password)
+            user, membership = customer_people_service.accept_as_existing(db, opened, current_password)
         else:
             if opened.password_sign_in and password != password_confirm:
                 raise PeopleError("The two passwords don't match.")
-            user, _membership = customer_people_service.accept_as_new(db, opened, password)
+            user, membership = customer_people_service.accept_as_new(db, opened, password)
     except ValueError as exc:  # PeopleError, or a password the policy refuses
         db.commit()  # keeps a wrong password's count toward the lockout
         return _accept_page(request, opened, error=str(exc), status_code=422)
     audit_log_service.record_action(db, opened.tenant.id, actor_user_id=user.id, channel="web", action="customer_people.accept",
-                                    summary=f"{user.email} accepted the invitation to {opened.customer.name}",
+                                    summary=f"{user.email} accepted the invitation to {opened.customer.name}"
+                                            + (", waiting for the bank's approval" if membership.pending_approval_at else ""),
                                     resource_type="customer", resource_id=opened.customer.id)
     db.commit()
-    return RedirectResponse(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}?flash="
-                            + quote("You're in. Sign in to continue."), status_code=303)
+    message = (f"Thanks. {opened.tenant.name} approves new people first: you can sign in once they have."
+               if membership.pending_approval_at else "You're in. Sign in to continue.")
+    return RedirectResponse(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}?flash=" + quote(message),
+                            status_code=303)

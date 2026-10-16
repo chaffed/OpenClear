@@ -271,6 +271,9 @@ def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembers
                                           account_ids=[uuid.UUID(a) for a in invitation.account_ids])
     invitation.accepted_at, invitation.accepted_user_id = _now(), user.id
     session.flush()
+    from openclear.services import customer_approval_service
+
+    customer_approval_service.hold_if_required(session, membership)  # MOBILE_PLAN.md R6
     return membership
 
 
@@ -341,6 +344,8 @@ def update_person(
 def set_active(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membership_id: uuid.UUID, active: bool) -> TenantMembership:
     _customer(session, tenant_id, customer_id)
     membership, _user = _member(session, tenant_id, customer_id, membership_id)
+    if active and membership.pending_approval_at is not None:
+        raise PeopleError("They're waiting for your bank to approve them; only your bank can let them in.")
     if not active:
         _keep_an_admin(session, tenant_id, customer_id, membership)
     membership.is_active = active

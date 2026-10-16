@@ -355,3 +355,18 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
   (`ui.py`, its own JS and CSS), rather than a separate example package. Without plugins the
   desktop pictures are unchanged. Also fixed: the layout builder test raced its script's
   selection listener under a loaded suite. Next: R6.
+- 2026-10-16 R6 built on branch `mobile-r6` (on R5): bank approval of new customer users.
+  `tenant.approve_customer_users`, `customer.approve_users` (null follows the bank) and
+  `tenant_membership.pending_approval_at`, migration `f1a3c5e7b9d2`.
+  `services/customer_approval_service.py`: `hold_if_required` on invitation acceptance, on a
+  customer-managed sign-on creating someone and on a customer-managed SCIM directory creating
+  someone; a waiting membership stays inactive, and SSO, SCIM and the customer's `set_active`
+  can't turn it on. Password sign-in's `PENDING_APPROVAL` outcome (said only after a correct
+  password, like SSO_REQUIRED), and SSO's `pending_approval`. Approvals at
+  `/ui/approvals/customer-users` (customer:manage, bank staff; cards on a phone), the menu
+  entry with a count (`TenantContext.customer_users_waiting`), approve or reject with a reason
+  (the membership removed), the customer's administrators notified
+  (`CUSTOMER_USER_DECIDED`, offered only to them in their preferences), `user.approved` and
+  `user.rejected` security events. The setting is a control-panel window (tenant:manage) and
+  a select on the customer's page; no API for it yet. People the bank adds, and its own
+  sign-on's, never wait. Next: the release for R4–R6 and CT1.

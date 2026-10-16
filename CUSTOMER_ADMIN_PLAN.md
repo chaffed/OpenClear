@@ -120,4 +120,4 @@ management is wanted sooner.
   Real identity provider: `scripts/sso_live_check.py` runs Keycloak in a container and signs a
   person in through customer-managed OIDC and SAML connections, through Keycloak's own login
   form (both pass). SCIM is covered by the suite (Keycloak doesn't speak SCIM).
-
+- 2026-10-16 CA-D4 built as MOBILE_PLAN.md R6 (bank approval of new customer users, off by default); CA-D7 as R4 (customers' own API clients).

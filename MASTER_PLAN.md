@@ -127,3 +127,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-16 CONTROLS_PLAN.md CT1: the control inventory (41 controls under NIST SP 800-53), the Controls page grouped by control, `GET /api/v1/compliance/controls` and `/cuecs`. Next: MOBILE_PLAN.md R4, then R5 and R6.
 - 2026-10-16 MOBILE_PLAN.md R4: customers' own API clients (a third self-service switch; offered roles, own accounts, key pairs; the bank sees and revokes them). Next: R5.
 - 2026-10-16 MOBILE_PLAN.md R5: plugin UI slots (PLUGIN_PLAN.md PL4), sanitised, isolated and time-limited, with plugins' own routes and static files. Next: R6.
+- 2026-10-16 MOBILE_PLAN.md R6: bank approval of new customer users (off by default). R4–R6 and CT1 done; next a release.

@@ -116,6 +116,10 @@ class TenantContext:
     needs_attention_count: int = 0
     # The soonest decision deadline among them (base.html's "decide now" banner).
     nearest_deadline: datetime | None = None
+    # For base.html's "New customer users" nav entry: people a customer's side added who wait
+    # for the bank's approval (MOBILE_PLAN.md R6). Web pages only, for the bank's staff who can
+    # manage customers.
+    customer_users_waiting: int = 0
 
     # The login session this request belongs to (auth/security.py::create_session_tokens):
     # `session_id` is what logout revokes; the two expiry times drive base.html's

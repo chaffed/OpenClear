@@ -57,6 +57,9 @@ class PasswordLoginOutcome(str, enum.Enum):
     # a correct password on an already-locked account still must not succeed, or the
     # lockout would be pointless once an attacker's Nth guess happens to land.
     LOCKED = "locked"
+    # The password was CORRECT, but the person's only membership here waits for the bank's
+    # approval (MOBILE_PLAN.md R6; services/customer_approval_service.py).
+    PENDING_APPROVAL = "pending_approval"
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,16 +134,13 @@ def authenticate_password(
     # A user can now hold several memberships in the same tenant (one per customer, or a
     # tenant-wide one plus per-customer overrides — domain/tenant_membership.py), so this
     # is no longer a single-row lookup.
-    active_memberships = [
-        m
-        for m in session.execute(
-            select(TenantMembership).where(TenantMembership.user_id == user.id, TenantMembership.tenant_id == tenant.id)
-        )
-        .scalars()
-        .all()
-        if m.is_active
-    ]
+    memberships = session.execute(
+        select(TenantMembership).where(TenantMembership.user_id == user.id, TenantMembership.tenant_id == tenant.id)
+    ).scalars().all()
+    active_memberships = [m for m in memberships if m.is_active]
     if not active_memberships:
+        if any(m.pending_approval_at is not None for m in memberships):
+            return failed("pending_approval", tenant.id, user, PasswordLoginOutcome.PENDING_APPROVAL)
         return failed("no_membership", tenant.id, user)
 
     # Password correctness is already confirmed above — only NOW do we distinguish

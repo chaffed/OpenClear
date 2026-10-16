@@ -114,6 +114,8 @@ def login_submit(
             message = _SSO_REQUIRED_MESSAGE
         elif result.outcome == PasswordLoginOutcome.LOCKED:
             message = _locked_message()
+        elif result.outcome == PasswordLoginOutcome.PENDING_APPROVAL:
+            message = PENDING_APPROVAL_MESSAGE
         else:
             message = "Invalid organization slug, email, or password."
         return render_template(
@@ -451,6 +453,10 @@ def sso_callback(
     return finish_sso_login(request, db, tenant_id, connection, claims, state_claims.get("next_path"), _error_page)
 
 
+PENDING_APPROVAL_MESSAGE = ("Your bank approves new people before they can use OpenClear, and hasn't yet. "
+                            "You can sign in once it has; your organization's administrator will hear when it does.")
+
+
 def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connection, claims, next_path: str | None, error_page) -> Response:
     """The end of every federated sign-in (OIDC here, SAML in web/routers/saml.py): map the
     person's groups, record the login, and start the session."""
@@ -460,6 +466,9 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
         return error_page(_NOT_AUTHORIZED_MESSAGE)
     if result.outcome == "not_provisioned":
         return error_page(_NOT_PROVISIONED_MESSAGE)
+    if result.outcome == "pending_approval":
+        db.commit()  # keeps a new person's waiting membership
+        return error_page(PENDING_APPROVAL_MESSAGE)
 
     user, membership = result.user, result.membership
     user_service.record_login(db, user.id)

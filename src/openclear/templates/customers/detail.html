@@ -102,6 +102,17 @@
       clients it made keep working if you turn this off, until revoked)</label>
     <button type="submit" class="secondary">{{ icon("save") }}Save</button>
   </form>
+  <form method="post" action="/ui/customers/{{ customer.id }}/approval" class="card-section">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>New people its side adds
+      <select name="approve_users">
+        <option value="" {{ "selected" if customer.approve_users is none else "" }}>As your setting (Settings → New customer users)</option>
+        <option value="true" {{ "selected" if customer.approve_users == true else "" }}>Wait for your approval</option>
+        <option value="false" {{ "selected" if customer.approve_users == false else "" }}>Don't wait</option>
+      </select>
+    </label>
+    <button type="submit" class="secondary">{{ icon("save") }}Save</button>
+  </form>
   <p class="link-line"><a href="/ui/customers/{{ customer.id }}/activity">Its people, sign-on and API client activity</a></p>
   {% if customer_admins %}
   <p>Its administrators: {{ customer_admins | join(", ") }}.</p>

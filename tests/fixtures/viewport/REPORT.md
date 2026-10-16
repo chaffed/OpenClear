@@ -55,6 +55,8 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | setting_sod | ✓ | ✓ | ✓ | ✓ |
 | setting_support_access | ✓ | ✓ | ✓ | ✓ |
 | setting_fraud_model | ✓ | ✓ | ✓ | ✓ |
+| setting_customer_approval | ✓ | ✓ | ✓ | ✓ |
+| customer_user_approvals | ✓ | ✓ | ✓ | ✓ |
 | settings_dialog | ✓ | ✓ | ✓ | ✓ |
 | people | ✓ | ✓ | ✓ | ✓ |
 | person | ✓ | ✓ | ✓ | ✓ |

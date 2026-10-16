@@ -54,6 +54,9 @@ class TenantMembership(Base):
     # of the customer's accounts (True, the default), or only those in membership_account.
     # Only meaningful for a customer membership; bank staff always see the whole bank.
     all_accounts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # Set while the membership waits for the bank's approval (MOBILE_PLAN.md R6): it stays
+    # inactive, and nothing but the bank's approval turns it on.
+    pending_approval_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

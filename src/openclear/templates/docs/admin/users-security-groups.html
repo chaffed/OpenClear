@@ -30,6 +30,14 @@ existing one's permission set. Changes take effect immediately for anyone in tha
   staff included), or remove their last administrator. Everything they do is in your
   action log, and on the customer's page under <em>Its people, sign-on and API client activity</em>.
   Turning self-service off stops it at once.</li>
+  <li><strong>Approve new customer users</strong> — Settings → <em>New customer users</em> (off by
+  default), or each customer's own setting on its page. When on, someone a customer's side adds
+  (an invitation from its administrator, its own sign-on or its SCIM directory) can't sign in
+  until you approve them under <a href="/ui/approvals/customer-users">New customer users</a>,
+  which appears in the menu when anyone is waiting. Rejecting needs a reason and removes their
+  access to that customer; the customer's administrators are told either way. Neither their
+  sign-on, their directory nor their administrators can let them in. People you add yourself
+  never wait.</li>
   <li><strong>Let a customer make its own API clients</strong> — the third switch under
   <em>Self-service</em>. Its administrators with <code>customer_api_client:manage</code> can then
   give their own systems credentials: a role you offer, all or some of their accounts, read only if

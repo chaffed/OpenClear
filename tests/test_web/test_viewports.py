@@ -108,6 +108,8 @@ PAGES = [
     ("setting_sod", "/ui/settings/segregation-of-duties", "bank"),
     ("setting_support_access", "/ui/settings/support-access", "bank"),
     ("setting_fraud_model", "/ui/settings/fraud-model", "bank"),
+    ("setting_customer_approval", "/ui/settings/customer-approval", "bank"),
+    ("customer_user_approvals", "/ui/approvals/customer-users", "bank"),
     ("settings_dialog", "/ui/settings#timeouts", "bank"),
     ("people", "/ui/people", "customer"),
     ("person", "{person}", "customer"),
