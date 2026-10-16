@@ -315,6 +315,8 @@ def test_the_builder_fix_page_and_drop_zone_in_a_browser(client, db_session, ten
         assert "Chosen: issue.txt" in page.inner_text(".dropzone-hint")
         page.click('button[name="action"][value="preview"]')
         page.wait_for_selector("[data-sample-lines] .sample-line")
+        # The builder's script shows its tools just before it listens for selections: select only after.
+        page.wait_for_selector("[data-selection-tools]:not([hidden])")
         page.evaluate("""() => {
             const text = document.querySelector('[data-sample-lines] .sample-line').firstChild;
             const range = document.createRange();
