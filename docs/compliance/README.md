@@ -8,6 +8,8 @@ for each point is.
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack
+- [OpenClear's controls](controls.md): what OpenClear itself does, each control with its NIST
+  SP 800-53 controls, its checks and the CUECs it relies on
 - [Complementary user entity controls](cuecs.md): what OpenClear relies on the bank, its
   customers and its host to do, each filed under its NIST SP 800-53 control, to map onto your
   own control inventory

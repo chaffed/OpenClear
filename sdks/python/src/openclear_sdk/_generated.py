@@ -248,6 +248,27 @@ class CheckImageRead(TypedDict):
     processed_at: str | None
 
 
+class ControlCheck(TypedDict):
+    detail: str | None
+    key: str
+    result: Literal["PASS", "WARN", "FAIL"] | None
+    status: Literal["live", "planned"]
+    title: str | None
+
+
+class ControlInventory(TypedDict):
+    catalog: str
+    checked_at: str
+    controls: list[InventoryControl]
+    version: str
+
+
+class CuecInventory(TypedDict):
+    catalog: str
+    cuecs: list[InventoryCuec]
+    version: str
+
+
 class CustomerRead(TypedDict):
     city: str | None
     customer_number: str
@@ -482,6 +503,40 @@ class ImportedFileResultRead(TypedDict):
     tenant_slug: str
 
 
+class InventoryControl(TypedDict):
+    checks: list[ControlCheck]
+    cuecs: list[str]
+    family: str
+    id: str
+    nature: Literal["built_in", "configurable"]
+    nist: list[NistControl]
+    statement: str
+    status: Literal["PASS", "WARN", "FAIL"] | None
+    title: str
+    type: Literal["preventive", "detective", "corrective"]
+    where: str
+    withdrawn: bool
+
+
+class InventoryCuec(TypedDict):
+    check: str | None
+    check_status: Literal["live", "planned"] | None
+    complements: str
+    controls: list[str]
+    evidence: Literal["automated", "assisted", "attested"]
+    frequency: str
+    id: str
+    nist: str
+    nist_title: str
+    oscal_id: str
+    party: Literal["bank", "customer", "host"]
+    related: list[str]
+    statement: str
+    title: str
+    where: str
+    withdrawn: bool
+
+
 class IssuedItemCreate(TypedDict):
     account_id: str
     amount: float | str
@@ -568,6 +623,12 @@ class MlModelRead(TypedDict):
 
 
 MlModelStatus = Literal["training", "active", "retired", "failed"]
+
+
+class NistControl(TypedDict):
+    id: str
+    oscal_id: str
+    title: str
 
 
 OcrStatus = Literal["pending", "completed", "failed"]
@@ -1185,6 +1246,36 @@ class CheckImagesApi:
         POST /api/v1/check-images/{check_image_id}/reprocess
         """
         return self._c.call("POST", f"/api/v1/check-images/{_path(check_image_id)}/reprocess")
+
+
+class ComplianceApi:
+    """`compliance` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def control_inventory(self) -> ControlInventory:
+        """Control Inventory.
+
+        GET /api/v1/compliance/controls
+
+        OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
+        checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+        is the worst of its live checks, or null when none of its checks is live yet.
+        """
+        return self._c.call("GET", "/api/v1/compliance/controls")
+
+    def cuec_inventory(self, *, party: Literal["bank", "customer", "host"] | None = None) -> CuecInventory:
+        """Cuec Inventory.
+
+        GET /api/v1/compliance/cuecs
+
+        The complementary user entity controls: what OpenClear's controls rely on the bank, its
+        customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
+        with the OpenClear controls that rely on it. A customer's own session sees only the
+        customer's. Filter with `party`.
+        """
+        return self._c.call("GET", "/api/v1/compliance/cuecs", query={"party": party})
 
 
 class ConformanceApi:
@@ -2067,6 +2158,7 @@ AREAS = {
     "billing": BillingApi,
     "bulk_uploads": BulkUploadsApi,
     "check_images": CheckImagesApi,
+    "compliance": ComplianceApi,
     "conformance": ConformanceApi,
     "controls": ControlsApi,
     "customers": CustomersApi,

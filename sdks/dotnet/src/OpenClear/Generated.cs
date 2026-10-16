@@ -236,6 +236,30 @@ public sealed record CheckImageRead
     [JsonPropertyName("processed_at")] public string ProcessedAt { get; init; } = default!;
 }
 
+public sealed record ControlCheck
+{
+    [JsonPropertyName("detail")] public string Detail { get; init; } = default!;
+    [JsonPropertyName("key")] public string Key { get; init; } = default!;
+    [JsonPropertyName("result")] public string Result { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
+}
+
+public sealed record ControlInventory
+{
+    [JsonPropertyName("catalog")] public string Catalog { get; init; } = default!;
+    [JsonPropertyName("checked_at")] public string CheckedAt { get; init; } = default!;
+    [JsonPropertyName("controls")] public IReadOnlyList<InventoryControl> Controls { get; init; } = default!;
+    [JsonPropertyName("version")] public string Version { get; init; } = default!;
+}
+
+public sealed record CuecInventory
+{
+    [JsonPropertyName("catalog")] public string Catalog { get; init; } = default!;
+    [JsonPropertyName("cuecs")] public IReadOnlyList<InventoryCuec> Cuecs { get; init; } = default!;
+    [JsonPropertyName("version")] public string Version { get; init; } = default!;
+}
+
 public sealed record CustomerRead
 {
     [JsonPropertyName("city")] public string City { get; init; } = default!;
@@ -486,6 +510,42 @@ public sealed record ImportedFileResultRead
     [JsonPropertyName("tenant_slug")] public string TenantSlug { get; init; } = default!;
 }
 
+public sealed record InventoryControl
+{
+    [JsonPropertyName("checks")] public IReadOnlyList<ControlCheck> Checks { get; init; } = default!;
+    [JsonPropertyName("cuecs")] public IReadOnlyList<string> Cuecs { get; init; } = default!;
+    [JsonPropertyName("family")] public string Family { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("nature")] public string Nature { get; init; } = default!;
+    [JsonPropertyName("nist")] public IReadOnlyList<NistControl> Nist { get; init; } = default!;
+    [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
+    [JsonPropertyName("type")] public string Type { get; init; } = default!;
+    [JsonPropertyName("where")] public string Where { get; init; } = default!;
+    [JsonPropertyName("withdrawn")] public bool Withdrawn { get; init; } = default!;
+}
+
+public sealed record InventoryCuec
+{
+    [JsonPropertyName("check")] public string Check { get; init; } = default!;
+    [JsonPropertyName("check_status")] public string CheckStatus { get; init; } = default!;
+    [JsonPropertyName("complements")] public string Complements { get; init; } = default!;
+    [JsonPropertyName("controls")] public IReadOnlyList<string> Controls { get; init; } = default!;
+    [JsonPropertyName("evidence")] public string Evidence { get; init; } = default!;
+    [JsonPropertyName("frequency")] public string Frequency { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("nist")] public string Nist { get; init; } = default!;
+    [JsonPropertyName("nist_title")] public string NistTitle { get; init; } = default!;
+    [JsonPropertyName("oscal_id")] public string OscalId { get; init; } = default!;
+    [JsonPropertyName("party")] public string Party { get; init; } = default!;
+    [JsonPropertyName("related")] public IReadOnlyList<string> Related { get; init; } = default!;
+    [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
+    [JsonPropertyName("where")] public string Where { get; init; } = default!;
+    [JsonPropertyName("withdrawn")] public bool Withdrawn { get; init; } = default!;
+}
+
 public sealed record IssuedItemCreate
 {
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
@@ -568,6 +628,13 @@ public sealed record MlModelRead
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
     [JsonPropertyName("trained_from_decision_count")] public long TrainedFromDecisionCount { get; init; } = default!;
     [JsonPropertyName("version")] public string Version { get; init; } = default!;
+}
+
+public sealed record NistControl
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("oscal_id")] public string OscalId { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
 }
 
 public sealed record PaidItemCreate
@@ -1248,6 +1315,40 @@ public sealed partial class CheckImagesApi
     /// </summary>
     public Task<CheckImageRead> ReprocessCheckImageAsync(string checkImageId, CancellationToken cancellationToken = default) =>
         _c.CallAsync<CheckImageRead>("POST", $"/api/v1/check-images/{Uri.EscapeDataString(checkImageId.ToString()!)}/reprocess", cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// compliance endpoints.
+/// </summary>
+public sealed partial class ComplianceApi
+{
+    private readonly ITransport _c;
+    public ComplianceApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Control Inventory.
+    ///
+    /// GET /api/v1/compliance/controls
+    ///
+    /// OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
+    /// checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+    /// is the worst of its live checks, or null when none of its checks is live yet.
+    /// </summary>
+    public Task<ControlInventory> ControlInventoryAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<ControlInventory>("GET", "/api/v1/compliance/controls", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Cuec Inventory.
+    ///
+    /// GET /api/v1/compliance/cuecs
+    ///
+    /// The complementary user entity controls: what OpenClear's controls rely on the bank, its
+    /// customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
+    /// with the OpenClear controls that rely on it. A customer's own session sees only the
+    /// customer's. Filter with `party`.
+    /// </summary>
+    public Task<CuecInventory> CuecInventoryAsync(string? party = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<CuecInventory>("GET", "/api/v1/compliance/cuecs", query: new Dictionary<string, object?> { ["party"] = party }, cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -2251,6 +2352,7 @@ public partial class OpenClearClient
     public BillingApi Billing { get; private set; } = default!;
     public BulkUploadsApi BulkUploads { get; private set; } = default!;
     public CheckImagesApi CheckImages { get; private set; } = default!;
+    public ComplianceApi Compliance { get; private set; } = default!;
     public ConformanceApi Conformance { get; private set; } = default!;
     public ControlsApi Controls { get; private set; } = default!;
     public CustomersApi Customers { get; private set; } = default!;
@@ -2285,6 +2387,7 @@ public partial class OpenClearClient
         Billing = new BillingApi(this);
         BulkUploads = new BulkUploadsApi(this);
         CheckImages = new CheckImagesApi(this);
+        Compliance = new ComplianceApi(this);
         Conformance = new ConformanceApi(this);
         Controls = new ControlsApi(this);
         Customers = new CustomersApi(this);

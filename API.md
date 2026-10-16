@@ -597,6 +597,16 @@ report.
 |---|---|---|
 | GET | `/status` | `audit_log:read`. Each control's live status, `PASS` / `WARN` / `FAIL`, with `detail` and `evidence`, and `overall` (the worst). The controls are: secrets encrypted in the database; disk and database encryption (as the operator states it); the action log's integrity; segregation of duties; admins' second factor; the anomaly-capture test; malformed files refused; decisions and imports on time; integration secret age; production settings |
 
+### Compliance inventories — `/api/v1/compliance`
+
+Read-only (CONTROLS_PLAN.md CT1). See [docs/compliance/controls.md](docs/compliance/controls.md) and
+[cuecs.md](docs/compliance/cuecs.md).
+
+| method | path | notes |
+|---|---|---|
+| GET | `/controls` | `audit_log:read`, the bank's own staff. OpenClear's control inventory: each control (`OC-AC-05`) with its NIST SP 800-53 controls (id, title, OSCAL id), type, nature, the CUECs it relies on, and its checks. Each check is `live` (with this bank's `result` and `detail` now) or `planned`; a control's `status` is the worst of its live checks, or null when none is live yet |
+| GET | `/cuecs?party=bank\|customer\|host` | Any signed-in caller (the inventory is published). The complementary user entity controls, each with the OpenClear controls that rely on it. A customer's own session sees only the customer's (`party=bank` or `host` is `403`) |
+
 ### Evidence export — `/api/v1/audit`
 
 | method | path | notes |

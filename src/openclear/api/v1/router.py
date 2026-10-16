@@ -28,6 +28,7 @@ from openclear.api.v1.decision_feed import router as decision_feed_router
 from openclear.api.v1.embed import router as embed_router
 from openclear.api.v1.conformance import router as conformance_router
 from openclear.api.v1.mrm import router as mrm_router
+from openclear.api.v1.compliance import router as compliance_router
 from openclear.api.v1.controls import router as controls_router
 from openclear.api.v1.audit import router as audit_router
 from openclear.api.v1.data_exports import router as data_exports_router
@@ -60,6 +61,7 @@ api_router.include_router(embed_router)
 api_router.include_router(conformance_router)
 api_router.include_router(mrm_router)
 api_router.include_router(controls_router)
+api_router.include_router(compliance_router)
 api_router.include_router(audit_router)
 api_router.include_router(security_events_router)
 api_router.include_router(edge_router)

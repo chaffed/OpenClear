@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+Controls (CONTROLS_PLAN.md CT1):
+
+- **OpenClear's control inventory**: 41 controls (`OC-AC-05`, "Segregation of duties"), each
+  filed under the NIST SP 800-53 Rev. 5 controls it carries out, with its type, whether a
+  bank's setting governs it, the checks that test it and the CUECs it relies on. On the docs
+  site (Compliance → OpenClear's controls).
+- **The Controls page by control**: the checks are grouped under the controls they test, by
+  family, each control with its id, NIST controls and status (the worst of its checks).
+- **API**: `GET /api/v1/compliance/controls`, the inventory with each check's live status for
+  the bank, and `GET /api/v1/compliance/cuecs`, the CUEC inventory with the controls that rely
+  on each (a customer's own session sees only the customer's). The SDKs are regenerated.
+
 ## 1.16.0 — 2026-10-16
 
 Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with a mouse) is unchanged.

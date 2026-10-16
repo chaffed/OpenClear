@@ -25,18 +25,30 @@
   </div>
   <p>{{ result.counts.PASS }} pass, {{ result.counts.WARN }} need attention, {{ result.counts.FAIL }} fail.
     Checked {{ result.checked_at[:16]|replace("T", " ") }} UTC.</p>
+  <p class="hint">Each control is one of <a href="https://github.com/chaffed/OpenClear/blob/main/docs/compliance/controls.md">OpenClear's controls</a>, filed under the
+    NIST SP 800-53 controls it carries out; its status is the worst of its checks. Checks marked planned arrive with later releases.</p>
+</div>
+{% for label, rows in families %}
+<div class="card">
+  <h2>{{ label }}</h2>
   {% set columns = [
-    {"key": "title", "label": "Control", "role": "primary"},
+    {"key": "control", "label": "Control", "role": "primary"},
     {"key": "status", "label": "Status", "role": "status"},
-    {"key": "detail", "label": "Detail", "role": "text"},
+    {"key": "nist", "label": "NIST"},
+    {"key": "checks", "label": "Checks", "role": "text"},
   ] %}
-  {% call(c, col, part="cell") rt.responsive_table(columns, result.controls, id="control") -%}
-    {%- if col.key == "title" %}{{ c.title }}
-    {%- elif col.key == "status" %}<span class="badge {{ badge[c.status] }}">{{ c.status }}</span>
-    {%- elif col.key == "detail" %}{{ c.detail }}
+  {% call(c, col, part="cell") rt.responsive_table(columns, rows, id="control-" ~ loop.index) -%}
+    {%- if col.key == "control" %}<span class="control-id">{{ c.id }}</span> {{ c.title }}
+    {%- elif col.key == "status" %}{% if c.status %}<span class="badge {{ badge[c.status] }}">{{ c.status }}</span>{% else %}<span class="text-muted nowrap">Not checked yet</span>{% endif %}
+    {%- elif col.key == "nist" %}{% for n in c.nist %}<abbr class="nowrap" title="{{ n.title }}">{{ n.id }}</abbr>{{ ", " if not loop.last }}{% endfor %}
+    {%- elif col.key == "checks" %}
+      {%- set planned = c.checks | selectattr("status", "equalto", "planned") | list %}
+      {%- for check in c.checks if check.status == "live" %}<p class="control-check"><span class="badge {{ badge[check.result] }}">{{ check.result }}</span> <strong>{{ check.title }}.</strong> {{ check.detail }}</p>{% endfor %}
+      {%- if planned %}<p class="control-check text-muted">{{ planned | length }} {{ "check" if planned | length == 1 else "checks" }} planned</p>{% endif %}
     {%- endif %}
   {%- endcall %}
 </div>
+{% endfor %}
 {% if export_run and export_state in ("queued", "running") %}
 <div class="card not-phone" data-poll-seconds="4" aria-busy="true">
   <h2>Evidence export</h2>

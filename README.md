@@ -671,7 +671,10 @@ third-party risk guidance):
   `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true`.
 - **Controls** (Settings → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
   control's live PASS / WARN / FAIL with its evidence. Record how the host encrypts disks and
-  the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`.
+  the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`. The page groups the checks under
+  OpenClear's controls, each filed under NIST SP 800-53 ([docs/compliance/controls.md](docs/compliance/controls.md),
+  `GET /api/v1/compliance/controls`), and what they rely on the bank, its customers and its host
+  to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)).
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
   PDF bundle for a period.
 - **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to

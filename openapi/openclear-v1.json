@@ -1600,6 +1600,126 @@
         "title": "CheckImageRead",
         "type": "object"
       },
+      "ControlCheck": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PASS",
+                  "WARN",
+                  "FAIL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "enum": [
+              "live",
+              "planned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "key",
+          "status",
+          "title",
+          "result",
+          "detail"
+        ],
+        "title": "ControlCheck",
+        "type": "object"
+      },
+      "ControlInventory": {
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "checked_at": {
+            "title": "Checked At",
+            "type": "string"
+          },
+          "controls": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryControl"
+            },
+            "title": "Controls",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "catalog",
+          "checked_at",
+          "controls"
+        ],
+        "title": "ControlInventory",
+        "type": "object"
+      },
+      "CuecInventory": {
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "cuecs": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryCuec"
+            },
+            "title": "Cuecs",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "catalog",
+          "cuecs"
+        ],
+        "title": "CuecInventory",
+        "type": "object"
+      },
       "CustomerRead": {
         "properties": {
           "city": {
@@ -3250,6 +3370,226 @@
         "title": "ImportedFileResultRead",
         "type": "object"
       },
+      "InventoryControl": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ControlCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "cuecs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cuecs",
+            "type": "array"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nature": {
+            "enum": [
+              "built_in",
+              "configurable"
+            ],
+            "title": "Nature",
+            "type": "string"
+          },
+          "nist": {
+            "items": {
+              "$ref": "#/components/schemas/NistControl"
+            },
+            "title": "Nist",
+            "type": "array"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PASS",
+                  "WARN",
+                  "FAIL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "preventive",
+              "detective",
+              "corrective"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "family",
+          "title",
+          "statement",
+          "nist",
+          "type",
+          "nature",
+          "checks",
+          "cuecs",
+          "where",
+          "withdrawn",
+          "status"
+        ],
+        "title": "InventoryControl",
+        "type": "object"
+      },
+      "InventoryCuec": {
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "check_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "live",
+                  "planned"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Status"
+          },
+          "complements": {
+            "title": "Complements",
+            "type": "string"
+          },
+          "controls": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Controls",
+            "type": "array"
+          },
+          "evidence": {
+            "enum": [
+              "automated",
+              "assisted",
+              "attested"
+            ],
+            "title": "Evidence",
+            "type": "string"
+          },
+          "frequency": {
+            "title": "Frequency",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nist": {
+            "title": "Nist",
+            "type": "string"
+          },
+          "nist_title": {
+            "title": "Nist Title",
+            "type": "string"
+          },
+          "oscal_id": {
+            "title": "Oscal Id",
+            "type": "string"
+          },
+          "party": {
+            "enum": [
+              "bank",
+              "customer",
+              "host"
+            ],
+            "title": "Party",
+            "type": "string"
+          },
+          "related": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "party",
+          "nist",
+          "nist_title",
+          "oscal_id",
+          "related",
+          "title",
+          "statement",
+          "complements",
+          "evidence",
+          "check",
+          "check_status",
+          "frequency",
+          "where",
+          "withdrawn",
+          "controls"
+        ],
+        "title": "InventoryCuec",
+        "type": "object"
+      },
       "IssuedItemCreate": {
         "properties": {
           "account_id": {
@@ -3701,6 +4041,29 @@
         ],
         "title": "MlModelStatus",
         "type": "string"
+      },
+      "NistControl": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "oscal_id": {
+            "title": "Oscal Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "oscal_id"
+        ],
+        "title": "NistControl",
+        "type": "object"
       },
       "OcrStatus": {
         "enum": [
@@ -7296,6 +7659,93 @@
         "summary": "Reprocess Check Image",
         "tags": [
           "check-images"
+        ]
+      }
+    },
+    "/api/v1/compliance/controls": {
+      "get": {
+        "description": "OpenClear's control inventory: each control with its NIST SP 800-53 controls, its\nchecks (each live check's status for this bank now) and the CUECs it relies on. `status`\nis the worst of its live checks, or null when none of its checks is live yet.",
+        "operationId": "control_inventory_api_v1_compliance_controls_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlInventory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Control Inventory",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/cuecs": {
+      "get": {
+        "description": "The complementary user entity controls: what OpenClear's controls rely on the bank, its\ncustomers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,\nwith the OpenClear controls that rely on it. A customer's own session sees only the\ncustomer's. Filter with `party`.",
+        "operationId": "cuec_inventory_api_v1_compliance_cuecs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "party",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "bank",
+                    "customer",
+                    "host"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Party"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CuecInventory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cuec Inventory",
+        "tags": [
+          "compliance"
         ]
       }
     },

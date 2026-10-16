@@ -31,7 +31,13 @@ def controls_page(request: Request, db: Session = Depends(get_db),
             export_run = long_runs.get_run(db, ctx.tenant_id, uuid.UUID(export_id), long_runs.EVIDENCE)
         except ValueError:
             export_run = None
-    return render_template(request, "admin/controls.html", ctx=ctx, result=controls_service.summary(controls_service.status(db, ctx.tenant_id)),
+    from openclear.api.v1.compliance import inventory
+    from openclear.compliance import controls as inventory_module
+
+    live = controls_service.status(db, ctx.tenant_id)
+    rows = inventory(live)
+    families = [(label, [c for c in rows if c["family"] == key and not c["withdrawn"]]) for key, label in inventory_module.FAMILIES.items()]
+    return render_template(request, "admin/controls.html", ctx=ctx, result=controls_service.summary(live), families=families,
                            default_start=today.replace(day=1).isoformat(), default_end=today.isoformat(),
                            export_run=export_run, export_state=long_runs.state(export_run) if export_run else None)
 

@@ -224,6 +224,27 @@ export interface CheckImageRead {
   processed_at: string | null;
 }
 
+export interface ControlCheck {
+  detail: string | null;
+  key: string;
+  result: "PASS" | "WARN" | "FAIL" | null;
+  status: "live" | "planned";
+  title: string | null;
+}
+
+export interface ControlInventory {
+  catalog: string;
+  checked_at: string;
+  controls: Array<InventoryControl>;
+  version: string;
+}
+
+export interface CuecInventory {
+  catalog: string;
+  cuecs: Array<InventoryCuec>;
+  version: string;
+}
+
 export interface CustomerRead {
   city: string | null;
   customer_number: string;
@@ -456,6 +477,40 @@ export interface ImportedFileResultRead {
   tenant_slug: string;
 }
 
+export interface InventoryControl {
+  checks: Array<ControlCheck>;
+  cuecs: Array<string>;
+  family: string;
+  id: string;
+  nature: "built_in" | "configurable";
+  nist: Array<NistControl>;
+  statement: string;
+  status: "PASS" | "WARN" | "FAIL" | null;
+  title: string;
+  type: "preventive" | "detective" | "corrective";
+  where: string;
+  withdrawn: boolean;
+}
+
+export interface InventoryCuec {
+  check: string | null;
+  check_status: "live" | "planned" | null;
+  complements: string;
+  controls: Array<string>;
+  evidence: "automated" | "assisted" | "attested";
+  frequency: string;
+  id: string;
+  nist: string;
+  nist_title: string;
+  oscal_id: string;
+  party: "bank" | "customer" | "host";
+  related: Array<string>;
+  statement: string;
+  title: string;
+  where: string;
+  withdrawn: boolean;
+}
+
 export interface IssuedItemCreate {
   account_id: string;
   amount: number | string;
@@ -535,6 +590,12 @@ export interface MlModelRead {
 }
 
 export type MlModelStatus = "training" | "active" | "retired" | "failed";
+
+export interface NistControl {
+  id: string;
+  oscal_id: string;
+  title: string;
+}
 
 export type OcrStatus = "pending" | "completed" | "failed";
 
@@ -1248,6 +1309,42 @@ export class CheckImagesApi {
    */
   reprocessCheckImage(checkImageId: string): Promise<CheckImageRead> {
     return this.c.call<CheckImageRead>("POST", `/api/v1/check-images/${encodeURIComponent(String(checkImageId))}/reprocess`, {  });
+  }
+}
+
+/** `compliance` endpoints. */
+export class ComplianceApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Control Inventory.
+   *
+   * GET /api/v1/compliance/controls
+   *
+   * OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
+   * checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+   * is the worst of its live checks, or null when none of its checks is live yet.
+   */
+  controlInventory(): Promise<ControlInventory> {
+    return this.c.call<ControlInventory>("GET", `/api/v1/compliance/controls`, {  });
+  }
+
+  /**
+   * Cuec Inventory.
+   *
+   * GET /api/v1/compliance/cuecs
+   *
+   * The complementary user entity controls: what OpenClear's controls rely on the bank, its
+   * customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
+   * with the OpenClear controls that rely on it. A customer's own session sees only the
+   * customer's. Filter with `party`.
+   */
+  cuecInventory(query: { party?: "bank" | "customer" | "host" | null } = {}): Promise<CuecInventory> {
+    return this.c.call<CuecInventory>("GET", `/api/v1/compliance/cuecs`, { query });
   }
 }
 
@@ -2343,6 +2440,7 @@ export const AREAS = {
   billing: BillingApi,
   bulkUploads: BulkUploadsApi,
   checkImages: CheckImagesApi,
+  compliance: ComplianceApi,
   conformance: ConformanceApi,
   controls: ControlsApi,
   customers: CustomersApi,

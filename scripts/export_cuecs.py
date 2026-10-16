@@ -3,7 +3,8 @@
 # Copyright (C) 2026 Chaffed
 
 """Writes the published copies of the CUEC inventory (src/openclear/compliance/cuecs.py;
-CONTROLS_PLAN.md CT0):
+CONTROLS_PLAN.md CT0) and the OpenClear control inventory (compliance/controls.py, CT1):
+- docs/compliance/controls.md, OpenClear's own controls;
 - docs/compliance/cuecs.md, the page for people;
 - docs/compliance/cuecs.json, for a GRC tool or a script;
 - docs/compliance/cuecs.csv, to map onto a control inventory in a spreadsheet: its last
@@ -24,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "compliance"
 sys.path.insert(0, str(ROOT / "src"))
 
-from openclear.compliance import cuecs  # noqa: E402
+from openclear.compliance import controls, cuecs  # noqa: E402
 
 CSV_COLUMNS = ["id", "party", "nist", "nist_title", "oscal_id", "related", "title", "statement", "complements", "evidence", "check",
                "check_status", "frequency", "where", "your_control_id", "your_control_owner"]
@@ -100,7 +101,49 @@ def render_csv() -> str:
     return buffer.getvalue()
 
 
-OUTPUTS = {"cuecs.md": render_markdown, "cuecs.json": render_json, "cuecs.csv": render_csv}
+CONTROLS_INTRO = """# OpenClear's controls
+
+What OpenClear itself does to meet each control objective, filed under the
+[{catalog}](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final) controls it carries out. Several
+rely on the bank, its customers or whoever runs OpenClear to do their part: those are the
+[complementary user entity controls](cuecs.md) (CUECs). It isn't legal advice
+([Compliance](README.md)).
+
+Inventory version {version}. The same list, with each check's live status for your bank, is at
+`GET /api/v1/compliance/controls`, and on the Controls page.
+
+## Reading the inventory
+
+- **Id**: `OC-<family>-<nn>`. Ids never change, and a withdrawn one is never reused.
+- **NIST**: the 800-53 Rev. 5 controls it carries out, the main one first.
+- **Type**: {types}.
+- **Nature**: {natures}. A configurable control relies on the CUEC that sets it.
+- **Checks**: the tests of the control. *Live* checks are on the Controls page today;
+  *planned* ones arrive with CONTROLS_PLAN.md CT2 and CT3.
+"""
+
+
+def render_controls_markdown() -> str:
+    types = "; ".join(f"*{name}* {text}" for name, text in controls.TYPES.items())
+    natures = "; ".join(f"*{name.replace('_', ' ')}*, {text}" for name, text in controls.NATURES.items())
+    parts = [CONTROLS_INTRO.format(catalog=cuecs.NIST_CATALOG, version=controls.VERSION, types=types, natures=natures)]
+    for family, label in controls.FAMILIES.items():
+        parts.append(f"## {label}\n")
+        parts.append("| Id | Control | NIST | Type | Checks | Relies on | Where |")
+        parts.append("|---|---|---|---|---|---|---|")
+        for c in controls.CONTROLS:
+            if c.family != family or c.withdrawn:
+                continue
+            nist = "<br>".join(f"**{n}** {cuecs.NIST_TITLES[n]}" for n in c.nist)
+            checks = "<br>".join(f"`{k}` ({c.check_status(k)})" for k in c.checks) or "—"
+            relies = ", ".join(c.cuecs) or "—"
+            parts.append(f"| {c.id} | **{c.title}.** {c.statement} | {nist} | {c.type}, {c.nature.replace('_', ' ')} | {checks} | "
+                         f"{relies} | {c.where} |")
+        parts.append("")
+    return "\n".join(parts) + "\n"
+
+
+OUTPUTS = {"controls.md": render_controls_markdown, "cuecs.md": render_markdown, "cuecs.json": render_json, "cuecs.csv": render_csv}
 
 
 def main() -> None:

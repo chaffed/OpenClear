@@ -564,6 +564,11 @@ form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
 .decide-layout .card { margin-bottom: 0; }
 .decide-main { display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .decide-image img { max-width: 100%; height: auto; }
+/* Controls (templates/admin/controls.html): each control's id, and one line per check. */
+.control-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
+.control-check { margin: 0 0 0.35rem; }
+.nowrap { white-space: nowrap; }
+.control-check:last-child { margin-bottom: 0; }
 .no-image { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0; color: var(--text-muted); }
 .more-details > summary h2 { display: inline; font-size: 1rem; }
 .select-col { width: 2.5rem; }
