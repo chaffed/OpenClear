@@ -123,15 +123,8 @@ NIST_ID = re.compile(r"^(AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|S
 from openclear.compliance.checks import KEYS as _LIVE  # noqa: E402
 
 EXISTING_CHECKS = frozenset(_LIVE)
-# Checks still to come (CONTROLS_PLAN.md CT3, and the host's software currency), each for the CUECs that name it.
+# Checks still to come, each for the CUECs that name it: the host's software currency needs a source of release dates.
 PLANNED_CHECKS = {
-    "access_review": "A bank-wide access review recorded within the last quarter, every membership in it confirmed or changed",
-    "customer_access_review": "Each self-managing customer recorded an access review of its people within the last quarter",
-    "decision_delivery": "Every decision file delivered to the core before its cutoff, and acknowledged",
-    "file_reconciliation": "Each presented-items file's item count and total, matched against the control totals the core sent",
-    "key_age": "The signing and field-encryption keys' ages against the host's rotation period",
-    "outside_services": "The outside services turned on (email, SMS, OCR, storage, identity providers), with when each was reviewed",
-    "password_policy": "The bank's password policy against the minimum the bank records as its standard",
     "software_currency": "The running version's age, and releases since it",
 }
 

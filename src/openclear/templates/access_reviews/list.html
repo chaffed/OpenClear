@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Access reviews — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About access reviews{% endblock %}
+{% block help_body %}
+<p>An access review looks at everyone who can use OpenClear {{ "for " ~ ctx.customer_name if ctx.customer_id else "at your bank, your customers and your integrations" }}:
+  their role, what they can see and when they last signed in. Confirm each, say what you changed, or
+  remove their access. When every one is decided the review is complete, and that's recorded in the action log.</p>
+<p>Review at least once a quarter.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Access reviews</h1>
+    {% if open_review %}
+    <a class="button" href="/ui/access-reviews/{{ open_review.id }}">{{ icon("fact_check") }}Continue the open review</a>
+    {% else %}
+    <form method="post" action="/ui/access-reviews" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">{{ icon("fact_check") }}Start a review</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if reviews %}
+  <ul>
+    {% for r in reviews %}
+    <li><a href="/ui/access-reviews/{{ r.id }}">{{ r.started_at.strftime("%Y-%m-%d") }}</a>:
+      {{ r.item_count }} {{ "membership" if r.item_count == 1 else "memberships" }},
+      {% if r.completed_at %}completed {{ r.completed_at.strftime("%Y-%m-%d") }}{% else %}open{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No reviews yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

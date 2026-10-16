@@ -319,3 +319,16 @@ One merge per phase, at most one migration each, the three full suites once per 
   from section 2: `software_currency` (no source of release dates without a network call),
   left planned with CT3's. Installation checks are recorded per bank (CT-D12 is about
   attestations). Next: CT3.
+- 2026-10-16 CT3 built on branch `ct3-access-reviews`: `access_review` and `access_review_item`
+  (RLS), file control totals on `bulk_upload_file`, and three tenant columns (the bank's password
+  and key-rotation standards, outside service reviews); migration `b3d5f7a9c1e2`.
+  `services/access_review_service.py` (one open per scope; a snapshot of each active membership,
+  API clients included for the bank; removal through user_service, api_client_service or
+  customer_people_service, so their guardrails apply; completion with a SHA-256 over the
+  decisions, in the action log), pages at `/ui/access-reviews` for both sides.
+  `bulk_import_service._reconcile` keeps an X9.37 or NACHA file's declared and loaded items and
+  totals (the parsers already refuse a file whose own controls don't add up).
+  `services/outside_services.py` lists what's actually in use. Seven checks: access_review,
+  customer_access_review, file_reconciliation, decision_delivery (from the existing batch
+  acknowledgements), outside_services, password_policy, key_age (the signing key files' ages).
+  Only software_currency is still planned. Next: CT4.

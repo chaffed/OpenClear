@@ -133,6 +133,13 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("outside-services", "Data & compliance", "Outside services", "extension", "/ui/settings/outside-services",
+             "The outside services OpenClear uses for you, and when you last reviewed each.", modal=True,
+             keywords="vendors third party providers tprm review"),
+        Tile("standards", "Data & compliance", "Your standards", "rule", "/ui/settings/standards",
+             "Your password and key-rotation standards, which the controls check against.",
+             "Set" if tenant.standard_password_min_length and tenant.key_rotation_days else "Not set", modal=True,
+             keywords="policy password keys rotation"),
         Tile("customer-approval", "Security & access", "New customer users", "how_to_reg", "/ui/settings/customer-approval",
              "Approve people your customers add before they can sign in.", "Bank approves" if tenant.approve_customer_users else "Off",
              modal=True, keywords="approval customers invitation onboarding pending"),
@@ -195,7 +202,20 @@ def _user_tiles(db, ctx, tenant, settings) -> list[Tile]:
     active = _count(db, select(func.count()).select_from(TenantMembership).where(
         TenantMembership.tenant_id == ctx.tenant_id, TenantMembership.is_active.is_(True)))
     return [Tile("users", "Security & access", "Users", "person", "/ui/users", "Who can sign in, and their groups.",
-                 _plural(active, "active user"), keywords="people staff accounts invite")]
+                 _plural(active, "active user"), keywords="people staff accounts invite"),
+            _access_review_tile(db, ctx)]
+
+
+def _access_review_tile(db, ctx) -> Tile:
+    """Access reviews (CONTROLS_PLAN.md CT3), for the bank or a self-managing customer."""
+    from openclear.services import access_review_service
+
+    still_open = access_review_service.open_review(db, ctx.tenant_id, ctx.customer_id)
+    last = next((r for r in access_review_service.reviews(db, ctx.tenant_id, ctx.customer_id, limit=5) if r.completed_at), None)
+    state = "Open" if still_open else (f"Last {last.completed_at:%Y-%m-%d}" if last else "None yet")
+    return Tile("access-reviews", "Security & access", "Access reviews", "fact_check", "/ui/access-reviews",
+                "Confirm each person's access at least once a quarter, and remove what's no longer needed.", state,
+                tone="warn" if still_open or not last else "", keywords="review recertification access users quarterly")
 
 
 def _group_tiles(db, ctx, tenant, settings) -> list[Tile]:
@@ -323,6 +343,7 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
         tiles.append(Tile("people", "Security & access", "People", "groups", "/ui/people",
                           "Invite your people, choose their roles and accounts, and remove access when they leave.",
                           f"{active} active" + (f", {waiting} invited" if waiting else ""), keywords="users invite team staff"))
+        tiles.append(_access_review_tile(db, ctx))
     if "customer_sso:manage" in ctx.permissions:
         from openclear.services import sso_service
 

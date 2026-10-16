@@ -687,6 +687,10 @@ third-party risk guidance):
   (`OPENCLEAR_CONTROL_RESULT_RETENTION_DAYS`), with a 30-day strip on each check's page; a FAIL
   opens a deviation, where someone with `compliance:manage` records the cause and the response;
   and any past period can be tested on demand from the data OpenClear already keeps.
+  Access reviews (Settings → Access reviews; a self-managing customer's of its own people),
+  presented-items files reconciled against their control totals, decision files acknowledged,
+  outside services reviewed, and the bank's own password and key-rotation standards
+  (Settings → Your standards) are checked too.
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
   PDF bundle for a period.
 - **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to

@@ -24,6 +24,7 @@ import contextlib
 import json
 import mmap
 import uuid
+from decimal import Decimal
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -466,6 +467,23 @@ def run_import(session: Session, upload_id: uuid.UUID, *, last_attempt: bool = F
         raise
 
 
+def _reconcile(session: Session, record: BulkUploadFile, rows: list) -> None:
+    """For a file with control records (X9.37, NACHA), keep its declared items and total and what
+    was loaded (CONTROLS_PLAN.md CT3; the file_reconciliation check). The parsers already refuse a
+    file whose own control records don't add up, so a difference is rows refused on the way in."""
+    from openclear.bulk_import.nacha import NachaEntry
+    from openclear.bulk_import.x937 import X937CheckItem
+
+    items = [getattr(r, "data", r) for r in rows]
+    if not items or not all(isinstance(i, (X937CheckItem, NachaEntry)) for i in items):
+        return
+    loaded = set(session.execute(select(BulkUploadRowResult.row_index).where(
+        BulkUploadRowResult.bulk_upload_file_id == record.id, BulkUploadRowResult.success.is_(True))).scalars())
+    record.control_item_count, record.control_total = len(items), sum((i.amount for i in items), Decimal("0"))
+    record.loaded_item_count = len(loaded)
+    record.loaded_total = sum((items[n].amount for n in loaded if n < len(items)), Decimal("0"))
+
+
 def _import(session: Session, record: BulkUploadFile) -> None:
     from openclear.workers.jobs import jobs_queued
 
@@ -502,6 +520,7 @@ def _import(session: Session, record: BulkUploadFile) -> None:
             start += len(chunk)
             record.processed_rows = start
             session.commit()
+        _reconcile(session, record, rows)
 
     _send_summary(session, record)
     record.status, record.completed_at = BulkUploadStatus.COMPLETED, datetime.now(timezone.utc)

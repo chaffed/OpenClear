@@ -132,6 +132,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "customer_people.sign_out_everywhere": "auth.session.revoked",
     "customer_people.export": "users.exported",
     "customer.self_service": "customer.self_service.changed",
+    "access_review.removed": "user.deactivated",
     "customer_user.approve": "user.approved",
     "customer_user.reject": "user.rejected",
     "customer.approval": "customer.self_service.changed",

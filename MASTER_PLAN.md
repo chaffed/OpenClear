@@ -130,3 +130,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-16 MOBILE_PLAN.md R6: bank approval of new customer users (off by default). R4–R6 and CT1 done; next a release.
 - 2026-10-16 Released 1.17.0: the control inventory (CONTROLS_PLAN.md CT1), customers' own API clients, plugin page additions and bank approval of new customer users (MOBILE_PLAN.md R4–R6), and deployed to the sandbox.
 - 2026-10-16 CONTROLS_PLAN.md CT2: 25 new checks (38 in all), population checks over a period, kept test history, deviations with responses. Next: CT3.
+- 2026-10-16 CONTROLS_PLAN.md CT3: access reviews (bank and customer), file reconciliation, decision acknowledgement, outside services, the bank's standards; 45 checks. Next: CT4.

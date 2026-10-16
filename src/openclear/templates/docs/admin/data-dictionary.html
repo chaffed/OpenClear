@@ -126,6 +126,9 @@ erDiagram
 <tr><td>require_dual_control</td><td>Boolean</td><td>no</td><td></td><td>If true, a different person must finalize an exception decision than whoever recommended it.</td></tr>
 <tr><td>control_grace_hours</td><td>Integer</td><td>no</td><td></td><td>How long a control check may stay at FAIL before its deviation counts against the control (default 24).</td></tr>
 <tr><td>control_warn_deviations</td><td>JSON</td><td>no</td><td></td><td>The checks whose WARN also opens a deviation (every check's FAIL does).</td></tr>
+<tr><td>standard_password_min_length</td><td>Integer</td><td>yes</td><td></td><td>The bank's own standard for the shortest password, which the password_policy check holds OpenClear's policy to.</td></tr>
+<tr><td>key_rotation_days</td><td>Integer</td><td>yes</td><td></td><td>How often the bank's standard says keys are rotated, for the key_age check.</td></tr>
+<tr><td>outside_service_reviews</td><td>JSON</td><td>no</td><td></td><td>When the bank last reviewed each outside service OpenClear uses for it: {service: {at, by, note}}.</td></tr>
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
@@ -1063,6 +1066,8 @@ erDiagram
 <tr><td>uploaded_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>uploaded_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>backed_out_at / backed_out_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>control_item_count / control_total</td><td>Integer / Numeric(16,2)</td><td>yes</td><td></td><td>An X9.37 or NACHA file's items and total as its control records declare them.</td></tr>
+<tr><td>loaded_item_count / loaded_total</td><td>Integer / Numeric(16,2)</td><td>yes</td><td></td><td>What was loaded from it; less when rows were refused (the file_reconciliation check).</td></tr>
 </tbody>
 </table>
 
@@ -1318,6 +1323,40 @@ period; an open one keeps the result that opened it. Row-level security by bank.
 <tr><td>closed_at / closed_result_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → control_test_result.id</td><td>The result that closed it; empty while open.</td></tr>
 <tr><td>cause / response</td><td>Text</td><td>yes</td><td></td><td>What caused it and what the bank did, recorded by someone with <code>compliance:manage</code>.</td></tr>
 <tr><td>responded_by_user_id / responded_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td>Who recorded the response, and when.</td></tr>
+</tbody>
+</table>
+
+<h3>access_review</h3>
+<p>A review of who has access (CONTROLS_PLAN.md CT3; services/access_review_service.py): the bank's of every membership, or a
+self-managing customer's of its own people. Complete when every item is decided; the completion is in the action log with
+<code>decisions_sha256</code>. Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>The customer whose own review this is; empty for the bank's.</td></tr>
+<tr><td>started_by_user_id / started_at</td><td>UUID / Timestamp</td><td>yes / no</td><td>FK → user.id</td><td></td></tr>
+<tr><td>completed_by_user_id / completed_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td>When the last item was decided.</td></tr>
+<tr><td>item_count</td><td>Integer</td><td>no</td><td></td><td>Memberships in it.</td></tr>
+<tr><td>decisions_sha256</td><td>String(64)</td><td>yes</td><td></td><td>SHA-256 over every item's membership, who, role, scope, decision and note.</td></tr>
+</tbody>
+</table>
+
+<h3>access_review_item</h3>
+<p>One membership in an access review, as it stood when the review started, and the decision on it. Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>review_id</td><td>UUID</td><td>no</td><td>FK → access_review.id</td><td></td></tr>
+<tr><td>membership_id</td><td>UUID</td><td>no</td><td></td><td>Not a foreign key, so the item stays if the membership is later removed.</td></tr>
+<tr><td>who / role / scope / accounts</td><td>String</td><td>no</td><td></td><td>The person's email (or "API client: name"), their group, "Bank-wide" or the customer, and their accounts.</td></tr>
+<tr><td>last_sign_in</td><td>Timestamp</td><td>yes</td><td></td><td>As of the review's start.</td></tr>
+<tr><td>decision</td><td>String(10)</td><td>yes</td><td></td><td><code>confirmed</code>, <code>changed</code> or <code>removed</code> (deactivated); empty until decided.</td></tr>
+<tr><td>note</td><td>Text</td><td>yes</td><td></td><td>What changed.</td></tr>
+<tr><td>decided_by_user_id / decided_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 </tbody>
 </table>
 

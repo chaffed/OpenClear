@@ -23,6 +23,21 @@ Control testing (CONTROLS_PLAN.md CT2):
   grace period after which an open one fails the "Deviations dealt with" check.
 - Each scheduled job's last run is now recorded, for the scheduled jobs check.
 
+Access reviews and the last checks (CONTROLS_PLAN.md CT3):
+
+- **Access reviews** (Settings → Access reviews): the bank reviews every membership (staff,
+  customers' people, API clients), seeing each one's role, scope, accounts and last sign-in, and
+  confirms it, says what changed, or removes access. A completed review is recorded in the action
+  log with a digest of every decision. A customer that manages its own people reviews them the same
+  way. Checked each quarter for the bank and for each self-managing customer.
+- **Files reconciled**: an X9.37 or NACHA presented-items file keeps the items and total its control
+  records declare, and what was loaded; the Controls page warns when rows refused on the way in
+  weren't corrected within a day.
+- **Decision files acknowledged** by the core within a day; **outside services** (email, SMS, OCR,
+  storage, SIEM, identity providers) reviewed each year (Settings → Outside services); and **your
+  standards** (Settings → Your standards): the password policy and the signing keys' age checked
+  against the minimum length and rotation period you record. 45 checks in all.
+
 ## 1.17.0 — 2026-10-16
 
 Controls (CONTROLS_PLAN.md CT1):

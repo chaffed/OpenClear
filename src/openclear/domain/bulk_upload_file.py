@@ -4,8 +4,9 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -103,6 +104,13 @@ class BulkUploadFile(Base):
     processed_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     options: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     exception_counts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # A presented-items file with control records (X9.37, NACHA; CONTROLS_PLAN.md CT3): its items and
+    # total as the file declares them (the parser already refuses a file whose own controls don't
+    # add up), and what was loaded. They differ when rows were refused on the way in.
+    control_item_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    control_total: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), nullable=True)
+    loaded_item_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    loaded_total: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

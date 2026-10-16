@@ -550,3 +550,165 @@ def control_response(session: Session, tenant_id: uuid.UUID) -> Control:
         return Control("control_response", title, WARN,
                        f"{len(open_)} open, and {len(unanswered)} without a recorded cause and response.", evidence)
     return Control("control_response", title, PASS, "No open deviations, and every recent one has its cause and response.", evidence)
+
+
+# --- CT3: access reviews and the data the last checks need --------------------------------------
+
+REVIEW_EVERY_DAYS = 92  # a quarter
+KEY_FILES = {"jwt_private_key_path": "Session token signing", "file_signing_private_key_path": "File and evidence signing",
+             "audit_log_signing_private_key_path": "Action log signing", "wsud_signing_private_key_path": "Unauthorized-debit statement signing"}
+
+
+def _last_review(session: Session, tenant_id: uuid.UUID, customer_id):
+    from openclear.domain.access_review import AccessReview
+
+    stmt = select(AccessReview).where(AccessReview.tenant_id == tenant_id,
+                                      AccessReview.customer_id == customer_id if customer_id else AccessReview.customer_id.is_(None))
+    completed = session.execute(stmt.where(AccessReview.completed_at.is_not(None)).order_by(AccessReview.completed_at.desc()).limit(1)).scalar_one_or_none()
+    still_open = session.execute(stmt.where(AccessReview.completed_at.is_(None))).scalar_one_or_none()
+    return completed, still_open
+
+
+def access_review(session: Session, tenant_id: uuid.UUID) -> Control:
+    title = "Access reviewed this quarter"
+    completed, still_open = _last_review(session, tenant_id, None)
+    now = _now()
+    evidence = {"last_completed": _aware(completed.completed_at).isoformat() if completed else None,
+                "decisions_sha256": completed.decisions_sha256 if completed else None, "people_reviewed": completed.item_count if completed else 0,
+                "open_since": _aware(still_open.started_at).isoformat() if still_open else None}
+    if completed is not None and _aware(completed.completed_at) >= now - timedelta(days=REVIEW_EVERY_DAYS):
+        return Control("access_review", title, PASS, f"Every membership reviewed on {completed.completed_at:%Y-%m-%d} ({completed.item_count}).",
+                       evidence)
+    if still_open is not None:
+        return Control("access_review", title, WARN, f"A review started {still_open.started_at:%Y-%m-%d} isn't finished.", evidence)
+    return Control("access_review", title, WARN, "No access review completed in the last quarter. Start one from Settings → Access reviews.",
+                   evidence)
+
+
+def customer_access_review(session: Session, tenant_id: uuid.UUID) -> Control:
+    from openclear.domain.customer import Customer
+
+    title = "Customers reviewed their access"
+    customers = session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.is_active.is_(True),
+                                                       Customer.self_manages_users.is_(True))).scalars().all()
+    cutoff = _now() - timedelta(days=REVIEW_EVERY_DAYS)
+    overdue = sorted(c.name for c in customers if not ((done := _last_review(session, tenant_id, c.id)[0]) and _aware(done.completed_at) >= cutoff))
+    evidence = {"self_managing_customers": len(customers), "without_a_review_this_quarter": overdue[:LIST_LIMIT]}
+    if overdue:
+        return Control("customer_access_review", title, WARN,
+                       f"{_plural(len(overdue), 'self-managing customer')} haven't reviewed their people this quarter: {', '.join(overdue[:10])}.",
+                       evidence)
+    return Control("customer_access_review", title, PASS,
+                   (f"All {len(customers)} self-managing customers reviewed their people this quarter." if customers
+                    else "No customer manages its own people; the bank's review covers them."), evidence)
+
+
+def file_reconciliation(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Presented-items files from the last 30 days: what each declared against what loaded,
+    counting rows corrected since."""
+    from openclear.domain.bulk_upload_file import BulkUploadCorrection, BulkUploadFile
+
+    now = _now()
+    files = session.execute(select(BulkUploadFile).where(BulkUploadFile.tenant_id == tenant_id, BulkUploadFile.control_item_count.is_not(None),
+                                                         BulkUploadFile.uploaded_at >= now - timedelta(days=30))).scalars().all()
+    corrected = dict(session.execute(select(BulkUploadCorrection.bulk_upload_file_id, func.count()).where(
+        BulkUploadCorrection.tenant_id == tenant_id, BulkUploadCorrection.success.is_(True),
+        BulkUploadCorrection.bulk_upload_file_id.in_([f.id for f in files])).group_by(BulkUploadCorrection.bulk_upload_file_id)).all()) if files else {}
+    gaps = [(f, f.control_item_count - (f.loaded_item_count or 0) - corrected.get(f.id, 0)) for f in files]
+    open_gaps = [(f, gap) for f, gap in gaps if gap > 0 and _aware(f.uploaded_at) <= now - timedelta(days=1)]
+    evidence = {"files": len(files), "declared_items": sum(f.control_item_count for f in files),
+                "loaded_items": sum((f.loaded_item_count or 0) for f in files) + sum(corrected.values()),
+                "files_not_reconciled": [{"file": f.original_filename, "items_missing": gap,
+                                          "declared_total": str(f.control_total), "loaded_total": str(f.loaded_total)} for f, gap in open_gaps][:LIST_LIMIT]}
+    title = "Presented-items files reconciled"
+    if open_gaps:
+        return Control("file_reconciliation", title, WARN,
+                       f"{_plural(len(open_gaps), 'file')} loaded fewer items than they declared, and the difference hasn't been corrected.",
+                       evidence)
+    return Control("file_reconciliation", title, PASS,
+                   f"All {len(files)} X9.37 and NACHA files in the last 30 days loaded what they declared." if files
+                   else "No X9.37 or NACHA presented-items files in the last 30 days.", evidence)
+
+
+def decision_delivery(session: Session, tenant_id: uuid.UUID) -> Control:
+    from openclear.domain.decision_outbox import DecisionBatch, DecisionOutbox
+
+    title = "Decision files delivered and acknowledged"
+    outbox = session.execute(select(DecisionOutbox).where(DecisionOutbox.tenant_id == tenant_id)).scalar_one_or_none()
+    now = _now()
+    if outbox is None or not outbox.enabled:
+        return Control("decision_delivery", title, PASS, "Decision files are off: the core reads decisions from the API's feed.",
+                       {"decision_files": False})
+    waiting = session.execute(select(DecisionBatch).where(DecisionBatch.tenant_id == tenant_id, DecisionBatch.acknowledged_at.is_(None),
+                                                          DecisionBatch.created_at <= now - timedelta(hours=24))).scalars().all()
+    evidence = {"decision_files": True, "unacknowledged_over_a_day": len(waiting),
+                "oldest": _aware(min(b.created_at for b in waiting)).isoformat() if waiting else None}
+    if waiting:
+        return Control("decision_delivery", title, WARN,
+                       f"{_plural(len(waiting), 'decision file')} haven't been acknowledged by the core after a day.", evidence)
+    return Control("decision_delivery", title, PASS, "Every decision file older than a day was acknowledged by the core.", evidence)
+
+
+def outside_services(session: Session, tenant_id: uuid.UUID) -> Control:
+    from openclear.services import outside_services as services
+
+    title = "Outside services reviewed"
+    used = services.in_use(session, tenant_id)
+    cutoff = _now() - timedelta(days=services.REVIEW_EVERY_DAYS)
+    stale = [s.label for s in used if s.reviewed_at is None or _aware(s.reviewed_at) < cutoff]
+    evidence = {"services": [{"service": s.label, "detail": s.detail, "reviewed_at": _aware(s.reviewed_at).isoformat() if s.reviewed_at else None}
+                             for s in used], "not_reviewed_this_year": stale}
+    if stale:
+        return Control("outside_services", title, WARN,
+                       f"{_plural(len(stale), 'outside service')} not reviewed in the last year: {', '.join(stale[:5])}.", evidence)
+    return Control("outside_services", title, PASS,
+                   f"All {len(used)} outside services reviewed within the year." if used else "OpenClear uses no outside services for you.",
+                   evidence)
+
+
+def password_policy(session: Session, tenant_id: uuid.UUID) -> Control:
+    from openclear.domain.tenant import Tenant
+
+    tenant = session.get(Tenant, tenant_id)
+    evidence = {"your_standard_minimum": tenant.standard_password_min_length, "minimum_in_force": tenant.password_min_length,
+                "password_sign_in": tenant.password_login_enabled}
+    title = "Password policy meets your standard"
+    if not tenant.password_login_enabled:
+        return Control("password_policy", title, PASS, "Password sign-in is off: your staff sign in through your identity provider.", evidence)
+    if tenant.standard_password_min_length is None:
+        return Control("password_policy", title, WARN,
+                       "Record your own password standard (Settings → Your standards) so this can check OpenClear against it.", evidence)
+    if tenant.password_min_length < tenant.standard_password_min_length:
+        return Control("password_policy", title, FAIL,
+                       f"Passwords may be {tenant.password_min_length} characters, below your standard of {tenant.standard_password_min_length}.",
+                       evidence)
+    return Control("password_policy", title, PASS,
+                   f"Passwords need at least {tenant.password_min_length} characters; your standard is {tenant.standard_password_min_length}.",
+                   evidence)
+
+
+def key_age(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The signing keys' ages (their files' last change) against the rotation period the bank records."""
+    import os
+
+    from openclear.domain.tenant import Tenant
+
+    settings = get_settings()
+    period = session.get(Tenant, tenant_id).key_rotation_days
+    now = _now()
+    keys = {}
+    for setting, label in KEY_FILES.items():
+        try:
+            changed = datetime.fromtimestamp(os.path.getmtime(getattr(settings, setting)), tz=timezone.utc)
+        except OSError:
+            continue
+        keys[label] = (now - changed).days
+    evidence = {"rotation_period_days": period, "key_age_days": keys}
+    title = "Keys rotated on schedule"
+    if period is None:
+        return Control("key_age", title, WARN, "Record how often your keys are rotated (Settings → Your standards) so this can check their age.",
+                       evidence)
+    old = sorted(label for label, days in keys.items() if days > period)
+    if old:
+        return Control("key_age", title, WARN, f"Older than your {period}-day rotation period: {', '.join(old)}.", evidence)
+    return Control("key_age", title, PASS, f"All {len(keys)} signing keys are younger than your {period}-day rotation period.", evidence)

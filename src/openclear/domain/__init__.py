@@ -8,6 +8,7 @@
 # anywhere in the running process, mapper configuration fails at first flush with
 # NoReferencedTableError, even though every individual module imports cleanly on its own.
 from openclear.domain import (  # noqa: F401
+    access_review,
     account,
     api_client,
     ach_authorization_rule,

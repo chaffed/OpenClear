@@ -49,6 +49,8 @@ SECTIONS = {
     "timeouts": "Timeouts",
     "dual-control": "Dual control",
     "customer-approval": "New customer users",
+    "outside-services": "Outside services",
+    "standards": "Your standards",
     "reminders": "Reminders",
     "embedding": "Embedding in online banking",
     "decision-files": "Decision files",
@@ -126,6 +128,13 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         }
     if key == "dual-control":
         return {"require_dual_control": tenant.require_dual_control}
+    if key == "outside-services":
+        from openclear.services import outside_services
+
+        return {"services": outside_services.in_use(db, ctx.tenant_id), "review_every_days": outside_services.REVIEW_EVERY_DAYS}
+    if key == "standards":
+        return {"standard_password_min_length": tenant.standard_password_min_length, "key_rotation_days": tenant.key_rotation_days,
+                "password_min_length": tenant.password_min_length}
     if key == "customer-approval":
         from sqlalchemy import select
 
@@ -394,6 +403,60 @@ def update_embedding(
     _record(db, ctx, "tenant.update_embedding", f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}")
     db.commit()
     return _saved(request, key="embedding")
+
+
+@router.post("/outside-services")
+def review_outside_service(
+    request: Request,
+    service_key: str = Form(""),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """The bank reviewed one of the outside services OpenClear uses for it (CONTROLS_PLAN.md CT3)."""
+    from openclear.domain.user import User
+    from openclear.services import outside_services
+
+    try:
+        service = outside_services.mark_reviewed(db, ctx.tenant_id, service_key, by=db.get(User, ctx.user_id).email, note=note)
+    except ValueError as exc:
+        db.rollback()
+        return _saved(request, str(exc), key="outside-services")
+    _record(db, ctx, "tenant.outside_service_reviewed", f"Reviewed the outside service {service.label}" + (f": {note.strip()[:200]}" if note.strip() else ""))
+    db.commit()
+    return _saved(request, f"Recorded your review of {service.label}.", key="outside-services")
+
+
+@router.post("/standards")
+def update_standards(
+    request: Request,
+    standard_password_min_length: str = Form(""),
+    key_rotation_days: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """The bank's own standards, which the password_policy and key_age checks hold OpenClear to."""
+    from openclear.domain.tenant import Tenant
+
+    def number(raw: str, low: int, high: int) -> int | None:
+        if not raw.strip():
+            return None
+        value = int(raw)
+        if not low <= value <= high:
+            raise ValueError
+        return value
+
+    try:
+        length, days = number(standard_password_min_length, 6, 128), number(key_rotation_days, 1, 3650)
+    except ValueError:
+        return _saved(request, "Use a minimum length of 6 to 128 and a rotation period of 1 to 3650 days, or leave them empty.", key="standards")
+    tenant = db.get(Tenant, ctx.tenant_id)
+    tenant.standard_password_min_length, tenant.key_rotation_days = length, days
+    _record(db, ctx, "tenant.update_standards", f"Standards: passwords at least {length or 'unset'} characters; keys rotated every {days or 'unset'} days")
+    db.commit()
+    return _saved(request, key="standards")
 
 
 @router.post("/customer-approval")

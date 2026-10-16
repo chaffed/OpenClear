@@ -41,6 +41,13 @@ class Tenant(Base):
     # WARN also opens a deviation (every check's FAIL does).
     control_grace_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24, server_default="24")
     control_warn_deviations: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    # The bank's own standards (CONTROLS_PLAN.md CT3), which the password_policy and key_age checks
+    # hold OpenClear to: the shortest password it allows anywhere, and how often keys are rotated.
+    standard_password_min_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    key_rotation_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # When the bank last reviewed each outside service OpenClear uses for it (services/outside_services.py):
+    # {service key: {"at": ISO time, "by": email, "note": text}}.
+    outside_service_reviews: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict, server_default="{}")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

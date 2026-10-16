@@ -92,6 +92,14 @@ def _registry() -> tuple[Check, ...]:
         Check("scheduled_jobs", "Scheduled jobs running", c.scheduled_jobs, scope="installation"),
         Check("transport_security", "HTTPS with HSTS", c.transport_security, scope="installation"),
         Check("platform_staff", "Platform staff use a second factor", c.platform_staff, scope="installation"),
+        # CT3: access reviews, files, delivery, outside services and the bank's standards.
+        Check("access_review", "Access reviewed this quarter", c.access_review, schedule="nightly"),
+        Check("customer_access_review", "Customers reviewed their access", c.customer_access_review, schedule="nightly"),
+        Check("file_reconciliation", "Presented-items files reconciled", c.file_reconciliation),
+        Check("decision_delivery", "Decision files delivered and acknowledged", c.decision_delivery),
+        Check("outside_services", "Outside services reviewed", c.outside_services, schedule="nightly"),
+        Check("password_policy", "Password policy meets your standard", c.password_policy),
+        Check("key_age", "Keys rotated on schedule", c.key_age, schedule="nightly"),
         # Deviations themselves (last, so it sees the others' deviations from this round).
         Check("control_response", "Deviations dealt with", c.control_response),
     )
@@ -120,5 +128,6 @@ KEYS = (
     "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls", "model_pooling_acknowledged",
     "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_signed", "evidence_export",
     "dual_control", "two_person_changes", "change_impact_replay", "support_access_review", "customer_decision_timeliness",
-    "scheduled_jobs", "transport_security", "platform_staff", "control_response",
+    "scheduled_jobs", "transport_security", "platform_staff", "access_review", "customer_access_review", "file_reconciliation",
+    "decision_delivery", "outside_services", "password_policy", "key_age", "control_response",
 )

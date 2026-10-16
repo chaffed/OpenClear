@@ -39,6 +39,10 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | controls | ✓ | ✓ | ✓ | ✓ |
 | control_deviations | ✓ | ✓ | ✓ | ✓ |
 | control_check | ✓ | ✓ | ✓ | ✓ |
+| access_reviews | ✓ | ✓ | ✓ | ✓ |
+| access_review | ✓ | ✓ | ✓ | ✓ |
+| setting_outside_services | ✓ | ✓ | ✓ | ✓ |
+| setting_standards | ✓ | ✓ | ✓ | ✓ |
 | changes | ✓ | ✓ | ✓ | ✓ |
 | model_risk | ✓ | ✓ | ✓ | ✓ |
 | ml_models | ✓ | ✓ | ✓ | ✓ |
@@ -68,6 +72,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_sign_on_new | ✓ | ✓ | ✓ | ✓ |
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 | customer_api_clients | ✓ | ✓ | ✓ | ✓ |
+| customer_access_reviews | ✓ | ✓ | ✓ | ✓ |
 | customer_api_client_new | ✓ | ✓ | ✓ | ✓ |
 
 ## Details

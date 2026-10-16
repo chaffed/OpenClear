@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Access review {{ review.started_at.strftime("%Y-%m-%d") }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/access-reviews">Access reviews</a></p>
+<div class="card">
+  <h1>Access review of {{ review.started_at.strftime("%Y-%m-%d") }}</h1>
+  <p>{{ tally.confirmed }} confirmed, {{ tally.changed }} changed, {{ tally.removed }} removed, {{ tally.waiting }} to decide.
+    {% if review.completed_at %}Completed {{ review.completed_at.strftime("%Y-%m-%d %H:%M") }} UTC; decisions digest <code>{{ review.decisions_sha256[:16] }}…</code>.{% endif %}</p>
+  {% set columns = [
+    {"key": "who", "label": "Who", "role": "primary"},
+    {"key": "decision", "label": "Decision", "role": "status"},
+    {"key": "role", "label": "Role"},
+    {"key": "scope", "label": "Scope"},
+    {"key": "accounts", "label": "Accounts"},
+    {"key": "last", "label": "Last sign-in"},
+    {"key": "actions", "label": "", "role": "actions"},
+  ] %}
+  {% call(i, col, part="cell") rt.responsive_table(columns, rows, id="item") -%}
+    {%- if col.key == "who" %}{{ i.who }}
+    {%- elif col.key == "decision" %}{% if i.decision %}<span class="badge {{ 'badge-danger' if i.decision == 'removed' else 'badge-ok' }}">{{ i.decision }}</span>{% if i.note %} {{ i.note }}{% endif %}{% else %}<span class="badge badge-warn">to decide</span>{% endif %}
+    {%- elif col.key == "role" %}{{ i.role }}
+    {%- elif col.key == "scope" %}{{ i.scope }}
+    {%- elif col.key == "accounts" %}{{ i.accounts }}
+    {%- elif col.key == "last" %}{{ i.last_sign_in.strftime("%Y-%m-%d") if i.last_sign_in else "Never" }}
+    {%- elif col.key == "actions" and not i.decision and not review.completed_at %}
+      <form method="post" action="/ui/access-reviews/{{ review.id }}/items/{{ i.id }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" name="decision" value="confirmed">Confirm</button>
+      </form>
+      <details class="decision-note">
+        <summary>Changed…</summary>
+        <form method="post" action="/ui/access-reviews/{{ review.id }}/items/{{ i.id }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="decision" value="changed">
+          <label>What you changed <input type="text" name="note" required maxlength="500"></label>
+          <button type="submit" class="secondary">Save</button>
+        </form>
+      </details>
+      <form method="post" action="/ui/access-reviews/{{ review.id }}/items/{{ i.id }}" class="inline-form"
+            data-confirm="Remove {{ i.who }}'s access? They lose it on their next request.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" name="decision" value="removed" class="secondary">Remove access</button>
+      </form>
+    {%- endif %}
+  {%- endcall %}
+</div>
+{% endblock %}

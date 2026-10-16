@@ -53,7 +53,7 @@ and owner.
 {evidence}
 - **Check**: the test that produces the evidence. *Live* checks are on the Controls page
   today, each keeping a test history from which an automated CUEC can be attested for a period;
-  *planned* ones arrive with CONTROLS_PLAN.md CT3.
+  the one *planned* check, the host's software currency, needs a source of release dates.
 """
 
 
@@ -75,7 +75,7 @@ def render_markdown() -> str:
             parts.append(f"| {c.id} | {nist} | **{c.title}.** {c.statement} | {c.complements} | {c.evidence} | {check} | "
                          f"{c.frequency} | {c.where} |")
         parts.append("")
-    parts.append("## Checks still to come\n")
+    parts.append("## Check still to come\n")
     parts.append("| Check | What it shows | CUECs |")
     parts.append("|---|---|---|")
     for key, text in sorted(cuecs.PLANNED_CHECKS.items()):
@@ -119,7 +119,7 @@ Inventory version {version}. The same list, with each check's live status for yo
 - **Type**: {types}.
 - **Nature**: {natures}. A configurable control relies on the CUEC that sets it.
 - **Checks**: the tests of the control. *Live* checks are on the Controls page today;
-  *planned* ones arrive with CONTROLS_PLAN.md CT3.
+  the one *planned* check, the host's software currency, needs a source of release dates.
 """
 
 

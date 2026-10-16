@@ -12,13 +12,6 @@
     "attested": "outside what OpenClear can see; a person attests, and may attach evidence"
   },
   "planned_checks": {
-    "access_review": "A bank-wide access review recorded within the last quarter, every membership in it confirmed or changed",
-    "customer_access_review": "Each self-managing customer recorded an access review of its people within the last quarter",
-    "decision_delivery": "Every decision file delivered to the core before its cutoff, and acknowledged",
-    "file_reconciliation": "Each presented-items file's item count and total, matched against the control totals the core sent",
-    "key_age": "The signing and field-encryption keys' ages against the host's rotation period",
-    "outside_services": "The outside services turned on (email, SMS, OCR, storage, identity providers), with when each was reviewed",
-    "password_policy": "The bank's password policy against the minimum the bank records as its standard",
     "software_currency": "The running version's age, and releases since it"
   },
   "cuecs": [
@@ -78,7 +71,7 @@
       "complements": "OpenClear exports every membership with its group, scope, account access and last sign-in, and records each change.",
       "evidence": "assisted",
       "check": "access_review",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "Users \u2192 Export; the access review record (CT3)",
       "withdrawn": false
@@ -235,7 +228,7 @@
       "complements": "OpenClear enforces the bank's password policy and locks an account after repeated failures.",
       "evidence": "automated",
       "check": "password_policy",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "On change; reviewed yearly",
       "where": "Settings \u2192 Password policy; tenant.* in the action log",
       "withdrawn": false
@@ -463,7 +456,7 @@
       "complements": "OpenClear delivers decisions through the decision outbox, retries, and reports a late or failing delivery.",
       "evidence": "automated",
       "check": "decision_delivery",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Daily",
       "where": "Settings \u2192 Decision delivery; Controls \u2192 Decisions and imports on time",
       "withdrawn": false
@@ -483,7 +476,7 @@
       "complements": "OpenClear stores each file with its SHA-256 and a signature, and reports the items and total it loaded.",
       "evidence": "assisted",
       "check": "file_reconciliation",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Daily",
       "where": "Bulk uploads; the file's details",
       "withdrawn": false
@@ -558,7 +551,7 @@
       "complements": "OpenClear turns no outside service on by itself, and shows which ones are on.",
       "evidence": "assisted",
       "check": "outside_services",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Yearly",
       "where": "Settings; docs/compliance/tprm.md",
       "withdrawn": false
@@ -675,7 +668,7 @@
       "complements": "OpenClear lists the customer's people with their role, accounts and last sign-in.",
       "evidence": "assisted",
       "check": "customer_access_review",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Quarterly",
       "where": "People \u2192 Export",
       "withdrawn": false
@@ -921,7 +914,7 @@
       "complements": "OpenClear refuses to start in production with development keys, versions its encryption key and re-encrypts on rotation.",
       "evidence": "assisted",
       "check": "key_age",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Yearly",
       "where": "Controls \u2192 Production settings",
       "withdrawn": false

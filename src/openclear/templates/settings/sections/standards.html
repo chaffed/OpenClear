@@ -1,0 +1,12 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Your own standards, which the Controls page holds OpenClear to. Leave one empty if you haven't set it.</p>
+<form method="post" action="/ui/settings/standards">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Shortest password your standard allows
+    <input type="number" name="standard_password_min_length" min="6" max="128" value="{{ standard_password_min_length or '' }}">
+    <small>OpenClear's policy is {{ password_min_length }} characters now (Password policy).</small></label>
+  <label>How often keys are rotated (days)
+    <input type="number" name="key_rotation_days" min="1" max="3650" value="{{ key_rotation_days or '' }}">
+    <small>The signing keys' ages are checked against it.</small></label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

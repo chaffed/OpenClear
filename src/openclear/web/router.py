@@ -4,6 +4,7 @@
 from fastapi import APIRouter
 
 from openclear.web.routers.accounts import router as accounts_router
+from openclear.web.routers.access_reviews import router as access_reviews_router
 from openclear.web.routers.api_clients import router as api_clients_router
 from openclear.web.routers.control_results import router as control_results_router
 from openclear.web.routers.customer_api_clients import router as customer_api_clients_router
@@ -98,6 +99,7 @@ web_router.include_router(security_groups_router)
 web_router.include_router(bulk_uploads_router)
 web_router.include_router(audit_log_router)
 web_router.include_router(sso_settings_router)
+web_router.include_router(access_reviews_router)
 web_router.include_router(api_clients_router)
 web_router.include_router(control_results_router)
 web_router.include_router(customer_api_clients_router)

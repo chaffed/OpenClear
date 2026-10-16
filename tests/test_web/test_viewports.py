@@ -92,6 +92,10 @@ PAGES = [
     ("controls", "/ui/admin/controls", "bank"),
     ("control_deviations", "/ui/admin/controls/deviations", "bank"),
     ("control_check", "/ui/admin/controls/checks/sla", "bank"),
+    ("access_reviews", "/ui/access-reviews", "bank"),
+    ("access_review", "{review}", "bank"),
+    ("setting_outside_services", "/ui/settings/outside-services", "bank"),
+    ("setting_standards", "/ui/settings/standards", "bank"),
     ("changes", "/ui/admin/changes", "bank"),
     ("model_risk", "/ui/admin/model-risk", "bank"),
     ("ml_models", "/ui/admin/ml-models", "bank"),
@@ -121,6 +125,7 @@ PAGES = [
     ("customer_sign_on_new", "/ui/sign-on/new", "customer"),
     ("customer_control_panel", "/ui/settings", "customer"),
     ("customer_api_clients", "/ui/api-clients", "customer"),
+    ("customer_access_reviews", "/ui/access-reviews", "customer"),
     ("customer_api_client_new", "/ui/api-clients/new", "customer"),
 ]
 # Pages measured after a step: (selector clicked, selector waited for).
@@ -301,8 +306,13 @@ def _seed(client, db_session, tenant_factory):
     preparer = db_session.execute(select(TenantMembership).join(User, User.id == TenantMembership.user_id)
                                   .where(TenantMembership.tenant_id == tenant.id, User.email == users["preparer"].email)).scalar_one()
     person = db_session.execute(select(TenantMembership).where(TenantMembership.user_id == customer_admin.id)).scalar_one()
+    from openclear.services import access_review_service
+
+    review = access_review_service.start(db_session, tenant.id, None, user_id=users["admin"].id)  # an open review, its items as cards
+    db_session.commit()
     paths = {"exception": f"/ui/exceptions/{exception.id}", "upload": upload, "customer": f"/ui/customers/{customer.id}",
-             "member": f"/ui/users/{preparer.id}", "group": f"/ui/security-groups/{group.id}", "person": f"/ui/people/{person.id}"}
+             "member": f"/ui/users/{preparer.id}", "group": f"/ui/security-groups/{group.id}", "person": f"/ui/people/{person.id}",
+             "review": f"/ui/access-reviews/{review.id}"}
     return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, paths
 
 

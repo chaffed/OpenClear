@@ -1,0 +1,21 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">The outside services OpenClear uses for you. Review each at least every {{ review_every_days }} days, as
+  you would any service provider you rely on, and record it here: the "Outside services reviewed" control checks it.</p>
+{% if services %}
+<ul class="plain-list">
+  {% for s in services %}
+  <li>
+    <strong>{{ s.label }}</strong> <span class="text-muted">{{ s.detail }}</span><br>
+    {% if s.reviewed_at %}Reviewed {{ s.reviewed_at.strftime("%Y-%m-%d") }} by {{ s.reviewed_by }}{% if s.note %}: {{ s.note }}{% endif %}.{% else %}<span class="badge badge-warn">not reviewed</span>{% endif %}
+    <form method="post" action="/ui/settings/outside-services">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="service_key" value="{{ s.key }}">
+      <label>Note (optional) <input type="text" name="note" maxlength="500"></label>
+      <button type="submit" class="secondary">{{ icon("verified") }}Mark reviewed today</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>OpenClear uses no outside services for you.</p>
+{% endif %}
