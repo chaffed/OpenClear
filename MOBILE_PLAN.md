@@ -326,3 +326,6 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
     under the comparison, with *Upload an image* (the check chosen) for those who can.
   - The viewport test's reference pictures now fix date fields too (Controls' evidence export
     defaults to today, so its picture changed every day).
+- 2026-10-16 Device review done: no further findings. Merged into `main` at `791b5d72`. Suites:
+  SQLite 1627 passed, Postgres 1654, Linux 3.11 1595, no failures. Still to check: the
+  embedded frame (needs HTTPS on both sides). Next: the release for phones and tablets; R4 after.
