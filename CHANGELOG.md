@@ -42,6 +42,12 @@ Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with
   only on a phone; a touch screen 1024px or wider (a landscape iPad) gets 44px targets too.
 - **Fixed**: Retire on the check return reasons list was cut off on a phone.
 - **Fixed**: the notification preferences' checkboxes had no labels for screen readers.
+- **Desk work stays on the desk**: on a phone, the lists' Bulk upload and Export buttons, the
+  bank's Users and the customer's People exports, Billing's reports and exports, an upload's
+  downloads and Controls' evidence export aren't shown. Tablets and desktops keep them.
+- **No image for this check**: an exception on a check with no image says so under what was
+  expected and what was presented, with *Upload an image* for people who can (it was only
+  in the collapsed *More about this exception*).
 
 ## 1.15.0 — 2026-10-13
 

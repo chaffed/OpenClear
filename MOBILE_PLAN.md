@@ -317,3 +317,12 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
     now tested.
   Next: the manual pass on real devices (iPhone Safari, Android Chrome, iPad both ways, the
   embedded frame), then the release for phones and tablets; R4 after.
+- 2026-10-16 Device review (in progress; the product owner, in a desktop browser's device
+  toolbar, on a local copy with the viewport test's data plus check images). Findings so far:
+  - Bulk uploads and exports aren't for a phone: `.not-phone` (hidden below 640px) on the
+    lists' Bulk upload and Export buttons, Users' and People's exports, Billing's reports and
+    exports, an upload's downloads and Controls' evidence export. Tablets keep them.
+  - A check with no image said so only inside the collapsed *More about this exception*: now
+    under the comparison, with *Upload an image* (the check chosen) for those who can.
+  - The viewport test's reference pictures now fix date fields too (Controls' evidence export
+    defaults to today, so its picture changed every day).

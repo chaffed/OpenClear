@@ -24,7 +24,7 @@
     {% if can(ctx, "account:write") %}
     <div class="actions">
       <a href="/ui/accounts/new" class="button">{{ icon("add") }}New account</a>
-      <a href="/ui/accounts/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>
+      <a href="/ui/accounts/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>
     </div>
     {% endif %}
   </div>

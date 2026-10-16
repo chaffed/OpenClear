@@ -52,7 +52,7 @@
       <tr><th>SHA-256</th><td><code>{{ record.sha256_hex }}</code></td></tr>
     </tbody>
   </table>
-  <p><a href="/ui/bulk-uploads/{{ record.id }}/download" class="button">{{ icon("download") }}Download original file</a>
+  <p class="not-phone"><a href="/ui/bulk-uploads/{{ record.id }}/download" class="button">{{ icon("download") }}Download original file</a>
     {% if has_row_results %}<a href="/ui/bulk-uploads/{{ record.id }}/results.csv" class="button secondary">{{ icon("download") }}Download row results (CSV)</a>{% endif %}</p>
 
   {% if offer_layout %}

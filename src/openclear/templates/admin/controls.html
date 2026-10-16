@@ -38,19 +38,19 @@
   {%- endcall %}
 </div>
 {% if export_run and export_state in ("queued", "running") %}
-<div class="card" data-poll-seconds="4" aria-busy="true">
+<div class="card not-phone" data-poll-seconds="4" aria-busy="true">
   <h2>Evidence export</h2>
   <p>{{ export_run.summary }}. A long period is put together in the background; this page refreshes until it's ready.</p>
 </div>
 {% elif export_run and export_state == "done" %}
-<div class="card">
+<div class="card not-phone">
   <h2>Evidence export ready</h2>
   <p>{{ export_run.summary }}. <a class="button" href="/ui/admin/controls/evidence/{{ export_run.id }}">{{ icon("download") }}Download</a></p>
 </div>
 {% elif export_run and export_state == "failed" %}
 <div class="card"><p class="flash flash-error" role="alert">{{ export_run.summary }}</p></div>
 {% endif %}
-<div class="card">
+<div class="card not-phone">
   <h1>Export evidence</h1>
   <form method="post" action="/ui/admin/controls/evidence">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

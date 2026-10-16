@@ -34,7 +34,7 @@
 {%- endmacro %}
 
 {% macro export_link(action, search, total) %}
-{% if total %}<a class="button secondary" href="{{ action }}?{{ search.query_string(export='csv', page=None) }}">{{ icon("download") }}Export CSV</a>{% endif %}
+{% if total %}<a class="button secondary not-phone" href="{{ action }}?{{ search.query_string(export='csv', page=None) }}">{{ icon("download") }}Export CSV</a>{% endif %}
 {% endmacro %}
 
 {% macro empty_state(searching, message, actions=[]) %}

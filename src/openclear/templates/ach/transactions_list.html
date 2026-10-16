@@ -18,13 +18,13 @@
     {% if can(ctx, "ach_transaction:write") %}
     <div class="actions">
       <a href="/ui/ach/transactions/new" class="button">{{ icon("send") }}Submit transaction</a>
-      <a href="/ui/ach/transactions/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>
+      <a href="/ui/ach/transactions/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>
     </div>
     {% endif %}
   </div>
   {{ ls.search_form("/ui/ach/transactions", search, number_label="Trace number", date_label="Effective",
                      q_hint="Trace number, originator or amount") }}
-  <p class="list-tools">{{ ls.export_link("/ui/ach/transactions", search, page_obj.total_count) }}</p>
+  <p class="list-tools not-phone">{{ ls.export_link("/ui/ach/transactions", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
   {% set columns = [
     {"key": "originator", "label": "Originator", "role": "primary", "sort": "originator"},

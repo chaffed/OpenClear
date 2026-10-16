@@ -19,10 +19,10 @@
     <h1>Users</h1>
     <div class="actions">
       <a href="/ui/users/new" class="button">{{ icon("person_add") }}Add user</a>
-      <a href="/ui/users/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>
+      <a href="/ui/users/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>
       <a href="/ui/users/access" class="button secondary">{{ icon("person_add") }}Look up / grant multi-customer access</a>
-      <a href="/ui/users/export.csv" class="button secondary">{{ icon("download") }}Export CSV</a>
-      <a href="/ui/users/export.json" class="button secondary">{{ icon("download") }}Export JSON</a>
+      <a href="/ui/users/export.csv" class="button secondary not-phone">{{ icon("download") }}Export CSV</a>
+      <a href="/ui/users/export.json" class="button secondary not-phone">{{ icon("download") }}Export JSON</a>
     </div>
   </div>
   {% if page_obj.total_count > 0 %}

@@ -22,10 +22,10 @@
   <div class="toolbar">
     <h1>Paid Items</h1>
     {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/new" class="button">{{ icon("send") }}Submit paid item</a>{% endif %}
-    {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/bulk" class="button secondary">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
+    {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
   </div>
   {{ ls.search_form("/ui/paid-items", search, number_label="Check number", date_label="Presented", q_hint="Check number or amount") }}
-  <p class="list-tools">{{ ls.export_link("/ui/paid-items", search, page_obj.total_count) }}</p>
+  <p class="list-tools not-phone">{{ ls.export_link("/ui/paid-items", search, page_obj.total_count) }}</p>
   {% if page_obj.total_count > 0 %}
   {% set columns = [
     {"key": "number", "label": "Check #", "role": "primary", "sort": "number"},

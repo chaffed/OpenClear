@@ -182,6 +182,27 @@ def test_the_item_on_a_phone_image_first_one_side_at_a_time(client, db_session, 
     assert front.is_visible() and back.is_visible()
 
 
+def test_a_check_with_no_image_says_so_beside_the_comparison(client, db_session, tenant_factory):
+    from openclear.networks.check.ocr_processing import create_check_image
+
+    tenant, account, users = tenant_factory.make(slug="no-image")
+    item = _make_exception(db_session, tenant, account, users, "9011", "10.00", "99.00")
+    upload = f'href="/ui/check-images/upload?paid_item_id={item.source_item_id}"'
+
+    _login(client, tenant, users["admin"].email)
+    html = client.get(f"/ui/exceptions/{item.id}").text
+    assert 'class="no-image"' in html and "No image for this check." in html and upload in html
+    assert html.index('class="no-image"') < html.index("More about this exception")
+
+    _login(client, tenant, users["viewer"].email)  # sees images, can't upload one
+    html = client.get(f"/ui/exceptions/{item.id}").text
+    assert "No image for this check." in html and upload not in html
+
+    create_check_image(db_session, tenant.id, front_bytes=_png("white"), back_bytes=None, paid_item_id=item.source_item_id)
+    db_session.commit()
+    assert "No image for this check." not in client.get(f"/ui/exceptions/{item.id}").text
+
+
 def test_the_items_action_log_collapsed_with_the_newest_showing(client, db_session, tenant_factory, browser_page):  # noqa: F811
     from openclear.services import security_group_service, user_service
     from tests.conftest import TenantFactory

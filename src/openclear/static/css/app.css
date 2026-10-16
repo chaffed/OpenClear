@@ -564,6 +564,7 @@ form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
 .decide-layout .card { margin-bottom: 0; }
 .decide-main { display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .decide-image img { max-width: 100%; height: auto; }
+.no-image { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0; color: var(--text-muted); }
 .more-details > summary h2 { display: inline; font-size: 1rem; }
 .select-col { width: 2.5rem; }
 .select-col input { width: 1.15rem; height: 1.15rem; }
@@ -746,6 +747,10 @@ fieldset { min-width: 0; }
     display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 0.25rem; border-bottom: 1px solid var(--border);
   }
   .bottom-sheet .sheet-content .inline-form { display: block; }
+}
+/* Desk work (bulk uploads, exports) isn't offered on a phone; the pages still answer there. */
+@media (max-width: 639.98px) {
+  .not-phone { display: none !important; }
 }
 @media (max-width: 639.98px) {
   table.responsive .hide-phone { display: none; }

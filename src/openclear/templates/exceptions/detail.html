@@ -117,6 +117,10 @@
           {% endfor %}
         </tbody>
       </table>
+      {% if item.network_code == "check" and not evidence.check_image and can(ctx, "check_image:read") %}
+      <p class="no-image">{{ icon("image") }}<span>No image for this check.{% if evidence.paid_item_id and can(ctx, "check_image:write") %}
+        <a href="/ui/check-images/upload?paid_item_id={{ evidence.paid_item_id }}">Upload an image</a>{% endif %}</span></p>
+      {% endif %}
       {% for note in evidence.notes %}<p class="flash flash-warn">{{ note }}</p>{% endfor %}
     </div>
     {% endif %}
@@ -205,7 +209,6 @@
     {% if evidence and evidence.account_label %}<div><span class="fact-label">Account</span> {{ evidence.account_label }}</div>{% endif %}
     {% if evidence and evidence.customer_name %}<div><span class="fact-label">Customer</span> {{ evidence.customer_name }}</div>{% endif %}
   </div>
-  {% if item.network_code == "check" and not (evidence and evidence.check_image) %}<p class="hint">No check image has been uploaded for this item.</p>{% endif %}
   {% if evidence and evidence.paid_item_id and can(ctx, "paid_item:read") %}<p class="link-line"><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
   {% if item.network_code == "ach" and can(ctx, "ach_authorization:write") %}
   <p><a href="/ui/ach/authorizations/new?from_exception={{ item.id }}">Add this originator to the ACH allow list</a>. This authorizes future matching transactions; it doesn't decide this one.</p>

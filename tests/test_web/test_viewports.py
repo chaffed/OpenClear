@@ -207,6 +207,7 @@ MEASURE = """({width, touch, decision}) => {
 # made, so they're replaced by fixed text (the same text every run), and the caret hidden.
 STEADY = r"""() => {
   document.querySelectorAll('time').forEach((el) => { el.textContent = 'Jan 1, 2026, 9:00 AM'; });
+  document.querySelectorAll('input[type=date]').forEach((el) => { el.value = '2026-01-01'; });  // defaults to today
   const stamp = /\b\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?(\s*UTC)?/g;
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
