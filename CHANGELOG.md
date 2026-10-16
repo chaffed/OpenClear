@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.0 — 2026-10-16
 
 Controls (CONTROLS_PLAN.md CT1):
 
