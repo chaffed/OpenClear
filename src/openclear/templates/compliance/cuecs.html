@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ "Your responsibilities" if ctx.customer_id else "CUECs" }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About {{ "your responsibilities" if ctx.customer_id else "CUECs" }}{% endblock %}
+{% block help_body %}
+<p>OpenClear's controls rely on {{ "you" if ctx.customer_id else "the bank, its customers and whoever hosts OpenClear" }} to do some things too:
+  the complementary user entity controls (CUECs). Map each to {{ "your" if ctx.customer_id else "the bank's" }} own control, then attest that it
+  operated for each period. Accepted attestations are signed, so an examiner can check them with OpenClear's public key.</p>
+{% if not ctx.customer_id %}
+<p>For an automated CUEC, OpenClear proposes the attestation itself at the end of each period, from its checks' results: <em>operated</em>
+  when the check ran at least 95% of its scheduled times, no deviation outlasted your grace period and every population test passed;
+  <em>operated with exceptions</em> otherwise; <em>not tested</em> under 95%. You accept it, unless a mapping accepts automatically.</p>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% set results = {"operated": "badge-ok", "operated_with_exceptions": "badge-warn", "not_operated": "badge-danger", "not_tested": "badge-warn", "not_applicable": ""} %}
+<div class="card">
+  <h1>{{ "Your responsibilities" if ctx.customer_id else "Complementary user entity controls" }}</h1>
+  <p class="hint">Filed under NIST SP 800-53; the full list is <a href="https://github.com/chaffed/OpenClear/blob/main/docs/compliance/cuecs.md">published</a>, with a CSV to fill in.</p>
+</div>
+{% for label, rows in groups %}
+<div class="card">
+  <h2>{{ label }}</h2>
+  {% if host_by_platform and rows and rows[0].party == "host" %}<p class="hint">Attested once for this installation by its platform staff; read-only here.</p>{% endif %}
+  {% set columns = [
+    {"key": "cuec", "label": "CUEC", "role": "primary"},
+    {"key": "latest", "label": "Latest attestation", "role": "status"},
+    {"key": "evidence", "label": "Evidence"},
+    {"key": "mapped", "label": "Your control"},
+  ] %}
+  {% call(c, col, part="cell") rt.responsive_table(columns, rows, id="cuec-" ~ loop.index) -%}
+    {%- if col.key == "cuec" %}<a href="/ui/compliance/cuecs/{{ c.id }}"><span class="control-id">{{ c.id }}</span> {{ c.title }}</a>
+    {%- elif col.key == "latest" %}{% set a = latest.get(c.id) %}{% if a %}<span class="badge {{ results[a.result] }}">{{ a.result | replace("_", " ") }}</span> <span class="text-muted">to {{ a.period_end }}</span>{% else %}<span class="text-muted nowrap">None yet</span>{% endif %}{% if waiting.get(c.id) %} <span class="badge">{{ waiting[c.id] }} to accept</span>{% endif %}
+    {%- elif col.key == "evidence" %}{{ c.evidence }}
+    {%- elif col.key == "mapped" %}{% for m in mapped.get(c.id, []) %}<code>{{ m.control_ref }}</code>{% if m.auto_accept %} <span class="badge">auto</span>{% endif %}{{ ", " if not loop.last }}{% else %}<span class="text-muted">Not mapped</span>{% endfor %}
+    {%- endif %}
+  {%- endcall %}
+</div>
+{% endfor %}
+{% if can(ctx, "compliance:manage") %}
+<div class="card card-narrow">
+  <h2>Map from a spreadsheet</h2>
+  <p>Fill in the <code>your_control_id</code> and <code>your_control_owner</code> columns of
+    <a href="https://github.com/chaffed/OpenClear/blob/main/docs/compliance/cuecs.csv">cuecs.csv</a> and load it here.</p>
+  <form method="post" action="/ui/compliance/mappings/import" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>CSV file <input type="file" name="upload_file" accept=".csv,text/csv" required></label>
+    <button type="submit" class="secondary">{{ icon("upload_file") }}Load mappings</button>
+  </form>
+</div>
+{% if not ctx.customer_id %}
+<div class="card card-narrow">
+  <h2>Attestation settings</h2>
+  <form method="post" action="/ui/compliance/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Period <select name="attestation_period">{% for p in periods %}<option value="{{ p }}" {{ "selected" if tenant.attestation_period == p else "" }}>{{ p | capitalize }}</option>{% endfor %}</select></label>
+    <label><input type="checkbox" name="attest_second_person" value="true" {{ "checked" if tenant.attest_second_person else "" }}>
+      A second person accepts what someone prepared by hand</label>
+    <button type="submit" class="secondary">{{ icon("save") }}Save</button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+{% if can(ctx, "compliance:attest") and not ctx.customer_id %}
+<div class="card card-narrow">
+  <h2>Propose the last period now</h2>
+  <p>OpenClear proposes each period's automated attestations the night after it ends. To have the last finished period's now:</p>
+  <form method="post" action="/ui/compliance/prepare">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("fact_check") }}Propose now</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

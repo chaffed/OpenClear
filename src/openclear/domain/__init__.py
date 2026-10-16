@@ -25,6 +25,7 @@ from openclear.domain import (  # noqa: F401
     control_result,
     control_run,
     control_status,
+    cuec_attestation,
     customer,
     customer_admin,
     customer_disposition_setting,

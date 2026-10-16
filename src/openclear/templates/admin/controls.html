@@ -32,6 +32,7 @@
     {% for d in open_deviations %}<a href="/ui/admin/controls/deviations/{{ d.id }}">{{ check_titles.get(d.check_key, d.check_key) }}</a>{{ ", " if not loop.last }}{% endfor %}.</p>
   {% endif %}
   <p class="link-line"><a href="/ui/admin/controls/deviations">Deviations and their responses</a></p>
+  {% if can(ctx, "compliance:read") %}<p class="link-line"><a href="/ui/compliance/cuecs">CUECs, their mappings and attestations</a></p>{% endif %}
 </div>
 {% for label, rows in families %}
 <div class="card">

@@ -70,6 +70,8 @@ CATALOG: dict[str, EventType] = {
     "user.cross_tenant_access.granted": EventType("identity", "high"),
     "membership.changed": EventType("identity", "medium"),
     "user.invited": EventType("identity", "medium"),
+    "compliance.auto_accept.changed": EventType("configuration", "high"),  # attestations accepted without a person (CT4)
+    "compliance.attestation.rejected": EventType("configuration", "medium"),
     "user.approved": EventType("identity", "medium"),  # the bank let in someone a customer added (MOBILE_PLAN.md R6)
     "user.rejected": EventType("identity", "medium"),
     "customer.self_service.changed": EventType("configuration", "high"),
@@ -133,6 +135,8 @@ AUDIT_EVENTS: dict[str, str] = {
     "customer_people.export": "users.exported",
     "customer.self_service": "customer.self_service.changed",
     "access_review.removed": "user.deactivated",
+    "compliance.auto_accept.changed": "compliance.auto_accept.changed",
+    "compliance.attestation.rejected": "compliance.attestation.rejected",
     "customer_user.approve": "user.approved",
     "customer_user.reject": "user.rejected",
     "customer.approval": "customer.self_service.changed",

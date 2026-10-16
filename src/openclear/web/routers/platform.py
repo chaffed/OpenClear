@@ -74,6 +74,50 @@ def bank_controls(tenant_id: uuid.UUID, db: Session = Depends(get_db), _user: Us
     return JSONResponse({"state": "All pass", "tone": "ok"})
 
 
+@router.get("/host-attestations")
+def host_attestations(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """The host's CUECs, attested once for the installation (CONTROLS_PLAN.md CT-D12), when
+    OPENCLEAR_HOST_CUECS_ATTESTED_BY is "platform"."""
+    from datetime import date, timedelta
+
+    from openclear.compliance import cuecs
+    from openclear.config import get_settings
+    from openclear.services import attestation_service
+
+    rows = attestation_service.installation_attestations(db)
+    latest = {}
+    for a in rows:
+        if a.status == "accepted" and a.cuec_id not in latest:
+            latest[a.cuec_id] = a
+    today = date.today()
+    return render_template(request, "platform/host_attestations.html", user=user, cuecs=cuecs.for_party("host"), latest=latest,
+                           results=attestation_service.MANUAL_RESULTS, by_platform=get_settings().host_cuecs_attested_by == "platform",
+                           default_start=(today.replace(day=1) - timedelta(days=1)).replace(day=1), default_end=today.replace(day=1) - timedelta(days=1))
+
+
+@router.post("/host-attestations")
+def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), end: str = Form(...), result: str = Form(...),
+                            statement: str = Form(""), db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                            _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    from datetime import date
+    from urllib.parse import quote
+
+    from openclear.config import get_settings
+    from openclear.services import attestation_service
+
+    if get_settings().host_cuecs_attested_by != "platform":
+        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote("Each bank attests the host's CUECs on this installation."), status_code=303)
+    try:
+        attestation_service.record_installation(db, cuec_id, start=date.fromisoformat(start), end=date.fromisoformat(end), result=result,
+                                                statement=statement, user_id=user.id)
+    except (attestation_service.AttestationError, ValueError) as exc:
+        db.rollback()
+        message = str(exc) if isinstance(exc, attestation_service.AttestationError) else "Choose the period's dates."
+        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(message), status_code=303)
+    db.commit()
+    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} attested and signed."), status_code=303)
+
+
 @router.get("/banks/new")
 def new_bank(request: Request, _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     return render_template(request, "platform/provision.html")

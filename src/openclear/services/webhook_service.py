@@ -47,6 +47,8 @@ EVENT_TYPES = {
     "exception.decided": "An exception was decided, pay or return (it's in the decision feed)",
     "bulk_upload.completed": "A bulk upload finished importing (or failed)",
     "decision_batch.ready": "A decision file is ready in the outbox (services/decision_outbox_service.py)",
+    "compliance.attestation.prepared": "OpenClear proposed a CUEC attestation for a period, waiting for acceptance (CONTROLS_PLAN.md CT4)",
+    "compliance.attestation.accepted": "A CUEC attestation was accepted and signed",
 }
 TEST_EVENT = "webhook.test"
 

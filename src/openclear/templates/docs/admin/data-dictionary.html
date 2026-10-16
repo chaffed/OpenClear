@@ -129,6 +129,8 @@ erDiagram
 <tr><td>standard_password_min_length</td><td>Integer</td><td>yes</td><td></td><td>The bank's own standard for the shortest password, which the password_policy check holds OpenClear's policy to.</td></tr>
 <tr><td>key_rotation_days</td><td>Integer</td><td>yes</td><td></td><td>How often the bank's standard says keys are rotated, for the key_age check.</td></tr>
 <tr><td>outside_service_reviews</td><td>JSON</td><td>no</td><td></td><td>When the bank last reviewed each outside service OpenClear uses for it: {service: {at, by, note}}.</td></tr>
+<tr><td>attestation_period</td><td>String(10)</td><td>no</td><td></td><td>The period CUEC attestations cover: monthly, quarterly (the default) or yearly.</td></tr>
+<tr><td>attest_second_person</td><td>Boolean</td><td>no</td><td></td><td>Whoever prepares a manual attestation can't accept it.</td></tr>
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
@@ -1357,6 +1359,47 @@ self-managing customer's of its own people. Complete when every item is decided;
 <tr><td>decision</td><td>String(10)</td><td>yes</td><td></td><td><code>confirmed</code>, <code>changed</code> or <code>removed</code> (deactivated); empty until decided.</td></tr>
 <tr><td>note</td><td>Text</td><td>yes</td><td></td><td>What changed.</td></tr>
 <tr><td>decided_by_user_id / decided_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+</tbody>
+</table>
+
+<h3>cuec_mapping</h3>
+<p>One of a bank's (or customer's) own controls covering a CUEC (CONTROLS_PLAN.md CT4). Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>A customer's own mapping; empty for the bank's.</td></tr>
+<tr><td>cuec_id</td><td>String(30)</td><td>no</td><td></td><td>e.g. <code>B-AC-5-01</code> (compliance/cuecs.py).</td></tr>
+<tr><td>control_ref / control_name / owner / link</td><td>String</td><td>ref no, others yes</td><td></td><td>The bank's own control: its id, name, owner and a link to it in its GRC tool.</td></tr>
+<tr><td>auto_accept</td><td>Boolean</td><td>no</td><td></td><td>OpenClear's proposed attestations for this CUEC are accepted and signed at once (a security event when changed).</td></tr>
+<tr><td>inventory_version</td><td>String(10)</td><td>no</td><td></td><td>The CUEC inventory's version when it was made.</td></tr>
+<tr><td>created_by_user_id / created_at</td><td>UUID / Timestamp</td><td>yes / no</td><td>FK → user.id</td><td></td></tr>
+</tbody>
+</table>
+
+<h3>cuec_attestation</h3>
+<p>A statement that a CUEC operated over a period: proposed by OpenClear from its checks' results or made by a person, then
+accepted (and signed with the file-signing key, ECDSA P-256) or rejected. An accepted one never changes; a correction supersedes it.
+A row with no bank is the installation's (a host CUEC attested by its platform staff): every bank reads it, only a session bound to no
+bank writes it. Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td>Empty for the installation's.</td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>A customer's own.</td></tr>
+<tr><td>cuec_id</td><td>String(30)</td><td>no</td><td></td><td></td></tr>
+<tr><td>period_kind / period_start / period_end</td><td>String / Date</td><td>no</td><td></td><td>Monthly, quarterly, yearly (or custom); both ends inclusive.</td></tr>
+<tr><td>result</td><td>String(30)</td><td>no</td><td></td><td><code>operated</code>, <code>operated_with_exceptions</code>, <code>not_operated</code>, <code>not_applicable</code> or <code>not_tested</code>.</td></tr>
+<tr><td>method</td><td>String(10)</td><td>no</td><td></td><td><code>automated</code> (from results) or <code>manual</code>.</td></tr>
+<tr><td>statement / evidence / files</td><td>Text / JSON / JSON</td><td>statement yes</td><td></td><td>What a person attests; the coverage, deviations and result digests behind it; attached files with their SHA-256.</td></tr>
+<tr><td>status</td><td>String(12)</td><td>no</td><td></td><td><code>prepared</code>, <code>accepted</code>, <code>rejected</code> or <code>superseded</code>.</td></tr>
+<tr><td>prepared_by_user_id / prepared_at</td><td>UUID / Timestamp</td><td>yes / no</td><td>FK → user.id</td><td>Empty preparer: OpenClear.</td></tr>
+<tr><td>accepted_by_user_id / accepted_at / auto_accepted</td><td>UUID / Timestamp / Boolean</td><td>yes / yes / no</td><td>FK → user.id</td><td></td></tr>
+<tr><td>rejected_reason / rejected_by_user_id</td><td>Text / UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>inventory_version / supersedes_id</td><td>String / UUID</td><td>no / yes</td><td>FK → cuec_attestation.id</td><td></td></tr>
+<tr><td>signed_body / sha256 / signature</td><td>JSON / String / Text</td><td>yes</td><td></td><td>What's signed (canonical JSON), its SHA-256 and the ECDSA signature.</td></tr>
 </tbody>
 </table>
 

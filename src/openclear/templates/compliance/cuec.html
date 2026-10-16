@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}{{ cuec.id }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+{% set badges = {"operated": "badge-ok", "operated_with_exceptions": "badge-warn", "not_operated": "badge-danger", "not_tested": "badge-warn", "not_applicable": ""} %}
+<p class="back-link"><a href="/ui/compliance/cuecs">{{ "Your responsibilities" if ctx.customer_id else "CUECs" }}</a></p>
+<div class="card">
+  <h1><span class="control-id">{{ cuec.id }}</span> {{ cuec.title }}</h1>
+  <p>{{ cuec.statement }}</p>
+  <p class="hint"><strong>What OpenClear does that relies on it:</strong> {{ cuec.complements }}</p>
+  <p class="hint">NIST <abbr title="{{ cuec.nist_title }}">{{ cuec.nist }}</abbr>; evidence: {{ cuec.evidence }}{% if cuec.check %}, from the check <code>{{ cuec.check }}</code>{% endif %};
+    {{ cuec.frequency | lower }}. Where: {{ cuec.where }}.
+    {% if relied_on %}Relied on by {% for c in relied_on %}<span class="control-id">{{ c.id }}</span>{{ ", " if not loop.last }}{% endfor %}.{% endif %}</p>
+</div>
+
+<div class="card">
+  <h2>Your controls</h2>
+  {% if mappings %}
+  <ul class="plain-list">
+    {% for m in mappings %}
+    <li><code>{{ m.control_ref }}</code>{% if m.control_name %} {{ m.control_name }}{% endif %}{% if m.owner %}, owned by {{ m.owner }}{% endif %}
+      {% if m.link %}(<a href="{{ m.link }}" rel="noopener noreferrer">in your GRC tool</a>){% endif %}
+      {% if can(ctx, "compliance:manage") %}
+      <form method="post" action="/ui/compliance/mappings/{{ m.id }}/auto-accept" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="on" value="{{ 'false' if m.auto_accept else 'true' }}">
+        <button type="submit" class="link-button">{{ "Stop accepting automatically" if m.auto_accept else "Accept OpenClear's proposals automatically" }}</button>
+      </form>
+      <form method="post" action="/ui/compliance/mappings/{{ m.id }}/delete" class="inline-form" data-confirm="Remove this mapping?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link-button">Remove</button>
+      </form>
+      {% elif m.auto_accept %}<span class="badge">accepted automatically</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted">Not mapped to one of your controls yet.</p>
+  {% endif %}
+  {% if can(ctx, "compliance:manage") %}
+  <details>
+    <summary>Map it to one of your controls</summary>
+    <form method="post" action="/ui/compliance/cuecs/{{ cuec.id }}/mappings">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Your control's id <input type="text" name="control_ref" required maxlength="100" placeholder="BANK-IAM-07"></label>
+      <label>Its name (optional) <input type="text" name="control_name" maxlength="300"></label>
+      <label>Its owner (optional) <input type="text" name="owner" maxlength="200"></label>
+      <label>A link to it in your GRC tool (optional) <input type="url" name="link" maxlength="1000"></label>
+      <button type="submit" class="secondary">{{ icon("add_link") }}Add</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Attestations</h2>
+  {% if by_platform %}<p class="hint">This installation's platform staff attest this one; you see theirs.</p>{% endif %}
+  {% set all = rows + installation %}
+  {% if all %}
+  <ul class="plain-list">
+    {% for a in all %}
+    <li>
+      <span class="badge {{ badges[a.result] }}">{{ a.result | replace("_", " ") }}</span>
+      {{ a.period_start }} to {{ a.period_end }}, {{ a.method }}, <strong>{{ a.status }}</strong>
+      {% if a.status in ("accepted", "superseded") %}{% if verified.get(a.id) %}<span class="badge badge-ok">signature verifies</span>{% else %}<span class="badge badge-danger">signature doesn't verify</span>{% endif %}
+        <a href="/ui/compliance/attestations/{{ a.id }}.json">Download, signed</a>{% endif %}
+      {% if a.statement %}<br><span class="text-muted">{{ a.statement }}</span>{% endif %}
+      {% if a.method == "automated" %}<br><span class="text-muted">{{ a.evidence.scheduled_runs_recorded }} of {{ a.evidence.scheduled_runs_expected }} scheduled runs
+        ({{ (a.evidence.coverage * 100) | round(1) }}%); {{ a.evidence.deviations | length }} deviations; {{ a.evidence.population_tests_failed }} population tests failed.</span>{% endif %}
+      {% if a.files %}<br><span class="text-muted">Files: {% for f in a.files %}{{ f.name }} <code>{{ f.sha256[:12] }}…</code>{{ ", " if not loop.last }}{% endfor %}</span>{% endif %}
+      {% if a.rejected_reason %}<br><span class="text-muted">Rejected: {{ a.rejected_reason }}</span>{% endif %}
+      {% if a.status == "prepared" and a.tenant_id and can(ctx, "compliance:attest") %}
+      <form method="post" action="/ui/compliance/attestations/{{ a.id }}/accept" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">{{ icon("verified") }}Accept and sign</button>
+      </form>
+      <details class="decision-note">
+        <summary>Reject…</summary>
+        <form method="post" action="/ui/compliance/attestations/{{ a.id }}/reject">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label>Why <input type="text" name="reason" required maxlength="2000"></label>
+          <button type="submit" class="secondary">Reject</button>
+        </form>
+      </details>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted">None yet.</p>
+  {% endif %}
+  {% if can(ctx, "compliance:attest") and not by_platform %}
+  <details>
+    <summary>Attest it yourself</summary>
+    <form method="post" action="/ui/compliance/cuecs/{{ cuec.id }}/attestations" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>From <input type="date" name="start" value="{{ default_start }}" required></label>
+      <label>To <input type="date" name="end" value="{{ default_end }}" required></label>
+      <label>Result <select name="result">{% for r in results %}<option value="{{ r }}">{{ r | replace("_", " ") | capitalize }}</option>{% endfor %}</select></label>
+      <label>What you attest, and how you know <textarea name="statement" rows="4" maxlength="8000" required></textarea></label>
+      <label>Evidence files (optional) <input type="file" name="evidence_file" multiple></label>
+      <button type="submit" class="secondary">{{ icon("draw") }}Prepare</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% endblock %}

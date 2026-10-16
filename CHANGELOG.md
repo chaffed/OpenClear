@@ -38,6 +38,25 @@ Access reviews and the last checks (CONTROLS_PLAN.md CT3):
   standards** (Settings → Your standards): the password policy and the signing keys' age checked
   against the minimum length and rotation period you record. 45 checks in all.
 
+CUEC mappings and attestations (CONTROLS_PLAN.md CT4):
+
+- **Mappings** (Settings → CUECs): map each CUEC to your own control (its id, name, owner and a link
+  to it in your GRC tool), one at a time or by loading the `cuecs.csv` you filled in.
+- **Attestations**: at the end of each period (monthly, quarterly or yearly) OpenClear proposes one
+  for each automated CUEC from its checks' results: *operated* when the check ran at least 95% of
+  its scheduled times, no deviation outlasted your grace period and every population test passed;
+  *operated with exceptions* or *not tested* otherwise, always with the numbers. You accept it (or a
+  mapping accepts automatically, which is a security event to turn on) or reject it with a reason.
+  Assisted and attested CUECs are attested by a person, with files attached.
+- **Signed**: an accepted attestation is canonical JSON signed with the installation's key (ECDSA
+  P-256), downloadable with the public key; it never changes, and a correction supersedes it. You
+  can require a second person to accept what someone prepared.
+- **Customers** attest their own CUECs under *Your responsibilities*. New permissions
+  `compliance:read` and `compliance:attest` (the Admin group's by default); webhooks
+  `compliance.attestation.prepared` and `.accepted`.
+- **The host's CUECs**: attested by each bank by default, or once for a shared installation by its
+  platform staff (`OPENCLEAR_HOST_CUECS_ATTESTED_BY=platform`), which every bank sees read-only.
+
 ## 1.17.0 — 2026-10-16
 
 Controls (CONTROLS_PLAN.md CT1):

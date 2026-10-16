@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Host attestations — OpenClear{% endblock %}
+{% block content %}
+{% set badges = {"operated": "badge-ok", "operated_with_exceptions": "badge-warn", "not_operated": "badge-danger", "not_applicable": ""} %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card">
+  <h1>The host's CUECs</h1>
+  {% if by_platform %}
+  <p>What every bank on this installation relies on its host to do. Attest each once for the installation: it's signed at once,
+    and every bank sees it read-only.</p>
+  {% else %}
+  <p class="flash flash-warn">On this installation each bank attests the host's CUECs itself (OPENCLEAR_HOST_CUECS_ATTESTED_BY=bank).</p>
+  {% endif %}
+  <ul class="plain-list">
+    {% for c in cuecs %}
+    <li><span class="control-id">{{ c.id }}</span> <strong>{{ c.title }}.</strong> {{ c.statement }}
+      {% set a = latest.get(c.id) %}{% if a %}<br><span class="badge {{ badges[a.result] }}">{{ a.result | replace("_", " ") }}</span> {{ a.period_start }} to {{ a.period_end }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% if by_platform %}
+<div class="card card-narrow">
+  <h2>Attest one</h2>
+  <form method="post" action="/ui/platform/host-attestations">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>CUEC <select name="cuec_id">{% for c in cuecs %}<option value="{{ c.id }}">{{ c.id }} {{ c.title }}</option>{% endfor %}</select></label>
+    <label>From <input type="date" name="start" value="{{ default_start }}" required></label>
+    <label>To <input type="date" name="end" value="{{ default_end }}" required></label>
+    <label>Result <select name="result">{% for r in results %}<option value="{{ r }}">{{ r | replace("_", " ") | capitalize }}</option>{% endfor %}</select></label>
+    <label>What you attest, and how you know <textarea name="statement" rows="4" required maxlength="8000"></textarea></label>
+    <button type="submit">{{ icon("draw") }}Attest and sign</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

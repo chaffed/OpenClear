@@ -332,3 +332,19 @@ One merge per phase, at most one migration each, the three full suites once per 
   customer_access_review, file_reconciliation, decision_delivery (from the existing batch
   acknowledgements), outside_services, password_policy, key_age (the signing key files' ages).
   Only software_currency is still planned. Next: CT4.
+- 2026-10-17 CT4 built on branch `ct4-attestations`: `cuec_mapping` and `cuec_attestation` (RLS;
+  installation rows with no bank readable by every bank, writable only from a session bound to
+  none, the platform's), `tenant.attestation_period` and `attest_second_person`; migration
+  `c4e6a8b0d2f3`. `services/attestation_service.py`: mappings (and CSV import), CT-D6's rule over
+  the scheduled results (a deviation's whole length counts against the grace period, not just the
+  part inside the period), proposals for the bank's and the host's automated CUECs (the host's
+  only while `host_cuecs_attested_by` is "bank"), auto-accept, the second person, superseding,
+  signing with the file-signing key (canonical JSON as the evidence export), verification and the
+  signed download; the nightly job proposes each bank's last period the night after it ends. Pages
+  at `/ui/compliance/cuecs` for the bank and, as *Your responsibilities*, a customer's own; the
+  platform's host attestations at `/ui/platform/host-attestations`. `compliance:read` (an
+  admin-only read) and `compliance:attest`; security events for auto-accept and rejections;
+  webhooks for prepared and accepted. Differences from the plan: customers' CUECs are attested by
+  their people, with the related check's latest result as evidence (automated proposals for them
+  would need every check re-run within each customer's scope); the bank asking customers to attest
+  each year (CT-D13) isn't built. Next: CT5.

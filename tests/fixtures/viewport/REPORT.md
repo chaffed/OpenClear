@@ -41,6 +41,8 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | control_check | ✓ | ✓ | ✓ | ✓ |
 | access_reviews | ✓ | ✓ | ✓ | ✓ |
 | access_review | ✓ | ✓ | ✓ | ✓ |
+| cuecs | ✓ | ✓ | ✓ | ✓ |
+| cuec | ✓ | ✓ | ✓ | ✓ |
 | setting_outside_services | ✓ | ✓ | ✓ | ✓ |
 | setting_standards | ✓ | ✓ | ✓ | ✓ |
 | changes | ✓ | ✓ | ✓ | ✓ |
@@ -73,6 +75,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
 | customer_api_clients | ✓ | ✓ | ✓ | ✓ |
 | customer_access_reviews | ✓ | ✓ | ✓ | ✓ |
+| customer_responsibilities | ✓ | ✓ | ✓ | ✓ |
 | customer_api_client_new | ✓ | ✓ | ✓ | ✓ |
 
 ## Details

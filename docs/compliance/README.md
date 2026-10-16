@@ -12,7 +12,9 @@ for each point is.
   SP 800-53 controls, its checks and the CUECs it relies on
 - [Complementary user entity controls](cuecs.md): what OpenClear relies on the bank, its
   customers and its host to do, each filed under its NIST SP 800-53 control, to map onto your
-  own control inventory
+  own control inventory. In OpenClear (Settings → CUECs) each is mapped to your control and
+  attested each period: automated ones proposed from OpenClear's test history, and every
+  accepted attestation signed
 
 **These pages are not legal advice.** They describe features and where to find evidence. Each
 bank's own risk assessment decides whether its use of OpenClear meets a requirement, and

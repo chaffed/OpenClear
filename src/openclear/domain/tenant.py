@@ -48,6 +48,10 @@ class Tenant(Base):
     # When the bank last reviewed each outside service OpenClear uses for it (services/outside_services.py):
     # {service key: {"at": ISO time, "by": email, "note": text}}.
     outside_service_reviews: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict, server_default="{}")
+    # CUEC attestations (CONTROLS_PLAN.md CT4): the period they cover (monthly, quarterly or yearly), and
+    # whether whoever prepares a manual attestation must leave accepting it to someone else (CT-D9).
+    attestation_period: Mapped[str] = mapped_column(String(10), nullable=False, default="quarterly", server_default="quarterly")
+    attest_second_person: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

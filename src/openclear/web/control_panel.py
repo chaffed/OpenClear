@@ -20,9 +20,9 @@ SECTIONS = ("Organization", "Security & access", "Decisions & rules", "Integrati
 
 # Who sees the panel at all: anyone holding a permission one of its tiles needs.
 BANK_PERMISSIONS = ("tenant:manage", "admin:manage", "user:manage", "security_group:manage", "api_client:manage",
-                    "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read", "issued_item:write")
+                    "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read", "issued_item:write", "compliance:read")
 CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write", "customer_user:manage", "customer_sso:manage",
-                        "customer_api_client:manage")
+                        "customer_api_client:manage", "compliance:read")
 
 
 @dataclass
@@ -295,6 +295,22 @@ def _layout_tiles(db, ctx, tenant, settings) -> list[Tile]:
     return [_layout_tile(db, ctx)]
 
 
+def _cuec_tile(db, ctx, *_args) -> Tile:
+    """CUECs and attestations (CONTROLS_PLAN.md CT4): the bank's, or a customer's own responsibilities."""
+    from openclear.services import attestation_service
+
+    waiting = sum(1 for a in attestation_service.attestations(db, ctx.tenant_id, ctx.customer_id, limit=200) if a.status == "prepared")
+    title = "Your responsibilities" if ctx.customer_id else "CUECs"
+    description = ("What OpenClear relies on you to do, mapped to your own controls and attested each period." if ctx.customer_id
+                   else "What OpenClear relies on you, your customers and your host to do: mappings and signed attestations.")
+    return Tile("cuecs", "Data & compliance", title, "fact_check", "/ui/compliance/cuecs", description,
+                f"{waiting} to accept" if waiting else "", tone="warn" if waiting else "", keywords="cuec attestation grc soc nist responsibilities")
+
+
+def _compliance_tiles(db, ctx, tenant, settings) -> list[Tile]:
+    return [_cuec_tile(db, ctx)]
+
+
 _BANK_BUILDERS: list[tuple[str, Callable]] = [
     ("tenant:manage", _tenant_tiles),
     ("admin:manage", _admin_tiles),
@@ -303,6 +319,7 @@ _BANK_BUILDERS: list[tuple[str, Callable]] = [
     ("api_client:manage", _integration_tiles),
     ("ach_return_reason:manage", _return_reason_tiles),
     ("audit_log:read", _audit_tiles),
+    ("compliance:read", _compliance_tiles),
     ("data_export:run", _export_tiles),
     ("billing:read", _billing_tiles),
     ("issued_item:write", _layout_tiles),
@@ -362,6 +379,8 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
                           f"{active} active" if active else "None", keywords="api integration erp accounting credentials key"))
     if "issued_item:write" in ctx.permissions:
         tiles.append(_layout_tile(db, ctx))
+    if "compliance:read" in ctx.permissions:
+        tiles.append(_cuec_tile(db, ctx))
     if "billing:read" in ctx.permissions:
         tiles.append(Tile("billing-statement", "Data & compliance", "Billing statement", "request_quote", "/ui/billing/statement",
                           "What your bank charges you for positive pay.", keywords="fees invoice"))

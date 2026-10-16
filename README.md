@@ -690,7 +690,12 @@ third-party risk guidance):
   Access reviews (Settings → Access reviews; a self-managing customer's of its own people),
   presented-items files reconciled against their control totals, decision files acknowledged,
   outside services reviewed, and the bank's own password and key-rotation standards
-  (Settings → Your standards) are checked too.
+  (Settings → Your standards) are checked too. Each CUEC is mapped to the bank's own control
+  (Settings → CUECs, or loaded from the filled-in `cuecs.csv`) and attested each period: for an
+  automated one, OpenClear proposes the attestation from its test history (95% coverage, no
+  deviation beyond the grace period, every population test passed), the control owner accepts
+  it unless a mapping accepts automatically, and the accepted attestation is signed (ECDSA P-256,
+  downloadable with the public key). Customers attest theirs under *Your responsibilities*.
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
   PDF bundle for a period.
 - **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to

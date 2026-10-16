@@ -64,7 +64,11 @@ PERMISSION_CATALOG: dict[str, str] = {
     "api_client:manage": "Manage integrations: API clients and webhooks for the bank's systems",
     # Control testing (CONTROLS_PLAN.md CT2): record a deviation's cause and response, and set the
     # grace period and which checks' warnings count as deviations. Bank-only for now.
-    "compliance:manage": "Record the cause and response to control deviations, and set how deviations are counted",
+    "compliance:manage": "Map CUECs to your own controls, set how deviations and attestations work, and record deviation responses",
+    # CUECs and attestations (CONTROLS_PLAN.md CT4). Kept in a customer's own session, where they reach
+    # only the customer's CUECs (its "responsibilities"). The bank's Admin group has all three.
+    "compliance:read": "See the CUECs, their mappings and attestations",
+    "compliance:attest": "Prepare, accept and reject CUEC attestations",
 }
 
 # Masked out of TenantContext.permissions whenever the active membership is
@@ -113,7 +117,7 @@ _ALL = [key for key in PERMISSION_CATALOG if key not in _NOT_ADMIN_DEFAULT]
 # the Bank Administrator documentation are all more sensitive/admin-facing than any single
 # resource's own data, and default to Admin-only, same posture as the *:manage
 # permissions. A tenant can still grant any of them to a custom group.
-_ADMIN_ONLY_READS = ("audit_log:read", "wsud:read", "admin_documentation:read", "billing:read")
+_ADMIN_ONLY_READS = ("audit_log:read", "wsud:read", "admin_documentation:read", "billing:read", "compliance:read")
 _READS = [key for key in _ALL if key.endswith(":read") and key not in _ADMIN_ONLY_READS]
 
 # Default groups seeded into every new tenant (provisioning_service.py, tests'

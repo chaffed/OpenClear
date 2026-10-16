@@ -94,6 +94,8 @@ PAGES = [
     ("control_check", "/ui/admin/controls/checks/sla", "bank"),
     ("access_reviews", "/ui/access-reviews", "bank"),
     ("access_review", "{review}", "bank"),
+    ("cuecs", "/ui/compliance/cuecs", "bank"),
+    ("cuec", "/ui/compliance/cuecs/B-AC-5-01", "bank"),
     ("setting_outside_services", "/ui/settings/outside-services", "bank"),
     ("setting_standards", "/ui/settings/standards", "bank"),
     ("changes", "/ui/admin/changes", "bank"),
@@ -126,6 +128,7 @@ PAGES = [
     ("customer_control_panel", "/ui/settings", "customer"),
     ("customer_api_clients", "/ui/api-clients", "customer"),
     ("customer_access_reviews", "/ui/access-reviews", "customer"),
+    ("customer_responsibilities", "/ui/compliance/cuecs", "customer"),
     ("customer_api_client_new", "/ui/api-clients/new", "customer"),
 ]
 # Pages measured after a step: (selector clicked, selector waited for).
@@ -258,7 +261,7 @@ def _seed(client, db_session, tenant_factory):
     customer.self_manages_api_clients = True
     role = security_group_service.create_security_group(db_session, tenant.id, security_group_service.SecurityGroupInput(
         name="Customer admin", permissions=["customer_user:manage", "customer_sso:manage", "customer_api_client:manage", "issued_item:read",
-                                            "issued_item:write"],
+                                            "issued_item:write", "compliance:read"],
         offered_to_customers=True))
     groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
     for number, (name, group, read_only) in enumerate((("Accounting system", "Preparer", False), ("Reporting", "Viewer", True)), start=1):

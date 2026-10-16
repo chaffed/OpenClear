@@ -111,7 +111,7 @@ def test_a_customers_own_panel(client, db_session, tenant_factory):
     csrf = _login(client, tenant.slug, "owner@panelco.example")
 
     page = client.get("/ui/settings").text
-    assert _keys(page) == {"reminders", "banner", "layouts", "billing-statement"}
+    assert _keys(page) == {"reminders", "banner", "layouts", "billing-statement", "cuecs"}  # cuecs: "Your responsibilities"
     assert "(your bank&#39;s)" in page
     form = client.get("/ui/settings/reminders").text
     assert "Use your bank's timing" in form and "platform default" not in form
