@@ -28,6 +28,21 @@ Customers' own API clients (MOBILE_PLAN.md R4):
   `GET /api/v1/api-clients` shows `managed_by` and `accounts`, and a customer's own session
   sees only the clients it made. The Customer self-service control counts them.
 
+Plugin page additions (MOBILE_PLAN.md R5; PLUGIN_PLAN.md PL4):
+
+- **UI slots**: a plugin can add a panel (exception, customer, dashboard), a toolbar button
+  (exceptions, issued items), a row action (exceptions, paid items), a page in the menu, or a
+  control-panel tile. Each bank turns each one on under Settings → Plugins ("Page addition").
+- **Safe by design**: a slot's HTML is sanitised (no scripts, styles or event handlers, so the
+  Content Security Policy is unchanged); it runs with its own database session limited to the
+  person's bank, customer and accounts; one that fails, takes over 200 ms or returns something
+  unsafe is skipped and logged (`plugin.slot.failed`), and the page renders without it.
+- **A plugin's own routes and files**, at `/ui/plugins/<plugin>/` (answering only for banks that
+  turned on one of its slots) and `/static/plugins/<plugin>/`, with dependencies for the person,
+  permissions, CSRF and the action log in `openclear.plugins.api`.
+- **On a phone** a toolbar folds behind one "More" button and a panel starts closed.
+- The example plugin fills one slot of each kind (docs/PLUGINS.md).
+
 ## 1.16.0 — 2026-10-16
 
 Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with a mouse) is unchanged.

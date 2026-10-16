@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ page_title }}</h1>
+  <div class="plugin-html">{{ page_html | safe }}</div>
+  {% if page_actions %}<p class="plugin-actions">{% for a in page_actions %}{% if a.method == "post" %}<form method="post" action="{{ a.href }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ a.label }}</button></form>{% else %}<a href="{{ a.href }}" class="button secondary">{{ a.label }}</a>{% endif %}{% endfor %}</p>{% endif %}
+</div>
+{% endblock %}

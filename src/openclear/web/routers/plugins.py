@@ -22,7 +22,7 @@ _manage = require_web_permission("admin:manage")
 
 POINT_LABELS = {
     "import_formats": "Import format", "decision_layouts": "Decision file layout", "matching_rules": "Matching rule",
-    "notification_channels": "Notification channel",
+    "notification_channels": "Notification channel", "ui_slots": "Page addition",
 }
 
 

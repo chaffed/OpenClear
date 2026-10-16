@@ -23,6 +23,7 @@
 {% block content %}
 <div class="card">
   <h1>Exceptions</h1>
+  {{ slot("exceptions.toolbar") }}
   {# On a phone, Network and Status are in a bottom sheet; the button says what's chosen. #}
   <form method="get" action="/ui/exceptions" class="toolbar">
     {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else status_filter | exception_status)
@@ -66,7 +67,7 @@
   {% call(row, col, part="cell") rt.responsive_table(columns, rows, search=search, action="/ui/exceptions", attrs="data-server-list data-queue", id="exceptions", row_attrs="data-row-link") -%}
     {%- if part == "header" %}<label class="select-target"><input type="checkbox" data-select-all aria-label="Select every item on this page that can be decided"></label>
     {%- elif col.key == "select" %}{% if row.exception.status.value in ["open", "pending_approval"] %}<label class="select-target"><input type="checkbox" name="exception_ids" value="{{ row.exception.id }}" form="bulk-form" data-amount="{{ row.summary.amount or 0 }}" aria-label="Select {{ row.summary.label }}"></label>{% endif %}
-    {%- elif col.key == "item" %}<a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span>
+    {%- elif col.key == "item" %}<a href="/ui/exceptions/{{ row.exception.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ row.summary.label }}</a> <span class="badge">{{ row.exception.network_code | upper }}</span>{{ slot("exception.row.action", exception_id=row.exception.id | string) }}
     {%- elif col.key == "account" %}{{ row.account }}
     {%- elif col.key == "customer" %}{{ row.customer }}
     {%- elif col.key == "amount" %}{{ row.summary.amount | currency }}

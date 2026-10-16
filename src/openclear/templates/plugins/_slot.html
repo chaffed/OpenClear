@@ -1,0 +1,34 @@
+{# What plugin UI slots render (web/templates.py::_slot; plugins/ui_slots.py). Each item's
+   `html` is already sanitised; titles and action labels are escaped as usual. #}
+{% from "_macros/icon.html" import icon %}
+{% from "_macros/bottom_sheet.html" import sheet_trigger, bottom_sheet %}
+{% macro action(a, as_button=True) -%}
+  {%- if a.method == "post" -%}
+  <form method="post" action="{{ a.href }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="{{ 'secondary' if as_button else 'link-button' }}">{{ a.label }}</button>
+  </form>
+  {%- else -%}
+  <a href="{{ a.href }}"{% if as_button %} class="button secondary"{% endif %}>{{ a.label }}</a>
+  {%- endif -%}
+{%- endmacro %}
+{% if kind == "toolbar" %}
+{# Buttons in the page's toolbar; on a phone, behind one button that opens them in a sheet. #}
+{{ sheet_trigger(sheet_id, "More", "more_horiz", aria_label="More actions") }}
+{% call bottom_sheet(sheet_id, "More actions") %}<span class="plugin-toolbar" data-plugin-slot="{{ slot }}">
+  {%- for item in items %}{% for a in item.content.actions %}{{ action(a) }}{% endfor %}{% endfor -%}
+</span>{% endcall %}
+{% elif kind == "row_action" %}
+<span class="plugin-row-actions" data-plugin-slot="{{ slot }}">
+  {%- for item in items %}{% for a in item.content.actions %}{{ action(a, as_button=False) }}{% endfor %}{% endfor -%}
+</span>
+{% elif kind == "panel" %}
+{% for item in items %}
+{# A card on a desktop; collapsed on a phone until opened (static/js/app.js initPluginPanels). #}
+<details class="card more-details plugin-panel" data-plugin-slot="{{ slot }}" data-plugin="{{ item.plugin }}" open>
+  <summary><h2>{{ item.content.title }}</h2></summary>
+  <div class="plugin-html">{{ item.html | safe }}</div>
+  {% if item.content.actions %}<p class="plugin-actions">{% for a in item.content.actions %}{{ action(a) }}{% endfor %}</p>{% endif %}
+</details>
+{% endfor %}
+{% endif %}

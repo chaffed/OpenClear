@@ -35,7 +35,7 @@
     {"key": "settlement", "label": "Settlement", "sort": "settlement"},
   ] %}
   {% call(item, col, part="cell") rt.responsive_table(columns, page_obj.items, search=search, action="/ui/paid-items", attrs="data-server-list") -%}
-    {%- if col.key == "number" %}<a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a>
+    {%- if col.key == "number" %}<a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a>{{ slot("paid_item.row.action", paid_item_id=item.id | string) }}
     {%- elif col.key == "amount" %}{{ item.presented_amount | currency }}
     {%- elif col.key == "date" %}{{ item.presented_date }}
     {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span>

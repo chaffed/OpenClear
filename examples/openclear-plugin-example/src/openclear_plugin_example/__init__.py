@@ -7,7 +7,8 @@ chooses:
 - a fixed-width paid-items import format and a fixed-width decision file;
 - a matching rule: a large check for a round amount is an exception;
 - a scoring feature: whether a check's amount is a round number;
-- a notification channel that records what it's sent (a real one would post to a chat tool).
+- a notification channel that records what it's sent (a real one would post to a chat tool);
+- page additions, one in each kind of UI slot, with their own routes and static files (ui.py).
 
 Import only from openclear.plugins.api, which stays stable within a plugin API version."""
 
@@ -130,6 +131,13 @@ class _Plugin:
             config_fields=(ConfigField("prefix", "Message prefix"), ConfigField("token", "Access token", secret=True, required=False)),
             events=("exception.created", "exception.decided"),
         ))
+        # Page additions (UI slots), its own routes and its static files: ui.py.
+        from openclear_plugin_example import ui
+
+        for entry in ui.SLOTS:
+            registry.add_ui_slot(entry)
+        registry.add_web_router(ui.router)
+        registry.add_static(ui.STATIC)
 
 
 plugin = _Plugin()

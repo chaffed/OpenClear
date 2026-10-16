@@ -1,0 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Chaffed */
+.example-score { font-weight: 700; font-size: 1.25rem; }
+.example-score-high { color: var(--danger, #b91c1c); }

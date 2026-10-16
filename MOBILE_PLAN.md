@@ -343,3 +343,15 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
   marks customers' clients *theirs* and can revoke them; `GET /api/v1/api-clients` serves a
   customer's own session its own. Turning the switch off stops management; clients already
   made keep working until revoked (as people do). Next: R5.
+- 2026-10-16 R5 built on branch `mobile-r5` (on R4): plugin UI slots. `plugins/ui_slots.py`
+  (SLOTS: nine slots in five kinds; `render_slot`, each `render` in a worker thread with its own
+  session bound by `bind_session_to_tenant` and `bind_for_member`, 200 ms, 2 s for a page;
+  nh3 to SLOT_TAGS/SLOT_ATTRIBUTES; actions only to paths on this site); `ui_slots` a bank-choice
+  extension point; `add_web_router` (mounted at `/ui/plugins/<plugin>/`, 404 unless the bank
+  turned on one of its slots) and `add_static`; `slot()`, `plugin_pages()` and
+  `plugin_assets()` in templates; `/ui/plugin-pages/<name>`; plugin tiles in the control
+  panel. Values passed to a slot are plain (ids, strings), never the request's ORM objects, so
+  a slow slot can't touch the request's session. The example plugin fills one of each kind
+  (`ui.py`, its own JS and CSS), rather than a separate example package. Without plugins the
+  desktop pictures are unchanged. Also fixed: the layout builder test raced its script's
+  selection listener under a loaded suite. Next: R6.

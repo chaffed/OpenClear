@@ -88,6 +88,7 @@
         {% if ctx.customer_id is not none and can(ctx, "billing:read") %}{{ nav_link("/ui/billing/statement", "Billing Statement", "request_quote") }}{% endif %}
         {% if show_settings and ctx.customer_id is not none %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
         {% if can(ctx, "ml_training_example:write") %}{{ nav_link("/ui/ml-training/fraud-examples", "Fraud Training Data", "model_training") }}{% endif %}
+        {% for page in plugin_pages() %}{{ nav_link("/ui/plugin-pages/" ~ page.name, page.label, "extension") }}{% endfor %}
 
         {% if show_org_section %}
         <p class="nav-section">Organization</p>
@@ -203,5 +204,6 @@
   <script src="/static/js/breakpoints.js?v={{ asset_version('js/breakpoints.js') }}"></script>
   <script src="/static/js/app.js?v={{ asset_version('js/app.js') }}"></script>
   {% block scripts %}{% endblock %}
+  {% for kind, src in plugin_assets() %}{% if kind == "js" %}<script src="{{ src }}"></script>{% else %}<link rel="stylesheet" href="{{ src }}">{% endif %}{% endfor %}
 </body>
 </html>

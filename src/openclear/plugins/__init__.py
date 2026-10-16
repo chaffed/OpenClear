@@ -49,13 +49,13 @@ ENTRY_POINT_GROUP = "openclear.plugins"
 
 EXTENSION_POINTS = (
     "networks", "ocr_providers", "email_providers", "sms_providers", "storage_backends", "scoring_models", "import_formats",
-    "decision_layouts", "matching_rules", "scoring_features", "notification_channels",
+    "decision_layouts", "matching_rules", "scoring_features", "notification_channels", "ui_slots",
 )
 BUILTIN_NAME = "openclear"
 # Extension points where using a plugin's entry is each bank's choice: a bank admin turns it
 # on under Settings → Plugins (services/plugin_service.py). The rest are the operator's choice,
 # made in configuration. Built-in entries are always on.
-BANK_CHOICE_POINTS = ("import_formats", "decision_layouts", "matching_rules", "notification_channels")
+BANK_CHOICE_POINTS = ("import_formats", "decision_layouts", "matching_rules", "notification_channels", "ui_slots")
 # Exception codes a matching rule plugin may not claim: the built-in rules' own, and the one
 # a failing plugin rule raises (services/plugin_service.RULE_FAILED).
 RESERVED_EXCEPTION_CODES = {"plugin_rule_failed"}
@@ -92,6 +92,9 @@ class Registry:
         self.matching_rules: dict[str, Any] = {}
         self.scoring_features: dict[str, Any] = {}
         self.notification_channels: dict[str, Any] = {}
+        self.ui_slots: dict[str, Any] = {}  # plugins/ui_slots.py
+        self.web_routers: dict[str, Any] = {}  # plugin name -> its APIRouter, mounted at /ui/plugins/<name>/
+        self.static_dirs: dict[str, str] = {}  # plugin name -> its static folder, served at /static/plugins/<name>/
         self.exception_type_labels: dict[str, str] = {}  # codes plugin rules add, and their names
         self.origins: dict[tuple[str, Any], str] = {}  # (point, key) -> the plugin that registered it
         self._current: PluginInfo | None = None
@@ -158,6 +161,33 @@ class Registry:
         """Somewhere a bank's events can be sent, such as a chat tool (plugins/api.py
         NotificationChannel). Each bank turns it on and fills in its settings."""
         self._add("notification_channels", channel.name, channel)
+
+    def add_ui_slot(self, entry) -> None:
+        """A panel, toolbar button, row action, page or tile on OpenClear's pages (plugins/api.py
+        UiSlot; plugins/ui_slots.py). Each bank turns it on."""
+        from openclear.plugins.ui_slots import SLOTS
+
+        if entry.slot not in SLOTS:
+            raise PluginError(f"no UI slot {entry.slot!r} (there are: {', '.join(SLOTS)})")
+        if SLOTS[entry.slot] == "page" and not entry.label:
+            raise PluginError(f"the page {entry.name!r} needs a label for its menu entry")
+        self._add("ui_slots", entry.name, entry)
+
+    def add_web_router(self, router) -> None:
+        """The plugin's own pages and actions (a FastAPI APIRouter), mounted at
+        /ui/plugins/<plugin name>/. Its routes check permissions and CSRF themselves, with the
+        dependencies in plugins/api.py."""
+        self._add("web_routers", self._plugin_name(), router)
+
+    def add_static(self, directory) -> None:
+        """The plugin's static files (its JavaScript, CSS and images), served at
+        /static/plugins/<plugin name>/."""
+        self._add("static_dirs", self._plugin_name(), str(directory))
+
+    def _plugin_name(self) -> str:
+        if self._current is None:
+            raise PluginError("only a plugin's register() can add routes or static files")
+        return self._current.name
 
 
 registry = Registry()

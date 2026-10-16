@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import itertools
 import re
 from pathlib import Path
 from urllib.parse import urlencode
@@ -315,3 +316,52 @@ def _iso_utc(value) -> str:
 
 
 templates.env.filters["iso_utc"] = _iso_utc
+
+
+# --- Plugin UI slots (plugins/ui_slots.py; MOBILE_PLAN.md R5) -------------------------------
+
+_slot_ids = itertools.count(1)  # unique ids for a slot's sheet on the page
+
+
+def _slot(context, name: str, **values) -> Markup:
+    """`{{ slot("exception.detail.panel", exception_id=item.id) }}`: every plugin entry this bank
+    turned on for the slot, rendered as its kind shows (templates/plugins/_slot.html). Pass
+    plain values (ids, strings), never the request's objects. Nothing when there are none."""
+    from openclear.plugins import ui_slots
+
+    rendered = ui_slots.render_slot(context.get("request"), context.get("ctx"), name, values)
+    if not rendered:
+        return Markup("")
+    html = templates.env.get_template("plugins/_slot.html").render(
+        kind=ui_slots.SLOTS[name], slot=name, items=rendered, csrf_token=context.get("csrf_token"), sheet_id=f"plugin-slot-{next(_slot_ids)}")
+    return Markup(html)
+
+
+def _plugin_pages(context) -> list:
+    """The plugin pages (`nav.page`) in this person's menu."""
+    from openclear.plugins import ui_slots
+
+    request, ctx = context.get("request"), context.get("ctx")
+    if ctx is None:
+        return []
+    state = getattr(request, "state", None)
+    names = getattr(state, "plugin_slots_enabled", None)
+    if names is None:
+        names = ui_slots.enabled_names(ctx.tenant_id)
+        if state is not None:
+            state.plugin_slots_enabled = names
+    return sorted(ui_slots.entries_for(ctx, "nav.page", names), key=lambda e: e.label.lower()) if names else []
+
+
+def _plugin_assets(context) -> list[tuple[str, str]]:
+    """The scripts and stylesheets of plugins whose slots rendered on this page."""
+    from openclear.plugins import ui_slots
+
+    return ui_slots.assets_for(context.get("request"))
+
+
+from jinja2 import pass_context  # noqa: E402
+
+templates.env.globals["slot"] = pass_context(_slot)
+templates.env.globals["plugin_pages"] = pass_context(_plugin_pages)
+templates.env.globals["plugin_assets"] = pass_context(_plugin_assets)

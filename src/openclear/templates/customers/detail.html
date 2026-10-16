@@ -201,4 +201,5 @@
   </table>
 </div>
 {% endif %}
+{{ slot("customer.detail.panel", customer_id=customer.id | string) }}
 {% endblock %}

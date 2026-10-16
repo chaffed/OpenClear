@@ -52,6 +52,14 @@ function enhance(root) {
   initAutoSubmit(root);
   initBottomSheets(root);
   initImageSides(root);
+  initPluginPanels(root);
+}
+
+// Plugins' panels (templates/plugins/_slot.html) are open cards on wider screens and start
+// closed on a phone, below the page's own content, until someone opens one.
+function initPluginPanels(root = document) {
+  if (!window.OpenClear.breakpoint("phone").matches) return;
+  root.querySelectorAll("details.plugin-panel[open]").forEach((panel) => { panel.open = false; });
 }
 
 // Wide tables scroll sideways inside their own card on narrow screens, instead of

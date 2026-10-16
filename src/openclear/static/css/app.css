@@ -568,6 +568,11 @@ form[aria-busy="true"] button[disabled] { cursor: progress; opacity: 0.7; }
 .control-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
 .control-check { margin: 0 0 0.35rem; }
 .nowrap { white-space: nowrap; }
+/* Plugins' UI slots (templates/plugins/_slot.html). */
+.plugin-toolbar { display: inline-flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.75rem; }
+.plugin-row-actions { display: block; font-size: 0.85rem; }
+.plugin-row-actions > * { margin-right: 0.75rem; }
+.plugin-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; }
 .control-check:last-child { margin-bottom: 0; }
 .no-image { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0; color: var(--text-muted); }
 .more-details > summary h2 { display: inline; font-size: 1rem; }

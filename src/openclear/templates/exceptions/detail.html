@@ -179,6 +179,8 @@
   {% endif %}
 </div>
 
+{{ slot("exception.detail.panel", exception_id=item.id | string, network=item.network_code) }}
+
 {% if history %}
 {# The item's action log, collapsed; its newest entry shows while it is. #}
 {% set newest = history[0] %}

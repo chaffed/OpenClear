@@ -2,7 +2,8 @@
 # Copyright (C) 2026 Chaffed
 
 """What a plugin imports from OpenClear (docs/PLUGINS.md). These names are kept stable
-within a PLUGIN_API_VERSION; anything else in OpenClear may change in any release.
+within a PLUGIN_API_VERSION; anything else in OpenClear may change in any release. UI slots
+and a plugin's own pages joined version 1 in 1.17 (MOBILE_PLAN.md R5).
 
     from openclear.plugins.api import DecisionLayout, ImportSpec, LoadedFile, SourceRow
 """
@@ -104,6 +105,53 @@ class NotificationChannel:
     description: str = field(default="")
 
 
+# --- UI slots (plugins/ui_slots.py) and a plugin's own pages ----------------------------------
+
+from openclear.plugins.ui_slots import SlotAction, SlotContent, SlotContext, UiSlot  # noqa: E402
+
+
+# FastAPI dependencies for a plugin's own routes: `Depends(web_context)` is the signed-in
+# person's TenantContext (or a redirect to sign in), `Depends(require_web_permission("..."))`
+# also needs a permission, `Depends(verify_csrf)` refuses a form post without the page's CSRF
+# token (a slot's "post" action sends it), and `Depends(database)` is the request's session,
+# bound to the person's bank.
+from openclear.db.session import get_db as database  # noqa: E402
+from openclear.web.deps import get_web_context as web_context  # noqa: E402
+from openclear.web.deps import require_web_permission  # noqa: E402
+from openclear.web.security import verify_csrf  # noqa: E402
+
+
+def render_page(request, ctx, *, title: str, html: str, status_code: int = 200):
+    """A page in OpenClear's layout (navigation, branding, help) around the plugin's HTML, which
+    is sanitised as a slot's is."""
+    from openclear.plugins.ui_slots import sanitise
+    from openclear.web.deps import render_template
+
+    return render_template(request, "plugins/page.html", ctx=ctx, page_title=title, page_html=sanitise(html), status_code=status_code)
+
+
+def record_action(session, ctx, *, action: str, summary: str, resource_id=None) -> None:
+    """Record something the plugin did in the bank's action log, against the person, before the
+    plugin commits. `action` should start with the plugin's name ("example.score_refreshed")."""
+    from openclear.services import audit_log_service
+
+    audit_log_service.record_action(session, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action=action, summary=summary,
+                                     resource_type="plugin", resource_id=resource_id)
+
+
+def get_exception(session, ctx, exception_id):
+    """An exception the person may see (their bank, their customer and accounts), or None."""
+    import uuid as _uuid
+
+    from openclear.repositories.exception_repo import ExceptionRepository
+
+    try:
+        wanted = exception_id if isinstance(exception_id, _uuid.UUID) else _uuid.UUID(str(exception_id))
+    except ValueError:
+        return None
+    return ExceptionRepository(session, ctx.tenant_id, ctx.customer_id).get(wanted)
+
+
 def source_item(session, exception_item):
     """The item an exception is about: a PaidItem for a check, an AchTransaction for ACH."""
     from openclear.networks.registry import get_adapter
@@ -128,6 +176,7 @@ def extra_features(session, network_code: str, exception_item) -> dict[str, Any]
 
 __all__ = [
     "PLUGIN_API_VERSION", "BulkFileRejected", "BulkUploadKind", "ConfigField", "DecisionLayout", "ImportSpec", "LoadedFile",
-    "MatchingRule", "NotificationChannel", "PluginError", "Registry", "RowContext", "ScoringFeature", "SourceRow",
-    "apply_matching_rules", "builtin_import_format", "extra_features", "read_stored_file", "source_item",
+    "MatchingRule", "NotificationChannel", "PluginError", "Registry", "RowContext", "ScoringFeature", "SlotAction", "SlotContent",
+    "SlotContext", "SourceRow", "UiSlot", "apply_matching_rules", "builtin_import_format", "database", "extra_features",
+    "get_exception", "read_stored_file", "record_action", "render_page", "require_web_permission", "source_item", "verify_csrf", "web_context",
 ]

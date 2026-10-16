@@ -24,8 +24,9 @@ The working example in [examples/openclear-plugin-example](../examples/openclear
 | Matching rule | `add_matching_rule(MatchingRule)` | Each bank, under Settings → Plugins |
 | Notification channel | `add_notification_channel(NotificationChannel)` | Each bank, with its own settings |
 | Scoring feature | `add_scoring_feature(ScoringFeature)` | The operator (it applies to every bank) |
-
-Extension slots in the web UI are planned as PL4, once a real plugin needs one (see [PLUGIN_PLAN.md](../PLUGIN_PLAN.md)).
+| Page addition (UI slot) | `add_ui_slot(UiSlot)` | Each bank, under Settings → Plugins |
+| The plugin's own routes | `add_web_router(router)` | Answer only for banks that turned on one of its UI slots |
+| The plugin's static files | `add_static(directory)` | Served at `/static/plugins/<plugin>/` |
 
 ## The package
 
@@ -126,10 +127,54 @@ A `NotificationChannel(name, label, send, config_fields, events)` sends a bank's
 
 A channel that calls out over the network is making requests on behalf of every bank that uses it, so validate the URLs it accepts.
 
+## Page additions (UI slots)
+
+A `UiSlot(name, slot, render, permission=None, label="", scripts=(), styles=())` adds to one of
+OpenClear's pages. `render(context)` returns a `SlotContent(title, html, actions, state)`, or
+`None` to show nothing.
+
+| Slot | Kind | On a desktop | On a phone |
+|---|---|---|---|
+| `exceptions.toolbar`, `issued_items.toolbar` | toolbar | Buttons under the page's heading | Behind one "More" button, in a sheet |
+| `exception.row.action`, `paid_item.row.action` | row action | Links in the row | Links on the card |
+| `exception.detail.panel`, `customer.detail.panel`, `dashboard.panel` | panel | A card on the page | Closed until opened |
+| `nav.page` | page | A menu entry and its page, at `/ui/plugin-pages/<name>` | A drawer entry |
+| `settings.tile` | tile | A control-panel tile under Integrations | A tile |
+
+- **What `render` gets:** `context.ctx`, the person's TenantContext (bank, person, customer,
+  permissions); `context.session`, a database session of its own bound to the same scope, so a
+  customer's person reaches only their customer's data and only the accounts they're limited to;
+  and `context.values`, the plain values the page passed (an exception's page passes
+  `exception_id` and `network`; a customer's page, `customer_id`; a row, its item's id). Read
+  through it with `get_exception(session, ctx, id)` and `source_item(session, item)`.
+- **What it returns:** `html` is cleaned to a short list of tags (paragraphs, lists, tables,
+  links, `strong`, `code` and the like) with only `class`, `title` and `href` kept: no scripts,
+  styles or event handlers, so the Content Security Policy holds. The title and action labels
+  are text. Each `SlotAction(label, href, method="get")` must point at a path on this site,
+  normally one of the plugin's own routes; a `"post"` action is sent as a form with the page's
+  CSRF token. For a tile, `html` is its description, `state` what shows beside its name, and
+  its first action where it leads. For a page, `render` gets the query string in `values`.
+- **Never breaking a page:** `render` runs in a worker thread and has 200 ms (a whole page, 2 s).
+  One that raises, takes longer or returns something malformed is skipped and logged as
+  `plugin.slot.failed`, and the page goes on without it. Don't do slow work in `render`: keep
+  what a vendor tells you, and show that.
+- **JavaScript and CSS:** ship them as files in the plugin's static folder (`add_static`) and
+  name them in `scripts` and `styles`; they're loaded only on pages where the slot rendered.
+- **Its own routes:** an APIRouter registered with `add_web_router` is mounted at
+  `/ui/plugins/<plugin>/`, and answers only for a bank that turned on at least one of the
+  plugin's UI slots. Use the dependencies in `openclear.plugins.api`:
+  `Depends(require_web_permission("exception:read"))` (or `Depends(web_context)`) for the
+  person, `Depends(verify_csrf)` on a form post, `Depends(database)` for the session;
+  `render_page(request, ctx, title=..., html=...)` for a page in OpenClear's layout; and
+  `record_action(session, ctx, action=..., summary=...)` before you commit anything.
+
+The example plugin fills one slot of each kind
+([ui.py](../examples/openclear-plugin-example/src/openclear_plugin_example/ui.py)).
+
 ## Turning a plugin on
 
 1. **The operator installs and allows the plugin.** Installing the package isn't enough; set `OPENCLEAR_PLUGINS=yourcore`. Use `OPENCLEAR_PLUGINS_REQUIRED=yourcore` instead if OpenClear shouldn't start without the plugin.
-2. **Each bank turns on what it uses.** A bank admin turns on the plugin's import formats, decision layouts, matching rules and notification channels under **Settings → Plugins**. The change is recorded in the bank's action log. OpenClear's own entries are always on.
+2. **Each bank turns on what it uses.** A bank admin turns on the plugin's import formats, decision layouts, matching rules, notification channels and page additions under **Settings → Plugins**. The change is recorded in the bank's action log. OpenClear's own entries are always on.
 
 A plugin is skipped if it:
 
@@ -142,7 +187,7 @@ A skipped plugin leaves nothing registered. It's reported under Settings → Plu
 
 ## Testing
 
-Test a plugin against OpenClear's own test fixtures. [tests/test_auth/test_plugins_bank_choices.py](../tests/test_auth/test_plugins_bank_choices.py) does this for the example plugin. It loads the plugin through a fake entry point, uploads a file, and reads a decision file.
+Test a plugin against OpenClear's own test fixtures. [tests/test_auth/test_plugins_bank_choices.py](../tests/test_auth/test_plugins_bank_choices.py) does this for the example plugin. It loads the plugin through a fake entry point, uploads a file, and reads a decision file. [tests/test_web/test_plugin_slots.py](../tests/test_web/test_plugin_slots.py) does the same for its page additions, including a slot that fails, one that's slow and one that returns unsafe HTML.
 
 ## Trust and licensing
 

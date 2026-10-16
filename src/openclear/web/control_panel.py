@@ -344,8 +344,25 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
     return tiles
 
 
+def plugin_tiles(ctx: TenantContext) -> list[Tile]:
+    """Plugins' tiles (`settings.tile`; plugins/ui_slots.py) this bank turned on, under
+    Integrations. A tile's `html` is its description (as text), its first action where it leads."""
+    import re
+
+    from openclear.plugins import ui_slots
+
+    out = []
+    for item in ui_slots.render_slot(None, ctx, "settings.tile", {}):
+        if not item.content.actions:
+            continue
+        description = re.sub(r"<[^>]+>", "", item.html).strip()
+        out.append(Tile(f"plugin-{item.entry.name}", "Integrations", item.content.title, "extension", item.content.actions[0].href,
+                        description, item.content.state, keywords=f"plugin {item.plugin}"))
+    return out
+
+
 def tiles_for(db: Session, ctx: TenantContext) -> list[Tile]:
-    return customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx)
+    return (customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx)) + plugin_tiles(ctx)
 
 
 def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:

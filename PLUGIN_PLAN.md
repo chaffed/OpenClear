@@ -138,3 +138,4 @@ the core adapters will be plugins.
   - The example plugin has one of each.
   - PL4 (UI extension slots) waits for a real plugin that needs one, as the plan says.
 - 2026-10-09 PL3, F, P2, P3 and P4 (and the deadline webhook) merged into `main` at `d7f6bf25`. All three suites were green: SQLite 1406 passed, Postgres 1431, Linux 3.11 1393. The live Moov, Fineract, Node and .NET tests ran.
+- 2026-10-16 PL4 built as MOBILE_PLAN.md R5: UI slots (panels, toolbars, row actions, pages, tiles), a plugin's own routes and static files; docs/PLUGINS.md.

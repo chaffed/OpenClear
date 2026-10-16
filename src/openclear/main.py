@@ -306,6 +306,11 @@ def create_app() -> FastAPI:
     app.include_router(scim_router)
     # The web pages aren't API: keep them out of the published OpenAPI description.
     app.include_router(web_router, include_in_schema=False)
+    # Plugins' own routes and static files (MOBILE_PLAN.md R5), before "/static" for the same
+    # reason as the screenshots below.
+    from openclear.web.routers import plugin_pages
+
+    plugin_pages.mount(app)
     # Registered before the broader "/static" mount below -- Starlette matches mounts by
     # prefix in registration order, so the more specific path must come first or every
     # request under it would be swallowed by "/static" (and 404, since that directory has
