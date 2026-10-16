@@ -14,6 +14,20 @@ Controls (CONTROLS_PLAN.md CT1):
   the bank, and `GET /api/v1/compliance/cuecs`, the CUEC inventory with the controls that rely
   on each (a customer's own session sees only the customer's). The SDKs are regenerated.
 
+Customers' own API clients (MOBILE_PLAN.md R4):
+
+- **A third self-service switch**: on a customer's page, the bank can let the customer's own
+  administrators make API clients for its own systems (`customer_api_client:manage`), and
+  `PUT /api/v1/customers/{number}/self-service` takes `manages_api_clients` (left out, it
+  stays as it is).
+- **Settings → API clients for a customer**: name, a role the bank offers, all or some of its
+  accounts, read only or not; the secret shown once; rotate, switch to a key pair, revoke.
+  Never acting for users or linked to a sign-on connection. Recorded against the customer
+  (its activity page) and as the usual `api_client.*` security events.
+- **The bank sees them**: on its API clients page, marked *theirs*, where it can revoke them;
+  `GET /api/v1/api-clients` shows `managed_by` and `accounts`, and a customer's own session
+  sees only the clients it made. The Customer self-service control counts them.
+
 ## 1.16.0 — 2026-10-16
 
 Phones and tablets (MOBILE_PLAN.md R0–R3). The desktop (1024px and wider, with a mouse) is unchanged.

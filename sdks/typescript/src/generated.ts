@@ -128,6 +128,7 @@ export interface Acknowledgement {
 }
 
 export interface ApiClientRead {
+  accounts?: string | null;
   can_act_for_users: boolean;
   client_id: string;
   created_at: string | null;
@@ -135,6 +136,7 @@ export interface ApiClientRead {
   customer: string | null;
   id: string;
   last_used_at: string | null;
+  managed_by?: string;
   name: string;
   read_only?: boolean;
   revoked_at: string | null;
@@ -255,6 +257,7 @@ export interface CustomerRead {
   name: string;
   phone: string | null;
   primary_contact_name: string | null;
+  self_manages_api_clients?: boolean;
   self_manages_sso?: boolean;
   self_manages_users?: boolean;
   state: string | null;
@@ -662,9 +665,10 @@ export interface RunRequest {
   layout?: string | null;
 }
 
-/** Whether the customer's own administrators manage its people and its sign-on. */
+/** Whether the customer's own administrators manage its people, its sign-on and its API clients. */
 export interface SelfService {
   administrators?: Array<string>;
+  manages_api_clients?: boolean | null;
   manages_people: boolean;
   manages_sign_on: boolean;
 }
@@ -964,6 +968,10 @@ export class ApiClientsApi {
    * List Api Clients.
    *
    * GET /api/v1/api-clients
+   *
+   * Every API client of the bank (`api_client:manage`), customers' own marked `managed_by:
+   * customer`; or, for a customer's own session (`customer_api_client:manage`), the clients that
+   * customer made.
    */
   listApiClients(): Promise<Array<ApiClientRead>> {
     return this.c.call<Array<ApiClientRead>>("GET", `/api/v1/api-clients`, {  });
@@ -1460,8 +1468,8 @@ export class CustomersApi {
    *
    * PUT /api/v1/customers/{customer_number}/self-service
    *
-   * Lets the customer's own administrators manage its people and sign-on, or stops them at
-   * once. They can give only the roles marked offered to customers.
+   * Lets the customer's own administrators manage its people, sign-on and API clients, or
+   * stops them at once. They can give only the roles marked offered to customers.
    */
   setSelfService(customerNumber: string, body: SelfService): Promise<SelfService> {
     return this.c.call<SelfService>("PUT", `/api/v1/customers/${encodeURIComponent(String(customerNumber))}/self-service`, { json: body });

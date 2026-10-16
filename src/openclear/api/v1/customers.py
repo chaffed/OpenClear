@@ -60,13 +60,15 @@ class CustomerRead(BaseModel):
     # not by the upsert, so a core's sync never changes them.
     self_manages_users: bool = False
     self_manages_sso: bool = False
+    self_manages_api_clients: bool = False
 
 
 class SelfService(BaseModel):
-    """Whether the customer's own administrators manage its people and its sign-on."""
+    """Whether the customer's own administrators manage its people, its sign-on and its API clients."""
 
     manages_people: bool
     manages_sign_on: bool
+    manages_api_clients: bool | None = Field(None, description="Its own API clients, for its own systems. Left out of a PUT, it stays as it is")
     administrators: list[str] = Field([], description="Read only: the customer's people who can manage its people")
 
 
@@ -112,7 +114,8 @@ def _self_service(db: Session, ctx: TenantContext, customer: Customer) -> SelfSe
     from openclear.services import customer_people_service
 
     admins = [db.get(User, m.user_id).email for m in customer_people_service.administrators(db, ctx.tenant_id, customer.id)]
-    return SelfService(manages_people=customer.self_manages_users, manages_sign_on=customer.self_manages_sso, administrators=admins)
+    return SelfService(manages_people=customer.self_manages_users, manages_sign_on=customer.self_manages_sso,
+                       manages_api_clients=customer.self_manages_api_clients, administrators=admins)
 
 
 def _by_number(db: Session, ctx: TenantContext, customer_number: str) -> Customer:
@@ -133,16 +136,18 @@ def get_self_service(customer_number: str, db: Session = Depends(get_db), ctx: T
 @router.put("/{customer_number}/self-service", response_model=SelfService)
 def set_self_service(customer_number: str, payload: SelfService, db: Session = Depends(get_db),
                      ctx: TenantContext = Depends(_manage)) -> SelfService:
-    """Lets the customer's own administrators manage its people and sign-on, or stops them at
-    once. They can give only the roles marked offered to customers."""
+    """Lets the customer's own administrators manage its people, sign-on and API clients, or
+    stops them at once. They can give only the roles marked offered to customers."""
     from openclear.services import customer_people_service
 
     customer = _by_number(db, ctx, customer_number)
-    customer_people_service.set_self_service(db, ctx.tenant_id, customer.id, users=payload.manages_people, sso=payload.manages_sign_on)
+    customer_people_service.set_self_service(db, ctx.tenant_id, customer.id, users=payload.manages_people, sso=payload.manages_sign_on,
+                                             api_clients=payload.manages_api_clients)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="customer.self_service",
         summary=f"{customer.name} manages its own people: {'yes' if payload.manages_people else 'no'}; "
-                f"its own sign-on: {'yes' if payload.manages_sign_on else 'no'}",
+                f"its own sign-on: {'yes' if payload.manages_sign_on else 'no'}; "
+                f"its own API clients: {'yes' if customer.self_manages_api_clients else 'no'}",
         resource_type="customer", resource_id=customer.id,
     )
     db.commit()

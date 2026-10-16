@@ -210,14 +210,70 @@ def use_secret(session: Session, tenant_id: uuid.UUID, api_client_id: uuid.UUID)
     return rotate_secret(session, tenant_id, api_client_id)
 
 
+# --- A customer's own clients (MOBILE_PLAN.md R4) ---------------------------------------------
+# A self-managing customer makes clients for its own systems. Each is an ordinary client whose
+# membership is the customer's, with a role the bank offers to customers and, optionally, some of
+# the customer's accounts; never acting for users or linked to a sign-on connection (bank-only).
+# The customer manages only the clients it made (managed_by "customer"); the bank sees and can
+# revoke them on its own API clients page.
+
+
+def list_customer_clients(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> list[ApiClient]:
+    return list(session.execute(
+        select(ApiClient).join(TenantMembership, TenantMembership.id == ApiClient.membership_id)
+        .where(ApiClient.tenant_id == tenant_id, ApiClient.managed_by == "customer", TenantMembership.customer_id == customer_id)
+        .order_by(ApiClient.revoked_at.is_not(None), ApiClient.name)
+    ).scalars())
+
+
+def get_customer_client(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, api_client_id: uuid.UUID) -> ApiClient:
+    """One of the clients this customer made; anything else (another customer's, the bank's) is
+    not found."""
+    client = get_client(session, tenant_id, api_client_id)
+    membership = session.get(TenantMembership, client.membership_id) if client is not None else None
+    if client is None or client.managed_by != "customer" or membership is None or membership.customer_id != customer_id:
+        raise ApiClientError("API client not found.")
+    return client
+
+
+def create_customer_client(
+    session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, name: str, security_group_id: uuid.UUID, read_only: bool = False,
+    all_accounts: bool = True, account_ids: list[uuid.UUID] | None = None, created_by_user_id: uuid.UUID | None = None,
+) -> IssuedSecret:
+    from openclear.services import account_access_service
+
+    customer = session.get(Customer, customer_id)
+    if customer is None or customer.tenant_id != tenant_id or not customer.self_manages_api_clients:
+        raise ApiClientError("Your bank doesn't let you manage your own API clients.")
+    group = session.get(SecurityGroup, security_group_id)
+    if group is None or group.tenant_id != tenant_id or not group.offered_to_customers:
+        raise ApiClientError("Choose one of the roles your bank offers.")
+    issued = create_client(session, tenant_id, name=name, security_group_id=security_group_id, customer_id=customer_id,
+                           created_by_user_id=created_by_user_id, read_only=read_only)
+    issued.client.managed_by = "customer"
+    if not all_accounts:
+        try:
+            account_access_service.set_access(session, tenant_id, issued.client.membership_id, all_accounts=False, account_ids=account_ids)
+        except account_access_service.AccountAccessError as exc:
+            raise ApiClientError(str(exc)) from None
+    session.flush()
+    return issued
+
+
 def describe(session: Session, client: ApiClient) -> dict:
     """What the API clients page and API show: no secret, ever."""
+    from openclear.services import account_access_service
+
     membership = session.get(TenantMembership, client.membership_id)
     group = session.get(SecurityGroup, membership.security_group_id) if membership else None
     customer = session.get(Customer, membership.customer_id) if membership and membership.customer_id else None
     creator = session.get(User, client.created_by_user_id) if client.created_by_user_id else None
+    accounts = None
+    if customer is not None:
+        access = account_access_service.get_access(session, client.tenant_id, membership.id)
+        accounts = "All accounts" if access.all_accounts else account_access_service.describe(access).split(": ", 1)[-1]
     return {
-        "id": client.id, "name": client.name, "client_id": client.client_id,
+        "id": client.id, "name": client.name, "client_id": client.client_id, "managed_by": client.managed_by, "accounts": accounts,
         "security_group": group.name if group else None, "customer": customer.name if customer else None,
         "can_act_for_users": client.can_act_for_users, "read_only": client.read_only, "token_auth_method": client.token_auth_method, "created_by": creator.email if creator else None,
         "sso_connection_id": client.sso_connection_id,

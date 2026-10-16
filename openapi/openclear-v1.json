@@ -782,6 +782,17 @@
       },
       "ApiClientRead": {
         "properties": {
+          "accounts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accounts"
+          },
           "can_act_for_users": {
             "title": "Can Act For Users",
             "type": "boolean"
@@ -840,6 +851,11 @@
               }
             ],
             "title": "Last Used At"
+          },
+          "managed_by": {
+            "default": "bank",
+            "title": "Managed By",
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -1793,6 +1809,11 @@
               }
             ],
             "title": "Primary Contact Name"
+          },
+          "self_manages_api_clients": {
+            "default": false,
+            "title": "Self Manages Api Clients",
+            "type": "boolean"
           },
           "self_manages_sso": {
             "default": false,
@@ -4405,7 +4426,7 @@
         "type": "object"
       },
       "SelfService": {
-        "description": "Whether the customer's own administrators manage its people and its sign-on.",
+        "description": "Whether the customer's own administrators manage its people, its sign-on and its API clients.",
         "properties": {
           "administrators": {
             "default": [],
@@ -4415,6 +4436,18 @@
             },
             "title": "Administrators",
             "type": "array"
+          },
+          "manages_api_clients": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its own API clients, for its own systems. Left out of a PUT, it stays as it is",
+            "title": "Manages Api Clients"
           },
           "manages_people": {
             "title": "Manages People",
@@ -5833,6 +5866,7 @@
     },
     "/api/v1/api-clients": {
       "get": {
+        "description": "Every API client of the bank (`api_client:manage`), customers' own marked `managed_by:\ncustomer`; or, for a customer's own session (`customer_api_client:manage`), the clients that\ncustomer made.",
         "operationId": "list_api_clients_api_v1_api_clients_get",
         "responses": {
           "200": {
@@ -8076,7 +8110,7 @@
         ]
       },
       "put": {
-        "description": "Lets the customer's own administrators manage its people and sign-on, or stops them at\nonce. They can give only the roles marked offered to customers.",
+        "description": "Lets the customer's own administrators manage its people, sign-on and API clients, or\nstops them at once. They can give only the roles marked offered to customers.",
         "operationId": "set_self_service_api_v1_customers__customer_number__self_service_put",
         "parameters": [
           {

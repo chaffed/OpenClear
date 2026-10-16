@@ -21,7 +21,8 @@ SECTIONS = ("Organization", "Security & access", "Decisions & rules", "Integrati
 # Who sees the panel at all: anyone holding a permission one of its tiles needs.
 BANK_PERMISSIONS = ("tenant:manage", "admin:manage", "user:manage", "security_group:manage", "api_client:manage",
                     "audit_log:read", "ach_return_reason:manage", "data_export:run", "billing:read", "issued_item:write")
-CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write", "customer_user:manage", "customer_sso:manage")
+CUSTOMER_PERMISSIONS = ("customer_banner:manage", "billing:read", "issued_item:write", "customer_user:manage", "customer_sso:manage",
+                        "customer_api_client:manage")
 
 
 @dataclass
@@ -328,6 +329,13 @@ def customer_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
                           (f"{working} connection{'s' if working != 1 else ''}" if working else "Passwords only")
                           + ("" if customer.password_login_enabled or not working else ", passwords off"),
                           keywords="sso single sign-on saml oidc okta entra azure scim domain password"))
+    if "customer_api_client:manage" in ctx.permissions:
+        from openclear.services import api_client_service
+
+        active = sum(c.revoked_at is None for c in api_client_service.list_customer_clients(db, ctx.tenant_id, ctx.customer_id))
+        tiles.append(Tile("api-clients", "Integrations", "API clients", "vpn_key", "/ui/api-clients",
+                          "Credentials for your own systems, such as your accounting system, to send issued checks or read decisions.",
+                          f"{active} active" if active else "None", keywords="api integration erp accounting credentials key"))
     if "issued_item:write" in ctx.permissions:
         tiles.append(_layout_tile(db, ctx))
     if "billing:read" in ctx.permissions:

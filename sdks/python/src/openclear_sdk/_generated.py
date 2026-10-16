@@ -151,6 +151,7 @@ class Acknowledgement(TypedDict):
 
 
 class ApiClientRead(TypedDict):
+    accounts: NotRequired[str | None]
     can_act_for_users: bool
     client_id: str
     created_at: str | None
@@ -158,6 +159,7 @@ class ApiClientRead(TypedDict):
     customer: str | None
     id: str
     last_used_at: str | None
+    managed_by: NotRequired[str]
     name: str
     read_only: NotRequired[bool]
     revoked_at: str | None
@@ -279,6 +281,7 @@ class CustomerRead(TypedDict):
     name: str
     phone: str | None
     primary_contact_name: str | None
+    self_manages_api_clients: NotRequired[bool]
     self_manages_sso: NotRequired[bool]
     self_manages_users: NotRequired[bool]
     state: str | None
@@ -702,9 +705,10 @@ class RunRequest(TypedDict):
 
 
 class SelfService(TypedDict):
-    """Whether the customer's own administrators manage its people and its sign-on."""
+    """Whether the customer's own administrators manage its people, its sign-on and its API clients."""
 
     administrators: NotRequired[list[str]]
+    manages_api_clients: NotRequired[bool | None]
     manages_people: bool
     manages_sign_on: bool
 
@@ -966,6 +970,10 @@ class ApiClientsApi:
         """List Api Clients.
 
         GET /api/v1/api-clients
+
+        Every API client of the bank (`api_client:manage`), customers' own marked `managed_by:
+        customer`; or, for a customer's own session (`customer_api_client:manage`), the clients that
+        customer made.
         """
         return self._c.call("GET", "/api/v1/api-clients")
 
@@ -1370,8 +1378,8 @@ class CustomersApi:
 
         PUT /api/v1/customers/{customer_number}/self-service
 
-        Lets the customer's own administrators manage its people and sign-on, or stops them at
-        once. They can give only the roles marked offered to customers.
+        Lets the customer's own administrators manage its people, sign-on and API clients, or
+        stops them at once. They can give only the roles marked offered to customers.
         """
         return self._c.call("PUT", f"/api/v1/customers/{_path(customer_number)}/self-service", json=body)
 

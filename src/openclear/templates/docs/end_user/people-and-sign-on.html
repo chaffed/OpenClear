@@ -2,8 +2,8 @@
 
 {% block doc_body %}
 <h1>Your People &amp; Sign-on</h1>
-<p>If your bank lets your organization manage itself, its administrators see <strong>People</strong>
-and <strong>Sign-on</strong> in Settings.</p>
+<p>If your bank lets your organization manage itself, its administrators see <strong>People</strong>,
+<strong>Sign-on</strong> and <strong>API clients</strong> in Settings, for what the bank allows.</p>
 
 <h2>People</h2>
 <ul>
@@ -35,5 +35,19 @@ and <strong>Sign-on</strong> in Settings.</p>
   if you're ever locked out.</li>
   <li>When you sign in through your organization's sign-on, you stay in your organization: to
   reach another one you belong to, sign out and sign in there.</li>
+</ul>
+
+<h2>API clients</h2>
+<ul>
+  <li><strong>New API client</strong> gives one of your own systems (an accounting or ERP system,
+  say) credentials to call OpenClear's API without a person's password: to send issued checks,
+  or read your exceptions and decisions. Choose its role (one your bank offers), the accounts it
+  can see, and whether it only reads. Its secret is shown once: copy it into your system then.</li>
+  <li>Your system exchanges its client id and secret at <code>POST /api/v1/oauth/token</code>
+  (<code>grant_type=client_credentials</code>) for a token that lasts a short while.</li>
+  <li><strong>Rotate secret</strong> if it may have leaked, or <strong>Use a key pair</strong> so no
+  secret is shared at all. <strong>Revoke</strong> a client you no longer use: it stops at once.</li>
+  <li>Everything a client does is in your activity under its name. Your bank can see your clients,
+  and revoke them.</li>
 </ul>
 {% endblock %}

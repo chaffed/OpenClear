@@ -63,5 +63,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_sign_on | ✓ | ✓ | ✓ | ✓ |
 | customer_sign_on_new | ✓ | ✓ | ✓ | ✓ |
 | customer_control_panel | ✓ | ✓ | ✓ | ✓ |
+| customer_api_clients | ✓ | ✓ | ✓ | ✓ |
+| customer_api_client_new | ✓ | ✓ | ✓ | ✓ |
 
 ## Details

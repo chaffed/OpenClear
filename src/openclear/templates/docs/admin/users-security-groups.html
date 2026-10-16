@@ -28,8 +28,15 @@ existing one's permission set. Changes take effect immediately for anyone in tha
   <em>Offered to customers</em> on the security group, and can't edit roles. They can't
   reset the password of, unlock or sign out anyone who also belongs elsewhere (your own
   staff included), or remove their last administrator. Everything they do is in your
-  action log, and on the customer's page under <em>Its people and sign-on activity</em>.
+  action log, and on the customer's page under <em>Its people, sign-on and API client activity</em>.
   Turning self-service off stops it at once.</li>
+  <li><strong>Let a customer make its own API clients</strong> — the third switch under
+  <em>Self-service</em>. Its administrators with <code>customer_api_client:manage</code> can then
+  give their own systems credentials: a role you offer, all or some of their accounts, read only if
+  they like, a secret or a key pair. Never acting for users or linked to a sign-on connection.
+  Their clients are on your <a href="/ui/admin/api-clients">API clients</a> page marked
+  <em>theirs</em>, where you can revoke them; turning the switch off stops them making or changing
+  clients, while those already made keep working until revoked.</li>
   <li><strong>Limit a customer's person to some accounts</strong> — from Edit, choose
   <em>Choose accounts</em>. They then see, change and are told about only those accounts'
   checks, ACH items and exceptions, and their bulk uploads reach only those accounts. It

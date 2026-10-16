@@ -388,11 +388,15 @@ def sign_out_everywhere(session: Session, tenant_id: uuid.UUID, customer_id: uui
 # --- The bank's switches -----------------------------------------------------------------------
 
 
-def set_self_service(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, users: bool, sso: bool) -> Customer:
-    """The bank lets a customer manage its own people and sign-on, or stops it (at once)."""
+def set_self_service(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, users: bool, sso: bool,
+                     api_clients: bool | None = None) -> Customer:
+    """The bank lets a customer manage its own people, sign-on and API clients, or stops it (at
+    once). `api_clients` None leaves that switch as it is."""
     customer = session.get(Customer, customer_id)
     if customer is None or customer.tenant_id != tenant_id:
         raise PeopleError("Customer not found.")
     customer.self_manages_users, customer.self_manages_sso = users, sso
+    if api_clients is not None:
+        customer.self_manages_api_clients = api_clients
     session.flush()
     return customer

@@ -4,26 +4,39 @@
 {% block title %}API clients — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About API clients{% endblock %}
 {% block help_body %}
+{% if for_customer %}
+<p>An API client lets one of your own systems (your accounting or ERP system, say) call
+  OpenClear's API without a person's password: to send issued checks, or read your
+  exceptions and decisions. It signs in with OAuth 2.0 client credentials, its client id and
+  secret, at <code>POST /api/v1/oauth/token</code>.</p>
+<p>Each client does only what its role allows, for your accounts (all of them, or the ones
+  you choose). Everything it does is in your activity under its name. Rotate a secret if it
+  may have leaked; revoke a client you no longer use. Your bank can see and revoke your
+  clients too.</p>
+{% else %}
 <p>An API client lets one of your systems (your core, your online banking provider, your
   own middleware) call OpenClear's API without a person's password. It signs in with OAuth
   2.0 client credentials: its client id and secret, exchanged at
   <code>POST /api/v1/oauth/token</code> for an access token that lasts a short while.</p>
 <p>Each client can do exactly what its security group allows, and only for its customer
   if you pick one. Everything it does is in the audit log under its name. Rotate a secret
-  if it may have leaked; revoke a client you no longer use (that takes effect at once).</p>
+  if it may have leaked; revoke a client you no longer use (that takes effect at once).
+  Customers you let manage their own API clients make theirs here too, marked "theirs".</p>
+{% endif %}
 {% endblock %}
 {% block content %}
+{% set base = base_path or "/ui/admin/api-clients" %}
 <div class="card">
   <div class="toolbar">
     <h1>API clients</h1>
-    <a href="/ui/admin/api-clients/new" class="button">{{ icon("add") }}New API client</a>
+    <a href="{{ base }}/new" class="button">{{ icon("add") }}New API client</a>
   </div>
   {% if clients %}
   {% set columns = [
     {"key": "name", "label": "Name", "role": "primary"},
     {"key": "client_id", "label": "Client id"},
     {"key": "group", "label": "Security group"},
-    {"key": "customer", "label": "Customer"},
+    {"key": "customer", "label": "Accounts" if for_customer else "Customer"},
     {"key": "last_used", "label": "Last used"},
     {"key": "status", "label": "Status", "role": "status"},
     {"key": "actions", "label": "", "role": "actions", "sheet": "tablet"},
@@ -33,20 +46,21 @@
     {%- elif col.key == "name" %}{{ c.name }}
     {%- elif col.key == "client_id" %}<code>{{ c.client_id }}</code>
     {%- elif col.key == "group" %}{{ c.security_group or "—" }}{% if c.read_only %} <span class="badge">read only</span>{% endif %}{% if c.token_auth_method == "private_key_jwt" %} <span class="badge">key pair</span>{% endif %}
-    {%- elif col.key == "customer" %}{{ c.customer or "All (bank-wide)" }}
+    {%- elif col.key == "customer" and for_customer %}{{ c.accounts }}
+    {%- elif col.key == "customer" %}{{ c.customer or "All (bank-wide)" }}{% if c.managed_by == "customer" %} <span class="badge">theirs</span>{% endif %}
     {%- elif col.key == "last_used" %}{{ c.last_used_at.strftime("%Y-%m-%d %H:%M") if c.last_used_at else "Never" }}
     {%- elif col.key == "status" %}<span class="badge {{ 'badge-danger' if c.revoked_at else 'badge-ok' }}">{{ "revoked" if c.revoked_at else "active" }}</span>
     {%- elif col.key == "actions" and not c.revoked_at %}
           {% if c.token_auth_method == "private_key_jwt" %}
-          <a href="/ui/admin/api-clients/{{ c.id }}/key">Key pair</a>
+          <a href="{{ base }}/{{ c.id }}/key">Key pair</a>
           {% else %}
-          <form method="post" action="/ui/admin/api-clients/{{ c.id }}/rotate" class="inline-form" data-confirm="Make a new secret? The old one stops working for new tokens at once.">
+          <form method="post" action="{{ base }}/{{ c.id }}/rotate" class="inline-form" data-confirm="Make a new secret? The old one stops working for new tokens at once.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Rotate secret</button>
           </form>
-          <a href="/ui/admin/api-clients/{{ c.id }}/key">Use a key pair</a>
+          <a href="{{ base }}/{{ c.id }}/key">Use a key pair</a>
           {% endif %}
-          <form method="post" action="/ui/admin/api-clients/{{ c.id }}/revoke" class="inline-form" data-confirm="Revoke {{ c.name }}? It stops working at once, and this can't be undone.">
+          <form method="post" action="{{ base }}/{{ c.id }}/revoke" class="inline-form" data-confirm="Revoke {{ c.name }}? It stops working at once, and this can't be undone.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Revoke</button>
           </form>

@@ -55,6 +55,7 @@ PERMISSION_CATALOG: dict[str, str] = {
     # itself (Customer.self_manages_users / self_manages_sso; auth/deps.py).
     "customer_user:manage": "Manage this customer's own people: invite, change, deactivate (when the bank allows it)",
     "customer_sso:manage": "Manage this customer's own sign-on: its identity provider, email domains and SCIM (when the bank allows it)",
+    "customer_api_client:manage": "Manage this customer's own API clients for its systems (when the bank allows it)",
     # Billing (BILLING_PLAN.md). billing:read is also meant for a customer's own scoped
     # users, who see only their own customer's statement; billing:manage is bank-only.
     "billing:read": "View billing statements and reports",
@@ -83,6 +84,7 @@ CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
 CUSTOMER_SELF_SERVICE_PERMISSIONS: dict[str, str] = {
     "customer_user:manage": "self_manages_users",
     "customer_sso:manage": "self_manages_sso",
+    "customer_api_client:manage": "self_manages_api_clients",
 }
 
 # Deliberately excluded from _ALL/Admin's automatic grant — every OTHER permission in

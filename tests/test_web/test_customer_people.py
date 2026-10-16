@@ -315,7 +315,7 @@ def test_the_bank_sees_who_manages_themselves(client, db_session, tenant_factory
 
     headers = login_headers(client, s["tenant"].slug, s["users"]["admin"].email)
     got = client.get("/api/v1/customers/C-1/self-service", headers=headers).json()
-    assert got == {"manages_people": True, "manages_sign_on": False, "administrators": []}
+    assert got == {"manages_people": True, "manages_sign_on": False, "manages_api_clients": False, "administrators": []}
     put = client.put("/api/v1/customers/C-1/self-service", headers=headers, json={"manages_people": False, "manages_sign_on": True})
     assert put.status_code == 200 and put.json()["manages_sign_on"] is True
     listed = {c["customer_number"]: c for c in client.get("/api/v1/customers", headers=headers).json()}

@@ -265,8 +265,9 @@ def _api_client_secrets(session: Session, tenant_id: uuid.UUID) -> Control:
 
 
 def _customer_self_service(session: Session, tenant_id: uuid.UUID) -> Control:
-    """Which customers manage their own people and sign-on (CUSTOMER_ADMIN_PLAN.md), with
-    what, and whether each that manages its people has someone to do it."""
+    """Which customers manage their own people, sign-on and API clients (CUSTOMER_ADMIN_PLAN.md;
+    MOBILE_PLAN.md R4), with what, and whether each that manages its people has someone to do it."""
+    from openclear.domain.api_client import ApiClient
     from openclear.domain.customer import Customer
     from openclear.domain.customer_admin import CustomerEmailDomain
     from openclear.domain.security_group import SecurityGroup
@@ -275,12 +276,16 @@ def _customer_self_service(session: Session, tenant_id: uuid.UUID) -> Control:
 
     title = "Customer self-service"
     customers = session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.is_active.is_(True), or_(
-        Customer.self_manages_users.is_(True), Customer.self_manages_sso.is_(True)))).scalars().all()
+        Customer.self_manages_users.is_(True), Customer.self_manages_sso.is_(True),
+        Customer.self_manages_api_clients.is_(True)))).scalars().all()
     if not customers:
-        return Control("customer_self_service", title, PASS, "No customer manages its own people or sign-on; the bank does.", {})
+        return Control("customer_self_service", title, PASS, "No customer manages its own people, sign-on or API clients; the bank does.", {})
     evidence = {
         "manage_their_people": sorted(c.name for c in customers if c.self_manages_users),
         "manage_their_sign_on": sorted(c.name for c in customers if c.self_manages_sso),
+        "manage_their_api_clients": sorted(c.name for c in customers if c.self_manages_api_clients),
+        "customer_managed_api_clients": session.execute(select(func.count()).select_from(ApiClient).where(
+            ApiClient.tenant_id == tenant_id, ApiClient.managed_by == "customer", ApiClient.revoked_at.is_(None))).scalar_one(),
         "roles_offered": sorted(session.execute(select(SecurityGroup.name).where(
             SecurityGroup.tenant_id == tenant_id, SecurityGroup.offered_to_customers.is_(True))).scalars()),
         "customer_managed_connections": session.execute(select(func.count()).select_from(SsoConnection).where(
@@ -296,7 +301,7 @@ def _customer_self_service(session: Session, tenant_id: uuid.UUID) -> Control:
                        f"{len(unattended)} customers manage their own people but have no administrator to do it: {', '.join(unattended[:10])}.",
                        evidence)
     return Control("customer_self_service", title, PASS,
-                   f"{len(customers)} customers manage their own people or sign-on, within the roles you offer.", evidence)
+                   f"{len(customers)} customers manage their own people, sign-on or API clients, within the roles you offer.", evidence)
 
 
 def _anomaly_capture(session: Session, tenant_id: uuid.UUID) -> Control:

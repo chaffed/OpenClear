@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -165,7 +165,8 @@ def _activity(request: Request, db: Session, ctx: TenantContext, customer_id: uu
     entries = list(db.execute(select(AuditLogEntry).where(
         AuditLogEntry.tenant_id == ctx.tenant_id, AuditLogEntry.resource_type == "customer",
         AuditLogEntry.resource_id == customer_id,
-        AuditLogEntry.action.like("customer%")).order_by(AuditLogEntry.sequence.desc()).limit(200)).scalars())
+        or_(AuditLogEntry.action.like("customer%"), AuditLogEntry.action.like("api_client.%")))  # its own API clients (R4)
+        .order_by(AuditLogEntry.sequence.desc()).limit(200)).scalars())
     from openclear.domain.user import User
 
     actors = {u.id: u.email for u in db.execute(select(User).where(User.id.in_({e.actor_user_id for e in entries if e.actor_user_id}))).scalars()}
@@ -175,7 +176,7 @@ def _activity(request: Request, db: Session, ctx: TenantContext, customer_id: uu
 
 @router.get("/ui/people/activity")
 def activity(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
-    """The customer's own people and sign-on changes, by its administrators and by the bank."""
+    """The customer's own people, sign-on and API client changes, by its administrators and by the bank."""
     return _activity(request, db, ctx, ctx.customer_id, organization=ctx.customer_name, back_url="/ui/people")
 
 

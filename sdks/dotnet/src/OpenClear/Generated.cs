@@ -136,6 +136,7 @@ public sealed record Acknowledgement
 
 public sealed record ApiClientRead
 {
+    [JsonPropertyName("accounts")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Accounts { get; init; }
     [JsonPropertyName("can_act_for_users")] public bool CanActForUsers { get; init; } = default!;
     [JsonPropertyName("client_id")] public string ClientId { get; init; } = default!;
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
@@ -143,6 +144,7 @@ public sealed record ApiClientRead
     [JsonPropertyName("customer")] public string Customer { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("last_used_at")] public string LastUsedAt { get; init; } = default!;
+    [JsonPropertyName("managed_by")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ManagedBy { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
     [JsonPropertyName("read_only")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? ReadOnly { get; init; }
     [JsonPropertyName("revoked_at")] public string RevokedAt { get; init; } = default!;
@@ -271,6 +273,7 @@ public sealed record CustomerRead
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
     [JsonPropertyName("phone")] public string Phone { get; init; } = default!;
     [JsonPropertyName("primary_contact_name")] public string PrimaryContactName { get; init; } = default!;
+    [JsonPropertyName("self_manages_api_clients")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SelfManagesApiClients { get; init; }
     [JsonPropertyName("self_manages_sso")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SelfManagesSso { get; init; }
     [JsonPropertyName("self_manages_users")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? SelfManagesUsers { get; init; }
     [JsonPropertyName("state")] public string State { get; init; } = default!;
@@ -707,11 +710,12 @@ public sealed record RunRequest
 }
 
 /// <summary>
-/// Whether the customer's own administrators manage its people and its sign-on.
+/// Whether the customer's own administrators manage its people, its sign-on and its API clients.
 /// </summary>
 public sealed record SelfService
 {
     [JsonPropertyName("administrators")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<string>? Administrators { get; init; }
+    [JsonPropertyName("manages_api_clients")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? ManagesApiClients { get; init; }
     [JsonPropertyName("manages_people")] public bool ManagesPeople { get; init; } = default!;
     [JsonPropertyName("manages_sign_on")] public bool ManagesSignOn { get; init; } = default!;
 }
@@ -999,6 +1003,10 @@ public sealed partial class ApiClientsApi
     /// List Api Clients.
     ///
     /// GET /api/v1/api-clients
+    ///
+    /// Every API client of the bank (`api_client:manage`), customers' own marked `managed_by:
+    /// customer`; or, for a customer's own session (`customer_api_client:manage`), the clients that
+    /// customer made.
     /// </summary>
     public Task<IReadOnlyList<ApiClientRead>> ListApiClientsAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<ApiClientRead>>("GET", "/api/v1/api-clients", cancellationToken: cancellationToken);
@@ -1455,8 +1463,8 @@ public sealed partial class CustomersApi
     ///
     /// PUT /api/v1/customers/{customer_number}/self-service
     ///
-    /// Lets the customer's own administrators manage its people and sign-on, or stops them at
-    /// once. They can give only the roles marked offered to customers.
+    /// Lets the customer's own administrators manage its people, sign-on and API clients, or
+    /// stops them at once. They can give only the roles marked offered to customers.
     /// </summary>
     public Task<SelfService> SetSelfServiceAsync(string customerNumber, SelfService body, CancellationToken cancellationToken = default) =>
         _c.CallAsync<SelfService>("PUT", $"/api/v1/customers/{Uri.EscapeDataString(customerNumber.ToString()!)}/self-service", json: body, cancellationToken: cancellationToken);

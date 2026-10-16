@@ -116,6 +116,8 @@ PAGES = [
     ("customer_sign_on", "/ui/sign-on", "customer"),
     ("customer_sign_on_new", "/ui/sign-on/new", "customer"),
     ("customer_control_panel", "/ui/settings", "customer"),
+    ("customer_api_clients", "/ui/api-clients", "customer"),
+    ("customer_api_client_new", "/ui/api-clients/new", "customer"),
 ]
 # Pages measured after a step: (selector clicked, selector waited for).
 STEPS = {"settings_dialog": ('a.tile[data-key="timeouts"]', "#settings-dialog[open] [data-dialog-body] form")}
@@ -244,14 +246,19 @@ def _seed(client, db_session, tenant_factory):
     customer = db_session.execute(select(Customer).where(Customer.tenant_id == tenant.id)).scalar_one()
     customer.self_manages_users = True
     customer.self_manages_sso = True
+    customer.self_manages_api_clients = True
     role = security_group_service.create_security_group(db_session, tenant.id, security_group_service.SecurityGroupInput(
-        name="Customer admin", permissions=["customer_user:manage", "customer_sso:manage", "issued_item:read", "issued_item:write"],
+        name="Customer admin", permissions=["customer_user:manage", "customer_sso:manage", "customer_api_client:manage", "issued_item:read",
+                                            "issued_item:write"],
         offered_to_customers=True))
     groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
     for number, (name, group, read_only) in enumerate((("Accounting system", "Preparer", False), ("Reporting", "Viewer", True)), start=1):
         issued = api_client_service.create_client(db_session, tenant.id, name=name, read_only=read_only,
                                                   security_group_id=groups[group].id)
         issued.client.client_id = f"oc_viewport_client_{number}"  # made at random; fixed for the pictures
+    erp = api_client_service.create_customer_client(db_session, tenant.id, customer.id, name="Dental ERP", security_group_id=role.id,
+                                                    read_only=True)
+    erp.client.client_id = "oc_viewport_client_3"
     customer_admin = user_service.create_user_with_membership(db_session, tenant.id, email="dana@dental.example.com",
                                                               password=TenantFactory.PASSWORD, security_group_id=role.id,
                                                               customer_id=customer.id)

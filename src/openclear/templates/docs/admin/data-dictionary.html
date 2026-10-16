@@ -168,6 +168,7 @@ transactional record.</p>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>Independent of the tenant's own flag — this customer's own SSO enforcement.</td></tr>
 <tr><td>self_manages_users / self_manages_sso</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators manage its people / its sign-on (customer_user:manage, customer_sso:manage).</td></tr>
+<tr><td>self_manages_api_clients</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators make API clients for its own systems (customer_api_client:manage). Turning it off stops them managing clients; those made keep working until revoked.</td></tr>
 <tr><td>password_min_length</td><td>Integer</td><td>yes</td><td></td><td>This customer's additional minimum length; null = inherit the tenant's. Effective policy is always max(tenant, customer).</td></tr>
 <tr><td>password_require_uppercase / lowercase / number / symbol</td><td>Boolean</td><td>no</td><td></td><td>This customer's additional requirements; effective policy is tenant OR customer, so a customer can only add requirements, never remove one the tenant already sets.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
@@ -234,6 +235,7 @@ which carries its security group and optional customer.</p>
 <tr><td>created_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>created_at / secret_rotated_at / last_used_at / revoked_at</td><td>Timestamp</td><td>varies</td><td></td><td>Revoking is one-way.</td></tr>
 <tr><td>read_only</td><td>Boolean</td><td>no</td><td></td><td>Only ever reads (and runs the full data export), whatever its group allows.</td></tr>
+<tr><td>managed_by</td><td>String(10)</td><td>no</td><td></td><td><code>bank</code>, or <code>customer</code>: made by a self-managing customer for its own systems, with the customer's membership and an offered role; the customer manages it, and the bank can revoke it.</td></tr>
 <tr><td>token_auth_method</td><td>String(20)</td><td>no</td><td></td><td><code>client_secret</code> (the default) or <code>private_key_jwt</code>: signs in with an assertion signed by its private key, and its secret no longer works.</td></tr>
 <tr><td>public_key_pem</td><td>Text</td><td>yes</td><td></td><td>The public key a <code>private_key_jwt</code> client's assertions are checked with (RSA of 2048 bits or more, or EC P-256/P-384).</td></tr>
 </tbody>

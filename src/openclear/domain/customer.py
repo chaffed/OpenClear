@@ -38,6 +38,9 @@ class Customer(Base):
     # until the bank turns them on; turning one off suspends it at once.
     self_manages_users: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     self_manages_sso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Its own API clients (MOBILE_PLAN.md R4; customer_api_client:manage). Turning it off stops
+    # the customer managing them; the clients it made keep working until revoked.
+    self_manages_api_clients: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # This customer's own ADDITIONAL password requirements, on top of the tenant's own
     # policy (domain/tenant.py) — see auth/password_policy.py::effective_policy. None
     # means "no additional minimum, just use the tenant's"; the 4 boolean flags default

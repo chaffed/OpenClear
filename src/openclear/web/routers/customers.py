@@ -200,21 +200,24 @@ def set_self_service(
     customer_id: uuid.UUID,
     manages_users: bool = Form(False),
     manages_sso: bool = Form(False),
+    manages_api_clients: bool = Form(False),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("customer:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    """Lets the customer's own administrators manage its people and sign-on, or stops them
-    at once (CUSTOMER_ADMIN_PLAN.md)."""
+    """Lets the customer's own administrators manage its people, sign-on and API clients, or
+    stops them at once (CUSTOMER_ADMIN_PLAN.md; MOBILE_PLAN.md R4)."""
     from openclear.services import customer_people_service
 
     try:
-        customer = customer_people_service.set_self_service(db, ctx.tenant_id, customer_id, users=manages_users, sso=manages_sso)
+        customer = customer_people_service.set_self_service(db, ctx.tenant_id, customer_id, users=manages_users, sso=manages_sso,
+                                                            api_clients=manages_api_clients)
     except customer_people_service.PeopleError:
         raise WebNotFound() from None
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.self_service",
-        summary=f"{customer.name} manages its own people: {'yes' if manages_users else 'no'}; its own sign-on: {'yes' if manages_sso else 'no'}",
+        summary=f"{customer.name} manages its own people: {'yes' if manages_users else 'no'}; its own sign-on: {'yes' if manages_sso else 'no'}; "
+                f"its own API clients: {'yes' if manages_api_clients else 'no'}",
         resource_type="customer", resource_id=customer.id,
     )
     db.commit()

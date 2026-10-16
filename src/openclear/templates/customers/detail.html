@@ -88,18 +88,21 @@
 
 <div class="card">
   <h1>Self-service</h1>
-  <p>Let {{ customer.name }}'s own administrators manage its people and sign-on. They can only give the roles
+  <p>Let {{ customer.name }}'s own administrators manage its people, sign-on and API clients. They can only give the roles
     you mark "offered to customers" ({{ offered_group_count }} now; see <a href="/ui/security-groups">Security groups</a>),
-    and only within this customer. Turning either off stops it at once.</p>
+    and only within this customer. Turning one off stops it at once.</p>
   <form method="post" action="/ui/customers/{{ customer.id }}/self-service">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label><input type="checkbox" name="manages_users" value="true" {{ "checked" if customer.self_manages_users else "" }}>
       Manages its own people (needs a role with <code>customer_user:manage</code>)</label>
     <label><input type="checkbox" name="manages_sso" value="true" {{ "checked" if customer.self_manages_sso else "" }}>
       Manages its own sign-on (needs a role with <code>customer_sso:manage</code>)</label>
+    <label><input type="checkbox" name="manages_api_clients" value="true" {{ "checked" if customer.self_manages_api_clients else "" }}>
+      Manages its own API clients, for its own systems (needs a role with <code>customer_api_client:manage</code>; the
+      clients it made keep working if you turn this off, until revoked)</label>
     <button type="submit" class="secondary">{{ icon("save") }}Save</button>
   </form>
-  <p class="link-line"><a href="/ui/customers/{{ customer.id }}/activity">Its people and sign-on activity</a></p>
+  <p class="link-line"><a href="/ui/customers/{{ customer.id }}/activity">Its people, sign-on and API client activity</a></p>
   {% if customer_admins %}
   <p>Its administrators: {{ customer_admins | join(", ") }}.</p>
   {% elif customer.self_manages_users %}

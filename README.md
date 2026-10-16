@@ -564,8 +564,11 @@ accounts. Moving the person to another customer puts them back to all accounts.
 the customer's own administrators manage its people (`customer_user:manage`; Settings →
 People: invitations by email, roles, accounts, deactivation) and its sign-on
 (`customer_sso:manage`; Settings → Sign-on: its own OIDC or SAML connection, verified email
-domains, SCIM, switching off passwords). Both permissions are masked unless the bank has
-turned that customer's switch on, and they never reach beyond the customer:
+domains, SCIM, switching off passwords) and its API clients (`customer_api_client:manage`;
+Settings → API clients: credentials for its own systems, with an offered role, all or some of
+its accounts, read-only or not, a secret or a key pair; the bank sees them marked *theirs* and
+can revoke them). Each permission is masked unless the bank has turned that customer's switch
+on, and they never reach beyond the customer:
 - only roles the bank marks *offered to customers*, and no editing of roles;
 - nobody linked silently: people are invited, and someone who already exists accepts with
   their own password;

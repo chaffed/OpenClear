@@ -52,6 +52,9 @@ class ApiClient(Base):
     # for a token acting for that person (RFC 8693; api/v1/oauth.py), and whose subject ids
     # OpenClear-Act-As-Subject refers to. Needs can_act_for_users.
     sso_connection_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sso_connection.id"), nullable=True)
+    # "bank", or "customer" for one a self-managing customer made for its own systems (MOBILE_PLAN.md
+    # R4): its membership is the customer's, with an offered role, and the customer manages it.
+    managed_by: Mapped[str] = mapped_column(String(10), nullable=False, default="bank", server_default="bank")
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     secret_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

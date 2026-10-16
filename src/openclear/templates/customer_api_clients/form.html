@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}New API client — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/api-clients">API clients</a></p>
+<div class="card card-narrow">
+  <h1>New API client</h1>
+  <p>For one of your own systems. Its secret is shown once, on the next page.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% if not groups %}
+  <p class="flash flash-warn">{{ ctx.tenant_name }} hasn't offered any roles yet. Ask them to.</p>
+  {% endif %}
+  <form method="post" action="/ui/api-clients">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name <input type="text" name="name" value="{{ values.name or '' }}" required maxlength="200" placeholder="Accounting system"></label>
+    <label>Role (what it may do)
+      <select name="security_group_id" required>
+        {% for group in groups %}
+        <option value="{{ group.id }}" {{ "selected" if values.security_group_id == group.id|string else "" }}>{{ group.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% with scope=values.scope, chosen=values.account_ids or [], legend="Accounts it can see" %}{% include "people/_accounts_fields.html" %}{% endwith %}
+    <label><input type="checkbox" name="read_only" value="true" {{ "checked" if values.read_only else "" }}>
+      Read only (whatever the role allows, it can only read: for reporting or a data feed)</label>
+    <button type="submit">{{ icon("vpn_key") }}Create and show the secret</button>
+  </form>
+</div>
+{% endblock %}

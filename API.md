@@ -109,11 +109,12 @@ what's on them, an item on another account is `404`, and their bulk uploads can 
 only to those accounts.
 
 **Customer self-service.** `GET`/`PUT /api/v1/customers/{customer_number}/self-service`
-with `{"manages_people": true, "manages_sign_on": false}` lets a customer's own
-administrators manage its people and sign-on (or stops them at once); the answer also lists
-its `administrators`. The customer upsert (`PUT /api/v1/customers/{customer_number}`) never
+with `{"manages_people": true, "manages_sign_on": false, "manages_api_clients": false}` lets a
+customer's own administrators manage its people, sign-on and API clients (or stops them at
+once); `manages_api_clients` left out of a `PUT` stays as it is. The answer also lists its
+`administrators`. The customer upsert (`PUT /api/v1/customers/{customer_number}`) never
 changes these, so a core's sync leaves them alone; customer lists show them as
-`self_manages_users` and `self_manages_sso`.
+`self_manages_users`, `self_manages_sso` and `self_manages_api_clients`.
 
 A client acts through its own service identity, so the token works on every endpoint its
 security group allows, limited to its customer if it has one, and everything it does is in
@@ -168,7 +169,7 @@ The answer is `{"access_token", "issued_token_type": "urn:ietf:params:oauth:toke
 
 | method | path | permission | notes |
 |---|---|---|---|
-| GET | `/api/v1/api-clients` | `api_client:manage` | the bank's API clients for access reviews: name, client id, security group, customer, created by, last used, rotated, revoked. Never a secret |
+| GET | `/api/v1/api-clients` | `api_client:manage`, or a customer's `customer_api_client:manage` | the API clients, for access reviews: name, client id, security group, customer, `managed_by` (`customer` for one a customer made for its own systems), `accounts`, created by, last used, rotated, revoked. Never a secret. A customer's own session sees only the clients it made |
 
 ### Using the access token
 

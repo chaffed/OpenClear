@@ -329,3 +329,17 @@ admin's People and control panel) at 360, 768, 1024 and 1280px; details in
 - 2026-10-16 Device review done: no further findings. Merged into `main` at `791b5d72`. Suites:
   SQLite 1627 passed, Postgres 1654, Linux 3.11 1595, no failures. Still to check: the
   embedded frame (needs HTTPS on both sides). Next: the release for phones and tablets; R4 after.
+- 2026-10-16 Released in 1.16.0 (R0–R3 and the device review).
+- 2026-10-16 R4 built on branch `mobile-r4` (on CT1): customers' own API clients.
+  `customer.self_manages_api_clients` and `api_client.managed_by` (`bank`/`customer`, as
+  `sso_connection.managed_by`), migration `e8a0c2e4f6b9`. `customer_api_client:manage` in
+  `CUSTOMER_SELF_SERVICE_PERMISSIONS`, so it's masked unless the switch is on and dropped from
+  bank-wide sessions. `api_client_service.create_customer_client`: an offered role, the
+  customer's accounts (`account_access_service.set_access`), read-only; never act-for-users or
+  a sign-on link. The customer manages only clients it made (`get_customer_client`; anything
+  else is 404). Pages at `/ui/api-clients` reuse the bank's list, secret and key templates
+  (`base_path`), with the customer's own form and tile. Actions recorded against the customer
+  (its activity page now includes `api_client.*`) and as security events. The bank's page
+  marks customers' clients *theirs* and can revoke them; `GET /api/v1/api-clients` serves a
+  customer's own session its own. Turning the switch off stops management; clients already
+  made keep working until revoked (as people do). Next: R5.

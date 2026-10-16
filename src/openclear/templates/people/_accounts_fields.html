@@ -1,5 +1,5 @@
 <fieldset>
-  <legend>Accounts they can see</legend>
+  <legend>{{ legend or "Accounts they can see" }}</legend>
   <label><input type="radio" name="scope" value="all" {{ "checked" if scope != "some" else "" }}> All of {{ ctx.customer_name }}'s accounts, including ones added later</label>
   <label><input type="radio" name="scope" value="some" {{ "checked" if scope == "some" else "" }}> Only these:</label>
   {% for account in accounts %}
