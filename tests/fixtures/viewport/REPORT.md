@@ -77,5 +77,6 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | customer_access_reviews | ✓ | ✓ | ✓ | ✓ |
 | customer_responsibilities | ✓ | ✓ | ✓ | ✓ |
 | customer_api_client_new | ✓ | ✓ | ✓ | ✓ |
+| platform_changes | ✓ | ✓ | ✓ | ✓ |
 
 ## Details

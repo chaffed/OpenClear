@@ -52,6 +52,29 @@ def entries(session: Session, *, limit: int = 200) -> list[PlatformActionEntry]:
     return list(session.execute(select(PlatformActionEntry).order_by(PlatformActionEntry.sequence.desc()).limit(limit)).scalars())
 
 
+def verify_and_keep(session: Session):
+    """Verify the log and keep the result for every bank's check to read (the caller commits).
+    Only meaningful from a session bound to no bank: a bank's sees no entries. A broken log is
+    an `audit.chain.verify_failed` security event."""
+    from openclear.domain.platform_log_verification import PlatformLogVerification
+    from openclear.services import security_events
+
+    intact, checked, broken = verify(session)
+    row = PlatformLogVerification(verified_at=datetime.now(timezone.utc), intact=intact, checked=checked, broken_at_sequence=broken)
+    session.add(row)
+    session.flush()
+    if not intact:
+        security_events.emit(session, "audit.chain.verify_failed", tenant_id=None, actor_type="system", target_type="platform_action_log",
+                             details={"log": "provider", "broken_at_sequence": broken, "checked": checked}, channel="platform")
+    return row
+
+
+def latest_verification(session: Session):
+    from openclear.domain.platform_log_verification import PlatformLogVerification
+
+    return session.execute(select(PlatformLogVerification).order_by(PlatformLogVerification.verified_at.desc()).limit(1)).scalars().first()
+
+
 def verify(session: Session) -> tuple[bool, int, int | None]:
     """(intact, entries checked, the first broken sequence)."""
     prev_hash, checked = None, 0

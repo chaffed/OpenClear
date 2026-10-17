@@ -412,6 +412,8 @@ def record_changes(tenant_id: uuid.UUID, controls: list[Control], *, record_resu
                                      target_label=control.title, details={"from": row.status, "to": control.status, "detail": control.detail[:300]},
                                      channel="system")
                 row.status, row.changed_at = control.status, _now()
+                if control.key == "second_approver" and control.status == WARN and control.evidence.get("without_a_second_approver"):
+                    _tell_admins_approver_gone(session, tenant_id, control)
             session.commit()
         except IntegrityError:  # another request recorded the same first status at the same moment
             session.rollback()
@@ -420,6 +422,18 @@ def record_changes(tenant_id: uuid.UUID, controls: list[Control], *, record_resu
     except Exception:  # noqa: BLE001 -- reading the controls must never fail because a change couldn't be recorded
         logging.getLogger(__name__).exception("Couldn't record control status changes")
     return changes
+
+
+def _tell_admins_approver_gone(session: Session, tenant_id: uuid.UUID, control: Control) -> None:
+    """DUAL_CONTROL_PLAN.md DC-D17: the last other approver for a rule the bank has on went (deactivated,
+    removed, narrowed, by hand, SCIM or the inactivity rules). Nothing that removes access waits, so
+    the bank's administrators hear of it here, once, when the check turns to WARN."""
+    from openclear.domain.notification import NotificationType
+    from openclear.services import change_request_service, notification_service
+
+    for user in change_request_service.approvers(session, tenant_id, None, "tenant:manage", excluding=None):
+        notification_service._queue(session, tenant_id=tenant_id, recipient=user, notification_type=NotificationType.APPROVER_GONE,
+                                    template_context={"rules": control.evidence["without_a_second_approver"]}, resource_type="control")
 
 
 def _status(session: Session, tenant_id: uuid.UUID) -> list[Control]:

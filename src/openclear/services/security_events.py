@@ -120,6 +120,7 @@ CATALOG: dict[str, EventType] = {
     "anomaly_capture.failed": EventType("integrity", "high"),
     "secrets.reencrypted": EventType("integrity", "medium"),
     "control.status.changed": EventType("integrity", "high"),
+    "audit.chain.verify_failed": EventType("integrity", "critical"),  # the provider's action log didn't verify
 }
 
 # Action-log actions that are also security events (event name, and the setting changed for settings.*).
@@ -207,6 +208,8 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_decision_files": "settings.changed",
     "customer.update_password_policy": "settings.changed",
     "tenant.update_sod_mode": "sod.mode.changed",
+    "compliance.settings.changed": "settings.changed",  # the attestations' second person among them
+    "tenant.ml_source_change": "settings.changed",  # pooling the bank's decisions into the shared model, or not
     "plugin.enable": "plugin.enabled",
     "plugin.disable": "plugin.disabled",
     "change_request.create": "change_request.created",

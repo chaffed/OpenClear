@@ -215,3 +215,20 @@ def test_the_evidence_export_lists_the_periods_changes(db_session, tenant_factor
     assert [(c["kind"], c["status"], c["requested_by"], c["decided_by"]) for c in listed] == \
         [("password_policy", "approved", users["admin"].email, second.email)]
     assert listed[0]["before"]["password_min_length"] == 12 and listed[0]["after"]["password_min_length"] == 8
+
+
+def test_admins_are_told_when_a_rule_loses_its_last_other_approver(db_session, tenant_factory):
+    from openclear.services import controls_service
+
+    tenant, _a, users = tenant_factory.make(slug="dc-gone")
+    second = _second_admin(db_session, tenant)
+    controls_service.status(db_session, tenant.id)  # the first status: everyone can be approved
+    for m in db_session.execute(select(TenantMembership).where(TenantMembership.user_id == second.id)).scalars():
+        m.is_active = False  # the other admin leaves; that never waits (DC-D17)
+    db_session.commit()
+    controls_service.status(db_session, tenant.id)
+    told = db_session.execute(select(Notification.recipient_user_id).where(Notification.notification_type == NotificationType.APPROVER_GONE)).scalars().all()
+    assert told and users["admin"].id in told and second.id not in told
+    controls_service.status(db_session, tenant.id)  # once, not on every look
+    again = db_session.execute(select(Notification.recipient_user_id).where(Notification.notification_type == NotificationType.APPROVER_GONE)).scalars().all()
+    assert len(again) == len(told)

@@ -160,7 +160,9 @@ export permission, download their own customer's full data export.
 ### The operator (a hosted installation)
 
 Whoever runs an installation for several banks reports on it with a **platform API key**
-(`scripts/create_metering_api_key.py`, with the scopes it needs):
+(`scripts/create_metering_api_key.py`, with the scopes it needs). The script prints the key
+once; it works when a second operator approves it under Platform → Changes (or at once with
+`--emergency`, for the installation's first key):
 
 | Scope | Endpoints |
 |---|---|

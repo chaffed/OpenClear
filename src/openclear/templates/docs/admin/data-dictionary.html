@@ -140,7 +140,7 @@ erDiagram
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sensitive_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>Loosening a sensitive setting (security groups, API clients, webhooks, sign-on, decision files and the rest in the admin guide) waits for a second admin. Off by default; on for banks that were in sod_mode enforce. Can't be turned on without someone else who can approve.</td></tr>
 <tr><td>access_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>New access and widened access (memberships, groups, accounts, reactivation) waits for a second admin. Off by default.</td></tr>
-<tr><td>customer_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>A customer's own sensitive changes (sign-on, its API clients, a new administrator) wait for a second person at that customer, or at the bank when the customer has nobody else. A customer's changes_need_approval overrides it.</td></tr>
+<tr><td>customer_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>A customer's own sensitive changes (sign-on, its API clients, a new administrator) wait for a second person at that customer, or at the bank when the customer has nobody else. A customer's changes_need_approval turns it on for that customer alone.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
 <tr><td>stale_date_threshold_days</td><td>Integer</td><td>no</td><td></td><td>Days after which an outstanding issued item is considered stale.</td></tr>
@@ -196,7 +196,7 @@ transactional record.</p>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>notes</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
 <tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>This customer's own reminder timing, set by its own users. Null follows the bank's; empty turns them off.</td></tr>
-<tr><td>changes_need_approval</td><td>Boolean</td><td>yes</td><td></td><td>This customer's own sensitive changes wait for a second person. Null follows the bank's customer_changes_need_approval.</td></tr>
+<tr><td>changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>This customer's own sensitive changes wait for a second person, even when the bank's customer_changes_need_approval is off. A customer can turn it on for itself; only the bank can turn it off.</td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
@@ -1532,6 +1532,21 @@ to no bank can read or write it.</p>
 <tr><td>resource_type / resource_id</td><td>String(50) / UUID</td><td>varies</td><td></td><td></td></tr>
 <tr><td>metadata_json</td><td>JSON</td><td>yes</td><td></td><td></td></tr>
 <tr><td>prev_entry_hash / entry_hash</td><td>String(200)</td><td>yes / no</td><td></td><td>The chain: each entry's signature covers its own fields and the one before.</td></tr>
+</tbody>
+</table>
+
+<h3>platform_log_verification</h3>
+<p>Each verification of the service provider's action log, made daily and when an operator opens
+Platform → Changes. A bank can't read the provider's log, so its "Service provider's action log
+intact" check reads the latest result here. No bank's data and nothing from the log, so no RLS.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>verified_at</td><td>Timestamp</td><td>no</td><td>indexed</td><td></td></tr>
+<tr><td>intact</td><td>Boolean</td><td>no</td><td></td><td>Whether every entry's signature and link held.</td></tr>
+<tr><td>checked</td><td>BigInteger</td><td>no</td><td></td><td>How many entries were checked.</td></tr>
+<tr><td>broken_at_sequence</td><td>BigInteger</td><td>yes</td><td></td><td>The first entry that didn't verify.</td></tr>
 </tbody>
 </table>
 

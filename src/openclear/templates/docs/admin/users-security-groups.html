@@ -100,8 +100,11 @@ leaves, a waiting change applies alone after 24 hours unless withdrawn; that's l
 <code>change_request.applied_alone</code> security event, and the Controls page flags it. Every
 request and decision is in the action log, and the evidence export lists the period's changes with
 both people's names.</p>
-<p>At the service provider, provisioning a bank, granting a platform role, fee items and activating
-the shared model wait for a second operator (Platform → <em>Changes</em>), in the provider's own
-signed action log. Changes to the installation's settings are flagged on the Controls page until an
-operator acknowledges them there.</p>
+<p>At the service provider, provisioning a bank, granting a platform role, new platform API keys, fee items and
+activating the shared model wait for a second operator (Platform → <em>Changes</em>), in the provider's own signed
+action log. That log is verified daily; the Controls page's "Service provider's action log intact" shows the result.
+Changes to the installation's settings are flagged on the Controls page until an operator acknowledges them there.</p>
+<p>If the last other person who could approve one of your rules is deactivated, removed or given less access, that
+happens at once, and your administrators are told by email or text that changes there now take the 24-hour route.
+Opening a setting that has a change waiting says so at the top of its form.</p>
 {% endblock %}

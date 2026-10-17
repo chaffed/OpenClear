@@ -1128,6 +1128,31 @@ register(Kind(
 ))
 
 
+def _key_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import platform_api_key_service
+
+    try:
+        row = platform_api_key_service.create_from_hash(session, payload["name"], tuple(payload["scopes"]), payload["key_hash"])
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"Platform API key {row.name!r} ({', '.join(row.scopes)}) works from now"
+
+
+def _key_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.platform_api_key import PlatformApiKey
+    from sqlalchemy import select
+
+    return {"exists": session.execute(select(PlatformApiKey.id).where(PlatformApiKey.key_hash == payload["key_hash"])).first() is not None}
+
+
+register(Kind(
+    "platform.api_key", "A platform API key", "protection", _OPERATOR, _key_current, lambda payload: {"exists": True},
+    loosens=lambda before, after: True,  # a new way into every bank's data
+    apply=_key_apply, scope="provider", setting=lambda payload: f"platform_api_key:{payload['key_hash'][:16]}",
+    describe=lambda before, after: "Make a platform API key", action="platform.api_key.create",
+))
+
+
 def _fee_current(session, tenant_id, customer_id, payload) -> dict:
     from openclear.services.billing import platform as platform_billing
 

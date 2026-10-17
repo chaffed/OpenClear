@@ -2,5 +2,7 @@
    (control panel, static/js/control-panel.js). #}
 <div id="settings-section" data-key="{{ key }}" data-title="{{ title }}">
   {% if error %}<p class="flash flash-error" role="alert" id="settings-error">{{ error }}</p>{% endif %}
+  {% for c in waiting_changes %}<p class="flash flash-warn">Waiting for a second person: {{ c.summary }}{% if c.applies_at %} (applies
+    {{ c.applies_at.strftime("%Y-%m-%d %H:%M") }} UTC unless rejected){% endif %}. It's under <a href="/ui/admin/changes">Changes</a>.</p>{% endfor %}
   {% include "settings/sections/" ~ key ~ ".html" %}
 </div>

@@ -61,6 +61,16 @@
 {% else %}<p>None in the period.</p>{% endif %}
 {% endif %}
 
+{% if b.service_provider is defined %}
+<h2>The service provider</h2>
+{% set sp = b.service_provider %}
+<p>Its action log: {% if sp.action_log %}{{ "intact" if sp.action_log.intact else "broken at entry " ~ sp.action_log.broken_at_sequence }},
+  {{ sp.action_log.entries_checked }} entries, verified {{ sp.action_log.verified_at[:16] | replace("T", " ") }}{% else %}not verified yet{% endif %}.
+  Installation settings: {% if sp.settings.changed_since_acknowledged %}changed since an operator acknowledged them
+  ({{ sp.settings.changed_since_acknowledged | join(", ") }}){% else %}as acknowledged{% if sp.settings.acknowledged_at %}
+  {{ sp.settings.acknowledged_at[:10] }}{% endif %}{% endif %}; digest <code>{{ sp.settings.digest[:16] }}…</code>.</p>
+{% endif %}
+
 <h2>Action log</h2>
 <table>
   <tr><th>Chain verifies</th><td>{{ "Yes" if b.audit.chain_verifies else "NO, broken at entry " ~ b.audit.broken_at_entry_id }} ({{ b.audit.live_entries_checked }} live entries checked)</td></tr>

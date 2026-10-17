@@ -1,32 +1,40 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Changes — OpenClear{% endblock %}
 {% block content %}
 <p class="back-link"><a href="/ui/platform">Platform</a></p>
 <div class="card">
   <h1>Changes waiting for a second operator</h1>
-  <p class="hint">Setting up a bank, the shared scoring model, platform staff and platform fees each need two of the platform's operators.
+  <p class="hint">Setting up a bank, the shared scoring model, platform staff, platform API keys and platform fees each need two of the platform's operators.
     A change asked for with a platform API key waits for an operator. Every request and decision is in the log below.</p>
   {% if rows %}
-  <table>
-    <thead><tr><th>Change</th><th>Before → after</th><th>Asked</th><th></th></tr></thead>
-    <tbody>{% for r in rows %}{% set c = r.change %}
-      <tr><td><strong>{{ c.summary }}</strong>{% if c.applies_at %}<br><span class="badge badge-warn">Applies {{ c.applies_at.strftime("%Y-%m-%d %H:%M") }} UTC: nobody else can approve</span>{% endif %}</td>
-        <td>{% for key, value in (c.after or {}).items() %}{% if (c.before or {}).get(key) != value %}<div><code>{{ key }}</code>: {{ (c.before or {}).get(key) }} → <strong>{{ value }}</strong></div>{% endif %}{% endfor %}</td>
-        <td class="nowrap">{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}<br><span class="text-muted">{{ "you" if r.mine else (c.requested_with if not c.requested_by_user_id else "") }}</span></td>
-        <td>{% if r.mine %}
-          <form method="post" action="/ui/platform/changes/{{ c.id }}/withdraw" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary">{{ icon("undo") }}Withdraw</button></form>
-          {% elif r.can_decide %}
-          <form method="post" action="/ui/platform/changes/{{ c.id }}/approve" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit">{{ icon("check_circle") }}Approve</button></form>
-          <form method="post" action="/ui/platform/changes/{{ c.id }}/reject" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <label class="visually-hidden" for="reason-{{ c.id }}">Why reject it</label>
-            <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required style="max-width:12em;">
-            <button type="submit" class="secondary">{{ icon("block") }}Reject</button></form>
-          {% endif %}</td></tr>{% endfor %}
-    </tbody>
-  </table>
+  {% set columns = [
+    {"key": "what", "label": "Change", "role": "primary"},
+    {"key": "diff", "label": "Before → after"},
+    {"key": "who", "label": "Asked"},
+    {"key": "act", "label": "", "role": "actions"},
+  ] %}
+  {% call(r, col, part="cell") rt.responsive_table(columns, rows, id="platform-changes") -%}
+    {%- set c = r.change -%}
+    {%- if col.key == "what" %}<strong>{{ c.summary }}</strong>
+      {%- if c.applies_at %}<br><span class="badge badge-warn">Applies {{ c.applies_at.strftime("%Y-%m-%d %H:%M") }} UTC: nobody else can approve</span>{% endif %}
+    {%- elif col.key == "diff" %}{% for key, value in (c.after or {}).items() %}{% if (c.before or {}).get(key) != value %}<div><code>{{ key }}</code>: {{ (c.before or {}).get(key) }} → <strong>{{ value }}</strong></div>{% endif %}{% endfor %}
+    {%- elif col.key == "who" %}<span class="nowrap">{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}</span><br><span class="text-muted">{{ "you" if r.mine else (c.requested_with if not c.requested_by_user_id else "") }}</span>
+    {%- elif col.key == "act" %}
+      {%- if r.mine %}
+      <form method="post" action="/ui/platform/changes/{{ c.id }}/withdraw" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">{{ icon("undo") }}Withdraw</button></form>
+      {%- elif r.can_decide %}
+      <form method="post" action="/ui/platform/changes/{{ c.id }}/approve" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">{{ icon("check_circle") }}Approve</button></form>
+      <form method="post" action="/ui/platform/changes/{{ c.id }}/reject" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="visually-hidden" for="reason-{{ c.id }}">Why reject it</label>
+        <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required style="max-width:12em;">
+        <button type="submit" class="secondary">{{ icon("block") }}Reject</button></form>
+      {%- endif %}
+    {%- endif %}
+  {%- endcall %}
   {% else %}<p>Nothing is waiting.</p>{% endif %}
 </div>
 <div class="card">

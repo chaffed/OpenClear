@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Finishing dual control (DUAL_CONTROL_PLAN.md DC6):
+
+- **Platform API keys wait for a second operator.** `scripts/create_metering_api_key.py` prints
+  the key once; it works when another operator approves it under Platform → Changes (only its
+  hash waits). `--emergency` makes it work at once, as a critical security event.
+- **The provider's action log is checked automatically**, daily and whenever an operator opens
+  Platform → Changes, and every bank's Controls page shows it ("Service provider's action log
+  intact"). A broken log is a critical `audit.chain.verify_failed` security event.
+- **The evidence export carries the provider's side**: its log's last verification and the
+  installation settings' digest against what an operator last acknowledged.
+- **Administrators are told when a rule loses its last other approver**, so its changes now
+  take the 24-hour route.
+- **"Sensitive settings need a second admin" is its own check**, apart from "Someone else can
+  approve" (control inventory 1.3).
+- **A setting with a change waiting says so** at the top of its form.
+- Turning off the attestations' second person, and pooling decisions into the shared model,
+  now raise a `settings.changed` security event.
+- Platform → Changes reads as cards on phones.
+
 ## 1.21.0 — 2026-10-17
 
 Two people for settings changes (dual control for settings; DUAL_CONTROL_PLAN.md):

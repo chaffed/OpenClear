@@ -19,7 +19,7 @@ from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadSource
 from openclear.domain.customer import Customer
 from openclear.domain.tenant import Tenant
 from openclear.repositories.bulk_upload_file_repo import BulkUploadFileRepository
-from openclear.services import audit_log_service, reminder_service
+from openclear.services import audit_log_service, change_request_service, reminder_service
 from openclear.services.siem import delivery, formats, senders
 from openclear.services.tenant_service import (
     InvalidTenantSettingsInput,
@@ -56,6 +56,13 @@ SECTIONS = {
     "decision-files": "Decision files",
     "security-events": "Security event forwarding",
     "auto-import": "Auto-import",
+}
+
+# Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
+SECTION_KINDS = {
+    "password-policy": ("password_policy",), "access-rules": ("access_rules",), "dual-control": ("dual_control", "approval_switches"),
+    "customer-approval": ("customer_approval",), "embedding": ("embedding",), "decision-files": ("decision_files",),
+    "security-events": ("security_event_forwarding",),
 }
 
 
@@ -197,6 +204,10 @@ def _reminder_kwargs(db: Session, ctx: TenantContext, tenant: Tenant) -> dict:
 def render_section(request: Request, db: Session, ctx: TenantContext, key: str, *, error: str | None = None,
                    status_code: int = 200, **overrides) -> HTMLResponse:
     context = {**_section_context(db, ctx, key), **overrides}
+    kinds = SECTION_KINDS.get(key, ())
+    context.setdefault("waiting_changes", [c for c in change_request_service.pending(db, ctx.tenant_id, customer_id=ctx.customer_id,
+                                                                                     all_customers=False) if c.kind in kinds] if kinds and
+                       ctx.customer_id is None else [])
     template = "settings/_section_body.html" if request.query_params.get("partial") else "settings/section.html"
     return render_template(request, template, ctx=ctx, key=key, title=SECTIONS[key], error=error,
                            status_code=status_code if not error or status_code != 200 else 422, **context)
@@ -262,7 +273,6 @@ def _change(request: Request, db: Session, ctx: TenantContext, kind: str, payloa
             record: tuple[str, str] | None = None, error_overrides: dict | None = None):
     """Make a setting change through dual control: applied at once (and recorded as `record`), or
     sent for approval. Returns the response."""
-    from openclear.services import change_request_service
 
     try:
         outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
@@ -531,7 +541,6 @@ def update_dual_control(
     """Dual control on decisions, and the second admin for settings changes (DUAL_CONTROL_PLAN.md).
     Turning any on is refused while nobody else could approve (DC-D16); turning any off needs a
     second admin."""
-    from openclear.services import change_request_service
 
     asked = {"require_dual_control": require_dual_control, "sensitive_changes_need_approval": sensitive_changes_need_approval,
              "access_changes_need_approval": access_changes_need_approval, "customer_changes_need_approval": customer_changes_need_approval}

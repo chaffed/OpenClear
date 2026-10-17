@@ -517,6 +517,13 @@ def anomaly_capture_job() -> None:
 def verify_action_logs_job() -> None:
     """Daily: verify every bank's action log (services/long_runs.py), so the Controls page
     can show a recent result without walking the whole log on each load."""
-    from openclear.services import long_runs
+    from openclear.db.session import get_session_factory
+    from openclear.services import long_runs, platform_log_service
 
     long_runs.verify_all_banks_job()
+    session = get_session_factory()()  # bound to no bank: the provider's log (DUAL_CONTROL_PLAN.md DC6)
+    try:
+        platform_log_service.verify_and_keep(session)
+        session.commit()
+    finally:
+        session.close()

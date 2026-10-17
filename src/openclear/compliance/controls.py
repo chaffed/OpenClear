@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from openclear.compliance.crosswalks import csf_for_all, csf_title, soc2_for_all
 from openclear.compliance.cuecs import NIST_TITLES, PLANNED_CHECKS, oscal_id
 
-VERSION = "1.2"  # 1.2: OC-AC-07 covers settings changes at every level; OC-AC-13, the service provider
+VERSION = "1.3"  # 1.2: OC-AC-07 covers settings changes at every level; OC-AC-13, the service provider. 1.3: OC-AC-13 tests its log; OC-AC-07 the sensitive-settings switch on its own
 
 FAMILIES = {
     "AC": "Access control",
@@ -117,7 +117,7 @@ CONTROLS: tuple[OcControl, ...] = (
       "API clients, webhooks and widening people's access when the bank asks, and a customer's own sign-on, API clients and new "
       "administrators when the bank or the customer asks. Tightening never waits; a switch turns on only while someone else can "
       "approve; with nobody else, a change takes effect after 24 hours as a critical security event. Every step is logged.",
-      ("CM-3", "CM-5", "AC-3(2)"), "preventive", "configurable", ("two_person_changes", "second_approver"), ("B-CM-3-01",),
+      ("CM-3", "CM-5", "AC-3(2)"), "preventive", "configurable", ("two_person_changes", "second_approver", "sensitive_settings_protected"), ("B-CM-3-01",),
       "Settings → Dual control; Changes awaiting approval"),
     C("OC-AC-08", "Support access only by grant",
       "Platform staff reach a bank's data only through a grant the bank makes: named, with a reason and an end, read-only "
@@ -140,11 +140,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "An ACH debit from an originator not on the account's authorizations becomes an exception for the customer to decide.",
       ("AC-3",), "preventive", "configurable", ("stale_ach_authorizations",), ("C-AC-3-01",), "ACH → Authorizations"),
     C("OC-AC-13", "Two people at the service provider",
-      "Setting up a bank, activating the shared scoring model, platform staff roles and platform fees wait for a second of the "
+      "Setting up a bank, activating the shared scoring model, platform staff roles, platform API keys and platform fees wait for a second of the "
       "platform's operators, and a request made with a platform API key waits for a person. Host attestations are prepared by one "
       "and accepted by another. The provider's own action log is chained and signed, and its security-relevant settings are "
       "watched until acknowledged.",
-      ("CM-3", "CM-5", "AC-3(2)", "AU-9"), "preventive", "built_in", ("installation_settings",), ("H-CM-6-01",),
+      ("CM-3", "CM-5", "AC-3(2)", "AU-9"), "preventive", "built_in", ("installation_settings", "provider_log"), ("H-CM-6-01",),
       "The operator view's Changes; the provider's action log"),
     # --- Identification and authentication ------------------------------------------------
     C("OC-IA-01", "Password policy and lockout",

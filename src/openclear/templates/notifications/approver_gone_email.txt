@@ -1,0 +1,10 @@
+Nobody else in your organization can now approve changes to:
+
+{% for rule in rules %}    {{ rule }}
+{% endfor %}
+Someone who could approve them was deactivated, removed or given less access. Until another
+person has the permission, a change there takes effect 24 hours after it's asked for, with
+every administrator told, instead of waiting for a second person.
+
+Give a second person the permission (Users), or see Settings → Controls, "Someone else can approve".
+You get this because you administer this organization.

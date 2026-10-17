@@ -131,6 +131,7 @@ PAGES = [
     ("customer_access_reviews", "/ui/access-reviews", "customer"),
     ("customer_responsibilities", "/ui/compliance/cuecs", "customer"),
     ("customer_api_client_new", "/ui/api-clients/new", "customer"),
+    ("platform_changes", "/ui/platform/changes", "platform"),
 ]
 # Pages measured after a step: (selector clicked, selector waited for).
 STEPS = {"settings_dialog": ('a.tile[data-key="timeouts"]', "#settings-dialog[open] [data-dialog-body] form")}
@@ -247,6 +248,14 @@ def _sign_in(client, slug: str, email: str) -> str:
     return client.cookies.get("csrf_token")
 
 
+def _sign_in_platform(client, email: str) -> None:
+    client.cookies.clear()
+    client.get("/ui/platform/login")
+    response = client.post("/ui/platform/login", data={"email": email, "password": TenantFactory.PASSWORD,
+                                                       "csrf_token": client.cookies.get("csrf_token")}, follow_redirects=False)
+    assert response.status_code == 303, response.text
+
+
 def _seed(client, db_session, tenant_factory):
     """The demo bank's data (services/demo_tenant_service.py: accounts, a customer,
     exceptions open and decided, a stop payment, ACH), the customer's own administrator,
@@ -316,10 +325,29 @@ def _seed(client, db_session, tenant_factory):
 
     review = access_review_service.start(db_session, tenant.id, None, user_id=users["admin"].id)  # an open review, its items as cards
     db_session.commit()
+    # A change waiting for a second person (DUAL_CONTROL_PLAN.md): on Changes and on the password policy's form.
+    from openclear.auth.security import hash_password
+    from openclear.services import change_request_service
+
+    admins = next(g for g in security_group_service.list_security_groups(db_session, tenant.id) if g.name == "Admin")
+    pat = user_service.create_user_with_membership(db_session, tenant.id, email="pat@riverside.example.com", password=TenantFactory.PASSWORD,
+                                                   security_group_id=admins.id)
+    policy = {"password_min_length": 12, "password_require_uppercase": True, "password_require_lowercase": True,
+              "password_require_number": True, "password_require_symbol": False}
+    change_request_service.request_or_apply(db_session, "password_policy", {"values": policy}, tenant_id=tenant.id, user_id=pat.id)
+    change_request_service.request_or_apply(db_session, "password_policy", {"values": {**policy, "password_min_length": 10}},
+                                            tenant_id=tenant.id, user_id=pat.id)
+    # And one at the service provider, for its operators' Changes page.
+    operator = User(email="ops@platform.example", hashed_password=hash_password(TenantFactory.PASSWORD), platform_role="operator")
+    db_session.add_all([operator, User(email="new.ops@platform.example", hashed_password=hash_password(TenantFactory.PASSWORD))])
+    db_session.flush()
+    change_request_service.request_or_apply(db_session, "platform.role", {"email": "new.ops@platform.example", "role": "support"},
+                                            tenant_id=None, user_id=None, requested_with="scripts/platform_staff.py")
+    db_session.commit()
     paths = {"exception": f"/ui/exceptions/{exception.id}", "upload": upload, "customer": f"/ui/customers/{customer.id}",
              "member": f"/ui/users/{preparer.id}", "group": f"/ui/security-groups/{group.id}", "person": f"/ui/people/{person.id}",
              "review": f"/ui/access-reviews/{review.id}"}
-    return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email}, paths
+    return tenant.slug, {"bank": users["admin"].email, "customer": customer_admin.email, "platform": operator.email}, paths
 
 
 def _identical(reference: Path, taken: bytes) -> bool:
@@ -436,7 +464,10 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
         for name, path, who in PAGES:
             limiter._hits.clear()  # ~50 pages, each with its scripts: past the per-minute limit
             if who != signed_in:
-                _sign_in(client, slug, people[who])
+                if who == "platform":
+                    _sign_in_platform(client, people[who])
+                else:
+                    _sign_in(client, slug, people[who])
                 signed_in = who
             response = page.goto("http://testserver" + path.format(**paths).split("#")[0])
             assert response.status == 200 and "/ui/login" not in page.url, f"{name}: {response.status} at {page.url}"

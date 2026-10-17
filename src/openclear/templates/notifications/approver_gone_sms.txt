@@ -1,0 +1,1 @@
+OpenClear: nobody else can approve some settings changes now ({{ rules | length }} rule{{ "s" if rules | length != 1 else "" }}). See Settings → Controls.

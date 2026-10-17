@@ -798,6 +798,27 @@ def installation_settings(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("installation_settings", title, PASS, f"The {len(watched.WATCHED)} watched settings are as last acknowledged.", evidence)
 
 
+def provider_log(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The service provider's own action log intact (DUAL_CONTROL_PLAN.md DC6), from its last
+    verification. A bank's session can't read that log, so it's verified daily from a session bound
+    to no bank, and on Platform → Changes; this reads the result."""
+    from openclear.services import long_runs, platform_log_service
+
+    title = "Service provider's action log intact"
+    run = platform_log_service.latest_verification(session)
+    if run is None:
+        return Control("provider_log", title, WARN, "Not verified yet. It's verified daily with the action logs, and when an operator opens "
+                                                    "Platform → Changes.", {"verified_at": None})
+    evidence = {"verified_at": _aware(run.verified_at).isoformat(), "entries_checked": run.checked, "broken_at_sequence": run.broken_at_sequence}
+    if not run.intact:
+        return Control("provider_log", title, FAIL, f"Entry {run.broken_at_sequence} of the provider's action log doesn't verify: an entry was "
+                                                    "changed or removed outside OpenClear.", evidence)
+    if _aware(run.verified_at) < datetime.now(timezone.utc) - long_runs.VERIFICATION_MAX_AGE:
+        return Control("provider_log", title, WARN, f"The last verification passed ({run.checked} entries) but is more than a day old: "
+                                                    "is the daily schedule on?", evidence)
+    return Control("provider_log", title, PASS, f"All {run.checked} entries verified.", evidence)
+
+
 def second_approver(session: Session, tenant_id: uuid.UUID) -> Control:
     """Whether each second-person rule the bank has can be met (DUAL_CONTROL_PLAN.md DC-D16, DC-D17):
     for each switch that's on, and for turning protections off, at least two people who could
@@ -828,8 +849,26 @@ def second_approver(session: Session, tenant_id: uuid.UUID) -> Control:
     if short:
         return Control("second_approver", title, WARN, f"Only one person could approve {'; '.join(short)}: changes there take effect after "
                                                        "24 hours, and decisions wait to their deadline. Give a second person the permission.", evidence)
-    if not tenant.sensitive_changes_need_approval and enough("tenant:manage"):
-        return Control("second_approver", title, WARN, "Sensitive settings (rules, models, security groups, sign-on, API clients, webhooks) "
-                                                       "don't need a second admin, though you have one. Turn it on under Settings → Dual control.",
-                       evidence)
     return Control("second_approver", title, PASS, f"Each of your {len(needed)} second-person rules has someone else to approve.", evidence)
+
+
+def sensitive_settings_protected(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Sensitive settings wait for a second admin at a bank that has one (DUAL_CONTROL_PLAN.md DC5):
+    the switch is off for new banks, which start with one admin (DC-D16), so this says when it can
+    be turned on. Separate from second_approver, so that one's turning to WARN means an approver went."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import change_request_service
+
+    tenant = session.get(Tenant, tenant_id)
+    title = "Sensitive settings need a second admin"
+    admins = len(change_request_service.approvers(session, tenant_id, None, "tenant:manage", excluding=None))
+    evidence = {"sensitive_settings_protected": bool(tenant.sensitive_changes_need_approval), "admins": admins}
+    if tenant.sensitive_changes_need_approval:
+        return Control("sensitive_settings_protected", title, PASS, "Rules, models, security groups, sign-on, API clients and webhooks wait "
+                                                                    "for a second admin.", evidence)
+    if admins >= 2:
+        return Control("sensitive_settings_protected", title, WARN, "Sensitive settings (rules, models, security groups, sign-on, API clients, "
+                                                                    "webhooks) don't need a second admin, though you have one. Turn it on "
+                                                                    "under Settings → Dual control.", evidence)
+    return Control("sensitive_settings_protected", title, PASS, "Off, as there's only one admin to approve; it can be turned on once there's "
+                                                                "a second.", evidence)

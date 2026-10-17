@@ -49,6 +49,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
     NotificationType.CHANGE_REQUESTED: "A change is waiting for your approval",
     NotificationType.CHANGE_DECIDED: "Your change was decided",
+    NotificationType.APPROVER_GONE: "Nobody else can approve some changes",
 }
 
 

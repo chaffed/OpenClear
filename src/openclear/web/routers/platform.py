@@ -193,9 +193,10 @@ def changes_page(request: Request, db: Session = Depends(get_db), user: User = D
             for c in waiting]
     from openclear.services import installation_settings
 
-    intact, checked, broken = platform_log_service.verify(db)
+    run = platform_log_service.verify_and_keep(db)  # kept for every bank's "Service provider's action log intact" check
+    intact, checked, broken = run.intact, run.checked, run.broken_at_sequence
     changed_settings, _row = installation_settings.changed(db)
-    db.commit()  # the first baseline, if this was the first look
+    db.commit()  # the verification, and the first baseline if this was the first look
     return render_template(request, "platform/changes.html", user=user, rows=rows, log=platform_log_service.entries(db, limit=50),
                            intact=intact, checked=checked, broken=broken, changed_settings=changed_settings)
 

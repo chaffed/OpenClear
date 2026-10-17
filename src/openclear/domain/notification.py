@@ -42,6 +42,9 @@ class NotificationType(str, enum.Enum):
     # change was decided.
     CHANGE_REQUESTED = "change_requested"
     CHANGE_DECIDED = "change_decided"
+    # services/controls_service.py (DUAL_CONTROL_PLAN.md DC-D17): a second-person rule the bank has
+    # on no longer has anyone else to approve, so its changes now take the 24-hour cooling-off.
+    APPROVER_GONE = "approver_gone"
 
 
 class NotificationChannel(str, enum.Enum):

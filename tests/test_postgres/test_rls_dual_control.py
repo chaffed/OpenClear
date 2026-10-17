@@ -53,3 +53,27 @@ def test_banks_and_the_provider_stay_apart(app_session_factory, db_session, tena
     finally:
         bank.rollback()
         bank.close()
+
+
+def test_a_bank_reads_the_providers_log_verification_but_not_the_log(app_session_factory, db_session, tenant_factory):
+    from openclear.services import control_checks
+
+    tenant, _a, _users = tenant_factory.make(slug="rls-dc-verify")
+    platform = app_session_factory()  # bound to no bank, as the daily job is
+    try:
+        platform_log_service.record(platform, action="platform.test", summary="Provider only")
+        platform_log_service.verify_and_keep(platform)
+        platform.commit()
+    finally:
+        platform.close()
+
+    bank = app_session_factory()
+    try:
+        bind_session_to_tenant(bank, tenant.id)
+        assert bank.execute(select(PlatformActionEntry)).scalars().all() == []
+        assert platform_log_service.verify(bank) == (True, 0, None)  # a bank's session would see an empty log, hence the kept result
+        result = control_checks.provider_log(bank, tenant.id)
+        assert result.status == "PASS" and result.evidence["entries_checked"] >= 1
+    finally:
+        bank.rollback()
+        bank.close()

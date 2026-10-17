@@ -225,3 +225,24 @@ DC5 in any order.
 
   Difference from the plan: no separate CUEC for keeping a second admin, because the
   `second_approver` check covers it.
+- 2026-10-17 Released 1.21.0 (DC0 to DC5). A check of the work against this plan found gaps,
+  built as DC6 (branch dc6-gaps):
+  - `platform.api_key`, so a platform API key waits for a second operator (DC-D12);
+    `scripts/create_metering_api_key.py` puts only the key's hash in the request and has
+    `--emergency`;
+  - the provider log is verified daily from a session bound to no bank and on Platform →
+    Changes (`platform_log_verification`), with a new `provider_log` check on OC-AC-13;
+  - the evidence export's `service_provider` (DC-D14, DC5);
+  - administrators told when a rule loses its last other approver (DC-D17, the
+    `approver_gone` notification), on `second_approver` turning to WARN;
+  - the sensitive-switch warning split out as `sensitive_settings_protected`, so that turn means
+    an approver went;
+  - waiting changes shown on their settings form;
+  - table-driven tests over every kind, each switch against each sort of non-approver, and the
+    tiers (`tests/test_auth/test_dual_control_matrix.py`);
+  - Platform → Changes and a waiting change in the viewport checks.
+
+  The tests found two kinds whose action raised no security event
+  (`compliance.settings.changed`, `tenant.ml_source_change`); both now map to
+  `settings.changed`. Deactivating or reactivating a bank and rolling back the shared model
+  (DC-D12) have no operator action today, so there's nothing to protect.

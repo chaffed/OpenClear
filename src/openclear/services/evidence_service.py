@@ -279,6 +279,24 @@ def _change_control(session: Session, tenant_id: uuid.UUID, start: datetime, end
              "before": c.before, "after": c.after} for c in rows]
 
 
+def _service_provider(session: Session) -> dict:
+    """The service provider's side (DUAL_CONTROL_PLAN.md DC-D14, DC6): its action log's last
+    verification (the log itself is the provider's, not the bank's) and the installation's
+    security-relevant settings, as digests only, against what an operator last acknowledged."""
+    from openclear.services import installation_settings, platform_log_service
+
+    run = platform_log_service.latest_verification(session)
+    now = installation_settings.current()
+    row = installation_settings.acknowledged(session)
+    return {
+        "action_log": {"verified_at": _iso(run.verified_at), "intact": run.intact, "entries_checked": run.checked,
+                       "broken_at_sequence": run.broken_at_sequence} if run else None,
+        "settings": {"digest": installation_settings.digest(now),
+                     "acknowledged_digest": row.digest if row else None, "acknowledged_at": _iso(row.acknowledged_at) if row else None,
+                     "changed_since_acknowledged": sorted(k for k, v in now.items() if row and row.settings.get(k) != v)},
+    }
+
+
 def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, generated_by_user_id: uuid.UUID | None) -> dict:
     from openclear.domain.tenant import Tenant
     from openclear.services import controls_service
@@ -303,6 +321,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "support_access": _support_access(session, tenant_id, period_start, period_end),
         "control_testing": _control_testing(session, tenant_id, period_start, period_end),
         "change_control": _change_control(session, tenant_id, period_start, period_end),
+        "service_provider": _service_provider(session),
         "controls": controls,
     }
 

@@ -30,19 +30,34 @@ def _hash_key(raw_key: str) -> str:
 SCOPES = ("usage", "shared_model", "operations", "billing")
 
 
+def check_scopes(scopes: tuple[str, ...]) -> list[str]:
+    unknown = set(scopes) - set(SCOPES)
+    if unknown or not scopes:
+        raise ValueError(f"Scopes must be a non-empty subset of {SCOPES}; got {scopes!r}")
+    return sorted(set(scopes))
+
+
+def mint() -> tuple[str, str]:
+    """A new raw key and its hash. The raw key is shown once to whoever asked; a key made through
+    a change request (DUAL_CONTROL_PLAN.md DC-D12) carries only the hash until it's approved."""
+    raw_key = f"{_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+    return raw_key, _hash_key(raw_key)
+
+
+def create_from_hash(session: Session, name: str, scopes: tuple[str, ...], key_hash: str) -> PlatformApiKey:
+    row = PlatformApiKey(name=name, key_hash=key_hash, scopes=check_scopes(scopes))
+    session.add(row)
+    session.flush()
+    return row
+
+
 def generate_and_create(session: Session, name: str, scopes: tuple[str, ...] = ("usage",)) -> tuple[PlatformApiKey, str]:
     """Mints a new key and returns (row, raw_key) — raw_key is shown to the caller
     exactly once here; only its hash is ever persisted, so it can't be recovered later,
     only revoked and replaced with a new one. Give each integration only the scopes it
     needs: a billing system gets "usage", never "shared_model"."""
-    unknown = set(scopes) - set(SCOPES)
-    if unknown or not scopes:
-        raise ValueError(f"Scopes must be a non-empty subset of {SCOPES}; got {scopes!r}")
-    raw_key = f"{_KEY_PREFIX}{secrets.token_urlsafe(32)}"
-    row = PlatformApiKey(name=name, key_hash=_hash_key(raw_key), scopes=sorted(set(scopes)))
-    session.add(row)
-    session.flush()
-    return row, raw_key
+    raw_key, key_hash = mint()
+    return create_from_hash(session, name, scopes, key_hash), raw_key
 
 
 def verify(session: Session, raw_key: str) -> PlatformApiKey | None:

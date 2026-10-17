@@ -47,6 +47,7 @@ _NOTIFICATION_TYPE_LABELS = {
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities for the year",
     NotificationType.CHANGE_REQUESTED: "A settings change is waiting for your approval",
     NotificationType.CHANGE_DECIDED: "A settings change you asked for was decided",
+    NotificationType.APPROVER_GONE: "A second-person rule has nobody else to approve",
 }
 
 
