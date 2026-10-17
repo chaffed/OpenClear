@@ -374,6 +374,16 @@ class CustomerRead(TypedDict):
     updated_at: NotRequired[str | None]
 
 
+class CustomerRollup(TypedDict):
+    attested: int
+    can_attest: int
+    cuecs: int
+    customer_id: str
+    last_accepted_at: str | None
+    name: str
+    waiting: int
+
+
 class CustomerTermsRead(TypedDict):
     billing_account_id: str | None
     billing_method: BillingMethod
@@ -1566,6 +1576,17 @@ class ComplianceApi:
         action log, and on is a security event.
         """
         return self._c.call("PUT", f"/api/v1/compliance/cuecs/{_path(cuec_id)}/mappings", json=body)
+
+    def customer_rollup(self, *, start: str | None = None, end: str | None = None) -> list[CustomerRollup]:
+        """Customer Rollup.
+
+        GET /api/v1/compliance/customers
+
+        The bank's roll-up of its customers' own CUECs (CT-D13): for each active customer, how many
+        it has attested for the period, how many wait to be accepted, and how many of its people can
+        attest. Read a customer's attestations themselves with `GET /attestations?customer_id=`.
+        """
+        return self._c.call("GET", "/api/v1/compliance/customers", query={"start": start, "end": end})
 
     def list_mappings(self, *, cuec_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[MappingRead]:
         """List Mappings.

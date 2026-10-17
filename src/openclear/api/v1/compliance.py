@@ -271,6 +271,16 @@ class AttestationReject(BaseModel):
     reason: str = Field(..., min_length=1, max_length=2000)
 
 
+class CustomerRollup(BaseModel):
+    customer_id: uuid.UUID
+    name: str
+    cuecs: int  # the customer CUECs each customer attests
+    attested: int  # of them, with an accepted attestation for a period overlapping the one asked about
+    waiting: int  # prepared, not yet accepted
+    last_accepted_at: datetime | None
+    can_attest: int  # the customer's own people whose role can attest
+
+
 class CuecEvidence(BaseModel):
     cuec_id: str
     evidence_level: Literal["automated", "assisted", "attested"]
@@ -685,6 +695,20 @@ def reject_attestation(attestation_id: uuid.UUID, body: AttestationReject, db: S
             f"Rejected {found.cuec_id} for {found.period_start} to {found.period_end}: {body.reason.strip()[:300]}", "cuec_attestation", found.id)
     db.commit()
     return {**_attestation_rows(db, [found])[0], "signed": None}
+
+
+@router.get("/customers", response_model=list[CustomerRollup])
+def customer_rollup(start: date | None = Query(None, description="First day (default: the start of last year)"),
+                    end: date | None = Query(None, description="Last day, inclusive (default: the end of last year)"),
+                    db: Session = Depends(get_db), ctx: TenantContext = Depends(_read)) -> list:
+    """The bank's roll-up of its customers' own CUECs (CT-D13): for each active customer, how many
+    it has attested for the period, how many wait to be accepted, and how many of its people can
+    attest. Read a customer's attestations themselves with `GET /attestations?customer_id=`."""
+    _bank_only(ctx)
+    default_start, default_end = attestation_service.previous_year(date.today())
+    start, end = start or default_start, end or default_end
+    _period(start, end)
+    return attestation_service.customer_rollup(db, ctx.tenant_id, start, end)
 
 
 @router.get("/oscal/component-definition", response_model=dict[str, Any])

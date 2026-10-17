@@ -514,3 +514,94 @@ def record_installation(session: Session, cuec_id: str, *, start: date, end: dat
     session.add(attestation)
     session.flush()
     return _accept(session, attestation, user_id=user_id, auto=False)
+
+
+# --- Customers' own CUECs (CT-D13) -------------------------------------------------------------
+
+
+def previous_year(today: date) -> tuple[date, date]:
+    return date(today.year - 1, 1, 1), date(today.year - 1, 12, 31)
+
+
+def _attesters(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> list:
+    """The customer's own active people (not API clients, not waiting for the bank's approval)
+    whose role can attest."""
+    from openclear.domain.security_group import SecurityGroup
+    from openclear.domain.tenant_membership import TenantMembership
+    from openclear.domain.user import User
+
+    rows = session.execute(select(User, SecurityGroup.permissions).join(TenantMembership, TenantMembership.user_id == User.id)
+                           .join(SecurityGroup, SecurityGroup.id == TenantMembership.security_group_id).where(
+        TenantMembership.tenant_id == tenant_id, TenantMembership.customer_id == customer_id, TenantMembership.is_active.is_(True),
+        TenantMembership.pending_approval_at.is_(None), User.is_active.is_(True), User.is_service_account.is_(False))).all()
+    return [user for user, permissions in rows if "compliance:attest" in (permissions or [])]
+
+
+def customer_rollup(session: Session, tenant_id: uuid.UUID, start: date, end: date) -> list[dict]:
+    """Each active customer's own CUECs over [start, end]: how many are attested (an accepted
+    attestation for a period overlapping it), how many wait to be accepted, when the last was
+    accepted, and how many of its people can attest."""
+    from openclear.domain.customer import Customer
+
+    own = [c.id for c in cuecs.CUECS if c.party == "customer" and not c.withdrawn]
+    rows = session.execute(select(CuecAttestation).where(
+        CuecAttestation.tenant_id == tenant_id, CuecAttestation.customer_id.is_not(None),
+        CuecAttestation.status.in_(("accepted", "prepared")), CuecAttestation.period_end >= start, CuecAttestation.period_start <= end)).scalars().all()
+    by_customer: dict = {}
+    for a in rows:
+        by_customer.setdefault(a.customer_id, []).append(a)
+    out = []
+    for customer in session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.is_active.is_(True))
+                                    .order_by(Customer.name)).scalars():
+        found = by_customer.get(customer.id, [])
+        accepted = [a for a in found if a.status == "accepted"]
+        out.append({"customer_id": customer.id, "name": customer.name, "cuecs": len(own),
+                    "attested": len({a.cuec_id for a in accepted} & set(own)), "waiting": sum(a.status == "prepared" for a in found),
+                    "last_accepted_at": max((a.accepted_at for a in accepted if a.accepted_at), default=None),
+                    "can_attest": len(_attesters(session, tenant_id, customer.id))})
+    return out
+
+
+def ask_customers(session: Session, tenant_id: uuid.UUID, start: date, end: date) -> tuple[int, int]:
+    """Ask each active customer's people who can attest to attest their CUECs for [start, end],
+    by email (and SMS, as each person chooses). Returns (customers asked, people asked)."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.notification import NotificationType
+    from openclear.services import notification_service
+
+    tenant = session.get(Tenant, tenant_id)
+    customers = people = 0
+    for customer in session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.is_active.is_(True))).scalars():
+        attesters = _attesters(session, tenant_id, customer.id)
+        for user in attesters:
+            notification_service._queue(
+                session, tenant_id=tenant_id, recipient=user, notification_type=NotificationType.ATTESTATION_REQUESTED,
+                template_context={"bank": tenant.name, "customer": customer.name, "start": start.isoformat(), "end": end.isoformat()},
+                resource_type="customer", resource_id=customer.id)
+        customers += bool(attesters)
+        people += len(attesters)
+    return customers, people
+
+
+def ask_customers_due(session: Session, today: date | None = None) -> int:
+    """Nightly: for each bank that asks its customers to attest each year, once a year has ended,
+    ask them for it (once per year). Returns how many banks asked."""
+    from openclear.db.tenancy import bind_session_to_tenant
+    from openclear.services import audit_log_service
+
+    today = today or _now().date()
+    start, end = previous_year(today)
+    asked = 0
+    for tenant in session.execute(select(Tenant).where(Tenant.is_active.is_(True), Tenant.is_sandbox.is_(False),
+                                                       Tenant.ask_customers_to_attest.is_(True))).scalars().all():
+        if tenant.customers_asked_for_year is not None and tenant.customers_asked_for_year >= start.year:
+            continue
+        bind_session_to_tenant(session, tenant.id)
+        customers, people = ask_customers(session, tenant.id, start, end)
+        tenant.customers_asked_for_year = start.year
+        audit_log_service.record_action(session, tenant.id, actor_user_id=None, channel="system", action="compliance.customers.asked",
+                                        summary=f"Asked {people} people at {customers} customers to attest their responsibilities for {start.year}",
+                                        resource_type="tenant", resource_id=tenant.id)
+        session.commit()
+        asked += 1
+    return asked

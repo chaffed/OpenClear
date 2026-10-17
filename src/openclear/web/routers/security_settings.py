@@ -43,14 +43,18 @@ _NOTIFICATION_TYPE_LABELS = {
     NotificationType.EXCEPTION_AUTO_DECIDED: "An exception was auto-decided",
     NotificationType.DEADLINE_REMINDER: "Reminder: items to decide before the cutoff",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank approved or rejected someone you added",
+    NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities for the year",
 }
 
 
 def _types_for(ctx: TenantContext) -> list[NotificationType]:
     """The types this person can receive: the bank's decisions on new people only reach a
-    customer's administrators (MOBILE_PLAN.md R6)."""
+    customer's administrators (MOBILE_PLAN.md R6), and its yearly request to attest only the
+    customer's people who can attest (CONTROLS_PLAN.md CT-D13)."""
     managing = ctx.customer_id is not None and "customer_user:manage" in ctx.permissions
-    return [t for t in _PREFERENCE_TYPES if t != NotificationType.CUSTOMER_USER_DECIDED or managing]
+    attesting = ctx.customer_id is not None and "compliance:attest" in ctx.permissions
+    hidden = {NotificationType.CUSTOMER_USER_DECIDED: not managing, NotificationType.ATTESTATION_REQUESTED: not attesting}
+    return [t for t in _PREFERENCE_TYPES if not hidden.get(t, False)]
 
 
 @router.get("")

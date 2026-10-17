@@ -2554,6 +2554,58 @@
         "title": "CustomerRead",
         "type": "object"
       },
+      "CustomerRollup": {
+        "properties": {
+          "attested": {
+            "title": "Attested",
+            "type": "integer"
+          },
+          "can_attest": {
+            "title": "Can Attest",
+            "type": "integer"
+          },
+          "cuecs": {
+            "title": "Cuecs",
+            "type": "integer"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "last_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Accepted At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "cuecs",
+          "attested",
+          "waiting",
+          "last_accepted_at",
+          "can_attest"
+        ],
+        "title": "CustomerRollup",
+        "type": "object"
+      },
       "CustomerTermsRead": {
         "properties": {
           "billing_account_id": {
@@ -9825,6 +9877,87 @@
           }
         ],
         "summary": "Set Mappings",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/customers": {
+      "get": {
+        "description": "The bank's roll-up of its customers' own CUECs (CT-D13): for each active customer, how many\nit has attested for the period, how many wait to be accepted, and how many of its people can\nattest. Read a customer's attestations themselves with `GET /attestations?customer_id=`.",
+        "operationId": "customer_rollup_api_v1_compliance_customers_get",
+        "parameters": [
+          {
+            "description": "First day (default: the start of last year)",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day (default: the start of last year)",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "Last day, inclusive (default: the end of last year)",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive (default: the end of last year)",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerRollup"
+                  },
+                  "title": "Response Customer Rollup Api V1 Compliance Customers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Customer Rollup",
         "tags": [
           "compliance"
         ]

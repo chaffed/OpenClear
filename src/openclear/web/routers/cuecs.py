@@ -67,13 +67,17 @@ def overview(request: Request, db: Session = Depends(get_db), ctx: TenantContext
             if a.status == "accepted" and a.cuec_id not in latest:
                 latest[a.cuec_id] = a
     tenant = db.get(Tenant, ctx.tenant_id)
+    year = attestation_service.previous_year(date.today())
+    rollup = attestation_service.customer_rollup(db, ctx.tenant_id, *year) if ctx.customer_id is None else []
     groups = [(cuecs.PARTIES[p], [c for c in _visible(ctx) if c.party == p]) for p in (("customer",) if ctx.customer_id else ("bank", "host"))]
     return render_template(request, "compliance/cuecs.html", ctx=ctx, groups=groups, mapped=mapped, latest=latest, waiting=waiting,
-                           tenant=tenant, periods=attestation_service.PERIODS, host_by_platform="host" not in attestation_service.parties_for(None))
+                           tenant=tenant, periods=attestation_service.PERIODS, host_by_platform="host" not in attestation_service.parties_for(None),
+                           rollup=rollup, year=year)
 
 
 @router.post("/settings")
-def settings(attestation_period: str = Form("quarterly"), attest_second_person: bool = Form(False), db: Session = Depends(get_db),
+def settings(attestation_period: str = Form("quarterly"), attest_second_person: bool = Form(False),
+             ask_customers_to_attest: bool = Form(False), db: Session = Depends(get_db),
              ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     from openclear.domain.tenant import Tenant
 
@@ -81,8 +85,9 @@ def settings(attestation_period: str = Form("quarterly"), attest_second_person: 
         return _back(BASE, "Choose monthly, quarterly or yearly.")
     tenant = db.get(Tenant, ctx.tenant_id)
     tenant.attestation_period, tenant.attest_second_person = attestation_period, attest_second_person
-    _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if attest_second_person else 'not required'}",
-            "tenant", ctx.tenant_id)
+    tenant.ask_customers_to_attest = ask_customers_to_attest
+    _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if attest_second_person else 'not required'}; "
+            f"customers {'asked' if ask_customers_to_attest else 'not asked'} to attest each year", "tenant", ctx.tenant_id)
     db.commit()
     return _back(BASE, "Attestation settings saved.")
 
@@ -101,6 +106,19 @@ async def import_mappings(upload_file: UploadFile, db: Session = Depends(get_db)
     _record(db, ctx, "compliance.mapping.changed", f"Imported {added} CUEC mappings from {upload_file.filename}", "tenant", ctx.tenant_id)
     db.commit()
     return _back(BASE, f"Added {added} mappings." + (f" Skipped: {'; '.join(problems[:5])}" if problems else ""))
+
+
+@router.post("/customers/ask")
+def ask_customers(db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """Ask every customer's people who can attest to attest their CUECs for last year, now."""
+    if ctx.customer_id is not None:
+        raise WebNotFound()
+    start, end = attestation_service.previous_year(date.today())
+    customers, people = attestation_service.ask_customers(db, ctx.tenant_id, start, end)
+    _record(db, ctx, "compliance.customers.asked", f"Asked {people} people at {customers} customers to attest their responsibilities for {start.year}",
+            "tenant", ctx.tenant_id)
+    db.commit()
+    return _back(BASE, f"Asked {people} people at {customers} customers." if people else "No customer has anyone who can attest yet.")
 
 
 @router.post("/prepare")

@@ -131,6 +131,8 @@ erDiagram
 <tr><td>outside_service_reviews</td><td>JSON</td><td>no</td><td></td><td>When the bank last reviewed each outside service OpenClear uses for it: {service: {at, by, note}}.</td></tr>
 <tr><td>attestation_period</td><td>String(10)</td><td>no</td><td></td><td>The period CUEC attestations cover: monthly, quarterly (the default) or yearly.</td></tr>
 <tr><td>attest_second_person</td><td>Boolean</td><td>no</td><td></td><td>Whoever prepares a manual attestation can't accept it.</td></tr>
+<tr><td>ask_customers_to_attest</td><td>Boolean</td><td>no</td><td></td><td>Ask each customer's people who can attest to attest its own CUECs once a year has ended.</td></tr>
+<tr><td>customers_asked_for_year</td><td>Integer</td><td>yes</td><td></td><td>The last year customers were asked to attest for, so each year is asked once.</td></tr>
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>

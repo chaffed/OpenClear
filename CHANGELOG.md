@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Customers' own CUECs (CONTROLS_PLAN.md CT-D13):
+
+- **The bank sees its customers' attestations**: Settings → CUECs lists each customer with how
+  many of its own CUECs it attested for last year, how many wait to be accepted, and how many of
+  its people can attest (`GET /api/v1/compliance/customers`).
+- **Ask customers to attest each year** (off by default, Settings → CUECs): once a year ends,
+  each customer's people who can attest are asked by email (or SMS, as they choose) to attest
+  their responsibilities for it; or ask them now. Recorded in the action log.
+
 - The README, the compliance page, the GRC guide and the setting's own description now say what
   `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER` does: it runs all scheduled control testing (the
   hourly and nightly checks, the daily anomaly capture) and proposes each period's attestations,

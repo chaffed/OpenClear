@@ -350,6 +350,16 @@ export interface CustomerRead {
   updated_at?: string | null;
 }
 
+export interface CustomerRollup {
+  attested: number;
+  can_attest: number;
+  cuecs: number;
+  customer_id: string;
+  last_accepted_at: string | null;
+  name: string;
+  waiting: number;
+}
+
 export interface CustomerTermsRead {
   billing_account_id: string | null;
   billing_method: BillingMethod;
@@ -1661,6 +1671,19 @@ export class ComplianceApi {
    */
   setMappings(cuecId: string, body: MappingsWrite): Promise<Array<MappingRead>> {
     return this.c.call<Array<MappingRead>>("PUT", `/api/v1/compliance/cuecs/${encodeURIComponent(String(cuecId))}/mappings`, { json: body });
+  }
+
+  /**
+   * Customer Rollup.
+   *
+   * GET /api/v1/compliance/customers
+   *
+   * The bank's roll-up of its customers' own CUECs (CT-D13): for each active customer, how many
+   * it has attested for the period, how many wait to be accepted, and how many of its people can
+   * attest. Read a customer's attestations themselves with `GET /attestations?customer_id=`.
+   */
+  customerRollup(query: { start?: string | null; end?: string | null } = {}): Promise<Array<CustomerRollup>> {
+    return this.c.call<Array<CustomerRollup>>("GET", `/api/v1/compliance/customers`, { query });
   }
 
   /**

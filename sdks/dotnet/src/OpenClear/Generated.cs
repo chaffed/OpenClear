@@ -372,6 +372,17 @@ public sealed record CustomerRead
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
+public sealed record CustomerRollup
+{
+    [JsonPropertyName("attested")] public long Attested { get; init; } = default!;
+    [JsonPropertyName("can_attest")] public long CanAttest { get; init; } = default!;
+    [JsonPropertyName("cuecs")] public long Cuecs { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("last_accepted_at")] public string LastAcceptedAt { get; init; } = default!;
+    [JsonPropertyName("name")] public string Name { get; init; } = default!;
+    [JsonPropertyName("waiting")] public long Waiting { get; init; } = default!;
+}
+
 public sealed record CustomerTermsRead
 {
     [JsonPropertyName("billing_account_id")] public string BillingAccountId { get; init; } = default!;
@@ -1662,6 +1673,18 @@ public sealed partial class ComplianceApi
     /// </summary>
     public Task<IReadOnlyList<MappingRead>> SetMappingsAsync(string cuecId, MappingsWrite body, CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<MappingRead>>("PUT", $"/api/v1/compliance/cuecs/{Uri.EscapeDataString(cuecId.ToString()!)}/mappings", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Customer Rollup.
+    ///
+    /// GET /api/v1/compliance/customers
+    ///
+    /// The bank's roll-up of its customers' own CUECs (CT-D13): for each active customer, how many
+    /// it has attested for the period, how many wait to be accepted, and how many of its people can
+    /// attest. Read a customer's attestations themselves with `GET /attestations?customer_id=`.
+    /// </summary>
+    public Task<IReadOnlyList<CustomerRollup>> CustomerRollupAsync(string? start = null, string? end = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<CustomerRollup>>("GET", "/api/v1/compliance/customers", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// List Mappings.

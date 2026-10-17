@@ -38,6 +38,34 @@
   {%- endcall %}
 </div>
 {% endfor %}
+{% if not ctx.customer_id and rollup %}
+<div class="card">
+  <h2>Your customers' responsibilities in {{ year[0].year }}</h2>
+  <p class="hint">Each customer attests its own {{ rollup[0].cuecs }} CUECs, under <em>Your responsibilities</em>.{% if tenant.ask_customers_to_attest %}
+    They're asked each January.{% endif %}</p>
+  {% set columns = [
+    {"key": "name", "label": "Customer", "role": "primary"},
+    {"key": "attested", "label": "Attested", "role": "status"},
+    {"key": "waiting", "label": "To accept"},
+    {"key": "last", "label": "Last accepted"},
+    {"key": "people", "label": "Who can attest"},
+  ] %}
+  {% call(r, col, part="cell") rt.responsive_table(columns, rollup, id="customer-rollup") -%}
+    {%- if col.key == "name" %}<a href="/ui/customers/{{ r.customer_id }}">{{ r.name }}</a>
+    {%- elif col.key == "attested" %}<span class="badge {{ 'badge-ok' if r.attested == r.cuecs else ('badge-warn' if r.attested else '') }}">{{ r.attested }} of {{ r.cuecs }}</span>
+    {%- elif col.key == "waiting" %}{{ r.waiting or "—" }}
+    {%- elif col.key == "last" %}{{ r.last_accepted_at.date() if r.last_accepted_at else "—" }}
+    {%- elif col.key == "people" %}{% if r.can_attest %}{{ r.can_attest }}{% else %}<span class="text-muted">No one yet</span>{% endif %}
+    {%- endif %}
+  {%- endcall %}
+  {% if can(ctx, "compliance:manage") %}
+  <form method="post" action="/ui/compliance/customers/ask" class="form-actions">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("send") }}Ask them now for {{ year[0].year }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
 {% if can(ctx, "compliance:manage") %}
 <div class="card card-narrow">
   <h2>Map from a spreadsheet</h2>
@@ -57,6 +85,8 @@
     <label>Period <select name="attestation_period">{% for p in periods %}<option value="{{ p }}" {{ "selected" if tenant.attestation_period == p else "" }}>{{ p | capitalize }}</option>{% endfor %}</select></label>
     <label><input type="checkbox" name="attest_second_person" value="true" {{ "checked" if tenant.attest_second_person else "" }}>
       A second person accepts what someone prepared by hand</label>
+    <label><input type="checkbox" name="ask_customers_to_attest" value="true" {{ "checked" if tenant.ask_customers_to_attest else "" }}>
+      Ask customers to attest their responsibilities each year</label>
     <button type="submit" class="secondary">{{ icon("save") }}Save</button>
   </form>
 </div>

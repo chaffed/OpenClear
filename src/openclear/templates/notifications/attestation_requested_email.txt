@@ -1,0 +1,8 @@
+{{ bank }} asks {{ customer }} to attest its responsibilities in OpenClear for {{ start }} to {{ end }}.
+
+They're what OpenClear relies on your organization to do, such as managing your own people,
+reviewing their access, sending every issued check, and deciding exceptions each day. For each
+one, sign in and open Your responsibilities, then say whether it operated over the year and
+how you know. The bank sees which you've attested.
+
+You get this because you can attest your organization's responsibilities in OpenClear.

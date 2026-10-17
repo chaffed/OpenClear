@@ -52,6 +52,10 @@ class Tenant(Base):
     # whether whoever prepares a manual attestation must leave accepting it to someone else (CT-D9).
     attestation_period: Mapped[str] = mapped_column(String(10), nullable=False, default="quarterly", server_default="quarterly")
     attest_second_person: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Ask the bank's customers to attest their own CUECs each year (CT-D13): once a year has
+    # ended, its request goes to each customer's people who can attest; the year asked for last.
+    ask_customers_to_attest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    customers_asked_for_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

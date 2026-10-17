@@ -31,6 +31,9 @@ class NotificationType(str, enum.Enum):
     # services/customer_approval_service.py: the bank approved or rejected someone the
     # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
     CUSTOMER_USER_DECIDED = "customer_user_decided"
+    # services/attestation_service.py: the bank asks the customer's people who can attest to
+    # attest its own CUECs for the year that ended (CONTROLS_PLAN.md CT-D13).
+    ATTESTATION_REQUESTED = "attestation_requested"
 
 
 class NotificationChannel(str, enum.Enum):

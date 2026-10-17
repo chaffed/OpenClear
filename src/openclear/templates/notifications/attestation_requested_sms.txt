@@ -1,0 +1,1 @@
+OpenClear: {{ bank }} asks {{ customer }} to attest its responsibilities for {{ start }} to {{ end }}. Sign in and open Your responsibilities.

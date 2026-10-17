@@ -45,6 +45,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.DEADLINE_REMINDER: "Items to decide before the cutoff",
     NotificationType.INVITATION: "You're invited to OpenClear",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
+    NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
 }
 
 

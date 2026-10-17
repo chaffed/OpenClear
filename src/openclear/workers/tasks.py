@@ -416,13 +416,15 @@ def controls_watch_job() -> None:
 def controls_nightly_job() -> None:
     """Nightly: the nightly state checks, and every population check over the previous UTC day;
     then, for each bank whose attestation period ended yesterday, that period's proposed CUEC
-    attestations (services/attestation_service.py)."""
+    attestations, and once a year has ended, the yearly request to customers to attest theirs
+    for banks that ask (services/attestation_service.py)."""
     _run_controls("nightly")
     from openclear.services import attestation_service
 
     session = get_session_factory()()
     try:
         attestation_service.prepare_due(session)
+        attestation_service.ask_customers_due(session)
     except Exception:  # noqa: BLE001
         session.rollback()
         logger.exception("Preparing attestations failed")

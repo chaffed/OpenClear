@@ -394,3 +394,11 @@ One merge per phase, at most one migration each, the three full suites once per 
   `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER` (off by default, as every scheduler is), runs all of
   CT2's scheduled checks and CT4's proposals, but was described only as the anomaly capture; the
   README, compliance page, GRC guide and its comment now say so. The sandbox doesn't turn it on.
+- 2026-10-17 CT-D13 built on branch `ct-d13-customer-attestations`: the bank's roll-up of its
+  customers' own CUECs (Settings → CUECs, `GET /api/v1/compliance/customers`: attested, waiting,
+  last accepted, who can attest, for last year by default), and `tenant.ask_customers_to_attest`
+  (off by default; migration `e6a8b0c2d4f5`): the nightly job asks, once a year has ended, each
+  active customer's own people whose role has `compliance:attest` (a new notification,
+  `attestation_requested`), once per year (`customers_asked_for_year`), and "Ask them now" on the
+  page. Asked for the calendar year whatever the bank's own period. Only `software_currency`
+  and SOC 2 remain.
