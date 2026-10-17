@@ -43,6 +43,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
             customer_id=membership.customer_id,
             token_type="mfa_pending",
             token_version=user.token_version,
+            signed_in_with="password",
         )
         return LoginResponse(mfa_required=True, mfa_token=mfa_token)
 
@@ -54,6 +55,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
         token_version=user.token_version,
         access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
+        signed_in_with="password",
     )
     response = LoginResponse(mfa_required=False, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
     user_service.record_login(db, user.id, tenant_id=membership.tenant_id)

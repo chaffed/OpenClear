@@ -190,6 +190,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         else 0,
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
         confined=bool(payload.get("cfd")),
+        signed_in_with=payload.get("am"),
     )
     # Who this request is for, for logs, rate limits and security events (web/request_context.py).
     from openclear.web import request_context

@@ -50,6 +50,9 @@ class TenantContext:
     # Signed in through a customer's own sign-on: the session can't switch to another
     # organization (CUSTOMER_ADMIN_PLAN.md, guardrail 1; web/routers/tenant_switch.py).
     confined: bool = False
+    # How the session was signed in ("password", "sso"; None for a token minted before
+    # 1.21.2), from the token's `am` claim (auth/security.py::create_token).
+    signed_in_with: str | None = None
 
     # Per-tenant session-length override (services/tenant_service.py::set_session_timeouts)
     # — None means "use config.Settings.jwt_access/refresh_token_expire_minutes", the same

@@ -161,7 +161,7 @@ def authenticate_password(
     # Password correctness is already confirmed above — only NOW do we distinguish
     # "no access at all" (already handled) from "access exists, but this scope requires
     # SSO," so a wrong guess never reveals which scopes require SSO for this identity.
-    password_allowed_memberships = [m for m in active_memberships if _scope_allows_password_login(session, tenant, m)]
+    password_allowed_memberships = [m for m in active_memberships if scope_allows_password_login(session, tenant, m)]
     if not password_allowed_memberships:
         return failed("sso_required", tenant.id, user, PasswordLoginOutcome.SSO_REQUIRED)
 
@@ -199,7 +199,7 @@ def authenticate_password(
     return PasswordLoginResult(PasswordLoginOutcome.SUCCESS, identity=identity)
 
 
-def _scope_allows_password_login(session: Session, tenant: Tenant, membership: TenantMembership) -> bool:
+def scope_allows_password_login(session: Session, tenant: Tenant, membership: TenantMembership) -> bool:
     # A membership explicitly flagged to require WebAuthn may use a password even where
     # the tenant/customer otherwise mandates SSO — the mandatory key (not group-mapped
     # SSO) is the compensating control for this specific membership. See

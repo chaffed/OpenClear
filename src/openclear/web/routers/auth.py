@@ -146,6 +146,7 @@ def login_submit(
             customer_id=membership.customer_id,
             token_type="mfa_pending",
             token_version=user.token_version,
+            signed_in_with="password",
         )
         next_step = "webauthn/setup" if identity.needs_webauthn_enrollment else "webauthn"
         response = RedirectResponse(f"/ui/login/{next_step}?next={quote(next_path)}", status_code=303)
@@ -160,6 +161,7 @@ def login_submit(
         token_version=user.token_version,
         access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
+        signed_in_with="password",
     )
     user_service.record_login(db, user.id, tenant_id=membership.tenant_id)
     db.commit()
@@ -208,6 +210,7 @@ def _session_tokens_from_mfa(ctx: TenantContext, user: User):
         token_version=user.token_version,
         access_token_expire_minutes=ctx.access_token_expire_minutes,
         refresh_token_expire_minutes=ctx.refresh_token_expire_minutes,
+        signed_in_with=ctx.signed_in_with,
     )
 
 
@@ -501,6 +504,7 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
         refresh_token_expire_minutes=login_tenant.refresh_token_expire_minutes,
         # A customer's sign-on vouches for this customer only (CUSTOMER_ADMIN_PLAN.md).
         confined=membership.customer_id is not None,
+        signed_in_with="sso",
     )
     response = RedirectResponse(safe_next_path(next_path), status_code=303)
     set_session_cookies(response, tokens)

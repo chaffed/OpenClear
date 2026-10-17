@@ -174,6 +174,11 @@ def _reissue_current_session(response: Response, ctx: TenantContext, user: User)
             refresh_token_expire_minutes=ctx.refresh_token_expire_minutes,
             session_id=ctx.session_id,
             session_expires_at=ctx.session_expires_at,
+            # The session's own claims: dropping them would let a confined or embedded
+            # session switch organization after "Sign out other devices".
+            embed={"po": ctx.embed_parent_origin} if ctx.embed_parent_origin else None,
+            confined=ctx.confined,
+            signed_in_with=ctx.signed_in_with,
         ),
     )
 

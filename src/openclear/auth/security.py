@@ -46,6 +46,7 @@ def create_token(
     embed: dict | None = None,
     support_grant_id: uuid.UUID | None = None,
     confined: bool = False,
+    signed_in_with: str | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -115,6 +116,11 @@ def create_token(
         # Started through a customer's own sign-on (CUSTOMER_ADMIN_PLAN.md, guardrail 1):
         # stays in this customer; going to another organization means signing in there.
         payload["cfd"] = 1
+    if signed_in_with is not None:
+        # How the session was signed in ("password" or "sso"): switching to another
+        # organization checks it against what that organization allows
+        # (web/routers/tenant_switch.py::switch_refusal). Carried through refreshes.
+        payload["am"] = signed_in_with
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 
@@ -145,6 +151,7 @@ def create_session_tokens(
     session_expires_at: datetime | None = None,
     embed: dict | None = None,
     confined: bool = False,
+    signed_in_with: str | None = None,
     settings: Settings | None = None,
 ) -> SessionTokens:
     """Mints the access + refresh pair for one login session — every sign-in, refresh,
@@ -172,6 +179,7 @@ def create_session_tokens(
         session_expires_at=session_expires_at,
         embed=embed,
         confined=confined,
+        signed_in_with=signed_in_with,
         settings=settings,
     )
     return SessionTokens(

@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+Security fix for people who belong to more than one organization:
+
+- **Switching organization now respects how you signed in.** A switch reuses the current
+  sign-in, so it's allowed only where that sign-in would have been accepted. A password
+  session can't switch into an organization that has turned password sign-in off. A session
+  from a bank's single sign-on stays within that bank. A session opened from online banking
+  can't switch at all. In each case the person signs in to the other organization directly.
+- **Switching into a membership that requires a security key needs a key already registered
+  there.** Registering a first key now happens only when signing in to that organization
+  directly.
+- **"Sign out other devices" keeps the session's limits.** The re-issued session used to lose
+  them, so a session confined to one customer could then switch organization.
+- Sessions started before this release can't switch until their next sign-in.
+
 ## 1.21.1 — 2026-10-17
 
 Finishing dual control (DUAL_CONTROL_PLAN.md DC6):
