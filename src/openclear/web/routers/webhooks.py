@@ -35,8 +35,8 @@ def _form(request: Request, ctx: TenantContext, *, endpoint=None, values: dict |
     )
 
 
-def _secret_page(request: Request, ctx: TenantContext, endpoint, secret: str) -> Response:
-    response = render_template(request, "admin/webhook_secret.html", ctx=ctx, endpoint=endpoint, secret=secret)
+def _secret_page(request: Request, ctx: TenantContext, endpoint, secret: str, waiting=None) -> Response:
+    response = render_template(request, "admin/webhook_secret.html", ctx=ctx, endpoint=endpoint, secret=secret, waiting=waiting)
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -55,17 +55,28 @@ def new_webhook(request: Request, ctx: TenantContext = Depends(_manage)) -> HTML
 async def create_webhook(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
     form = await request.form()
     values = {"url": form.get("url", ""), "description": form.get("description", ""), "event_types": form.getlist("event_types")}
+    from openclear.services import change_request_service
+
+    # With the bank's sensitive settings protected, it's made (its secret shown once) but sends
+    # nothing until a second admin approves it (DUAL_CONTROL_PLAN.md).
+    waits = change_request_service.needs_approval(db, ctx.tenant_id, "webhook.save")
+    outcome = None
     try:
         endpoint, secret = webhook_service.create_endpoint(
             db, ctx.tenant_id, url=values["url"], event_types=values["event_types"], description=values["description"],
-            created_by_user_id=ctx.user_id,
+            created_by_user_id=ctx.user_id, active=not waits,
         )
-    except webhook_service.WebhookError as exc:
+        if waits:
+            outcome = change_request_service.request_or_apply(
+                db, "webhook.save", {"endpoint_id": str(endpoint.id), "url": endpoint.url, "event_types": endpoint.event_types,
+                                     "description": endpoint.description, "is_active": True},
+                tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except (webhook_service.WebhookError, ValueError) as exc:
         db.rollback()
         return _form(request, ctx, values=values, error=str(exc), status_code=422)
-    _audit(db, ctx, "webhook.create", f"Added webhook {endpoint.url}", endpoint.id)
+    _audit(db, ctx, "webhook.create", f"Added webhook {endpoint.url}" + (" (waiting for approval)" if waits else ""), endpoint.id)
     db.commit()
-    return _secret_page(request, ctx, endpoint, secret)
+    return _secret_page(request, ctx, endpoint, secret, waiting=outcome.change if outcome and outcome.waiting else None)
 
 
 @router.get("/{endpoint_id}")
@@ -102,14 +113,20 @@ async def update_webhook(
         "url": form.get("url", ""), "description": form.get("description", ""), "event_types": form.getlist("event_types"),
         "is_active": form.get("is_active") == "true",
     }
+    from urllib.parse import quote
+
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
     try:
-        webhook_service.update_endpoint(
-            db, ctx.tenant_id, endpoint_id, url=values["url"], event_types=values["event_types"],
-            description=values["description"], is_active=values["is_active"],
-        )
-    except webhook_service.WebhookError as exc:
+        outcome = change_request_service.request_or_apply(db, "webhook.save", {"endpoint_id": str(endpoint_id), **values},
+                                                          tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except (webhook_service.WebhookError, ValueError) as exc:
         db.rollback()
         return _form(request, ctx, endpoint=endpoint, values=values, error=str(exc), status_code=422)
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"/ui/admin/webhooks/{endpoint_id}?flash={quote(waiting_message(outcome))}", status_code=303)
     _audit(db, ctx, "webhook.update", f"Changed webhook {values['url']}", endpoint_id)
     db.commit()
     return RedirectResponse(f"/ui/admin/webhooks/{endpoint_id}?flash=Saved.", status_code=303)

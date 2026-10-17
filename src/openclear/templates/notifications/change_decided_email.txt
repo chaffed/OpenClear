@@ -1,0 +1,5 @@
+Your change in OpenClear:
+
+    {{ summary }}
+
+{% if status == "approved" %}was approved by {{ who }}, and has taken effect.{% elif status == "rejected" %}was rejected{% if who %} by {{ who }}{% endif %}.{% if reason %} Why: {{ reason }}{% endif %}{% elif status == "applied_alone" %}took effect after 24 hours, as nobody else could approve it.{% else %}is {{ status }}.{% endif %}

@@ -45,6 +45,8 @@ _NOTIFICATION_TYPE_LABELS = {
     NotificationType.DEADLINE_REMINDER: "Reminder: items to decide before the cutoff",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank approved or rejected someone you added",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities for the year",
+    NotificationType.CHANGE_REQUESTED: "A settings change is waiting for your approval",
+    NotificationType.CHANGE_DECIDED: "A settings change you asked for was decided",
 }
 
 

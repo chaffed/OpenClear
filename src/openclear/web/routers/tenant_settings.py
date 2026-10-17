@@ -25,9 +25,7 @@ from openclear.services.tenant_service import (
     InvalidTenantSettingsInput,
     set_data_export_timeout,
     set_messages,
-    set_access_rules,
     set_password_policy,
-    set_require_dual_control,
     set_session_timeouts,
     update_tenant_branding,
     update_tenant_contact_info,
@@ -131,7 +129,9 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
             "default_data_export_timeout_seconds": settings.data_export_timeout_seconds,
         }
     if key == "dual-control":
-        return {"require_dual_control": tenant.require_dual_control}
+        return {"require_dual_control": tenant.require_dual_control,
+                "sensitive_changes_need_approval": tenant.sensitive_changes_need_approval,
+                "access_changes_need_approval": tenant.access_changes_need_approval}
     if key == "outside-services":
         from openclear.services import outside_services
 
@@ -248,6 +248,33 @@ def _record(db: Session, ctx: TenantContext, action: str, summary: str, resource
 
 
 # --- Saving --------------------------------------------------------------------------------------
+
+
+def waiting_message(outcome) -> str:
+    """What a person sees when their change went for approval (DUAL_CONTROL_PLAN.md)."""
+    if outcome.change is not None and outcome.change.applies_at:
+        return "Nobody else can approve this, so it takes effect in 24 hours unless you withdraw it (Settings → Changes awaiting approval)."
+    return "Sent for approval: it takes effect when a second admin approves it (Settings → Changes awaiting approval)."
+
+
+def _change(request: Request, db: Session, ctx: TenantContext, kind: str, payload: dict, *, key: str,
+            record: tuple[str, str] | None = None, error_overrides: dict | None = None):
+    """Make a setting change through dual control: applied at once (and recorded as `record`), or
+    sent for approval. Returns the response."""
+    from openclear.services import change_request_service
+
+    try:
+        outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return render_section(request, db, ctx, key, error=str(exc), **(error_overrides or {}))
+    if outcome.applied:
+        if record and outcome.summary != "Nothing changed.":
+            _record(db, ctx, *record)
+        db.commit()
+        return _saved(request, key=key)
+    db.commit()
+    return _saved(request, waiting_message(outcome), key=key)
 
 
 @router.post("")
@@ -387,14 +414,16 @@ async def update_decision_files(
     form = await request.form()
     prefix = f"setting_{layout}__"
     values = {key[len(prefix):]: str(value) for key, value in form.items() if key.startswith(prefix)}
+    payload = {"enabled": enabled, "layout": layout, "interval_minutes": interval_minutes, "settings": values}
+    savepoint = db.begin_nested()  # checked now, so a mistake shows at once rather than on approval
     try:
-        decision_outbox_service.save(db, ctx.tenant_id, enabled=enabled, layout=layout, interval_minutes=interval_minutes, settings=values)
+        decision_outbox_service.save(db, ctx.tenant_id, **payload)
     except decision_outbox_service.OutboxError as exc:
-        db.rollback()
+        savepoint.rollback()
         return render_section(request, db, ctx, "decision-files", error=str(exc))
-    _record(db, ctx, "tenant.update_decision_files", f"Decision files {'on' if enabled else 'off'}: {layout}, every {interval_minutes} minutes")
-    db.commit()
-    return _saved(request, key="decision-files")
+    savepoint.rollback()
+    return _change(request, db, ctx, "decision_files", payload, key="decision-files",
+                   record=("tenant.update_decision_files", f"Decision files {'on' if enabled else 'off'}: {layout}, every {interval_minutes} minutes"))
 
 
 @router.post("/embedding")
@@ -409,13 +438,12 @@ def update_embedding(
     from openclear.services import embed_service
 
     try:
-        origins = embed_service.set_allowed_origins(db, ctx.tenant_id, embed_allowed_origins)
+        origins = embed_service.parse_origins(embed_allowed_origins)
     except embed_service.EmbedError as exc:
-        db.rollback()
         return render_section(request, db, ctx, "embedding", error=str(exc), embed_allowed_origins=embed_allowed_origins)
-    _record(db, ctx, "tenant.update_embedding", f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}")
-    db.commit()
-    return _saved(request, key="embedding")
+    return _change(request, db, ctx, "embedding", {"text": embed_allowed_origins}, key="embedding",
+                   record=("tenant.update_embedding", f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}"),
+                   error_overrides={"embed_allowed_origins": embed_allowed_origins})
 
 
 @router.post("/outside-services")
@@ -480,31 +508,52 @@ def update_customer_approval(
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    """New people a customer's side adds wait for the bank's approval (MOBILE_PLAN.md R6)."""
-    from openclear.domain.tenant import Tenant
-
-    tenant = db.get(Tenant, ctx.tenant_id)
-    if tenant.approve_customer_users != approve_customer_users:
-        tenant.approve_customer_users = approve_customer_users
-        _record(db, ctx, "tenant.update_customer_approval",
-                f"New customer users {'wait for the bank' if approve_customer_users else 'no longer wait for the bank'} (customers' own settings still apply)")
-    db.commit()
-    return _saved(request, key="customer-approval")
+    """New people a customer's side adds wait for the bank's approval (MOBILE_PLAN.md R6). Turning
+    it off needs a second admin (DUAL_CONTROL_PLAN.md)."""
+    return _change(request, db, ctx, "customer_approval", {"values": {"approve_customer_users": approve_customer_users}}, key="customer-approval",
+                   record=("tenant.update_customer_approval",
+                           f"New customer users {'wait for the bank' if approve_customer_users else 'no longer wait for the bank'} "
+                           "(customers' own settings still apply)"))
 
 
 @router.post("/dual-control")
 def update_dual_control(
     request: Request,
     require_dual_control: bool = Form(False),
+    sensitive_changes_need_approval: bool = Form(False),
+    access_changes_need_approval: bool = Form(False),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    tenant = set_require_dual_control(db, ctx.tenant_id, require_dual_control)
-    if tenant is not None:
-        _record(db, ctx, "tenant.update_dual_control", f"{'Enabled' if require_dual_control else 'Disabled'} dual control")
+    """Dual control on decisions, and the second admin for settings changes (DUAL_CONTROL_PLAN.md).
+    Turning any on is refused while nobody else could approve (DC-D16); turning any off needs a
+    second admin."""
+    from openclear.services import change_request_service
+
+    asked = {"require_dual_control": require_dual_control, "sensitive_changes_need_approval": sensitive_changes_need_approval,
+             "access_changes_need_approval": access_changes_need_approval}
+    messages = []
+    try:
+        decisions = change_request_service.request_or_apply(db, "dual_control", {"values": {"require_dual_control": require_dual_control}},
+                                                            tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+        if decisions.applied and decisions.summary != "Nothing changed.":
+            _record(db, ctx, "tenant.update_dual_control", f"{'Enabled' if require_dual_control else 'Disabled'} dual control")
+        elif decisions.waiting:
+            messages.append(waiting_message(decisions))
+        switches = change_request_service.request_or_apply(
+            db, "approval_switches", {"values": {k: asked[k] for k in ("sensitive_changes_need_approval", "access_changes_need_approval")}},
+            tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+        if switches.applied and switches.summary != "Nothing changed.":
+            _record(db, ctx, "tenant.update_approval_switches", f"Second admin for changes: sensitive settings "
+                    f"{'on' if sensitive_changes_need_approval else 'off'}, access changes {'on' if access_changes_need_approval else 'off'}")
+        elif switches.waiting:
+            messages.append(waiting_message(switches))
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return render_section(request, db, ctx, "dual-control", error=str(exc), **asked)
     db.commit()
-    return _saved(request, key="dual-control")
+    return _saved(request, messages[0] if messages else "Settings updated.", key="dual-control")
 
 
 @router.post("/password-policy")
@@ -519,23 +568,13 @@ def update_password_policy(
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    try:
-        tenant = set_password_policy(
-            db, ctx.tenant_id, min_length=min_length, require_uppercase=require_uppercase,
-            require_lowercase=require_lowercase, require_number=require_number, require_symbol=require_symbol,
-        )
-    except InvalidTenantSettingsInput as exc:
-        db.rollback()
-        return render_section(
-            request, db, ctx, "password-policy", error=str(exc), password_min_length=min_length,
-            password_require_uppercase=require_uppercase, password_require_lowercase=require_lowercase,
-            password_require_number=require_number, password_require_symbol=require_symbol,
-        )
-
-    if tenant is not None:
-        _record(db, ctx, "tenant.update_password_policy", f"Updated password policy (min length: {tenant.password_min_length})")
-    db.commit()
-    return _saved(request, key="password-policy")
+    values = {"password_min_length": min_length, "password_require_uppercase": require_uppercase,
+              "password_require_lowercase": require_lowercase, "password_require_number": require_number,
+              "password_require_symbol": require_symbol}
+    if min_length < 1:
+        return render_section(request, db, ctx, "password-policy", error="Minimum password length must be at least 1", **values)
+    return _change(request, db, ctx, "password_policy", {"values": values}, key="password-policy",
+                   record=("tenant.update_password_policy", f"Updated password policy (min length: {min_length})"), error_overrides=values)
 
 
 @router.post("/access-rules")
@@ -557,23 +596,32 @@ def update_access_rules(
     def number(text: str) -> int | None:
         return int(text) if text.strip() else None
 
+    from openclear.services import change_request_service, inactivity_service
+
     try:
-        tenant = set_access_rules(
-            db, ctx.tenant_id, max_failed_attempts=number(max_failed_attempts), lockout_minutes=number(lockout_minutes),
-            lockout_until_unlocked=lockout_until_unlocked, deactivate_inactive=deactivate_inactive,
-            deactivate_inactive_days=deactivate_inactive_days, remove_inactive=remove_inactive, remove_inactive_days=remove_inactive_days)
+        values = {"login_max_failed_attempts": number(max_failed_attempts), "login_lockout_minutes": number(lockout_minutes),
+                  "lockout_until_unlocked": lockout_until_unlocked, "deactivate_inactive": deactivate_inactive,
+                  "deactivate_inactive_days": deactivate_inactive_days, "remove_inactive": remove_inactive,
+                  "remove_inactive_days": remove_inactive_days}
+        inactivity_service.validate(deactivate=deactivate_inactive, deactivate_days=deactivate_inactive_days, remove=remove_inactive,
+                                    remove_days=remove_inactive_days)
+        outcome = change_request_service.request_or_apply(db, "access_rules", {"values": values}, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except (InvalidTenantSettingsInput, ValueError) as exc:
         db.rollback()
         settings = get_settings()
         return render_section(
-            request, db, ctx, "access-rules", error=str(exc) if isinstance(exc, InvalidTenantSettingsInput) else "Give whole numbers.",
+            request, db, ctx, "access-rules", error=str(exc) if isinstance(exc, InvalidTenantSettingsInput)
+            or not isinstance(exc, ValueError) or not str(exc).startswith("invalid literal") else "Give whole numbers.",
             max_failed_attempts=max_failed_attempts or None, lockout_minutes=lockout_minutes or None,
             lockout_until_unlocked=lockout_until_unlocked, default_max_failed_attempts=settings.login_max_failed_attempts,
             default_lockout_minutes=settings.login_lockout_minutes, deactivate_inactive=deactivate_inactive,
             deactivate_inactive_days=deactivate_inactive_days, remove_inactive=remove_inactive, remove_inactive_days=remove_inactive_days,
             housekeeping=settings.enable_housekeeping_scheduler)
-    if tenant is not None:
-        _record(db, ctx, "tenant.update_access_rules", _access_rules_summary(tenant))
+    if not outcome.applied:
+        db.commit()
+        return _saved(request, waiting_message(outcome), key="access-rules")
+    if outcome.summary != "Nothing changed.":
+        _record(db, ctx, "tenant.update_access_rules", _access_rules_summary(db.get(Tenant, ctx.tenant_id)))
     db.commit()
     return _saved(request, key="access-rules")
 
@@ -653,33 +701,41 @@ def update_security_events(
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
-    """The bank's own SIEM destination (services/siem/delivery.py): save, test or remove."""
-    if action == "remove":
-        if delivery.remove_bank_destination(db, ctx.tenant_id):
-            _record(db, ctx, "tenant.update_security_event_destination", "Stopped forwarding security events")
-        db.commit()
-        return _saved(request, "Security event forwarding removed.", key="security-events")
-    try:
-        destination = delivery.save_bank_destination(
-            db, ctx.tenant_id, kind=kind, enabled=enabled, host=host, port=port, transport=transport, fmt=format, url=url,
-            token=token, splunk_index=splunk_index, splunk_sourcetype=splunk_sourcetype)
-    except delivery.DestinationError as exc:
-        db.rollback()
-        return render_section(request, db, ctx, "security-events", error=str(exc))
-    _record(db, ctx, "tenant.update_security_event_destination",
-            f"Security events {'forwarded' if enabled else 'paused'}: {delivery.describe(destination)}")
-    db.commit()
-    if action != "test":
-        return _saved(request, key="security-events")
-    try:
-        from openclear.web import request_context
+    """The bank's own SIEM destination (services/siem/delivery.py): save, test or remove. Every
+    change to where the bank's security events go needs a second admin (DUAL_CONTROL_PLAN.md); a
+    test goes to the destination as entered, without saving it."""
+    from openclear.auth.crypto import encrypt_secret
 
-        current = request_context.current()
-        delivery.send_test(destination, actor_label=current.user_email if current else None)
-    except Exception as exc:  # noqa: BLE001 -- shown to the admin, who's testing exactly this
-        message = str(exc) if isinstance(exc, senders.DeliveryError) else f"{type(exc).__name__}: {exc}"
-        return render_section(request, db, ctx, "security-events", error=f"Saved, but the test event wasn't delivered: {message}")
-    return _saved(request, "Saved. The test event was delivered.", key="security-events")
+    if action == "remove":
+        if delivery.bank_destination(db, ctx.tenant_id) is None:
+            return _saved(request, "Security event forwarding removed.", key="security-events")
+        return _change(request, db, ctx, "security_event_forwarding", {"remove": True}, key="security-events",
+                       record=("tenant.update_security_event_destination", "Stopped forwarding security events"))
+    fields = {"kind": kind, "enabled": enabled, "host": host, "port": port, "transport": transport, "fmt": format, "url": url,
+              "splunk_index": splunk_index, "splunk_sourcetype": splunk_sourcetype}
+    savepoint = db.begin_nested()
+    try:
+        proposed = delivery.save_bank_destination(db, ctx.tenant_id, token=token, **fields)
+        described = delivery.describe(proposed)
+        if action == "test":
+            from openclear.web import request_context
+
+            current = request_context.current()
+            try:
+                delivery.send_test(proposed, actor_label=current.user_email if current else None)
+            except Exception as exc:  # noqa: BLE001 -- shown to the admin, who's testing exactly this
+                message = str(exc) if isinstance(exc, senders.DeliveryError) else f"{type(exc).__name__}: {exc}"
+                savepoint.rollback()
+                return render_section(request, db, ctx, "security-events", error=f"The test event wasn't delivered: {message}")
+    except delivery.DestinationError as exc:
+        savepoint.rollback()
+        return render_section(request, db, ctx, "security-events", error=str(exc))
+    savepoint.rollback()
+    if action == "test":
+        return _saved(request, "The test event was delivered. Save to start forwarding there.", key="security-events")
+    payload = {"fields": fields, "describe": described, "enabled": enabled, **({"token_encrypted": encrypt_secret(token)} if token else {})}
+    return _change(request, db, ctx, "security_event_forwarding", payload, key="security-events",
+                   record=("tenant.update_security_event_destination", f"Security events {'forwarded' if enabled else 'paused'}: {described}"))
 
 
 @router.get("/tile-states")

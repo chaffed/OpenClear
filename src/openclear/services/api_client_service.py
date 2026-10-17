@@ -84,7 +84,10 @@ def create_client(
     created_by_user_id: uuid.UUID | None = None,
     sso_connection_id: uuid.UUID | None = None,
     read_only: bool = False,
+    active: bool = True,
 ) -> IssuedSecret:
+    """`active` False: made, and its secret shown, but unusable until a second admin approves it
+    (DUAL_CONTROL_PLAN.md; change kind api_client.activate)."""
     name = (name or "").strip()
     if sso_connection_id is not None:
         from openclear.domain.sso_connection import SsoConnection, SsoProtocol
@@ -110,12 +113,12 @@ def create_client(
         email=f"{slug}.{secrets.token_hex(4)}@{_SERVICE_EMAIL_DOMAIN}",
         hashed_password=hash_password(secrets.token_urlsafe(48)),  # never used: login refuses service identities
         is_service_account=True,
-        is_active=True,
+        is_active=active,
     )
     session.add(service_user)
     session.flush()
     membership = TenantMembership(
-        user_id=service_user.id, tenant_id=tenant_id, customer_id=customer_id, security_group_id=security_group_id,
+        user_id=service_user.id, tenant_id=tenant_id, customer_id=customer_id, security_group_id=security_group_id, is_active=active,
     )
     session.add(membership)
     session.flush()

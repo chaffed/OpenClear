@@ -37,6 +37,11 @@ class NotificationType(str, enum.Enum):
     # services/inactivity_service.py: the person's access to a bank will be turned off or removed
     # in a week unless they sign in.
     INACTIVITY_WARNING = "inactivity_warning"
+    # services/change_request_service.py (DUAL_CONTROL_PLAN.md): a change waits for this person's
+    # approval (or, with nobody else to approve, applies after 24 hours); and the requester's
+    # change was decided.
+    CHANGE_REQUESTED = "change_requested"
+    CHANGE_DECIDED = "change_decided"
 
 
 class NotificationChannel(str, enum.Enum):

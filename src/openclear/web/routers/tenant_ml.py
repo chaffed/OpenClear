@@ -90,11 +90,21 @@ def switch_to_shared(
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    if not consent:
+        return RedirectResponse(f"{_PAGE}?error=" + quote("Please confirm you've read how the shared model uses your data."), status_code=303)
     try:
-        tenant_ml_service.switch_to_shared(db, ctx.tenant_id, actor_user_id=ctx.user_id, consented=consent)
-    except tenant_ml_service.SwitchNotAllowed as exc:
+        # Pooling the bank's decisions waits for a second admin when the bank asks (DUAL_CONTROL_PLAN.md).
+        outcome = change_request_service.request_or_apply(db, "ml.switch_to_shared", {"consented_by": str(ctx.user_id)},
+                                                          tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except (tenant_ml_service.SwitchNotAllowed, ValueError) as exc:
         db.rollback()
         return RedirectResponse(f"{_PAGE}?error=" + quote(str(exc)), status_code=303)
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"{_PAGE}?flash=" + quote(waiting_message(outcome)), status_code=303)
     _audit(db, ctx, "tenant.ml_source_change", "Switched to the shared fraud-scoring model and acknowledged the data-pooling disclosure")
     db.commit()
     return RedirectResponse(f"{_PAGE}?flash=" + quote("Switched to the shared model."), status_code=303)

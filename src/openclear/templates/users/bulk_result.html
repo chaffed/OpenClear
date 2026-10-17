@@ -8,6 +8,7 @@
 {% set needs_confirmation = results | selectattr("outcome", "equalto", "needs_confirmation") | list %}
 <div class="card">
   <h1>Bulk upload results</h1>
+  {% if held %}<p class="flash" role="status">{{ held }}</p>{% endif %}
   <p>
     <span class="badge {{ 'badge-ok' if not failed else 'badge-warn' }}">{{ created | length }} created</span>
     {% if already_member %}<span class="badge">{{ already_member | length }} already had access</span>{% endif %}

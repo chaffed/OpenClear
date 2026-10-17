@@ -207,13 +207,26 @@ def set_self_service(
 ) -> RedirectResponse:
     """Lets the customer's own administrators manage its people, sign-on and API clients, or
     stops them at once (CUSTOMER_ADMIN_PLAN.md; MOBILE_PLAN.md R4)."""
-    from openclear.services import customer_people_service
+    from urllib.parse import quote
 
+    from openclear.services import change_request_service, customer_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
     try:
-        customer = customer_people_service.set_self_service(db, ctx.tenant_id, customer_id, users=manages_users, sso=manages_sso,
-                                                            api_clients=manages_api_clients)
-    except customer_people_service.PeopleError:
-        raise WebNotFound() from None
+        # Giving a customer more to manage itself waits for a second admin when the bank asks (DUAL_CONTROL_PLAN.md).
+        outcome = change_request_service.request_or_apply(
+            db, "customer.self_service", {"customer_id": str(customer_id), "users": manages_users, "sso": manages_sso,
+                                          "api_clients": manages_api_clients},
+            tenant_id=ctx.tenant_id, user_id=ctx.user_id, summary=f"Let {customer.name} manage more of its own access")
+    except ValueError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/customers/{customer_id}?error={quote(str(exc))}", status_code=303)
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"/ui/customers/{customer_id}?flash={quote(waiting_message(outcome))}", status_code=303)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.self_service",
         summary=f"{customer.name} manages its own people: {'yes' if manages_users else 'no'}; its own sign-on: {'yes' if manages_sso else 'no'}; "

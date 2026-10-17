@@ -1,39 +1,65 @@
 {% extends "base.html" %}
+{% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Changes awaiting approval — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About approvals{% endblock %}
 {% block help_body %}
-<p>With segregation of duties enforced, changes to how items are judged (turning a matching
-  rule on or off, activating a scoring model) need a second admin. The person who asked for a
-  change can't approve it. Every request, approval and rejection is in the action log.</p>
+<p>Some changes need a second person: turning a protection off (dual control, segregation of duties, lockout, password and
+  inactivity rules, required sign-on, security event forwarding) always, and sensitive settings and people's access when your
+  bank asks. The change waits here until someone else who could have made it approves it. Whoever asked can withdraw it;
+  a rejection needs a reason. A change expires after 7 days.</p>
+<p>If nobody else can approve a change, it applies itself after 24 hours unless it's withdrawn or rejected, every
+  administrator is told, and it's recorded as a critical security event. Every request and decision is in the action log.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
   <h1>Changes awaiting approval</h1>
-  {% if changes %}
-  <table>
-    <thead><tr><th>Change</th><th>Asked</th><th></th></tr></thead>
-    <tbody>
-      {% for c in changes %}
-      <tr>
-        <td>{{ c.summary }}</td>
-        <td>{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}</td>
-        <td>
-          <form method="post" action="/ui/admin/changes/{{ c.id }}/approve" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit">{{ icon("check_circle") }}Approve</button>
-          </form>
-          <form method="post" action="/ui/admin/changes/{{ c.id }}/reject" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary">{{ icon("block") }}Reject</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% if rows %}
+  {% set columns = [
+    {"key": "what", "label": "Change", "role": "primary"},
+    {"key": "diff", "label": "Before → after"},
+    {"key": "who", "label": "Asked"},
+    {"key": "act", "label": "", "role": "actions"},
+  ] %}
+  {% call(r, col, part="cell") rt.responsive_table(columns, rows, id="changes") -%}
+    {%- set c = r.change -%}
+    {%- if col.key == "what" %}<strong>{{ c.summary }}</strong><br><span class="text-muted">{{ r.kind.title }}</span>
+      {%- if c.reason %}<br><span class="hint">Why: {{ c.reason }}</span>{% endif %}
+      {%- if c.applies_at %}<br><span class="badge badge-warn">Applies {{ c.applies_at.strftime("%Y-%m-%d %H:%M") }} UTC: nobody else can approve</span>{% endif %}
+    {%- elif col.key == "diff" %}{% for key, value in (c.after or {}).items() %}{% if (c.before or {}).get(key) != value %}<div><code>{{ key }}</code>: {{ (c.before or {}).get(key) }} → <strong>{{ value }}</strong></div>{% endif %}{% endfor %}
+    {%- elif col.key == "who" %}{{ people.get(c.requested_by_user_id, "—") }}<br><span class="text-muted nowrap">{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}</span>
+    {%- elif col.key == "act" %}
+      {%- if r.mine %}
+      <form method="post" action="/ui/admin/changes/{{ c.id }}/withdraw" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">{{ icon("undo") }}Withdraw</button>
+      </form>
+      {%- elif r.can_decide %}
+      <form method="post" action="/ui/admin/changes/{{ c.id }}/approve" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">{{ icon("check_circle") }}Approve</button>
+      </form>
+      <form method="post" action="/ui/admin/changes/{{ c.id }}/reject" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="visually-hidden" for="reason-{{ c.id }}">Why reject it</label>
+        <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required style="max-width:12em;">
+        <button type="submit" class="secondary">{{ icon("block") }}Reject</button>
+      </form>
+      {%- else %}<span class="text-muted">Needs someone who could make it</span>{% endif %}
+    {%- endif %}
+  {%- endcall %}
   {% else %}
   <p>Nothing is waiting.</p>
   {% endif %}
 </div>
+{% if recent %}
+<div class="card">
+  <h2>Recently decided</h2>
+  <table>
+    <thead><tr><th>Change</th><th>Outcome</th><th>By</th><th>When</th></tr></thead>
+    <tbody>{% for c in recent %}<tr><td>{{ c.summary }}</td><td>{{ c.status | replace("_", " ") }}{% if c.decided_reason %}: {{ c.decided_reason }}{% endif %}</td>
+      <td>{{ people.get(c.decided_by_user_id, "OpenClear") }}</td><td class="nowrap">{{ c.decided_at.strftime("%Y-%m-%d %H:%M") if c.decided_at else "" }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endif %}
 {% endblock %}

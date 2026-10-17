@@ -1,0 +1,11 @@
+{% if cooling_off %}{{ who or "Someone" }} changed this in OpenClear, and nobody else can approve it:
+
+    {{ summary }}
+
+It applies on {{ applies_at }} unless they withdraw it, or someone who could approve it rejects it
+first (Settings → Changes awaiting approval). You get this because you administer this organization.{% else %}{{ who or "Someone" }} asked for this change in OpenClear, and it needs a second person:
+
+    {{ summary }}
+
+Approve or reject it under Settings → Changes awaiting approval. It expires in 7 days.
+You get this because you could make this change yourself.{% endif %}

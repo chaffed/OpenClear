@@ -95,22 +95,25 @@ def activate_ml_model(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("admin:manage")),
 ):
-    """Activates one of this organization's bank-only models (404 for any other model). With
-    segregation of duties enforced, it answers `202` with `{"status": "pending",
-    "change_request_id"}` instead: a second admin approves it in Settings → Changes."""
+    """Activates one of this organization's bank-only models (404 for any other model). When the
+    bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
+    "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
+    `POST /api/v1/changes/{id}/approve`)."""
     from fastapi.responses import JSONResponse
 
     from openclear.services import change_request_service
 
-    if change_request_service.needs_approval(db, ctx.tenant_id):
+    if change_request_service.needs_approval(db, ctx.tenant_id, "ml_model.activate"):
         try:
-            change = change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id,
-                                                                     channel="api")
-        except change_request_service.ChangeRequestError:
+            outcome = change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id,
+                                                                      channel="api")
+        except change_request_service.ChangeRequestError as exc:
+            if "waiting" in str(exc):
+                raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Model not found") from None
         db.commit()
-        return JSONResponse({"status": "pending", "change_request_id": str(change.id),
-                             "detail": "Segregation of duties is enforced: a second admin must approve this (Settings → Changes)."},
+        return JSONResponse({"status": "pending", "change_request_id": str(outcome.change.id),
+                             "detail": "A second admin must approve this (Settings → Changes, or POST /api/v1/changes/{id}/approve)."},
                             status_code=status.HTTP_202_ACCEPTED)
     try:
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)

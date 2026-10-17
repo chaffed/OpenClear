@@ -287,6 +287,28 @@ public sealed record BulkUploadRowRead
     [JsonPropertyName("success")] public bool Success { get; init; } = default!;
 }
 
+public sealed record ChangeRead
+{
+    [JsonPropertyName("after")] public IReadOnlyDictionary<string, JsonElement> After { get; init; } = default!;
+    [JsonPropertyName("applies_at")] public string AppliesAt { get; init; } = default!;
+    [JsonPropertyName("before")] public IReadOnlyDictionary<string, JsonElement> Before { get; init; } = default!;
+    [JsonPropertyName("can_decide")] public bool CanDecide { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("decided_at")] public string DecidedAt { get; init; } = default!;
+    [JsonPropertyName("decided_by_user_id")] public string DecidedByUserId { get; init; } = default!;
+    [JsonPropertyName("decided_reason")] public string DecidedReason { get; init; } = default!;
+    [JsonPropertyName("expires_at")] public string ExpiresAt { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("kind")] public string Kind { get; init; } = default!;
+    [JsonPropertyName("reason")] public string Reason { get; init; } = default!;
+    [JsonPropertyName("requested_at")] public string RequestedAt { get; init; } = default!;
+    [JsonPropertyName("requested_by_user_id")] public string RequestedByUserId { get; init; } = default!;
+    [JsonPropertyName("scope")] public string Scope { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("summary")] public string Summary { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
+}
+
 public sealed record CheckFraudExampleCreate
 {
     [JsonPropertyName("account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AccountId { get; init; }
@@ -851,6 +873,11 @@ public sealed record RegistrationVerifyRequest
     [JsonPropertyName("nickname")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Nickname { get; init; }
 }
 
+public sealed record Rejection
+{
+    [JsonPropertyName("reason")] public string Reason { get; init; } = default!;
+}
+
 public sealed record RetrainResponse
 {
     [JsonPropertyName("metrics")] public IReadOnlyDictionary<string, JsonElement> Metrics { get; init; } = default!;
@@ -1129,9 +1156,10 @@ public sealed partial class AdminApi
     ///
     /// PATCH /api/v1/admin/ml/models/{model_id}/activate
     ///
-    /// Activates one of this organization's bank-only models (404 for any other model). With
-    /// segregation of duties enforced, it answers `202` with `{"status": "pending",
-    /// "change_request_id"}` instead: a second admin approves it in Settings → Changes.
+    /// Activates one of this organization's bank-only models (404 for any other model). When the
+    /// bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
+    /// "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
+    /// `POST /api/v1/changes/{id}/approve`).
     /// </summary>
     public Task<JsonElement> ActivateMlModelAsync(string modelId, CancellationToken cancellationToken = default) =>
         _c.CallAsync<JsonElement>("PATCH", $"/api/v1/admin/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", cancellationToken: cancellationToken);
@@ -1465,6 +1493,62 @@ public sealed partial class BulkUploadsApi
     /// </summary>
     public IAsyncEnumerable<BulkUploadRowRead> IterGetBulkUploadResultsAsync(string uploadId, bool? failuresOnly = null, long? limit = null, CancellationToken cancellationToken = default) =>
         _c.PaginateAsync<BulkUploadRowRead>("GET", $"/api/v1/bulk-uploads/{Uri.EscapeDataString(uploadId.ToString()!)}/results", query: new Dictionary<string, object?> { ["failures_only"] = failuresOnly, ["limit"] = limit }, cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// changes endpoints.
+/// </summary>
+public sealed partial class ChangesApi
+{
+    private readonly ITransport _c;
+    public ChangesApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// List Changes.
+    ///
+    /// GET /api/v1/changes
+    ///
+    /// The changes waiting for a second person in your scope, oldest first.
+    /// </summary>
+    public Task<IReadOnlyList<ChangeRead>> ListChangesAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<ChangeRead>>("GET", "/api/v1/changes", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Change.
+    ///
+    /// GET /api/v1/changes/{change_id}
+    /// </summary>
+    public Task<ChangeRead> GetChangeAsync(string changeId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<ChangeRead>("GET", $"/api/v1/changes/{Uri.EscapeDataString(changeId.ToString()!)}", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Approve Change.
+    ///
+    /// POST /api/v1/changes/{change_id}/approve
+    ///
+    /// Approve a change you could have made yourself; it takes effect at once. Refused (`409`) if
+    /// the setting changed since it was asked for, and (`403`) for whoever asked.
+    /// </summary>
+    public Task<ChangeRead> ApproveChangeAsync(string changeId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<ChangeRead>("POST", $"/api/v1/changes/{Uri.EscapeDataString(changeId.ToString()!)}/approve", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Reject Change.
+    ///
+    /// POST /api/v1/changes/{change_id}/reject
+    /// </summary>
+    public Task<ChangeRead> RejectChangeAsync(string changeId, Rejection body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<ChangeRead>("POST", $"/api/v1/changes/{Uri.EscapeDataString(changeId.ToString()!)}/reject", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Withdraw Change.
+    ///
+    /// POST /api/v1/changes/{change_id}/withdraw
+    ///
+    /// Withdraw a change you asked for.
+    /// </summary>
+    public Task<ChangeRead> WithdrawChangeAsync(string changeId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<ChangeRead>("POST", $"/api/v1/changes/{Uri.EscapeDataString(changeId.ToString()!)}/withdraw", cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -2726,7 +2810,9 @@ public sealed partial class UsersApi
     /// PUT /api/v1/users/{membership_id}/accounts
     ///
     /// Limits a customer membership to some of the customer's accounts, or lets it see all
-    /// of them again. Takes effect on that person's next request.
+    /// of them again. Takes effect on that person's next request. When the bank's access changes
+    /// need a second person, seeing more answers `202` with `change_request_id` instead (approve it
+    /// with `POST /api/v1/changes/{id}/approve`).
     /// </summary>
     public Task<AccountAccessRead> SetAccountAccessAsync(string membershipId, AccountAccessUpdate body, CancellationToken cancellationToken = default) =>
         _c.CallAsync<AccountAccessRead>("PUT", $"/api/v1/users/{Uri.EscapeDataString(membershipId.ToString()!)}/accounts", json: body, cancellationToken: cancellationToken);
@@ -2742,6 +2828,7 @@ public partial class OpenClearClient
     public AuditApi Audit { get; private set; } = default!;
     public BillingApi Billing { get; private set; } = default!;
     public BulkUploadsApi BulkUploads { get; private set; } = default!;
+    public ChangesApi Changes { get; private set; } = default!;
     public CheckImagesApi CheckImages { get; private set; } = default!;
     public ComplianceApi Compliance { get; private set; } = default!;
     public ConformanceApi Conformance { get; private set; } = default!;
@@ -2777,6 +2864,7 @@ public partial class OpenClearClient
         Audit = new AuditApi(this);
         Billing = new BillingApi(this);
         BulkUploads = new BulkUploadsApi(this);
+        Changes = new ChangesApi(this);
         CheckImages = new CheckImagesApi(this);
         Compliance = new ComplianceApi(this);
         Conformance = new ConformanceApi(this);

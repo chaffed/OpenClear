@@ -197,7 +197,7 @@ def _admin_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("ml-models", "Decisions & rules", "ML models", "model_training", "/ui/admin/ml-models",
              "Training, versions and activation of your scoring models.", keywords="machine learning retrain"),
         Tile("changes", "Security & access", "Changes awaiting approval", "fact_check", "/ui/admin/changes",
-             "Changes to rules and models waiting for a second admin.", _plural(pending, "waiting", "waiting") if pending else "None",
+             "Settings changes waiting for a second person.", _plural(pending, "waiting", "waiting") if pending else "None",
              tone="warn" if pending else "", keywords="approve change requests"),
         Tile("model-risk", "Data & compliance", "Model risk", "science", "/ui/admin/model-risk",
              "Replay a past file through today's rules; check synthetic fraud is caught.", keywords="replay anomaly mrm validation"),

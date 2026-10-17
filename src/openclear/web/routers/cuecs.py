@@ -83,13 +83,23 @@ def settings(attestation_period: str = Form("quarterly"), attest_second_person: 
 
     if ctx.customer_id is not None or attestation_period not in attestation_service.PERIODS:
         return _back(BASE, "Choose monthly, quarterly or yearly.")
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
     tenant = db.get(Tenant, ctx.tenant_id)
-    tenant.attestation_period, tenant.attest_second_person = attestation_period, attest_second_person
-    tenant.ask_customers_to_attest = ask_customers_to_attest
-    _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if attest_second_person else 'not required'}; "
+    tenant.attestation_period, tenant.ask_customers_to_attest = attestation_period, ask_customers_to_attest
+    try:
+        # Turning the second person off needs a second person; on, someone else who can attest (DUAL_CONTROL_PLAN.md).
+        outcome = change_request_service.request_or_apply(db, "attest_second_person", {"values": {"attest_second_person": attest_second_person}},
+                                                          tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except ValueError as exc:
+        db.rollback()
+        return _back(BASE, str(exc))
+    second = attest_second_person if outcome.applied else tenant.attest_second_person
+    _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if second else 'not required'}; "
             f"customers {'asked' if ask_customers_to_attest else 'not asked'} to attest each year", "tenant", ctx.tenant_id)
     db.commit()
-    return _back(BASE, "Attestation settings saved.")
+    return _back(BASE, waiting_message(outcome) if outcome.waiting else "Attestation settings saved.")
 
 
 @router.post("/mappings/import")

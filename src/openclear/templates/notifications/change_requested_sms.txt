@@ -1,0 +1,1 @@
+OpenClear: {% if cooling_off %}"{{ summary }}" applies {{ applies_at }} unless rejected.{% else %}"{{ summary }}" waits for your approval.{% endif %}

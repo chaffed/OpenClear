@@ -1,11 +1,32 @@
 {% from "_macros/icon.html" import icon %}
-<p class="hint">A different person must make the final pay or return decision than the one
-  who recommended it. Takes effect at once for every exception.</p>
 <form method="post" action="/ui/settings/dual-control">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>
-    <input type="checkbox" name="require_dual_control" value="true" {{ "checked" if require_dual_control else "" }}>
-    Require dual control (maker/checker) on pay and return decisions
-  </label>
+  <fieldset>
+    <legend>Decisions</legend>
+    <label>
+      <input type="checkbox" name="require_dual_control" value="true" {{ "checked" if require_dual_control else "" }}>
+      Require dual control (maker/checker) on pay and return decisions
+    </label>
+    <p class="hint">A different person must make the final pay or return decision than the one who recommended it. Takes
+      effect at once for every exception.</p>
+  </fieldset>
+  <fieldset>
+    <legend>A second admin for settings changes</legend>
+    <label>
+      <input type="checkbox" name="sensitive_changes_need_approval" value="true" {{ "checked" if sensitive_changes_need_approval else "" }}>
+      Sensitive settings need a second admin
+    </label>
+    <p class="hint">Matching rules, scoring models, security groups, single sign-on, API clients, webhooks and the like wait for
+      someone else who could make the change.</p>
+    <label>
+      <input type="checkbox" name="access_changes_need_approval" value="true" {{ "checked" if access_changes_need_approval else "" }}>
+      Access changes need a second admin
+    </label>
+    <p class="hint">Adding someone, or giving someone more access, waits for another person who manages users. Removing or
+      narrowing access never waits.</p>
+    <p class="hint">Turning a protection off (any of these, segregation of duties, lockout, password and inactivity rules,
+      required sign-on, security event forwarding) always needs a second admin. Each switch turns on only while someone else
+      can approve.</p>
+  </fieldset>
   <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
 </form>

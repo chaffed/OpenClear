@@ -297,6 +297,27 @@ class BulkUploadRowRead(TypedDict):
     success: bool
 
 
+class ChangeRead(TypedDict):
+    after: dict[str, Any] | None
+    applies_at: str | None
+    before: dict[str, Any] | None
+    can_decide: bool
+    customer_id: str | None
+    decided_at: str | None
+    decided_by_user_id: str | None
+    decided_reason: str | None
+    expires_at: str | None
+    id: str
+    kind: str
+    reason: str | None
+    requested_at: str
+    requested_by_user_id: str | None
+    scope: Literal["provider", "bank", "customer"]
+    status: Literal["pending", "approved", "rejected", "withdrawn", "expired", "applied_alone"]
+    summary: str
+    title: str
+
+
 class CheckFraudExampleCreate(TypedDict):
     account_id: NotRequired[str | None]
     check_number: NotRequired[str | None]
@@ -836,6 +857,10 @@ class RegistrationVerifyRequest(TypedDict):
     nickname: NotRequired[str | None]
 
 
+class Rejection(TypedDict):
+    reason: str
+
+
 class RetrainResponse(TypedDict):
     metrics: dict[str, float]
     model: MlModelRead
@@ -1088,9 +1113,10 @@ class AdminApi:
 
         PATCH /api/v1/admin/ml/models/{model_id}/activate
 
-        Activates one of this organization's bank-only models (404 for any other model). With
-        segregation of duties enforced, it answers `202` with `{"status": "pending",
-        "change_request_id"}` instead: a second admin approves it in Settings → Changes.
+        Activates one of this organization's bank-only models (404 for any other model). When the
+        bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
+        "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
+        `POST /api/v1/changes/{id}/approve`).
         """
         return self._c.call("PATCH", f"/api/v1/admin/ml/models/{_path(model_id)}/activate")
 
@@ -1387,6 +1413,55 @@ class BulkUploadsApi:
         GET /api/v1/bulk-uploads/{upload_id}/results
         """
         return self._c.paginate("GET", f"/api/v1/bulk-uploads/{_path(upload_id)}/results", query={"failures_only": failures_only, "limit": limit})
+
+
+class ChangesApi:
+    """`changes` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def list_changes(self) -> list[ChangeRead]:
+        """List Changes.
+
+        GET /api/v1/changes
+
+        The changes waiting for a second person in your scope, oldest first.
+        """
+        return self._c.call("GET", "/api/v1/changes")
+
+    def get_change(self, change_id: str) -> ChangeRead:
+        """Get Change.
+
+        GET /api/v1/changes/{change_id}
+        """
+        return self._c.call("GET", f"/api/v1/changes/{_path(change_id)}")
+
+    def approve_change(self, change_id: str) -> ChangeRead:
+        """Approve Change.
+
+        POST /api/v1/changes/{change_id}/approve
+
+        Approve a change you could have made yourself; it takes effect at once. Refused (`409`) if
+        the setting changed since it was asked for, and (`403`) for whoever asked.
+        """
+        return self._c.call("POST", f"/api/v1/changes/{_path(change_id)}/approve")
+
+    def reject_change(self, change_id: str, body: Rejection) -> ChangeRead:
+        """Reject Change.
+
+        POST /api/v1/changes/{change_id}/reject
+        """
+        return self._c.call("POST", f"/api/v1/changes/{_path(change_id)}/reject", json=body)
+
+    def withdraw_change(self, change_id: str) -> ChangeRead:
+        """Withdraw Change.
+
+        POST /api/v1/changes/{change_id}/withdraw
+
+        Withdraw a change you asked for.
+        """
+        return self._c.call("POST", f"/api/v1/changes/{_path(change_id)}/withdraw")
 
 
 class CheckImagesApi:
@@ -2505,7 +2580,9 @@ class UsersApi:
         PUT /api/v1/users/{membership_id}/accounts
 
         Limits a customer membership to some of the customer's accounts, or lets it see all
-        of them again. Takes effect on that person's next request.
+        of them again. Takes effect on that person's next request. When the bank's access changes
+        need a second person, seeing more answers `202` with `change_request_id` instead (approve it
+        with `POST /api/v1/changes/{id}/approve`).
         """
         return self._c.call("PUT", f"/api/v1/users/{_path(membership_id)}/accounts", json=body)
 
@@ -2519,6 +2596,7 @@ AREAS = {
     "audit": AuditApi,
     "billing": BillingApi,
     "bulk_uploads": BulkUploadsApi,
+    "changes": ChangesApi,
     "check_images": CheckImagesApi,
     "compliance": ComplianceApi,
     "conformance": ConformanceApi,

@@ -278,6 +278,19 @@ def sweep_expired_dispositions_job() -> None:
         except Exception:  # noqa: BLE001 -- the sweep itself matters more
             session.rollback()
             logger.exception("Expiring support access failed")
+        # Settings changes waiting for a second person: expiry and the cooling-off (DUAL_CONTROL_PLAN.md),
+        # in a session of its own, since it starts unbound for the service provider's.
+        try:
+            from openclear.services import change_request_service
+
+            own = get_session_factory()()
+            try:
+                if settled := change_request_service.settle(own):
+                    logger.info("Settled %d change requests", settled)
+            finally:
+                own.close()
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            logger.exception("Settling change requests failed")
         # Then the reminders to people (services/reminder_service.py; UX_PLAN.md U3).
         try:
             if reminded := reminder_service.send_due(session):

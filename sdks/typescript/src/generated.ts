@@ -273,6 +273,27 @@ export interface BulkUploadRowRead {
   success: boolean;
 }
 
+export interface ChangeRead {
+  after: Record<string, unknown> | null;
+  applies_at: string | null;
+  before: Record<string, unknown> | null;
+  can_decide: boolean;
+  customer_id: string | null;
+  decided_at: string | null;
+  decided_by_user_id: string | null;
+  decided_reason: string | null;
+  expires_at: string | null;
+  id: string;
+  kind: string;
+  reason: string | null;
+  requested_at: string;
+  requested_by_user_id: string | null;
+  scope: "provider" | "bank" | "customer";
+  status: "pending" | "approved" | "rejected" | "withdrawn" | "expired" | "applied_alone";
+  summary: string;
+  title: string;
+}
+
 export interface CheckFraudExampleCreate {
   account_id?: string | null;
   check_number?: string | null;
@@ -797,6 +818,10 @@ export interface RegistrationVerifyRequest {
   nickname?: string | null;
 }
 
+export interface Rejection {
+  reason: string;
+}
+
 export interface RetrainResponse {
   metrics: Record<string, number>;
   model: MlModelRead;
@@ -1076,9 +1101,10 @@ export class AdminApi {
    *
    * PATCH /api/v1/admin/ml/models/{model_id}/activate
    *
-   * Activates one of this organization's bank-only models (404 for any other model). With
-   * segregation of duties enforced, it answers `202` with `{"status": "pending",
-   * "change_request_id"}` instead: a second admin approves it in Settings → Changes.
+   * Activates one of this organization's bank-only models (404 for any other model). When the
+   * bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
+   * "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
+   * `POST /api/v1/changes/{id}/approve`).
    */
   activateMlModel(modelId: string): Promise<MlModelRead | unknown> {
     return this.c.call<MlModelRead | unknown>("PATCH", `/api/v1/admin/ml/models/${encodeURIComponent(String(modelId))}/activate`, {  });
@@ -1442,6 +1468,67 @@ export class BulkUploadsApi {
    */
   iterGetBulkUploadResults(uploadId: string, query: { failures_only?: boolean; limit?: number } = {}): AsyncIterable<BulkUploadRowRead> {
     return this.c.paginate<BulkUploadRowRead>("GET", `/api/v1/bulk-uploads/${encodeURIComponent(String(uploadId))}/results`, { query });
+  }
+}
+
+/** `changes` endpoints. */
+export class ChangesApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * List Changes.
+   *
+   * GET /api/v1/changes
+   *
+   * The changes waiting for a second person in your scope, oldest first.
+   */
+  listChanges(): Promise<Array<ChangeRead>> {
+    return this.c.call<Array<ChangeRead>>("GET", `/api/v1/changes`, {  });
+  }
+
+  /**
+   * Get Change.
+   *
+   * GET /api/v1/changes/{change_id}
+   */
+  getChange(changeId: string): Promise<ChangeRead> {
+    return this.c.call<ChangeRead>("GET", `/api/v1/changes/${encodeURIComponent(String(changeId))}`, {  });
+  }
+
+  /**
+   * Approve Change.
+   *
+   * POST /api/v1/changes/{change_id}/approve
+   *
+   * Approve a change you could have made yourself; it takes effect at once. Refused (`409`) if
+   * the setting changed since it was asked for, and (`403`) for whoever asked.
+   */
+  approveChange(changeId: string): Promise<ChangeRead> {
+    return this.c.call<ChangeRead>("POST", `/api/v1/changes/${encodeURIComponent(String(changeId))}/approve`, {  });
+  }
+
+  /**
+   * Reject Change.
+   *
+   * POST /api/v1/changes/{change_id}/reject
+   */
+  rejectChange(changeId: string, body: Rejection): Promise<ChangeRead> {
+    return this.c.call<ChangeRead>("POST", `/api/v1/changes/${encodeURIComponent(String(changeId))}/reject`, { json: body });
+  }
+
+  /**
+   * Withdraw Change.
+   *
+   * POST /api/v1/changes/{change_id}/withdraw
+   *
+   * Withdraw a change you asked for.
+   */
+  withdrawChange(changeId: string): Promise<ChangeRead> {
+    return this.c.call<ChangeRead>("POST", `/api/v1/changes/${encodeURIComponent(String(changeId))}/withdraw`, {  });
   }
 }
 
@@ -2823,7 +2910,9 @@ export class UsersApi {
    * PUT /api/v1/users/{membership_id}/accounts
    *
    * Limits a customer membership to some of the customer's accounts, or lets it see all
-   * of them again. Takes effect on that person's next request.
+   * of them again. Takes effect on that person's next request. When the bank's access changes
+   * need a second person, seeing more answers `202` with `change_request_id` instead (approve it
+   * with `POST /api/v1/changes/{id}/approve`).
    */
   setAccountAccess(membershipId: string, body: AccountAccessUpdate): Promise<AccountAccessRead> {
     return this.c.call<AccountAccessRead>("PUT", `/api/v1/users/${encodeURIComponent(String(membershipId))}/accounts`, { json: body });
@@ -2839,6 +2928,7 @@ export const AREAS = {
   audit: AuditApi,
   billing: BillingApi,
   bulkUploads: BulkUploadsApi,
+  changes: ChangesApi,
   checkImages: CheckImagesApi,
   compliance: ComplianceApi,
   conformance: ConformanceApi,

@@ -161,12 +161,13 @@ def activate(
     ctx: TenantContext = Depends(require_web_permission("admin:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    if change_request_service.needs_approval(db, ctx.tenant_id):
+    if change_request_service.needs_approval(db, ctx.tenant_id, "ml_model.activate"):
         try:
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id)
-        except change_request_service.ChangeRequestError:
+        except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return RedirectResponse("/ui/admin/ml-models?error=" + quote("That model couldn't be found."), status_code=303)
+            return RedirectResponse("/ui/admin/ml-models?error=" + quote(str(exc) if "waiting" in str(exc) else "That model couldn't be found."),
+                                    status_code=303)
         db.commit()
         return RedirectResponse("/ui/admin/ml-models?flash=" + quote("Waiting for a second admin to approve (Settings → Changes awaiting approval)."), status_code=303)
     try:
@@ -287,7 +288,7 @@ def activate_customer_model(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
-    if change_request_service.needs_approval(db, ctx.tenant_id):
+    if change_request_service.needs_approval(db, ctx.tenant_id, "ml_model.activate"):
         try:
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=customer_id, user_id=ctx.user_id)
         except change_request_service.ChangeRequestError as exc:

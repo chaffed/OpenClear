@@ -64,17 +64,36 @@ def set_account_access(
     ctx: TenantContext = Depends(require_permission("user:manage")),
 ) -> AccountAccessRead:
     """Limits a customer membership to some of the customer's accounts, or lets it see all
-    of them again. Takes effect on that person's next request."""
+    of them again. Takes effect on that person's next request. When the bank's access changes
+    need a second person, seeing more answers `202` with `change_request_id` instead (approve it
+    with `POST /api/v1/changes/{id}/approve`)."""
     try:
         access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
     except account_access_service.AccountAccessError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
+    from fastapi.responses import JSONResponse
+
+    from openclear.services import change_request_service
+
     try:
-        access = account_access_service.set_access(db, ctx.tenant_id, membership_id, all_accounts=body.all_accounts,
-                                                   account_ids=body.account_ids)
-    except account_access_service.AccountAccessError as exc:
+        savepoint = db.begin_nested()  # checked now, so a mistake answers 422 at once
+        try:
+            account_access_service.set_access(db, ctx.tenant_id, membership_id, all_accounts=body.all_accounts, account_ids=body.account_ids)
+        finally:
+            savepoint.rollback()
+        outcome = change_request_service.request_or_apply(
+            db, "access.accounts", {"membership_id": str(membership_id), "all_accounts": body.all_accounts,
+                                    "account_ids": [str(a) for a in body.account_ids or []]},
+            tenant_id=ctx.tenant_id, user_id=ctx.user_id, channel="api")
+    except (account_access_service.AccountAccessError, ValueError) as exc:
         db.rollback()
         raise HTTPException(status_code=422, detail=str(exc)) from None
+    if outcome.waiting:
+        db.commit()
+        return JSONResponse({"status": "pending", "change_request_id": str(outcome.change.id),
+                             "detail": "A second person who manages users must approve this (POST /api/v1/changes/{id}/approve)."},
+                            status_code=202)
+    access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="user.account_access",
         summary=f"Account access for membership {membership_id}: {account_access_service.describe(access)}",

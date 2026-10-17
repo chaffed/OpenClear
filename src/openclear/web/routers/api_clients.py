@@ -31,8 +31,9 @@ def _form(request: Request, db: Session, ctx: TenantContext, *, error: str | Non
     )
 
 
-def _secret_page(request: Request, ctx: TenantContext, issued, *, rotated: bool) -> Response:
-    response = render_template(request, "admin/api_client_secret.html", ctx=ctx, client=issued.client, secret=issued.secret, rotated=rotated)
+def _secret_page(request: Request, ctx: TenantContext, issued, *, rotated: bool, waiting=None) -> Response:
+    response = render_template(request, "admin/api_client_secret.html", ctx=ctx, client=issued.client, secret=issued.secret, rotated=rotated,
+                               waiting=waiting)
     response.headers["Cache-Control"] = "no-store"  # the secret must not sit in a cache
     return response
 
@@ -63,14 +64,22 @@ def create_api_client(
 ) -> Response:
     values = {"name": name, "security_group_id": security_group_id, "customer_id": customer_id, "can_act_for_users": can_act_for_users,
               "sso_connection_id": sso_connection_id, "read_only": read_only}
+    from openclear.services import change_request_service
+
+    # With the bank's sensitive settings protected, the client is made (its secret shown once) but
+    # works only once a second admin approves it (DUAL_CONTROL_PLAN.md).
+    waits = change_request_service.needs_approval(db, ctx.tenant_id, "api_client.activate")
     try:
         issued = api_client_service.create_client(
             db, ctx.tenant_id, name=name,
             security_group_id=uuid.UUID(security_group_id) if security_group_id else uuid.UUID(int=0),
             customer_id=uuid.UUID(customer_id) if customer_id else None,
             can_act_for_users=can_act_for_users, created_by_user_id=ctx.user_id,
-            sso_connection_id=uuid.UUID(sso_connection_id) if sso_connection_id else None, read_only=read_only,
+            sso_connection_id=uuid.UUID(sso_connection_id) if sso_connection_id else None, read_only=read_only, active=not waits,
         )
+        outcome = change_request_service.request_or_apply(
+            db, "api_client.activate", {"api_client_id": str(issued.client.id)}, tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            summary=f"Let the new API client {issued.client.name} be used") if waits else None
     except (api_client_service.ApiClientError, ValueError) as exc:
         db.rollback()
         return _form(request, db, ctx, error=str(exc) if isinstance(exc, api_client_service.ApiClientError) else "Choose a security group.",
@@ -82,7 +91,7 @@ def create_api_client(
         resource_id=issued.client.id,
     )
     db.commit()
-    return _secret_page(request, ctx, issued, rotated=False)
+    return _secret_page(request, ctx, issued, rotated=False, waiting=outcome.change if outcome and outcome.waiting else None)
 
 
 @router.post("/{api_client_id}/rotate")

@@ -100,6 +100,12 @@ CATALOG: dict[str, EventType] = {
     "change_request.created": EventType("configuration", "medium"),
     "change_request.approved": EventType("configuration", "medium"),
     "change_request.rejected": EventType("configuration", "low"),
+    "change_request.withdrawn": EventType("configuration", "low"),
+    "change_request.expired": EventType("configuration", "low"),
+    # Nobody else could approve: applied after the cooling-off (DUAL_CONTROL_PLAN.md DC-D6).
+    "change_request.applied_alone": EventType("configuration", "critical"),
+    # Turning on a second-person switch refused: nobody else could approve (DC-D16).
+    "change_request.switch_refused": EventType("configuration", "medium"),
     "ml_model.activated": EventType("configuration", "medium"),
     # data
     "audit.export": EventType("data", "medium"),
@@ -166,6 +172,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "security_group.create": "security_group.created",
     "security_group.update": "security_group.changed",
     "api_client.create": "api_client.created",
+    "api_client.activate": "api_client.created",  # a client made inactive, approved for use (DUAL_CONTROL_PLAN.md)
     "api_client.rotate_secret": "api_client.secret_rotated",
     "api_client.revoke": "api_client.revoked",
     "api_client.token_exchange": "auth.token_exchange.succeeded",
@@ -173,6 +180,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "sso_connection.create": "sso_connection.changed",
     "sso_connection.update": "sso_connection.changed",
     "sso_connection.scim_token": "sso_connection.scim_token.issued",
+    "sso_connection.mapping": "sso_connection.changed",
     "tenant.update_embedding": "embed.origins.changed",
     "tenant.update_security_event_destination": "security_events.destination.changed",
     "webhook.create": "webhook.changed",
@@ -190,6 +198,8 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_dual_control": "settings.changed",
     "tenant.update_password_policy": "settings.changed",
     "tenant.update_access_rules": "settings.changed",
+    "tenant.update_approval_switches": "settings.changed",
+    "sso.password_login": "settings.changed",
     "tenant.update_data_export_timeout": "settings.changed",
     "tenant.update_decision_files": "settings.changed",
     "customer.update_password_policy": "settings.changed",
@@ -199,6 +209,10 @@ AUDIT_EVENTS: dict[str, str] = {
     "change_request.create": "change_request.created",
     "change_request.approve": "change_request.approved",
     "change_request.reject": "change_request.rejected",
+    "change_request.withdraw": "change_request.withdrawn",
+    "change_request.expire": "change_request.expired",
+    "change_request.applied_alone": "change_request.applied_alone",
+    "change_request.switch_refused": "change_request.switch_refused",
     "ml_model.activate": "ml_model.activated",
     "audit.export": "audit.export",
     "data_export.request": "data_export.started",

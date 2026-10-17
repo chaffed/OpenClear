@@ -34,6 +34,14 @@ def list_plugins(request: Request, db: Session = Depends(get_db), ctx: TenantCon
     )
 
 
+def _waiting(outcome) -> str:
+    if not outcome.waiting:
+        return outcome.summary
+    if outcome.change.applies_at:
+        return "Nobody else can approve this, so it applies in 24 hours unless you withdraw it (Settings → Changes awaiting approval)."
+    return "Waiting for a second admin to approve (Settings → Changes awaiting approval)."
+
+
 @router.post("/choices")
 async def set_choice(
     request: Request, point: str = Form(...), name: str = Form(...), enabled: bool = Form(False),
@@ -41,13 +49,17 @@ async def set_choice(
 ) -> RedirectResponse:
     form = await request.form()
     config = {key.removeprefix("config_"): str(value) for key, value in form.items() if key.startswith("config_")}
-    if point == "matching_rules" and change_request_service.needs_approval(db, ctx.tenant_id):
-        # Changes to how items are judged need a second admin under segregation of duties.
-        change_request_service.request_change(db, ctx.tenant_id, kind="matching_rule.set",
-                                              summary=f"Turn {'on' if enabled else 'off'} the matching rule {name}",
-                                              payload={"name": name, "enabled": enabled, "config": config}, user_id=ctx.user_id)
+    if point == "matching_rules" and change_request_service.needs_approval(db, ctx.tenant_id, "matching_rule.set"):
+        # Changes to how items are judged need a second admin when the bank asks (DUAL_CONTROL_PLAN.md).
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "matching_rule.set", {"name": name, "enabled": enabled, "config": config}, tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+                summary=f"Turn {'on' if enabled else 'off'} the matching rule {name}")
+        except change_request_service.ChangeRequestError as exc:
+            db.rollback()
+            return RedirectResponse(f"/ui/admin/plugins?flash={quote_plus(str(exc))}", status_code=303)
         db.commit()
-        return RedirectResponse("/ui/admin/plugins?flash=" + quote_plus("Waiting for a second admin to approve."), status_code=303)
+        return RedirectResponse("/ui/admin/plugins?flash=" + quote_plus(_waiting(outcome)), status_code=303)
     try:
         changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id, config=config)
     except ValueError as exc:

@@ -47,6 +47,8 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
+    NotificationType.CHANGE_REQUESTED: "A change is waiting for your approval",
+    NotificationType.CHANGE_DECIDED: "Your change was decided",
 }
 
 

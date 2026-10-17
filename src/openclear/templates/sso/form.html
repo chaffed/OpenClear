@@ -117,6 +117,9 @@
     matched against the group mappings below). Deactivating someone in the directory ends their
     OpenClear sessions.</p>
   {% if scim_token %}
+  {% if scim_waiting %}<p class="flash" role="status">This token works only once {{ "a second admin approves it" if not scim_waiting.applies_at
+    else "its 24 hours are up (" ~ scim_waiting.applies_at.strftime("%Y-%m-%d %H:%M") ~ " UTC), as nobody else can approve it" }}
+    (Settings → Changes awaiting approval). Until then any earlier token keeps working.</p>{% endif %}
   <p class="flash flash-warn" role="alert"><strong>Copy this token now.</strong> It won't be shown again.</p>
   <dl>
     <dt>SCIM base URL</dt><dd><code>{{ scim_base }}</code></dd>

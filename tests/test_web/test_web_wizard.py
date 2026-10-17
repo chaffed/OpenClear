@@ -122,9 +122,21 @@ def test_dual_control_toggle_via_web(client, db_session, tenant_factory):
     db_session.expire_all()
     assert db_session.get(Tenant, tenant.id).require_dual_control is True
 
+    # Turning it off is a protection off: it waits for a second admin (DUAL_CONTROL_PLAN.md).
+    from openclear.services import change_request_service, security_group_service, user_service
+    from tests.conftest import TenantFactory
+
+    admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    second = user_service.create_user_with_membership(db_session, tenant.id, email="second.admin@web-wizard-dualcontrol.example.com",
+                                                      password=TenantFactory.PASSWORD, security_group_id=admin_group.id)
+    db_session.commit()
     resp2 = client.post("/ui/settings/dual-control", data={"csrf_token": _csrf(client)}, follow_redirects=False)
-    assert resp2.status_code == 303
+    assert resp2.status_code == 303 and "Sent%20for%20approval" in resp2.headers["location"]
     db_session.expire_all()
+    assert db_session.get(Tenant, tenant.id).require_dual_control is True
+    [change] = change_request_service.pending(db_session, tenant.id)
+    change_request_service.decide(db_session, tenant.id, change.id, approve=True, user_id=second.id)
+    db_session.commit()
     assert db_session.get(Tenant, tenant.id).require_dual_control is False
 
 

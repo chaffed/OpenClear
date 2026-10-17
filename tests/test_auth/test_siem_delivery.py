@@ -458,10 +458,28 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
     }, follow_redirects=False)
     assert resp.status_code == 303 and "test+event+was+delivered" in resp.headers["location"].replace("%20", "+").lower()
     assert http_receiver.events()[0]["event"]["name"] == "security_events.test"
-    panel = client.get("/ui/settings").text
-    assert "HTTPS (JSON)" in panel
+    assert delivery.bank_destination(db_session, tenant.id) is None  # a test doesn't save
 
-    # A failing test shows the error with the form, and the setting is still saved.
+    # Where the bank's events go is a protection: saving waits for a second admin (DUAL_CONTROL_PLAN.md).
+    from openclear.domain.change_request import ChangeRequest
+    from openclear.services import change_request_service, security_group_service, user_service
+    from tests.conftest import TenantFactory
+
+    admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    second = user_service.create_user_with_membership(db_session, tenant.id, email="second.admin@siem-web.example.com",
+                                                      password=TenantFactory.PASSWORD, security_group_id=admin_group.id)
+    db_session.commit()
+    resp = client.post("/ui/settings/security-events", data={
+        "csrf_token": csrf, "action": "save", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in", "token": "tok-Sentinel-Q7",
+    }, follow_redirects=False)
+    assert resp.status_code == 303 and "Sent%20for%20approval" in resp.headers["location"]
+    [change] = change_request_service.pending(db_session, tenant.id)
+    assert "tok-Sentinel-Q7" not in json.dumps(change.payload)  # the token waits encrypted
+    change_request_service.decide(db_session, tenant.id, change.id, approve=True, user_id=second.id)
+    db_session.commit()
+    assert "HTTPS (JSON)" in client.get("/ui/settings").text
+
+    # A failing test shows the error with the form.
     http_receiver.status = 401
     resp = client.post("/ui/settings/security-events", data={
         "csrf_token": csrf, "action": "test", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in"})
@@ -472,4 +490,7 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
 
     resp = client.post("/ui/settings/security-events", data={"csrf_token": csrf, "action": "remove"}, follow_redirects=False)
     assert resp.status_code == 303
+    [removal] = change_request_service.pending(db_session, tenant.id)
+    change_request_service.decide(db_session, tenant.id, removal.id, approve=True, user_id=second.id)
+    db_session.commit()
     assert delivery.bank_destination(db_session, tenant.id) is None

@@ -2,10 +2,10 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
+from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from openclear.auth.permissions import PERMISSION_CATALOG
@@ -62,6 +62,34 @@ def _sod_refusal(request: Request, db: Session, ctx: TenantContext, group, name:
     return None
 
 
+def _save(request: Request, db: Session, ctx: TenantContext, group, name: str, permissions: list[str], offered_to_customers: bool,
+          done: str):
+    """Create or change a group through dual control: giving a group more, or offering it to
+    customers, waits for a second admin when the bank asks (DUAL_CONTROL_PLAN.md)."""
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    payload = {"group_id": str(group.id) if group else None, "name": name, "permissions": permissions,
+               "offered_to_customers": offered_to_customers}
+    try:
+        outcome = change_request_service.request_or_apply(db, "security_group.save", payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+    except ValueError as exc:
+        db.rollback()
+        return _form_with_error(request, ctx, group, name, permissions, error=str(exc))
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"/ui/security-groups?flash={quote_plus(waiting_message(outcome))}", status_code=303)
+    saved = security_group_service.get_security_group_by_name(db, ctx.tenant_id, name)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="security_group.update" if group else "security_group.create",
+        summary=outcome.summary if saved is None else (f"{'Updated' if group else 'Created'} security group {saved.name} "
+                                                       f"({len(saved.permissions)} permissions"
+                                                       f"{', offered to customers' if saved.offered_to_customers else ''})"),
+        resource_type="security_group", resource_id=saved.id if saved else None)
+    db.commit()
+    return RedirectResponse(f"/ui/security-groups?flash=Security+group+{done}.", status_code=303)
+
+
 @router.get("/new")
 def new_security_group_form(
     request: Request, ctx: TenantContext = Depends(require_web_permission("security_group:manage"))
@@ -83,26 +111,7 @@ def create_security_group(
 ) -> RedirectResponse:
     if refused := _sod_refusal(request, db, ctx, None, name, permissions):
         return refused
-    try:
-        group = security_group_service.create_security_group(
-            db, ctx.tenant_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions,
-                                                                             offered_to_customers=offered_to_customers)
-        )
-    except IntegrityError:
-        db.rollback()
-        return _form_with_error(request, ctx, None, name, permissions)
-    audit_log_service.record_action(
-        db,
-        ctx.tenant_id,
-        actor_user_id=ctx.user_id,
-        channel="web",
-        action="security_group.create",
-        summary=f"Created security group {group.name} ({len(group.permissions)} permissions)",
-        resource_type="security_group",
-        resource_id=group.id,
-    )
-    db.commit()
-    return RedirectResponse("/ui/security-groups?flash=Security+group+created.", status_code=303)
+    return _save(request, db, ctx, None, name, permissions, offered_to_customers, "created")
 
 
 @router.get("/{group_id}/edit")
@@ -131,30 +140,9 @@ def update_security_group(
     ctx: TenantContext = Depends(require_web_permission("security_group:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    if refused := _sod_refusal(request, db, ctx, security_group_service.get_security_group(db, ctx.tenant_id, group_id), name, permissions):
-        return refused
-    try:
-        group = security_group_service.update_security_group(
-            db, ctx.tenant_id, group_id, security_group_service.SecurityGroupInput(name=name, permissions=permissions,
-                                                                                         offered_to_customers=offered_to_customers)
-        )
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        return _form_with_error(request, ctx, security_group_service.get_security_group(db, ctx.tenant_id, group_id), name, permissions)
-    if group is not None:
-        audit_log_service.record_action(
-            db,
-            ctx.tenant_id,
-            actor_user_id=ctx.user_id,
-            channel="web",
-            action="security_group.update",
-            summary=f"Updated security group {group.name} ({len(group.permissions)} permissions"
-                    f"{', offered to customers' if group.offered_to_customers else ''})",
-            resource_type="security_group",
-            resource_id=group.id,
-        )
-    db.commit()
+    group = security_group_service.get_security_group(db, ctx.tenant_id, group_id)
     if group is None:
         return RedirectResponse("/ui/security-groups?error=Security+group+not+found.", status_code=303)
-    return RedirectResponse("/ui/security-groups?flash=Security+group+updated.", status_code=303)
+    if refused := _sod_refusal(request, db, ctx, group, name, permissions):
+        return refused
+    return _save(request, db, ctx, group, name, permissions, offered_to_customers, "updated")

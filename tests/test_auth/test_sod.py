@@ -138,6 +138,7 @@ def test_model_changes_need_a_second_admin_under_enforcement(client, db_session,
                               status=MlModelStatus.RETIRED)
     _separate_duties(db_session, tenant)
     sod.set_mode(db_session, tenant.id, "enforce")
+    tenant.sensitive_changes_need_approval = True
     admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
     second_admin = user_service.create_user_with_membership(db_session, tenant.id, email="second.admin@sod-changes.example.com",
                                                             password=TenantFactory.PASSWORD, security_group_id=admin_group.id)
@@ -175,6 +176,10 @@ def test_a_matching_rule_waits_for_a_second_admin(example_plugin, client, db_ses
     tenant, _account, users = tenant_factory.make(slug="sod-rules")
     _separate_duties(db_session, tenant)
     sod.set_mode(db_session, tenant.id, "enforce")
+    tenant.sensitive_changes_need_approval = True
+    admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    second = user_service.create_user_with_membership(db_session, tenant.id, email="second.admin@sod-rules.example.com",
+                                                      password=TenantFactory.PASSWORD, security_group_id=admin_group.id)
     db_session.commit()
     client.get("/ui/login")
     csrf = client.cookies.get("csrf_token")
@@ -185,7 +190,7 @@ def test_a_matching_rule_waits_for_a_second_admin(example_plugin, client, db_ses
     assert asked.status_code == 303 and "second+admin" in asked.headers["location"]
     assert not plugin_service.is_enabled(db_session, tenant.id, "matching_rules", "example_large_round_amount")
     [change] = db_session.execute(select(ChangeRequest).where(ChangeRequest.tenant_id == tenant.id)).scalars().all()
-    change_request_service.decide(db_session, tenant.id, change.id, approve=True, user_id=users["approver"].id)
+    change_request_service.decide(db_session, tenant.id, change.id, approve=True, user_id=second.id)
     db_session.commit()
     assert plugin_service.is_enabled(db_session, tenant.id, "matching_rules", "example_large_round_amount")
 
@@ -201,6 +206,7 @@ def test_the_api_cant_skip_the_second_admin(client, db_session, tenant_factory):
                            trained_from_decision_count=10, metrics_json={}, status=MlModelStatus.RETIRED, tenant_id=tenant.id)
     _separate_duties(db_session, tenant)
     sod.set_mode(db_session, tenant.id, "enforce")
+    tenant.sensitive_changes_need_approval = True
     db_session.commit()
     headers = login_headers(client, tenant.slug, users["admin"].email)
 

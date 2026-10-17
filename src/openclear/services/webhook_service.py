@@ -43,6 +43,8 @@ DELIVER_JOB_KIND = "webhook.deliver"
 
 EVENT_TYPES = {
     "exception.created": "A presented check or ACH debit raised an exception to review",
+    "change_request.created": "A settings change is waiting for a second person (DUAL_CONTROL_PLAN.md)",
+    "change_request.decided": "A settings change waiting for a second person was approved, rejected, or applied after its cooling-off",
     "exception.deadline_approaching": "An open exception's decision deadline is near (OPENCLEAR_WEBHOOK_DEADLINE_WARNING_HOURS)",
     "exception.decided": "An exception was decided, pay or return (it's in the decision feed)",
     "bulk_upload.completed": "A bulk upload finished importing (or failed)",
@@ -98,13 +100,15 @@ def get_endpoint(session: Session, tenant_id: uuid.UUID, endpoint_id: uuid.UUID)
 
 def create_endpoint(
     session: Session, tenant_id: uuid.UUID, *, url: str, event_types, description: str | None = None,
-    created_by_user_id: uuid.UUID | None = None,
+    created_by_user_id: uuid.UUID | None = None, active: bool = True,
 ) -> tuple[WebhookEndpoint, str]:
+    """`active` False: made (its secret shown once) but sending nothing until a second admin
+    approves it (DUAL_CONTROL_PLAN.md; change kind webhook.save)."""
     secret = _new_secret()
     endpoint = WebhookEndpoint(
         tenant_id=tenant_id, url=_check(url), event_types=_event_types(event_types),
         description=(description or "").strip()[:200] or None, secret_encrypted=encrypt_secret(secret),
-        created_by_user_id=created_by_user_id, is_active=True,
+        created_by_user_id=created_by_user_id, is_active=active,
     )
     session.add(endpoint)
     session.flush()

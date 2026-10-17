@@ -5,7 +5,7 @@ import csv
 import io
 import json
 import uuid
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -22,6 +22,7 @@ from openclear.domain.tenant_membership import TenantMembership
 from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 from openclear.repositories.user_repo import UserRepository
 from openclear.services import (
+    access_changes,
     account_access_service,
     audit_log_service,
     bulk_upload_file_service,
@@ -161,11 +162,14 @@ def create_user(
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
     resolved_customer_id = uuid.UUID(customer_id) if customer_id else None
+    before = access_changes.membership_ids(db, ctx.tenant_id)
     result = user_service.add_user(
         db, ctx.tenant_id, email=email, password=password, security_group_id=security_group_id, customer_id=resolved_customer_id
     )
 
     if result.outcome == "created":
+        held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
+                                                              user_id=ctx.user_id))
         created_user = UserRepository(db).get_by_email(email)
         audit_log_service.record_action(
             db,
@@ -178,7 +182,7 @@ def create_user(
             resource_id=created_user.id if created_user else None,
         )
         db.commit()
-        return RedirectResponse("/ui/users?flash=User+created.", status_code=303)
+        return RedirectResponse(f"/ui/users?flash={quote_plus(('User created. ' + held) if held else 'User created.')}", status_code=303)
     if result.outcome == "already_member":
         db.rollback()
         return RedirectResponse("/ui/users?flash=That+person+already+has+access+to+this+organization.", status_code=303)
@@ -215,6 +219,7 @@ def confirm_existing_user(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     resolved_customer_id = uuid.UUID(customer_id) if customer_id else None
+    before = access_changes.membership_ids(db, ctx.tenant_id)
     membership = user_service.confirm_cross_tenant_membership(
         db, ctx.tenant_id, email=email, security_group_id=security_group_id, customer_id=resolved_customer_id
     )
@@ -231,8 +236,10 @@ def confirm_existing_user(
         resource_type="user",
         resource_id=membership.user_id,
     )
+    held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
+                                                          user_id=ctx.user_id))
     db.commit()
-    return RedirectResponse("/ui/users?flash=Access+granted.", status_code=303)
+    return RedirectResponse(f"/ui/users?flash={quote_plus(('Access granted. ' + held) if held else 'Access granted.')}", status_code=303)
 
 
 @router.post("/{membership_id}/deactivate", dependencies=[Depends(_people_only)])
@@ -268,6 +275,22 @@ def reactivate_user(
     ctx: TenantContext = Depends(require_web_permission("user:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    if access_changes.waits(db, ctx.tenant_id):
+        # Giving access back waits for a second person who manages users (DUAL_CONTROL_PLAN.md).
+        membership = TenantMembershipRepository(db, ctx.tenant_id).get(membership_id)
+        if membership is None:
+            return RedirectResponse("/ui/users?error=User+not+found.", status_code=303)
+        from openclear.services import change_request_service
+
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "access.membership", {"membership_id": str(membership_id)}, tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+                summary=f"Restore access for {UserRepository(db).get(membership.user_id).email}")
+        except ValueError as exc:
+            db.rollback()
+            return RedirectResponse(f"/ui/users?error={quote_plus(str(exc))}", status_code=303)
+        db.commit()
+        return RedirectResponse(f"/ui/users?flash={quote_plus(access_changes.message([outcome]) or 'Access restored.')}", status_code=303)
     membership = user_service.reactivate_membership(db, ctx.tenant_id, membership_id)
     if membership is not None:
         actor = UserRepository(db).get(membership.user_id)
@@ -424,6 +447,7 @@ async def bulk_upload_users(
             upload_record=upload_record,
         )
 
+    before = access_changes.membership_ids(db, ctx.tenant_id)
     results = user_service.create_users_from_rows(db, ctx.tenant_id, rows)
     for r in results:
         if r.outcome != "created":
@@ -462,9 +486,11 @@ async def bulk_upload_users(
         succeeded_count=sum(r.outcome in ("created", "already_member") for r in results),
         failed_count=sum(r.outcome == "failed" for r in results),
     )
+    held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
+                                                          user_id=ctx.user_id))
     db.commit()
     return render_template(
-        request, "users/bulk_result.html", ctx=ctx, results=results, pending=pending, upload_record=upload_record
+        request, "users/bulk_result.html", ctx=ctx, results=results, pending=pending, upload_record=upload_record, held=held
     )
 
 
@@ -493,6 +519,7 @@ def bulk_confirm_users(
                 (email, uuid.UUID(group_id_str), uuid.UUID(customer_id_str) if customer_id_str else None, require_webauthn)
             )
 
+    before = access_changes.membership_ids(db, ctx.tenant_id)
     results = user_service.confirm_users_bulk(db, ctx.tenant_id, confirmations)
     # confirm_users_bulk already committed each grant individually (per-row isolation,
     # same as every other bulk flow) — these audit entries land in a follow-up commit
@@ -512,8 +539,10 @@ def bulk_confirm_users(
             resource_type="user",
             resource_id=created_user.id if created_user else None,
         )
+    held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
+                                                          user_id=ctx.user_id))
     db.commit()
-    return render_template(request, "users/bulk_result.html", ctx=ctx, results=results, pending=[])
+    return render_template(request, "users/bulk_result.html", ctx=ctx, results=results, pending=[], held=held)
 
 
 @router.get("/access")
@@ -559,6 +588,7 @@ def access_grant(
         )
 
     resolved_ids: list[uuid.UUID | None] = [uuid.UUID(c) if c else None for c in customer_ids]
+    before = access_changes.membership_ids(db, ctx.tenant_id)
     pairs = user_service.grant_multi_customer_access(
         db,
         ctx.tenant_id,
@@ -594,8 +624,10 @@ def access_grant(
                 }
             )
 
+    held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
+                                                          user_id=ctx.user_id))
     db.commit()
-    return render_template(request, "users/bulk_result.html", ctx=ctx, results=results, pending=pending, upload_record=None)
+    return render_template(request, "users/bulk_result.html", ctx=ctx, results=results, pending=pending, upload_record=None, held=held)
 
 
 # NOTE: /{membership_id} (bare, no suffix) must be registered after every literal path
@@ -654,9 +686,23 @@ async def save_account_access(
 ) -> Response:
     form = await request.form()
     all_accounts = form.get("scope") != "some"
+    from openclear.services import change_request_service
+
     try:
         account_ids = [uuid.UUID(str(v)) for v in form.getlist("account_id")]
-        access = account_access_service.set_access(db, ctx.tenant_id, membership_id, all_accounts=all_accounts, account_ids=account_ids)
+        savepoint = db.begin_nested()  # checked now, so a mistake shows at once rather than on approval
+        try:
+            account_access_service.set_access(db, ctx.tenant_id, membership_id, all_accounts=all_accounts, account_ids=account_ids)
+        finally:
+            savepoint.rollback()
+        # Seeing more accounts waits for a second person when the bank asks (DUAL_CONTROL_PLAN.md).
+        outcome = change_request_service.request_or_apply(
+            db, "access.accounts", {"membership_id": str(membership_id), "all_accounts": all_accounts,
+                                    "account_ids": [str(a) for a in account_ids]}, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
+        if outcome.waiting:
+            db.commit()
+            return RedirectResponse(f"/ui/users?flash={quote_plus(access_changes.message([outcome]))}", status_code=303)
+        access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
     except (account_access_service.AccountAccessError, ValueError) as exc:
         db.rollback()
         try:
@@ -688,10 +734,14 @@ def update_user(
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
     resolved_customer_id = uuid.UUID(customer_id) if customer_id else None
+    outcome = None
     try:
-        membership = user_service.update_membership(
-            db, ctx.tenant_id, membership_id, security_group_id=security_group_id, customer_id=resolved_customer_id
-        )
+        membership = TenantMembershipRepository(db, ctx.tenant_id).get(membership_id)
+        if membership is None:
+            raise ValueError("Membership not found")
+        # More permissions or a wider scope wait for a second person when the bank asks (DUAL_CONTROL_PLAN.md).
+        outcome = access_changes.change_entitlements(db, ctx.tenant_id, membership, security_group_id=security_group_id,
+                                                     customer_id=resolved_customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
         existing = TenantMembershipRepository(db, ctx.tenant_id).get(membership_id)
@@ -712,6 +762,9 @@ def update_user(
             status_code=422,
         )
 
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"/ui/users?flash={quote_plus(access_changes.message([outcome]))}", status_code=303)
     actor = UserRepository(db).get(membership.user_id)
     audit_log_service.record_action(
         db,

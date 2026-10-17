@@ -68,6 +68,11 @@ class Tenant(Base):
     deactivate_inactive_days: Mapped[int] = mapped_column(Integer, nullable=False, default=90, server_default="90")
     remove_inactive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     remove_inactive_days: Mapped[int] = mapped_column(Integer, nullable=False, default=365, server_default="365")
+    # A second admin for settings changes (DUAL_CONTROL_PLAN.md, services/change_request_service.py):
+    # sensitive settings (tier B) and widening people's access. Turning a protection off needs one
+    # whatever these say. Turned on only if someone else can approve (DC-D16).
+    sensitive_changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    access_changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

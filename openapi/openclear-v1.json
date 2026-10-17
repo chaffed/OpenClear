@@ -2011,6 +2011,197 @@
         "title": "BulkUploadRowRead",
         "type": "object"
       },
+      "ChangeRead": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "applies_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applies At"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "can_decide": {
+            "title": "Can Decide",
+            "type": "boolean"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By User Id"
+          },
+          "decided_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided Reason"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "requested_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By User Id"
+          },
+          "scope": {
+            "enum": [
+              "provider",
+              "bank",
+              "customer"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "withdrawn",
+              "expired",
+              "applied_alone"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "customer_id",
+          "kind",
+          "title",
+          "summary",
+          "before",
+          "after",
+          "reason",
+          "status",
+          "requested_by_user_id",
+          "requested_at",
+          "expires_at",
+          "applies_at",
+          "decided_by_user_id",
+          "decided_at",
+          "decided_reason",
+          "can_decide"
+        ],
+        "title": "ChangeRead",
+        "type": "object"
+      },
       "CheckFraudExampleCreate": {
         "properties": {
           "account_id": {
@@ -5441,6 +5632,21 @@
         "title": "RegistrationVerifyRequest",
         "type": "object"
       },
+      "Rejection": {
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "Rejection",
+        "type": "object"
+      },
       "RetrainResponse": {
         "properties": {
           "metrics": {
@@ -6866,7 +7072,7 @@
     },
     "/api/v1/admin/ml/models/{model_id}/activate": {
       "patch": {
-        "description": "Activates one of this organization's bank-only models (404 for any other model). With\nsegregation of duties enforced, it answers `202` with `{\"status\": \"pending\",\n\"change_request_id\"}` instead: a second admin approves it in Settings \u2192 Changes.",
+        "description": "Activates one of this organization's bank-only models (404 for any other model). When the\nbank's sensitive settings need a second admin, it answers `202` with `{\"status\": \"pending\",\n\"change_request_id\"}` instead: a second admin approves it (Settings \u2192 Changes, or\n`POST /api/v1/changes/{id}/approve`).",
         "operationId": "activate_ml_model_api_v1_admin_ml_models__model_id__activate_patch",
         "parameters": [
           {
@@ -8721,6 +8927,241 @@
         "summary": "Get Bulk Upload Results",
         "tags": [
           "bulk-uploads"
+        ]
+      }
+    },
+    "/api/v1/changes": {
+      "get": {
+        "description": "The changes waiting for a second person in your scope, oldest first.",
+        "operationId": "list_changes_api_v1_changes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeRead"
+                  },
+                  "title": "Response List Changes Api V1 Changes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Changes",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/v1/changes/{change_id}": {
+      "get": {
+        "operationId": "get_change_api_v1_changes__change_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Change",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/v1/changes/{change_id}/approve": {
+      "post": {
+        "description": "Approve a change you could have made yourself; it takes effect at once. Refused (`409`) if\nthe setting changed since it was asked for, and (`403`) for whoever asked.",
+        "operationId": "approve_change_api_v1_changes__change_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Change",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/v1/changes/{change_id}/reject": {
+      "post": {
+        "operationId": "reject_change_api_v1_changes__change_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rejection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Change",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/v1/changes/{change_id}/withdraw": {
+      "post": {
+        "description": "Withdraw a change you asked for.",
+        "operationId": "withdraw_change_api_v1_changes__change_id__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw Change",
+        "tags": [
+          "changes"
         ]
       }
     },
@@ -14455,7 +14896,7 @@
         ]
       },
       "put": {
-        "description": "Limits a customer membership to some of the customer's accounts, or lets it see all\nof them again. Takes effect on that person's next request.",
+        "description": "Limits a customer membership to some of the customer's accounts, or lets it see all\nof them again. Takes effect on that person's next request. When the bank's access changes\nneed a second person, seeing more answers `202` with `change_request_id` instead (approve it\nwith `POST /api/v1/changes/{id}/approve`).",
         "operationId": "set_account_access_api_v1_users__membership_id__accounts_put",
         "parameters": [
           {
