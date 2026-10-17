@@ -23,9 +23,8 @@ and owner.
   - *attested*: outside what OpenClear can see; a person attests, and may attach evidence.
 - **CSF 2.0**: the NIST Cybersecurity Framework 2.0 subcategories that NIST's own mapping
   links to the CUEC's 800-53 control ([by subcategory](csf.md)).
-- **Check**: the test that produces the evidence. *Live* checks are on the Controls page
-  today, each keeping a test history from which an automated CUEC can be attested for a period;
-  the one *planned* check, the host's software currency, needs a source of release dates.
+- **Check**: the test that produces the evidence. Each is on the Controls page, keeping a
+  test history from which an automated CUEC can be attested for a period.
 
 ## The bank
 
@@ -92,15 +91,9 @@ and owner.
 | H-SC-7-01 | **SC-7** Boundary Protection<br>Related: SC-5 | PR.DS-01, PR.DS-02, PR.DS-10, PR.IR-01, DE.CM-01 | **Lock down the origin.** Let only the edge network reach OpenClear, keep the database and storage off the internet, and record how the origin is locked down. | OpenClear checks edge headers come from trusted ranges, and accepts an edge secret. | automated | `edge` (live) | Continuous | Controls → Edge network set up |
 | H-CM-6-01 | **CM-6** Configuration Settings<br>Related: CM-2 | PR.PS-01, DE.CM-09 | **Run with production settings.** Run production with production settings: real keys, no development defaults, and the scheduled control tests on. | OpenClear checks its own settings at startup and on the Controls page. | automated | `production_safety` (live) | Continuous | Controls → Production settings |
 | H-CP-9-01 | **CP-9** System Backup<br>Related: CP-4, CP-10 | PR.DS-01, PR.DS-10, PR.DS-11, PR.IR-03, RC.RP-03 | **Back up and test restores.** Back up the database and file storage, encrypted and kept apart from the primary, and test a restore at least yearly. | OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore. | attested | — | Daily; restore tested yearly | The host's backup records |
-| H-SI-2-01 | **SI-2** Flaw Remediation<br>Related: RA-5 | ID.IM-01, ID.IM-02, ID.IM-03, PR.PS-02 | **Apply updates.** Apply OpenClear releases, and operating system, database and dependency patches, within the host's patching deadlines. | OpenClear publishes versioned releases with a changelog, and shows the running version. | assisted | `software_currency` (planned) | Monthly | /openapi.json version; CHANGELOG.md |
+| H-SI-2-01 | **SI-2** Flaw Remediation<br>Related: RA-5 | ID.IM-01, ID.IM-02, ID.IM-03, PR.PS-02 | **Apply updates.** Apply OpenClear releases, and operating system, database and dependency patches, within the host's patching deadlines. | OpenClear publishes versioned releases with a changelog, and shows the running version. | assisted | `software_currency` (live) | Monthly | /openapi.json version; CHANGELOG.md |
 | H-RA-5-01 | **RA-5** Vulnerability Monitoring and Scanning<br>Related: SI-2 | GV.SC-10, ID.RA-01, ID.RA-08, ID.IM-01, ID.IM-02, ID.IM-03 | **Scan for vulnerabilities.** Scan the servers, container images and database for vulnerabilities, and fix what's found within the host's deadlines. | OpenClear's source and dependencies are public for anyone to scan. | attested | — | Monthly | The host's scan records |
 | H-AC-6(5)-01 | **AC-6(5)** Privileged Accounts<br>Related: IA-2(1), AC-2 | PR.AA-05 | **Limit administrative access to the host.** Limit access to the servers, database and secret store to named administrators using a second factor, and log it. Platform staff reach a bank's data only through the bank's support access grants. | OpenClear gives platform staff no way into a bank except a grant the bank makes. | assisted | `platform_staff` (live) | Quarterly | Support access; the host's access records |
 | H-AU-9(2)-01 | **AU-9(2)** Store on Separate Physical Systems or Components<br>Related: AU-11, AU-6 | PR.DS-10 | **Keep logs off the host.** Send the installation's security events and logs to a system the application's administrators can't change, and keep action-log archives in write-once storage. | OpenClear signs and chains the action log, and delivers security events to the installation's destination. | automated | `event_delivery` (live) | Continuous | Controls → Security events delivered |
 | H-SI-4-01 | **SI-4** System Monitoring<br>Related: CA-7 | ID.RA-01, ID.IM-01, ID.IM-02, ID.IM-03, PR.DS-01, PR.DS-02, PR.DS-10, DE.CM-01, DE.CM-06, DE.CM-09, DE.AE-02, DE.AE-03 | **Watch that it's running.** Monitor /health, the job queue and the scheduled jobs, and alert someone when they stop. | OpenClear reports its health and each scheduled job's last run. | assisted | `scheduled_jobs` (live) | Continuous | /health; Controls |
 | H-IR-6-01 | **IR-6** Incident Reporting<br>Related: IR-4, IR-8 | PR.IR-03, RS.MA-01, RS.MA-02, RS.MA-03, RS.MA-04, RS.AN-06, RS.AN-07, RS.CO-02, RS.CO-03, RC.CO-03 | **Notify banks of incidents.** Notify each affected bank of an incident as soon as possible, as the computer-security incident notification rule for bank service providers requires, and keep each bank's contacts current. | OpenClear's action log and security events show what happened in each bank. | attested | — | Per event | The host's incident records |
-
-## Check still to come
-
-| Check | What it shows | CUECs |
-|---|---|---|
-| `software_currency` | The running version's age, and releases since it | H-SI-2-01 |

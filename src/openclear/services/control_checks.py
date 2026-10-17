@@ -712,3 +712,45 @@ def key_age(session: Session, tenant_id: uuid.UUID) -> Control:
     if old:
         return Control("key_age", title, WARN, f"Older than your {period}-day rotation period: {', '.join(old)}.", evidence)
     return Control("key_age", title, PASS, f"All {len(keys)} signing keys are younger than your {period}-day rotation period.", evidence)
+
+
+def software_currency(session: Session, tenant_id: uuid.UUID) -> Control:
+    """How long a newer OpenClear release than the one running has been out (services/release_feed.py):
+    PASS within `software_currency_warn_days`, WARN after, FAIL after `software_currency_fail_days`."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    from openclear.services import release_feed
+
+    settings = get_settings()
+    title = "Software kept up to date"
+    try:
+        running_text = version("openclear")
+    except PackageNotFoundError:
+        running_text = "unknown"
+    running = release_feed.parse_version(running_text)
+    evidence: dict = {"running": running_text, "feed": settings.release_feed_url or None, "warn_days": settings.software_currency_warn_days,
+                      "fail_days": settings.software_currency_fail_days}
+    try:
+        published = release_feed.releases()
+    except release_feed.FeedError as exc:
+        evidence["error"] = str(exc)
+        return Control("software_currency", title, WARN, f"Couldn't read the release feed, so OpenClear can't tell whether {running_text} "
+                                                         f"is current: {exc}", evidence)
+    if published is None:
+        return Control("software_currency", title, WARN, f"Running {running_text}. No release feed is set (OPENCLEAR_RELEASE_FEED_URL), "
+                                                         "so OpenClear can't tell whether it's current.", evidence)
+    evidence["latest"] = published[-1].tag
+    if running is None:
+        return Control("software_currency", title, WARN, f"Running {running_text}, which isn't a published release.", evidence)
+    newer = [r for r in published if r.version > running]
+    evidence["newer"] = [{"tag": r.tag, "published_at": r.published_at.isoformat()} for r in newer]
+    if not newer:
+        return Control("software_currency", title, PASS, f"Running {running_text}, the latest release.", evidence)
+    days = (_now() - newer[0].published_at).days
+    evidence["days_since_first_newer"] = days
+    behind = f"Running {running_text}; {len(newer)} newer release{'s' if len(newer) != 1 else ''}, the first ({newer[0].tag}) out {days} days"
+    if days > settings.software_currency_fail_days:
+        return Control("software_currency", title, FAIL, f"{behind}, more than {settings.software_currency_fail_days}.", evidence)
+    if days > settings.software_currency_warn_days:
+        return Control("software_currency", title, WARN, f"{behind}, more than {settings.software_currency_warn_days}.", evidence)
+    return Control("software_currency", title, PASS, f"{behind}, within {settings.software_currency_warn_days}. Latest: {newer[-1].tag}.", evidence)

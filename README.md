@@ -692,8 +692,10 @@ third-party risk guidance):
   and any past period can be tested on demand from the data OpenClear already keeps.
   Access reviews (Settings → Access reviews; a self-managing customer's of its own people),
   presented-items files reconciled against their control totals, decision files acknowledged,
-  outside services reviewed, and the bank's own password and key-rotation standards
-  (Settings → Your standards) are checked too. Each CUEC is mapped to the bank's own control
+  outside services reviewed, the bank's own password and key-rotation standards
+  (Settings → Your standards), and whether the installation keeps up with OpenClear's releases
+  (read from `OPENCLEAR_RELEASE_FEED_URL`, GitHub's releases by default; empty turns it off) are
+  checked too. Each CUEC is mapped to the bank's own control
   (Settings → CUECs, or loaded from the filled-in `cuecs.csv`) and attested each period: for an
   automated one, OpenClear proposes the attestation from its test history (95% coverage, no
   deviation beyond the grace period, every population test passed), the control owner accepts

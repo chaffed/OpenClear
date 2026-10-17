@@ -54,9 +54,8 @@ and owner.
 {evidence}
 - **CSF 2.0**: the NIST Cybersecurity Framework 2.0 subcategories that NIST's own mapping
   links to the CUEC's 800-53 control ([by subcategory](csf.md)).
-- **Check**: the test that produces the evidence. *Live* checks are on the Controls page
-  today, each keeping a test history from which an automated CUEC can be attested for a period;
-  the one *planned* check, the host's software currency, needs a source of release dates.
+- **Check**: the test that produces the evidence. Each is on the Controls page, keeping a
+  test history from which an automated CUEC can be attested for a period.
 """
 
 
@@ -82,13 +81,14 @@ def render_markdown() -> str:
             parts.append(f"| {c.id} | {nist} | {_csf(crosswalks.csf_for(c.nist))} | **{c.title}.** {c.statement} | {c.complements} | {c.evidence} | {check} | "
                          f"{c.frequency} | {c.where} |")
         parts.append("")
-    parts.append("## Check still to come\n")
-    parts.append("| Check | What it shows | CUECs |")
-    parts.append("|---|---|---|")
-    for key, text in sorted(cuecs.PLANNED_CHECKS.items()):
-        ids = ", ".join(c.id for c in cuecs.CUECS if c.check == key)
-        parts.append(f"| `{key}` | {text} | {ids} |")
-    return "\n".join(parts) + "\n"
+    if cuecs.PLANNED_CHECKS:
+        parts.append("## Checks still to come\n")
+        parts.append("| Check | What it shows | CUECs |")
+        parts.append("|---|---|---|")
+        for key, text in sorted(cuecs.PLANNED_CHECKS.items()):
+            ids = ", ".join(c.id for c in cuecs.CUECS if c.check == key)
+            parts.append(f"| `{key}` | {text} | {ids} |")
+    return "\n".join(parts).rstrip("\n") + "\n"
 
 
 def render_json() -> str:
@@ -128,8 +128,7 @@ Inventory version {version}. The same list, with each check's live status for yo
   links to those 800-53 controls ([by subcategory](csf.md)).
 - **Type**: {types}.
 - **Nature**: {natures}. A configurable control relies on the CUEC that sets it.
-- **Checks**: the tests of the control. *Live* checks are on the Controls page today;
-  the one *planned* check, the host's software currency, needs a source of release dates.
+- **Checks**: the tests of the control, each on the Controls page.
 """
 
 

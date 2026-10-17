@@ -14,6 +14,7 @@ os.environ.setdefault("OPENCLEAR_ENVIRONMENT", "development")
 # a job's effect as soon as its request returns.
 os.environ.setdefault("OPENCLEAR_WORKER_MODE", "inline")
 os.environ.setdefault("OPENCLEAR_REENCRYPT_SECRETS_AT_STARTUP", "false")  # tests call reencrypt_all themselves
+os.environ.setdefault("OPENCLEAR_RELEASE_FEED_URL", "")  # no network: tests give the software currency check its feed
 
 import uuid
 from collections.abc import Generator

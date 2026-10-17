@@ -370,6 +370,13 @@ class Settings(BaseSettings):
     # from cron. The Controls page warns when a bank's last anomaly-capture run is over a day old.
     enable_control_test_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
     control_test_cron_hour: int = 4
+    # The host's software currency check (services/release_feed.py, CONTROLS_PLAN.md CT2): where
+    # OpenClear's releases are listed, as GitHub's releases API gives them (a mirror inside your
+    # network works too); empty turns the check off, and it then warns that it can't tell. A newer
+    # release out longer than the first number of days is a WARN, longer than the second a FAIL.
+    release_feed_url: str = "https://api.github.com/repos/chaffed/OpenClear/releases"
+    software_currency_warn_days: int = 30
+    software_currency_fail_days: int = 180
     retention_finished_jobs_days: int = 30
     retention_notifications_days: int = 180
     retention_bulk_row_results_days: int = 365

@@ -402,3 +402,11 @@ One merge per phase, at most one migration each, the three full suites once per 
   `attestation_requested`), once per year (`customers_asked_for_year`), and "Ask them now" on the
   page. Asked for the calendar year whatever the bank's own period. Only `software_currency`
   and SOC 2 remain.
+- 2026-10-17 `software_currency` built on branch `software-currency`: "Software kept up to date"
+  (`control_checks.software_currency`, installation scope, nightly) from `services/release_feed.py`,
+  which reads `release_feed_url` (GitHub's releases API by default, or a mirror in its shape),
+  skipping drafts and pre-releases, kept 12 hours and a failure for one, with a 3-second timeout,
+  since a page view works out every state check. PASS when current or a newer release is out
+  under `software_currency_warn_days` (30), WARN after, FAIL after `software_currency_fail_days`
+  (180); WARN when the feed is off or unreadable, or the running version isn't a release. The
+  suite runs with the feed off. `PLANNED_CHECKS` is now empty. Only SOC 2 remains.

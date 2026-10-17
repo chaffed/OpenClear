@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A new check, "Software kept up to date"**, for the host's CUEC to apply updates: it reads
+  OpenClear's published releases (`OPENCLEAR_RELEASE_FEED_URL`, GitHub's releases API by
+  default, or a mirror; empty turns it off) and warns when a newer release has been out more
+  than 30 days (`OPENCLEAR_SOFTWARE_CURRENCY_WARN_DAYS`), and fails after 180
+  (`OPENCLEAR_SOFTWARE_CURRENCY_FAIL_DAYS`). The feed is read at most every 12 hours. It was
+  the last check the CUEC inventory listed as planned.
+
 Customers' own CUECs (CONTROLS_PLAN.md CT-D13):
 
 - **The bank sees its customers' attestations**: Settings → CUECs lists each customer with how

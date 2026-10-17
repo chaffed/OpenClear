@@ -17,8 +17,7 @@ Inventory version 1.0. The same list, with each check's live status for your ban
   links to those 800-53 controls ([by subcategory](csf.md)).
 - **Type**: *preventive* stops something happening; *detective* shows that it happened; *corrective* puts it right.
 - **Nature**: *built in*, always on; *configurable*, depends on a bank's setting. A configurable control relies on the CUEC that sets it.
-- **Checks**: the tests of the control. *Live* checks are on the Controls page today;
-  the one *planned* check, the host's software currency, needs a source of release dates.
+- **Checks**: the tests of the control, each on the Controls page.
 
 ## Access control
 
@@ -86,7 +85,7 @@ Inventory version 1.0. The same list, with each check's live status for your ban
 | Id | Control | NIST | CSF 2.0 | Type | Checks | Relies on | Where |
 |---|---|---|---|---|---|---|---|
 | OC-CM-01 | **Production settings enforced.** In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete storage settings, and the Controls page reports the settings in force. | **CM-6** Configuration Settings | PR.PS-01, DE.CM-09 | preventive, built in | `production_safety` (live) | H-CM-6-01 | Controls → Production safety |
-| OC-CM-02 | **Versioned releases and migrations.** Each release is versioned with a changelog, its database migrations upgrade and downgrade, and the running version is published. | **CM-3** Configuration Change Control<br>**SI-2** Flaw Remediation<br>**CP-10** System Recovery and Reconstitution | ID.RA-07, ID.IM-01, ID.IM-02, ID.IM-03, PR.PS-01, PR.PS-02, PR.IR-03, DE.CM-01, DE.CM-09, RC.RP-01, RC.RP-02, RC.RP-05 | preventive, built in | `software_currency` (planned) | H-SI-2-01 | /openapi.json; CHANGELOG.md |
+| OC-CM-02 | **Versioned releases and migrations.** Each release is versioned with a changelog, its database migrations upgrade and downgrade, and the running version is published. | **CM-3** Configuration Change Control<br>**SI-2** Flaw Remediation<br>**CP-10** System Recovery and Reconstitution | ID.RA-07, ID.IM-01, ID.IM-02, ID.IM-03, PR.PS-01, PR.PS-02, PR.IR-03, DE.CM-01, DE.CM-09, RC.RP-01, RC.RP-02, RC.RP-05 | preventive, built in | `software_currency` (live) | H-SI-2-01 | /openapi.json; CHANGELOG.md |
 | OC-CM-03 | **What's running is recorded.** The evidence export records the version, the plugins and models in force with their digests, and the outside services turned on. | **CM-2** Baseline Configuration<br>**CM-8** System Component Inventory | ID.AM-01, ID.AM-02, PR.PS-01 | detective, built in | `outside_services` (live) | B-SA-9-01 | Controls → Export evidence |
 
 ## Assessment and monitoring

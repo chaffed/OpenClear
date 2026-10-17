@@ -11,9 +11,7 @@
     "assisted": "OpenClear supplies the evidence (a report, an export, a recorded review); a person judges it",
     "attested": "outside what OpenClear can see; a person attests, and may attach evidence"
   },
-  "planned_checks": {
-    "software_currency": "The running version's age, and releases since it"
-  },
+  "planned_checks": {},
   "cuecs": [
     {
       "id": "B-AC-2-01",
@@ -1947,7 +1945,7 @@
       "complements": "OpenClear publishes versioned releases with a changelog, and shows the running version.",
       "evidence": "assisted",
       "check": "software_currency",
-      "check_status": "planned",
+      "check_status": "live",
       "frequency": "Monthly",
       "csf": [
         {

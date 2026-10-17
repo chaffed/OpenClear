@@ -33,8 +33,8 @@ def test_the_control_inventory_with_live_results(client, db_session, tenant_fact
     sod_customer = next(c for c in sod["checks"] if c["key"] == "customer_sod")
     assert sod_customer["status"] == "live" and sod_customer["result"] == "PASS"
     assert sod["status"] == max((live["result"], sod_customer["result"]), key=["PASS", "WARN", "FAIL"].index)  # the worst of them
-    planned = next(c for c in by_id["OC-CM-02"]["checks"] if c["key"] == "software_currency")
-    assert planned == {"key": "software_currency", "status": "planned", "title": None, "result": None, "detail": None}
+    currency = next(c for c in by_id["OC-CM-02"]["checks"] if c["key"] == "software_currency")
+    assert currency["status"] == "live" and currency["result"] == "WARN" and "No release feed is set" in currency["detail"]  # none in tests
     assert sod["cuecs"] == ["B-AC-5-01", "C-AC-5-01"]
 
     assert by_id["OC-AC-09"]["status"] is None and by_id["OC-AC-09"]["checks"] == []  # nothing checks it yet

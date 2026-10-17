@@ -68,4 +68,4 @@ def test_as_dict():
     assert data["family"] == "IA"
     assert data["nist"][0] == {"id": "IA-2(1)", "title": "Multi-factor Authentication to Privileged Accounts", "oscal_id": "ia-2.1"}
     assert {"key": "admin_mfa", "status": "live"} in data["checks"] and {"key": "staff_mfa", "status": "live"} in data["checks"]
-    assert {"key": "software_currency", "status": "planned"} in controls.by_id()["OC-CM-02"].as_dict()["checks"]
+    assert {"key": "software_currency", "status": "live"} in controls.by_id()["OC-CM-02"].as_dict()["checks"]

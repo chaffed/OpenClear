@@ -125,10 +125,8 @@ NIST_ID = re.compile(r"^(AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|S
 from openclear.compliance.checks import KEYS as _LIVE  # noqa: E402
 
 EXISTING_CHECKS = frozenset(_LIVE)
-# Checks still to come, each for the CUECs that name it: the host's software currency needs a source of release dates.
-PLANNED_CHECKS = {
-    "software_currency": "The running version's age, and releases since it",
-}
+# Checks still to come, each for the CUECs that name it ({key: what it shows}); none now.
+PLANNED_CHECKS: dict[str, str] = {}
 
 
 @dataclass(frozen=True)
