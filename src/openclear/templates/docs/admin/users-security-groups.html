@@ -65,4 +65,43 @@ existing one's permission set. Changes take effect immediately for anyone in tha
   bookkeeper who services several clients, or a bank employee who needs visibility into
   more than one customer.</li>
 </ul>
+
+<h2>Two people for settings changes</h2>
+<p>Some changes wait for a second person before they apply (dual control, or maker-checker for
+settings). Whoever asked can't approve their own change. Changes that tighten protection always
+apply at once; only those that loosen it wait.</p>
+<ul>
+  <li><strong>Always</strong>: turning a protection off or weakening it, such as segregation of
+  duties, any of the switches below, lockout, password and inactivity rules, required sign-on,
+  password sign-in, or security event forwarding.</li>
+  <li><strong>Sensitive settings</strong> (Settings → <em>Dual control</em>, off by default; on for
+  banks that were in segregation-of-duties <em>enforce</em> mode): matching rules, scoring models,
+  security groups, new API clients and webhooks, single sign-on connections, group mappings and
+  SCIM tokens, decision files, the embedded view, customers' self-service, and switching to the
+  shared model. A new API client, webhook or sign-on connection is made inactive, with its secret
+  shown once, and the approval turns it on.</li>
+  <li><strong>Access changes</strong>: adding someone (one at a time, in bulk, or a grant to
+  another customer), giving more permissions or accounts, and reactivating someone. They're added
+  but can't sign in until approved. Removing or narrowing access never waits.</li>
+  <li><strong>Customers' sensitive changes</strong>: at a customer that manages its own people, its
+  sign-on, password sign-in, password policy, SCIM token, API clients and new administrators. Another
+  of its administrators approves on its <em>People</em> page; if it has only one, your staff with
+  <code>customer:manage</code> approve. A customer can turn this on for itself, and only you can turn
+  it off.</li>
+</ul>
+<p>Waiting changes are on <a href="/ui/admin/changes">Changes</a>, and in
+<code>GET /api/v1/changes</code>, with the values before and after. Anyone who could make the change
+can approve it; rejecting needs a reason; the requester can withdraw it. The people who can approve
+are told by email or text. A change waits seven days and then expires. If the setting has changed
+meanwhile, approval is refused and the change needs asking again. Only one change per setting waits
+at a time.</p>
+<p>A switch turns on only while someone else could approve. If everyone else who could approve
+leaves, a waiting change applies alone after 24 hours unless withdrawn; that's logged as a critical
+<code>change_request.applied_alone</code> security event, and the Controls page flags it. Every
+request and decision is in the action log, and the evidence export lists the period's changes with
+both people's names.</p>
+<p>At the service provider, provisioning a bank, granting a platform role, fee items and activating
+the shared model wait for a second operator (Platform → <em>Changes</em>), in the provider's own
+signed action log. Changes to the installation's settings are flagged on the Controls page until an
+operator acknowledges them there.</p>
 {% endblock %}

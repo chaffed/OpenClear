@@ -196,3 +196,22 @@ def test_the_changes_page_and_api(client, db_session, tenant_factory):
     _login(client, tenant.slug, second.email)
     page = client.get("/ui/admin/changes")
     assert page.status_code == 200 and "Recently decided" in page.text and "approved" in page.text
+
+
+def test_the_evidence_export_lists_the_periods_changes(db_session, tenant_factory):
+    from datetime import date
+
+    from openclear.services import evidence_service
+
+    tenant, _a, users = tenant_factory.make(slug="dc-evidence")
+    second = _second_admin(db_session, tenant)
+    changes.request_or_apply(db_session, "password_policy", _policy(), tenant_id=tenant.id, user_id=users["admin"].id)
+    waiting = changes.request_or_apply(db_session, "password_policy", _policy(password_min_length=8), tenant_id=tenant.id,
+                                       user_id=users["admin"].id)
+    changes.decide(db_session, tenant.id, waiting.change.id, approve=True, user_id=second.id)
+    db_session.commit()
+    today = date.today()
+    listed = evidence_service.build(db_session, tenant.id, start=today, end=today, generated_by_user_id=None)["change_control"]
+    assert [(c["kind"], c["status"], c["requested_by"], c["decided_by"]) for c in listed] == \
+        [("password_policy", "approved", users["admin"].email, second.email)]
+    assert listed[0]["before"]["password_min_length"] == 12 and listed[0]["after"]["password_min_length"] == 8

@@ -194,3 +194,34 @@ DC5 in any order.
   DC-D1 to DC-D15 are recommendations, waiting for the owner.
 - 2026-10-17 The owner added DC-D16: a second-person switch can't be turned on unless someone
   else can approve. DC-D17 (approvers leaving later) and the approvers list in DC0 follow from it.
+- 2026-10-17 DC0 to DC2 built (branch dc0-mechanism): the widened change_request, the kinds
+  registry (`services/change_kinds.py`), `request_or_apply`, Changes and `/api/v1/changes`,
+  the three switches, access holds. Differences from the plan:
+  - The sensitive switch stays off for new banks. A new bank has one admin, so DC-D16 wouldn't
+    let it be on. The `second_approver` check warns once a second admin exists.
+  - Turning the switches on and off is its own kind (`approval_switches`). DC-D16 is checked
+    per function.
+  - Reactivating someone is an access kind.
+  - Auto-import is read-only in the web UI, so it isn't a kind.
+- 2026-10-17 DC3 built: ten customer kinds. The bank's customer:manage staff approve when the
+  customer has only one administrator (DC-D7).
+- 2026-10-17 DC4 built:
+  - `platform_action_log` is signed like the bank's log;
+  - provisioning, platform roles, fee items and the shared model wait for a second operator;
+  - the API answers `202`;
+  - `--emergency` applies at once and is flagged as `change_request.applied_alone`;
+  - installation settings are digested and acknowledged.
+
+  Differences from the plan:
+  - Host attestations are a prepare-and-accept in two steps rather than a change request.
+  - The fraud example and the switch lock stay in each bank's log, not the provider's.
+- 2026-10-17 DC5 built:
+  - `two_person_changes` covers every protected kind, and `change_impact_replay` keeps to
+    rules and models;
+  - new checks `second_approver` and `installation_settings`;
+  - OC-AC-07 renamed, new OC-AC-13, inventory 1.2;
+  - the evidence export's `change_control`;
+  - docs (admin guide, FFIEC, SR 11-7, SIEM guide, data dictionary, changelog).
+
+  Difference from the plan: no separate CUEC for keeping a second admin, because the
+  `second_approver` check covers it.

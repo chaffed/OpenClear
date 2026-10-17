@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+Two people for settings changes (dual control for settings; DUAL_CONTROL_PLAN.md):
+
+- **Turning a protection off or down always needs a second admin**, at every bank, from this
+  release. That covers segregation of duties (*enforce* to *warn*), dual control on decisions,
+  the second-person switches, lockout, password and inactivity rules, the attestations' second
+  person, approval of new customer users, required sign-on and password sign-in, and security
+  event forwarding. Tightening any of them applies at once. **Moving segregation of duties to
+  *warn* is the change you're most likely to notice.**
+- **Three switches** under Settings → Dual control, each turned on only while someone else
+  can approve:
+  - *Sensitive settings need a second admin*: rules, models, security groups, API clients,
+    webhooks, single sign-on, mappings and SCIM tokens, decision files, the embedded view,
+    customer self-service, and switching to the shared model. It's on for banks that were on
+    *enforce*, which is what used to send rule and model changes for approval. New API
+    clients, webhooks and sign-on connections are made inactive with their secret shown once,
+    and approval turns them on.
+  - *Access changes need a second admin*: new people, wider permissions or accounts, and
+    reactivation. Removing access never waits.
+  - *Customers' sensitive changes need a second person*: a self-managing customer's sign-on,
+    API clients and new administrators. Another of its administrators approves, or the bank's
+    staff when the customer has only one. A customer can turn this on for itself.
+- **Changes** shows every waiting change with its values before and after. You can approve,
+  reject (with a reason) or withdraw it, and the API has the same in `/api/v1/changes`. A
+  change answers `202` when it waits. Approvers are told by email or text, and there are
+  webhooks `change_request.created` and `change_request.decided`. A change expires after
+  seven days, is refused if the setting changed meanwhile, and only one waits per setting. If
+  nobody else can approve, it applies alone after 24 hours. That raises a critical
+  `change_request.applied_alone` security event.
+- **At the service provider**, these wait for a second operator (Platform → Changes):
+  provisioning a bank, platform roles (`scripts/platform_staff.py`; `--emergency` applies at
+  once and is flagged), fee items, and activating the shared model. Host attestations are
+  prepared by one operator and accepted by another. The provider has its own signed,
+  hash-chained action log with a `platform.action` security event. Changes to the
+  installation's settings show on the Controls page until an operator acknowledges them.
+- **Controls** (inventory 1.2):
+  - OC-AC-07 becomes "Two people for settings changes". It checks every protected change and
+    warns when a bank with a second admin hasn't turned on the sensitive switch.
+  - New OC-AC-13 "Two people at the service provider".
+  - The evidence export lists the period's changes with both people's names and the values.
+
 Lockout and inactive accounts (Settings → Lockout and inactive accounts):
 
 - **A bank sets its own lockout**: how many failed password sign-ins lock an account and for how

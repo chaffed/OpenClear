@@ -138,6 +138,9 @@ erDiagram
 <tr><td>deactivate_inactive / deactivate_inactive_days</td><td>Boolean / Integer</td><td>no</td><td></td><td>Deactivate a person's access after this many days without a sign-in to the bank (off by default; 90).</td></tr>
 <tr><td>remove_inactive / remove_inactive_days</td><td>Boolean / Integer</td><td>no</td><td></td><td>Remove a person's access (the membership) after this many days without a sign-in (off by default; 365).</td></tr>
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
+<tr><td>sensitive_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>Loosening a sensitive setting (security groups, API clients, webhooks, sign-on, decision files and the rest in the admin guide) waits for a second admin. Off by default; on for banks that were in sod_mode enforce. Can't be turned on without someone else who can approve.</td></tr>
+<tr><td>access_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>New access and widened access (memberships, groups, accounts, reactivation) waits for a second admin. Off by default.</td></tr>
+<tr><td>customer_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>A customer's own sensitive changes (sign-on, its API clients, a new administrator) wait for a second person at that customer, or at the bank when the customer has nobody else. A customer's changes_need_approval overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
 <tr><td>stale_date_threshold_days</td><td>Integer</td><td>no</td><td></td><td>Days after which an outstanding issued item is considered stale.</td></tr>
@@ -193,6 +196,7 @@ transactional record.</p>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>notes</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
 <tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>This customer's own reminder timing, set by its own users. Null follows the bank's; empty turns them off.</td></tr>
+<tr><td>changes_need_approval</td><td>Boolean</td><td>yes</td><td></td><td>This customer's own sensitive changes wait for a second person. Null follows the bank's customer_changes_need_approval.</td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>
@@ -1224,20 +1228,29 @@ erDiagram
 </table>
 
 <h3>change_request</h3>
-<p>A change to how items are judged (turning a matching rule on or off, activating a scoring
-model) waiting for a second admin, under segregation of duties in enforce mode. Whoever asked
-can't approve it.</p>
+<p>A settings change waiting for a second person (dual control): at a bank, at one of its
+customers, or at the service provider. Whoever asked can't approve it. Changes that tighten
+apply at once and aren't here; see the admin guide's "Two people for settings changes".</p>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
-<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>kind</td><td>String(60)</td><td>no</td><td></td><td>matching_rule.set or ml_model.activate.</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td>Null for the service provider's own changes, which only a session bound to no bank can read or write.</td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>Set for a customer's own change.</td></tr>
+<tr><td>scope</td><td>String(10)</td><td>no</td><td></td><td>provider, bank or customer.</td></tr>
+<tr><td>kind</td><td>String(60)</td><td>no</td><td></td><td>What sort of change, from the registry in <code>services/change_kinds.py</code>: password_policy, sso_connection.activate, access.entitlements, platform.role…</td></tr>
+<tr><td>setting</td><td>String(160)</td><td>yes</td><td>indexed</td><td>The one thing it changes; only one request per setting is open at a time.</td></tr>
 <tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td>What the change does, as shown to the approver.</td></tr>
-<tr><td>payload</td><td>JSON</td><td>no</td><td></td><td>What to apply on approval (the rule and its settings, or the model).</td></tr>
-<tr><td>status</td><td>String(20)</td><td>no</td><td></td><td>pending / approved / rejected.</td></tr>
-<tr><td>requested_by_user_id / decided_by_user_id</td><td>UUID</td><td>no / yes</td><td>FK → user.id</td><td>Who asked, and who approved or rejected it (never the same person).</td></tr>
+<tr><td>payload</td><td>JSON</td><td>no</td><td></td><td>What to apply on approval. Secrets in it are encrypted; a SCIM token is kept only as its hash.</td></tr>
+<tr><td>before / after</td><td>JSON</td><td>yes</td><td></td><td>The setting's values when asked for and as proposed. If the setting has changed since, approval is refused.</td></tr>
+<tr><td>reason</td><td>String(500)</td><td>yes</td><td></td><td>Why the requester wants it.</td></tr>
+<tr><td>status</td><td>String(20)</td><td>no</td><td></td><td>pending / approved / rejected / withdrawn / expired / applied_alone (nobody else could approve, so it applied after its 24-hour cooling-off).</td></tr>
+<tr><td>requested_by_user_id / decided_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Who asked, and who approved or rejected it (never the same person). The requester is null when a platform API key asked.</td></tr>
+<tr><td>requested_with</td><td>String(60)</td><td>yes</td><td></td><td>web, api, a script, or the platform API key's id.</td></tr>
 <tr><td>requested_at / decided_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+<tr><td>expires_at</td><td>Timestamp</td><td>yes</td><td></td><td>Seven days after asking; then it expires unapplied.</td></tr>
+<tr><td>applies_at</td><td>Timestamp</td><td>yes</td><td></td><td>Set when nobody else can approve: it applies alone at this time unless withdrawn.</td></tr>
+<tr><td>decided_reason</td><td>String(500)</td><td>yes</td><td></td><td>Why it was rejected (required) or approved.</td></tr>
 </tbody>
 </table>
 
@@ -1498,6 +1511,41 @@ audit_log_entry chains onto <code>through_entry_hash</code>.</p>
 <tr><td>archive_sha256 / archive_signature</td><td>String</td><td>no</td><td></td><td>The file's fingerprint and its ECDSA signature (file-signing key), checked by "Verify".</td></tr>
 <tr><td>oldest_occurred_at / newest_occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>platform_action_log</h3>
+<p>The service provider's own action log, kept apart from every bank's: changes requested and
+decided at the provider, platform roles, provisioning, the shared model, fee items, job
+retries and settings acknowledgements. Hash-chained and signed like the bank's action log;
+Platform → Changes verifies it. No tenant_id: under row-level security only a session bound
+to no bank can read or write it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>sequence</td><td>BigInteger</td><td>no</td><td>UK</td><td>The entry's position in the chain.</td></tr>
+<tr><td>occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>actor_user_id / actor_key_id</td><td>UUID</td><td>yes</td><td>FK → user.id / platform_api_key.id</td><td>The operator, or the platform API key, that did it.</td></tr>
+<tr><td>action</td><td>String(100)</td><td>no</td><td></td><td>Dotted action name, e.g. <code>platform.role</code>.</td></tr>
+<tr><td>summary</td><td>String(500)</td><td>no</td><td></td><td></td></tr>
+<tr><td>resource_type / resource_id</td><td>String(50) / UUID</td><td>varies</td><td></td><td></td></tr>
+<tr><td>metadata_json</td><td>JSON</td><td>yes</td><td></td><td></td></tr>
+<tr><td>prev_entry_hash / entry_hash</td><td>String(200)</td><td>yes / no</td><td></td><td>The chain: each entry's signature covers its own fields and the one before.</td></tr>
+</tbody>
+</table>
+
+<h3>installation_setting_digest</h3>
+<p>The installation's settings as last acknowledged by an operator (digests only, never the
+values). The installation_settings check warns when the running settings differ.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>digest</td><td>String(64)</td><td>no</td><td></td><td>SHA-256 over every watched setting.</td></tr>
+<tr><td>settings</td><td>JSON</td><td>no</td><td></td><td>Each watched setting's own digest, to name what changed.</td></tr>
+<tr><td>acknowledged_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>acknowledged_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Null for the first one seen, the baseline.</td></tr>
 </tbody>
 </table>
 

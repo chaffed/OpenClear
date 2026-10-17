@@ -677,8 +677,12 @@ third-party risk guidance):
   groups and per item: the person who presented an item can't decide it.
   - In *warn* mode (where every bank starts) a breach is allowed and logged.
   - In *enforce* mode it's refused with `ERR_SOD_VIOLATION`.
-  - Under enforce, turning a matching rule on or off and activating a model wait for a second
-    admin (Settings → Changes).
+- **Two people for settings changes** (Settings → Dual control; waiting changes on Changes and
+  `/api/v1/changes`). Loosening a protection always waits for a second admin. Three switches
+  add the bank's sensitive settings, access changes and customers' own sensitive changes, and
+  each turns on only while someone else can approve. The service provider's own changes need
+  two operators and go in its signed log. See the admin guide's "Two people for settings
+  changes".
 - **Model risk** (Settings → Model risk):
   - *replay* runs a past X9.37 or NACHA file through today's rules and compares the result
     with what happened;
@@ -695,7 +699,7 @@ third-party risk guidance):
   `GET /api/v1/compliance/controls`), and what they rely on the bank, its customers and its host
   to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)). Both are
   also listed by NIST CSF 2.0 subcategory, following NIST's own mapping ([docs/compliance/csf.md](docs/compliance/csf.md)).
-  38 checks: some look at the bank as it is (hourly), some at every item in a period (nightly,
+  48 checks: some look at the bank as it is (hourly), some at every item in a period (nightly,
   over the previous day: dual control, two-person changes, replays before changes, support
   access, customers' timeliness). Every scheduled run is kept for seven years
   (`OPENCLEAR_CONTROL_RESULT_RETENTION_DAYS`), with a 30-day strip on each check's page; a FAIL

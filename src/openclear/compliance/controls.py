@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from openclear.compliance.crosswalks import csf_for_all, csf_title, soc2_for_all
 from openclear.compliance.cuecs import NIST_TITLES, PLANNED_CHECKS, oscal_id
 
-VERSION = "1.1"  # 1.1: OC-AC-02 deactivates and removes inactive access; OC-IA-01 the bank sets lockout
+VERSION = "1.2"  # 1.2: OC-AC-07 covers settings changes at every level; OC-AC-13, the service provider
 
 FAMILIES = {
     "AC": "Access control",
@@ -111,10 +111,14 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-AC-06", "Dual control on decisions",
       "When a bank turns dual control on, one person recommends a decision and a different person approves it.",
       ("AC-3(2)", "AC-5"), "preventive", "configurable", ("dual_control",), ("B-AC-3(2)-01",), "Settings → Dual control; Approvals"),
-    C("OC-AC-07", "Two people for rule and model changes",
-      "Turning on a matching rule and promoting a fraud model wait for a second admin's approval under enforced segregation of "
-      "duties, and both steps are logged.",
-      ("CM-3", "CM-5", "AC-3(2)"), "preventive", "configurable", ("two_person_changes",), ("B-CM-3-01",), "Settings → Changes"),
+    C("OC-AC-07", "Two people for settings changes",
+      "Turning a protection off (dual control, segregation of duties, lockout, password and inactivity rules, required sign-on, "
+      "security event forwarding) always waits for a second admin; so do matching rules, scoring models, security groups, sign-on, "
+      "API clients, webhooks and widening people's access when the bank asks, and a customer's own sign-on, API clients and new "
+      "administrators when the bank or the customer asks. Tightening never waits; a switch turns on only while someone else can "
+      "approve; with nobody else, a change takes effect after 24 hours as a critical security event. Every step is logged.",
+      ("CM-3", "CM-5", "AC-3(2)"), "preventive", "configurable", ("two_person_changes", "second_approver"), ("B-CM-3-01",),
+      "Settings → Dual control; Changes awaiting approval"),
     C("OC-AC-08", "Support access only by grant",
       "Platform staff reach a bank's data only through a grant the bank makes: named, with a reason and an end, read-only "
       "unless a second admin allows more, and never to decide.",
@@ -135,6 +139,13 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-AC-12", "ACH debits only from authorized originators",
       "An ACH debit from an originator not on the account's authorizations becomes an exception for the customer to decide.",
       ("AC-3",), "preventive", "configurable", ("stale_ach_authorizations",), ("C-AC-3-01",), "ACH → Authorizations"),
+    C("OC-AC-13", "Two people at the service provider",
+      "Setting up a bank, activating the shared scoring model, platform staff roles and platform fees wait for a second of the "
+      "platform's operators, and a request made with a platform API key waits for a person. Host attestations are prepared by one "
+      "and accepted by another. The provider's own action log is chained and signed, and its security-relevant settings are "
+      "watched until acknowledged.",
+      ("CM-3", "CM-5", "AC-3(2)", "AU-9"), "preventive", "built_in", ("installation_settings",), ("H-CM-6-01",),
+      "The operator view's Changes; the provider's action log"),
     # --- Identification and authentication ------------------------------------------------
     C("OC-IA-01", "Password policy and lockout",
       "Passwords meet the bank's policy (length and the kinds of character required), and repeated failed sign-ins lock "

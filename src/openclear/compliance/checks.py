@@ -94,6 +94,7 @@ def _registry() -> tuple[Check, ...]:
         Check("platform_staff", "Platform staff use a second factor", c.platform_staff, scope="installation"),
         Check("software_currency", "Software kept up to date", c.software_currency, scope="installation", schedule="nightly"),
         Check("installation_settings", "Installation settings unchanged", c.installation_settings, scope="installation"),
+        Check("second_approver", "Someone else can approve", c.second_approver),
         # CT3: access reviews, files, delivery, outside services and the bank's standards.
         Check("access_review", "Access reviewed this quarter", c.access_review, schedule="nightly"),
         Check("customer_access_review", "Customers reviewed their access", c.customer_access_review, schedule="nightly"),
@@ -130,6 +131,6 @@ KEYS = (
     "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls", "model_pooling_acknowledged",
     "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_signed", "evidence_export",
     "dual_control", "two_person_changes", "change_impact_replay", "support_access_review", "customer_decision_timeliness",
-    "scheduled_jobs", "transport_security", "platform_staff", "software_currency", "installation_settings", "access_review", "customer_access_review", "file_reconciliation",
+    "scheduled_jobs", "transport_security", "platform_staff", "software_currency", "installation_settings", "second_approver", "access_review", "customer_access_review", "file_reconciliation",
     "decision_delivery", "outside_services", "password_policy", "key_age", "control_response",
 )

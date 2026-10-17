@@ -49,6 +49,18 @@
 {% else %}<p>No CUEC attestations were accepted for the period.</p>{% endif %}
 {% endif %}
 
+{% if b.change_control is defined %}
+<h2>Changes that needed a second person</h2>
+{% if b.change_control %}
+<table>
+  <thead><tr><th>Change</th><th>Outcome</th><th>Asked by</th><th>Decided by</th></tr></thead>
+  <tbody>{% for c in b.change_control %}<tr><td>{{ c.summary }}</td><td>{{ c.status | replace("_", " ") }}</td>
+    <td>{{ c.requested_by or "—" }}<br><span class="muted">{{ (c.requested_at or "")[:16] | replace("T", " ") }}</span></td>
+    <td>{{ c.decided_by or ("nobody else could: after 24 hours" if c.status == "applied_alone" else "—") }}<br><span class="muted">{{ (c.decided_at or "")[:16] | replace("T", " ") }}</span></td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>None in the period.</p>{% endif %}
+{% endif %}
+
 <h2>Action log</h2>
 <table>
   <tr><th>Chain verifies</th><td>{{ "Yes" if b.audit.chain_verifies else "NO, broken at entry " ~ b.audit.broken_at_entry_id }} ({{ b.audit.live_entries_checked }} live entries checked)</td></tr>

@@ -470,14 +470,21 @@ def dual_control(session: Session, tenant_id: uuid.UUID, start: datetime, end: d
 def two_person_changes(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> Control:
     from openclear.domain.change_request import ChangeRequest
 
-    title = "Rule and model changes approved by a second admin"
-    approved = session.execute(select(ChangeRequest).where(ChangeRequest.tenant_id == tenant_id, ChangeRequest.status == "approved",
-                                                           ChangeRequest.decided_at >= start, ChangeRequest.decided_at < end)).scalars().all()
+    title = "Settings changes approved by a second person"
+    decided = session.execute(select(ChangeRequest).where(ChangeRequest.tenant_id == tenant_id,
+                                                          ChangeRequest.status.in_(("approved", "applied_alone")),
+                                                          ChangeRequest.decided_at >= start, ChangeRequest.decided_at < end)).scalars().all()
+    approved = [c for c in decided if c.status == "approved"]
+    alone = [c for c in decided if c.status == "applied_alone"]
     same = [c for c in approved if c.decided_by_user_id == c.requested_by_user_id]
-    evidence = {"approved_changes": len(approved), "approved_by_their_requester": len(same), "period": [start.isoformat(), end.isoformat()]}
+    evidence = {"approved_changes": len(approved), "approved_by_their_requester": len(same), "applied_without_a_second_person": len(alone),
+                "kinds": sorted({c.kind for c in decided}), "period": [start.isoformat(), end.isoformat()]}
     if same:
         return Control("two_person_changes", title, FAIL, f"{len(same)} of {len(approved)} changes were approved by the person who asked.", evidence)
-    return Control("two_person_changes", title, PASS, f"All {len(approved)} changes approved in the period had a second admin.", evidence)
+    if alone:
+        return Control("two_person_changes", title, WARN, f"{len(alone)} changes took effect after their 24 hours with nobody else to approve "
+                                                          f"them: {', '.join(c.summary for c in alone[:5])}.", evidence)
+    return Control("two_person_changes", title, PASS, f"All {len(approved)} changes approved in the period had a second person.", evidence)
 
 
 def change_impact_replay(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> Control:
@@ -487,6 +494,7 @@ def change_impact_replay(session: Session, tenant_id: uuid.UUID, start: datetime
 
     title = "Changes replayed before approval"
     approved = session.execute(select(ChangeRequest).where(ChangeRequest.tenant_id == tenant_id, ChangeRequest.status == "approved",
+                                                           ChangeRequest.kind.in_(("matching_rule.set", "ml_model.activate")),  # how items are judged
                                                            ChangeRequest.decided_at >= start, ChangeRequest.decided_at < end)).scalars().all()
     replays = [_aware(r) for r in session.execute(select(ControlRun.started_at).where(
         ControlRun.tenant_id == tenant_id, ControlRun.kind == REPLAY, ControlRun.started_at >= start - timedelta(days=30),
@@ -788,3 +796,40 @@ def installation_settings(session: Session, tenant_id: uuid.UUID) -> Control:
                        f"Changed since the platform's operators last acknowledged them: {', '.join(names)}. An operator acknowledges "
                        "them in the operator view once the change is confirmed as intended.", evidence)
     return Control("installation_settings", title, PASS, f"The {len(watched.WATCHED)} watched settings are as last acknowledged.", evidence)
+
+
+def second_approver(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Whether each second-person rule the bank has can be met (DUAL_CONTROL_PLAN.md DC-D16, DC-D17):
+    for each switch that's on, and for turning protections off, at least two people who could
+    approve; and whether sensitive settings are protected at a bank that has the people to."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import change_kinds, change_request_service
+
+    tenant = session.get(Tenant, tenant_id)
+    title = "Someone else can approve"
+
+    def enough(permission: str) -> bool:
+        return len(change_request_service.approvers(session, tenant_id, None, permission, excluding=None)) >= 2
+
+    needed = [("turning a protection off", "tenant:manage")]
+    if tenant.require_dual_control:
+        needed.append(("pay and return decisions", "exception:decide"))
+    if tenant.sensitive_changes_need_approval:
+        needed += sorted({(k.title.lower(), k.permission) for k in change_kinds.all_kinds() if k.tier == "sensitive" and k.scope == "bank"})
+    if tenant.access_changes_need_approval:
+        needed.append(("people's access", "user:manage"))
+    if tenant.customer_changes_need_approval:
+        needed.append(("customers' changes", "customer:manage"))
+    if tenant.attest_second_person:
+        needed.append(("CUEC attestations", "compliance:attest"))
+    short = [f"{what} (needs {permission})" for what, permission in needed if not enough(permission)]
+    evidence = {"rules": [what for what, _p in needed], "without_a_second_approver": short,
+                "sensitive_settings_protected": bool(tenant.sensitive_changes_need_approval)}
+    if short:
+        return Control("second_approver", title, WARN, f"Only one person could approve {'; '.join(short)}: changes there take effect after "
+                                                       "24 hours, and decisions wait to their deadline. Give a second person the permission.", evidence)
+    if not tenant.sensitive_changes_need_approval and enough("tenant:manage"):
+        return Control("second_approver", title, WARN, "Sensitive settings (rules, models, security groups, sign-on, API clients, webhooks) "
+                                                       "don't need a second admin, though you have one. Turn it on under Settings → Dual control.",
+                       evidence)
+    return Control("second_approver", title, PASS, f"Each of your {len(needed)} second-person rules has someone else to approve.", evidence)

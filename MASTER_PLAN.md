@@ -140,3 +140,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-17 CONTROLS_PLAN.md CT6's SOC 2 half: OpenClear reads an installation's own copy of AICPA's TSC to NIST 800-53 mapping (`scripts/import_crosswalks.py soc2`, `OPENCLEAR_SOC2_MAPPING_PATH`) and doesn't ship or use AICPA's mapping itself. CONTROLS_PLAN.md is complete.
 - 2026-10-17 Lockout and inactive accounts: a bank's own lockout (attempts, minutes, or until unlocked), and deactivating and removing inactive access, each switched on separately with its own days (`services/inactivity_service.py`, daily with housekeeping; per-bank `tenant_membership.last_active_at`; migration `f7b9c1d3e5a7`).
 - 2026-10-17 DUAL_CONTROL_PLAN.md written: a second person for settings changes at the service provider, bank and customer levels (DC0 to DC5). Waiting for the owner's decisions.
+- 2026-10-17 Dual control DC0 to DC5 built on branch dc0-mechanism (see DUAL_CONTROL_PLAN.md's progress log).

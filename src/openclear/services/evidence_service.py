@@ -262,6 +262,23 @@ def _control_testing(session: Session, tenant_id: uuid.UUID, start: datetime, en
     }
 
 
+def _change_control(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
+    """The period's settings changes that needed a second person (DUAL_CONTROL_PLAN.md): asked for,
+    or decided, in the period, with both people and the values before and after."""
+    from openclear.domain.change_request import ChangeRequest
+    from openclear.domain.user import User
+
+    rows = session.execute(select(ChangeRequest).where(ChangeRequest.tenant_id == tenant_id, or_(
+        (ChangeRequest.requested_at >= start) & (ChangeRequest.requested_at < end),
+        (ChangeRequest.decided_at >= start) & (ChangeRequest.decided_at < end))).order_by(ChangeRequest.requested_at)).scalars().all()
+    ids = {c.requested_by_user_id for c in rows} | {c.decided_by_user_id for c in rows}
+    emails = {u.id: u.email for u in session.execute(select(User).where(User.id.in_([i for i in ids if i]))).scalars()} if ids else {}
+    return [{"id": str(c.id), "kind": c.kind, "summary": c.summary, "scope": c.scope, "customer_id": str(c.customer_id) if c.customer_id else None,
+             "status": c.status, "requested_by": emails.get(c.requested_by_user_id) or c.requested_with, "requested_at": _iso(c.requested_at),
+             "decided_by": emails.get(c.decided_by_user_id), "decided_at": _iso(c.decided_at), "reason": c.decided_reason,
+             "before": c.before, "after": c.after} for c in rows]
+
+
 def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, generated_by_user_id: uuid.UUID | None) -> dict:
     from openclear.domain.tenant import Tenant
     from openclear.services import controls_service
@@ -285,6 +302,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "security_events": _security_events(session, tenant_id, period_start, period_end),
         "support_access": _support_access(session, tenant_id, period_start, period_end),
         "control_testing": _control_testing(session, tenant_id, period_start, period_end),
+        "change_control": _change_control(session, tenant_id, period_start, period_end),
         "controls": controls,
     }
 
