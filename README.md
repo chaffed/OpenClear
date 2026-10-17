@@ -673,8 +673,10 @@ third-party risk guidance):
     with what happened;
   - *anomaly capture* checks that synthetic fraud is caught.
 
-  Both are dry runs, rolled back. Turn on the daily anomaly capture with
-  `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true`.
+  Both are dry runs, rolled back. Turn on scheduled control testing with
+  `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true`: the daily anomaly capture, the hourly and
+  nightly checks below, and each period's proposed attestations. Without it, nothing builds the
+  test history that attestations are proposed from.
 - **Controls** (Settings → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
   control's live PASS / WARN / FAIL with its evidence. Record how the host encrypts disks and
   the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`. The page groups the checks under

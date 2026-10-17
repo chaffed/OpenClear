@@ -386,3 +386,11 @@ One merge per phase, at most one migration each, the three full suites once per 
   check is run by a test. CSF 2.0 subcategories are in the API, the attestations CSV and, as
   `csf-subcategory` properties, the component definition. Next: SOC 2 when AICPA's file is in hand; CT-D13
   and `software_currency` remain.
+- 2026-10-17 Checked against the original specification (`openclear_compliance_control_testing_suite_specification.md`,
+  mapped in COMPLIANCE_PLAN.md): every requirement is built, with the differences recorded there
+  (ECDSA rather than HMAC, no RTP network to replay, SoD starting in warn). Two more found: an
+  SoD breach is a `high` security event where the spec says critical, and the daily anomaly
+  capture is opt-in where the spec says automated. The same setting,
+  `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER` (off by default, as every scheduler is), runs all of
+  CT2's scheduled checks and CT4's proposals, but was described only as the anomaly capture; the
+  README, compliance page, GRC guide and its comment now say so. The sandbox doesn't turn it on.

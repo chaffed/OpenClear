@@ -64,6 +64,8 @@ whoever hosts OpenClear for it:
     group combines conflicting duties);
   - dual control on decisions;
   - second factors for admins;
-  - the daily anomaly-capture schedule (`OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER`).
+  - scheduled control testing (`OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER`): the hourly and
+    nightly checks, the daily anomaly capture, and each period's proposed attestations. Without
+    it there's no test history, and automated CUECs are attested "not tested".
 - **Process:** access reviews, incident response, the annual Nacha Rules compliance audit,
   and the bank's own model validation.

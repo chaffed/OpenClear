@@ -361,10 +361,13 @@ class Settings(BaseSettings):
     # (checks, ACH, exceptions, decisions) and its audit log are never touched here.
     enable_housekeeping_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
     housekeeping_cron_hour: int = 3
-    # The daily anomaly-capture test (services/mrm_service.py, COMPLIANCE_PLAN.md C2): runs
-    # synthetic fraud vectors through every bank's live rules in a dry run at
-    # control_test_cron_hour when enabled (or call workers.tasks.anomaly_capture_job from cron).
-    # The Controls page warns when a bank's last run is more than a day old.
+    # Scheduled control testing (workers/scheduler.py): every bank's hourly checks
+    # (controls_watch_job), and at control_test_cron_hour the daily anomaly-capture test
+    # (services/mrm_service.py, COMPLIANCE_PLAN.md C2), action log verification, the nightly
+    # and population checks over the previous day, and each bank's proposed CUEC attestations
+    # once its period ends (CONTROLS_PLAN.md CT2, CT4). Without it no scheduled result is kept,
+    # so automated attestations come out "not tested". Or call those jobs in workers/tasks.py
+    # from cron. The Controls page warns when a bank's last anomaly-capture run is over a day old.
     enable_control_test_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
     control_test_cron_hour: int = 4
     retention_finished_jobs_days: int = 30

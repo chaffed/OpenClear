@@ -20,6 +20,10 @@ then have attestations arrive in your GRC tool each period without anyone copyin
 5. If your GRC tool reads **OSCAL**, import OpenClear's component definition once and each
    period's assessment results.
 
+OpenClear proposes attestations from its scheduled checks, so the installation must run them:
+`OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER=true` (ask whoever runs OpenClear). Without it there's
+no test history, and every automated CUEC comes out "not tested".
+
 Everything below is under `/api/v1/compliance/` (OpenAPI: `openapi/openclear-v1.json`; the
 Python, TypeScript and .NET SDKs have each call as `compliance.*`).
 

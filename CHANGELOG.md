@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The README, the compliance page, the GRC guide and the setting's own description now say what
+  `OPENCLEAR_ENABLE_CONTROL_TEST_SCHEDULER` does: it runs all scheduled control testing (the
+  hourly and nightly checks, the daily anomaly capture) and proposes each period's attestations,
+  not only the anomaly capture. Without it, automated CUECs are attested "not tested".
+
 ## 1.19.0 — 2026-10-17
 
 Compliance for GRC tools (CONTROLS_PLAN.md CT5):
