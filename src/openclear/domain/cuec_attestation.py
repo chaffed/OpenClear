@@ -18,6 +18,7 @@ class CuecMapping(Base):
     against, so a changed CUEC flags it for review."""
 
     __tablename__ = "cuec_mapping"
+    __table_args__ = (Index("ix_cuec_mapping_tenant_id_updated_at", "tenant_id", "updated_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
@@ -31,6 +32,7 @@ class CuecMapping(Base):
     inventory_version: Mapped[str] = mapped_column(String(10), nullable=False)
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 class CuecAttestation(Base):
@@ -41,7 +43,8 @@ class CuecAttestation(Base):
     platform's staff), readable by every bank and writable by none."""
 
     __tablename__ = "cuec_attestation"
-    __table_args__ = (Index("ix_cuec_attestation_tenant_cuec_period", "tenant_id", "cuec_id", "period_end"),)
+    __table_args__ = (Index("ix_cuec_attestation_tenant_cuec_period", "tenant_id", "cuec_id", "period_end"),
+                      Index("ix_cuec_attestation_tenant_id_updated_at", "tenant_id", "updated_at"))
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"), nullable=True, index=True)
@@ -68,3 +71,5 @@ class CuecAttestation(Base):
     signed_body: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # what the signature covers, as canonical JSON
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     signature: Mapped[str | None] = mapped_column(Text, nullable=True)  # ECDSA P-256 over sha256, hex
+    # Changes when its status does (accepted, rejected, superseded): a GRC tool syncs from it (CT5).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

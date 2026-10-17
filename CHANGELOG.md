@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+Compliance for GRC tools (CONTROLS_PLAN.md CT5):
+
+- **An API for GRC tools**, under `/api/v1/compliance/`: each control's test results and
+  deviations for a period; CUEC mappings (list, set a CUEC's mappings, load the filled-in
+  `cuecs.csv`); the evidence behind a CUEC for a period, with the result OpenClear would propose;
+  attestations recorded (with an evidence file), accepted, rejected, listed and pulled signed,
+  filtered by your own control id. Lists page as the others do, and with `updated_since` return
+  only what changed. A read-only API client with `compliance:read` can pull everything; a
+  customer's own client sees only its own.
+- **OSCAL 1.2.1**: OpenClear's controls and CUECs as a component definition, and a bank's period
+  as assessment results (an observation per check, a finding per deviation, each accepted
+  attestation), checked against NIST's published schemas and read by compliance-trestle.
+- **Exports**: a period's attestations as signed JSON, CSV or OSCAL
+  (`GET /api/v1/compliance/attestations/export`), and the evidence export now carries the
+  period's control testing: each check's results, the deviations and the attestations.
+- **CLI**: `openclear compliance controls`, `cuecs` and `attestations` (`--format`); the SDKs
+  have every call.
+- **A guide, "Connecting your GRC tool"** (`docs/guides/grc.md`): mapping, the pull and push
+  patterns, verifying signatures, and OSCAL.
+- CUEC mappings, attestations and control deviations have an `updated_at` (migration
+  `d5f7a9b1c3e4`).
+
 NIST CSF 2.0 crosswalk (CONTROLS_PLAN.md CT6):
 
 - **Every control and CUEC now lists its NIST CSF 2.0 subcategories**, taken from NIST's own

@@ -41,7 +41,8 @@ class ControlDeviation(Base):
     (CONTROLS_PLAN.md CT2)."""
 
     __tablename__ = "control_deviation"
-    __table_args__ = (Index("ix_control_deviation_tenant_check_opened", "tenant_id", "check_key", "opened_at"),)
+    __table_args__ = (Index("ix_control_deviation_tenant_check_opened", "tenant_id", "check_key", "opened_at"),
+                      Index("ix_control_deviation_tenant_id_updated_at", "tenant_id", "updated_at"))
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
@@ -55,3 +56,5 @@ class ControlDeviation(Base):
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Changes when it closes or is responded to: a GRC tool syncs from it (CT5).
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

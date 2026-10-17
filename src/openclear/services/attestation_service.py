@@ -126,6 +126,59 @@ def add_mapping(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID |
     return mapping
 
 
+def set_mappings(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, cuec_id: str, wanted: list[dict], *,
+                 user_id: uuid.UUID | None) -> tuple[list[CuecMapping], dict]:
+    """Make a CUEC's mappings exactly `wanted` (each {control_ref, control_name, owner, link,
+    auto_accept}), matched on control_ref: new ones added, missing ones removed, the rest updated.
+    Returns the mappings and what changed: {added, removed, updated: [control_ref], auto_accept: [(mapping, on)]}."""
+    _cuec(cuec_id, customer_id)
+    refs = [(w.get("control_ref") or "").strip() for w in wanted]
+    if any(not r for r in refs):
+        raise AttestationError("Give each mapping your control's id.")
+    if len(set(refs)) != len(refs):
+        raise AttestationError("Each of your controls once.")
+    existing = {m.control_ref: m for m in mappings(session, tenant_id, customer_id, cuec_id)}
+    changes: dict = {"added": [], "removed": [], "updated": [], "auto_accept": []}
+    for ref, mapping in existing.items():
+        if ref not in refs:
+            session.delete(mapping)
+            changes["removed"].append(ref)
+    for ref, item in zip(refs, wanted):
+        link = (item.get("link") or "").strip()
+        if link and not link.lower().startswith(("https://", "http://")):
+            raise AttestationError("A link starts with https://.")
+        mapping = existing.get(ref)
+        if mapping is None:
+            mapping = add_mapping(session, tenant_id, customer_id, cuec_id, control_ref=ref, control_name=item.get("control_name") or "",
+                                  owner=item.get("owner") or "", link=link, user_id=user_id)
+            changes["added"].append(ref)
+        else:
+            fields = {"control_name": (item.get("control_name") or "").strip()[:300] or None,
+                      "owner": (item.get("owner") or "").strip()[:200] or None, "link": link[:1000] or None}
+            if any(getattr(mapping, k) != v for k, v in fields.items()):
+                for k, v in fields.items():
+                    setattr(mapping, k, v)
+                changes["updated"].append(ref)
+        on = bool(item.get("auto_accept"))
+        if mapping.auto_accept != on:
+            mapping.auto_accept = on
+            changes["auto_accept"].append((mapping, on))
+    session.flush()
+    return mappings(session, tenant_id, customer_id, cuec_id), changes
+
+
+def store_files(tenant_id: uuid.UUID, uploads: list[tuple[str, bytes]]) -> list[dict]:
+    """Evidence files for a manual attestation, kept read-only: [{name, sha256, size, storage_ref}]."""
+    from openclear import storage
+
+    files = []
+    for name, data in uploads:
+        name = (name or "evidence")[-200:]
+        ref = storage.put("audit_archives", f"{tenant_id}/attestations/{uuid.uuid4().hex}-{name}", data, read_only=True)
+        files.append({"name": name, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data), "storage_ref": ref})
+    return files
+
+
 def get_mapping(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, mapping_id: uuid.UUID) -> CuecMapping | None:
     found = session.get(CuecMapping, mapping_id)
     return found if found is not None and found.tenant_id == tenant_id and found.customer_id == customer_id else None

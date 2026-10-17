@@ -31,6 +31,24 @@
   <tbody>{% for c in b.controls.controls %}<tr><td>{{ c.title }}</td><td class="{{ c.status }}">{{ c.status }}</td><td>{{ c.detail }}</td></tr>{% endfor %}</tbody>
 </table>
 
+{% if b.control_testing is defined %}
+<h2>Control testing in the period</h2>
+{% if b.control_testing.checks %}
+<table>
+  <thead><tr><th>Check</th><th>Results</th><th>PASS</th><th>WARN</th><th>FAIL</th></tr></thead>
+  <tbody>{% for c in b.control_testing.checks %}<tr><td>{{ c.title }}</td><td>{{ c.results }}</td><td>{{ c.statuses.PASS }}</td><td>{{ c.statuses.WARN }}</td><td>{{ c.statuses.FAIL }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No checks were recorded in the period.</p>{% endif %}
+<p>{{ b.control_testing.deviations|length }} deviation{{ "s" if b.control_testing.deviations|length != 1 }}{% for d in b.control_testing.deviations %}{{ ": " if loop.first else "; " }}{{ d.check }} at {{ d.status }} from {{ d.opened_at[:16]|replace("T", " ") }}{% if d.closed_at %} to {{ d.closed_at[:16]|replace("T", " ") }}{% else %}, still open{% endif %}{% endfor %}.</p>
+{% if b.control_testing.attestations %}
+<table>
+  <thead><tr><th>CUEC</th><th>Period</th><th>Result</th><th>How</th><th>SHA-256</th></tr></thead>
+  <tbody>{% for a in b.control_testing.attestations %}<tr><td>{{ a.cuec }}</td><td>{{ a.period[0] }} to {{ a.period[1] }}</td><td>{{ a.result|replace("_", " ") }}{{ " (superseded)" if a.status == "superseded" }}</td>
+    <td>{{ a.method }}{{ ", accepted automatically" if a.auto_accepted }}</td><td class="muted">{{ (a.sha256 or "")[:16] }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p>No CUEC attestations were accepted for the period.</p>{% endif %}
+{% endif %}
+
 <h2>Action log</h2>
 <table>
   <tr><th>Chain verifies</th><td>{{ "Yes" if b.audit.chain_verifies else "NO, broken at entry " ~ b.audit.broken_at_entry_id }} ({{ b.audit.live_entries_checked }} live entries checked)</td></tr>

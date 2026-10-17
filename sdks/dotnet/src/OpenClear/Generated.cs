@@ -152,6 +152,79 @@ public sealed record ApiClientRead
     [JsonPropertyName("security_group")] public string SecurityGroup { get; init; } = default!;
 }
 
+public sealed record AttestationDetail
+{
+    [JsonPropertyName("accepted_at")] public string AcceptedAt { get; init; } = default!;
+    [JsonPropertyName("accepted_by")] public string AcceptedBy { get; init; } = default!;
+    [JsonPropertyName("auto_accepted")] public bool AutoAccepted { get; init; } = default!;
+    [JsonPropertyName("cuec_id")] public string CuecId { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("evidence")] public IReadOnlyDictionary<string, JsonElement> Evidence { get; init; } = default!;
+    [JsonPropertyName("files")] public IReadOnlyList<AttestationFile> Files { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("installation")] public bool Installation { get; init; } = default!;
+    [JsonPropertyName("inventory_version")] public string InventoryVersion { get; init; } = default!;
+    [JsonPropertyName("mappings")] public IReadOnlyList<string> Mappings { get; init; } = default!;
+    [JsonPropertyName("method")] public string Method { get; init; } = default!;
+    [JsonPropertyName("party")] public string Party { get; init; } = default!;
+    [JsonPropertyName("period_end")] public string PeriodEnd { get; init; } = default!;
+    [JsonPropertyName("period_kind")] public string PeriodKind { get; init; } = default!;
+    [JsonPropertyName("period_start")] public string PeriodStart { get; init; } = default!;
+    [JsonPropertyName("prepared_at")] public string PreparedAt { get; init; } = default!;
+    [JsonPropertyName("prepared_by")] public string PreparedBy { get; init; } = default!;
+    [JsonPropertyName("rejected_reason")] public string RejectedReason { get; init; } = default!;
+    [JsonPropertyName("result")] public string Result { get; init; } = default!;
+    [JsonPropertyName("sha256")] public string Sha256 { get; init; } = default!;
+    [JsonPropertyName("signed")] public SignedAttestation Signed { get; init; } = default!;
+    [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("supersedes_id")] public string SupersedesId { get; init; } = default!;
+    [JsonPropertyName("updated_at")] public string UpdatedAt { get; init; } = default!;
+    [JsonPropertyName("verified")] public bool Verified { get; init; } = default!;
+}
+
+public sealed record AttestationFile
+{
+    [JsonPropertyName("name")] public string Name { get; init; } = default!;
+    [JsonPropertyName("sha256")] public string Sha256 { get; init; } = default!;
+    [JsonPropertyName("size")] public long Size { get; init; } = default!;
+}
+
+public sealed record AttestationRead
+{
+    [JsonPropertyName("accepted_at")] public string AcceptedAt { get; init; } = default!;
+    [JsonPropertyName("accepted_by")] public string AcceptedBy { get; init; } = default!;
+    [JsonPropertyName("auto_accepted")] public bool AutoAccepted { get; init; } = default!;
+    [JsonPropertyName("cuec_id")] public string CuecId { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("evidence")] public IReadOnlyDictionary<string, JsonElement> Evidence { get; init; } = default!;
+    [JsonPropertyName("files")] public IReadOnlyList<AttestationFile> Files { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("installation")] public bool Installation { get; init; } = default!;
+    [JsonPropertyName("inventory_version")] public string InventoryVersion { get; init; } = default!;
+    [JsonPropertyName("mappings")] public IReadOnlyList<string> Mappings { get; init; } = default!;
+    [JsonPropertyName("method")] public string Method { get; init; } = default!;
+    [JsonPropertyName("party")] public string Party { get; init; } = default!;
+    [JsonPropertyName("period_end")] public string PeriodEnd { get; init; } = default!;
+    [JsonPropertyName("period_kind")] public string PeriodKind { get; init; } = default!;
+    [JsonPropertyName("period_start")] public string PeriodStart { get; init; } = default!;
+    [JsonPropertyName("prepared_at")] public string PreparedAt { get; init; } = default!;
+    [JsonPropertyName("prepared_by")] public string PreparedBy { get; init; } = default!;
+    [JsonPropertyName("rejected_reason")] public string RejectedReason { get; init; } = default!;
+    [JsonPropertyName("result")] public string Result { get; init; } = default!;
+    [JsonPropertyName("sha256")] public string Sha256 { get; init; } = default!;
+    [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("supersedes_id")] public string SupersedesId { get; init; } = default!;
+    [JsonPropertyName("updated_at")] public string UpdatedAt { get; init; } = default!;
+    [JsonPropertyName("verified")] public bool Verified { get; init; } = default!;
+}
+
+public sealed record AttestationReject
+{
+    [JsonPropertyName("reason")] public string Reason { get; init; } = default!;
+}
+
 public sealed record AuthenticationVerifyRequest
 {
     [JsonPropertyName("credential")] public IReadOnlyDictionary<string, JsonElement> Credential { get; init; } = default!;
@@ -259,6 +332,18 @@ public sealed record CsfSubcategory
 {
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("title")] public string Title { get; init; } = default!;
+}
+
+public sealed record CuecEvidence
+{
+    [JsonPropertyName("attestations")] public IReadOnlyList<AttestationRead> Attestations { get; init; } = default!;
+    [JsonPropertyName("check")] public string Check { get; init; } = default!;
+    [JsonPropertyName("cuec_id")] public string CuecId { get; init; } = default!;
+    [JsonPropertyName("evidence")] public IReadOnlyDictionary<string, JsonElement> Evidence { get; init; } = default!;
+    [JsonPropertyName("evidence_level")] public string EvidenceLevel { get; init; } = default!;
+    [JsonPropertyName("period_end")] public string PeriodEnd { get; init; } = default!;
+    [JsonPropertyName("period_start")] public string PeriodStart { get; init; } = default!;
+    [JsonPropertyName("proposed_result")] public string ProposedResult { get; init; } = default!;
 }
 
 public sealed record CuecInventory
@@ -373,6 +458,20 @@ public sealed record DecisionRead
     [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
     [JsonPropertyName("return_transaction_code")] public string ReturnTransactionCode { get; init; } = default!;
     [JsonPropertyName("submitted_by_user_id")] public string SubmittedByUserId { get; init; } = default!;
+}
+
+public sealed record DeviationRead
+{
+    [JsonPropertyName("cause")] public string Cause { get; init; } = default!;
+    [JsonPropertyName("check_key")] public string CheckKey { get; init; } = default!;
+    [JsonPropertyName("closed_at")] public string ClosedAt { get; init; } = default!;
+    [JsonPropertyName("hours")] public double Hours { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("opened_at")] public string OpenedAt { get; init; } = default!;
+    [JsonPropertyName("responded_at")] public string RespondedAt { get; init; } = default!;
+    [JsonPropertyName("response")] public string Response { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("updated_at")] public string UpdatedAt { get; init; } = default!;
 }
 
 public sealed record EdgeEcho
@@ -620,6 +719,41 @@ public sealed record LoginResponse
     [JsonPropertyName("token_type")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TokenType { get; init; }
 }
 
+public sealed record MappingImport
+{
+    [JsonPropertyName("added")] public long Added { get; init; } = default!;
+    [JsonPropertyName("problems")] public IReadOnlyList<string> Problems { get; init; } = default!;
+}
+
+public sealed record MappingRead
+{
+    [JsonPropertyName("auto_accept")] public bool AutoAccept { get; init; } = default!;
+    [JsonPropertyName("control_name")] public string ControlName { get; init; } = default!;
+    [JsonPropertyName("control_ref")] public string ControlRef { get; init; } = default!;
+    [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
+    [JsonPropertyName("cuec_id")] public string CuecId { get; init; } = default!;
+    [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("inventory_version")] public string InventoryVersion { get; init; } = default!;
+    [JsonPropertyName("link")] public string Link { get; init; } = default!;
+    [JsonPropertyName("owner")] public string Owner { get; init; } = default!;
+    [JsonPropertyName("updated_at")] public string UpdatedAt { get; init; } = default!;
+}
+
+public sealed record MappingWrite
+{
+    [JsonPropertyName("auto_accept")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? AutoAccept { get; init; }
+    [JsonPropertyName("control_name")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ControlName { get; init; }
+    [JsonPropertyName("control_ref")] public string ControlRef { get; init; } = default!;
+    [JsonPropertyName("link")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Link { get; init; }
+    [JsonPropertyName("owner")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Owner { get; init; }
+}
+
+public sealed record MappingsWrite
+{
+    [JsonPropertyName("mappings")] public IReadOnlyList<MappingWrite> Mappings { get; init; } = default!;
+}
+
 public sealed record MetricRead
 {
     [JsonPropertyName("code")] public string Code { get; init; } = default!;
@@ -740,6 +874,12 @@ public sealed record SharedModelSummaryRead
     [JsonPropertyName("version")] public string Version { get; init; } = default!;
 }
 
+public sealed record SignedAttestation
+{
+    [JsonPropertyName("attestation")] public IReadOnlyDictionary<string, JsonElement> Attestation { get; init; } = default!;
+    [JsonPropertyName("signature")] public IReadOnlyDictionary<string, JsonElement> Signature { get; init; } = default!;
+}
+
 public sealed record StopPaymentCreate
 {
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
@@ -786,6 +926,20 @@ public sealed record TenantUserRead
     [JsonPropertyName("membership_id")] public string MembershipId { get; init; } = default!;
     [JsonPropertyName("security_group_name")] public string SecurityGroupName { get; init; } = default!;
     [JsonPropertyName("user_id")] public string UserId { get; init; } = default!;
+}
+
+public sealed record TestResultRead
+{
+    [JsonPropertyName("check_key")] public string CheckKey { get; init; } = default!;
+    [JsonPropertyName("evidence")] public IReadOnlyDictionary<string, JsonElement> Evidence { get; init; } = default!;
+    [JsonPropertyName("evidence_sha256")] public string EvidenceSha256 { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("period_end")] public string PeriodEnd { get; init; } = default!;
+    [JsonPropertyName("period_start")] public string PeriodStart { get; init; } = default!;
+    [JsonPropertyName("recorded_at")] public string RecordedAt { get; init; } = default!;
+    [JsonPropertyName("started_by")] public string StartedBy { get; init; } = default!;
+    [JsonPropertyName("status")] public string Status { get; init; } = default!;
+    [JsonPropertyName("summary")] public string Summary { get; init; } = default!;
 }
 
 public sealed record Tier
@@ -1342,17 +1496,120 @@ public sealed partial class ComplianceApi
     public ComplianceApi(ITransport transport) => _c = transport;
 
     /// <summary>
+    /// List Attestations.
+    ///
+    /// GET /api/v1/compliance/attestations
+    ///
+    /// Attestations, newest period first; with `updated_since`, those prepared, accepted,
+    /// rejected or superseded since, oldest change first. Each accepted one has its `sha256`, and
+    /// `verified` says its signature checks out; the signed body is at `GET /attestations/{id}`.
+    /// </summary>
+    public Task<IReadOnlyList<AttestationRead>> ListAttestationsAsync(string? start = null, string? end = null, string? status = null, string? cuecId = null, string? control = null, string? customerId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<AttestationRead>>("GET", "/api/v1/compliance/attestations", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["status"] = status, ["cuec_id"] = cuecId, ["control"] = control, ["customer_id"] = customerId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Every row of ListAttestationsAsync, following each page's Link: rel="next".
+    /// GET /api/v1/compliance/attestations
+    /// </summary>
+    public IAsyncEnumerable<AttestationRead> IterAttestationsAsync(string? start = null, string? end = null, string? status = null, string? cuecId = null, string? control = null, string? customerId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<AttestationRead>("GET", "/api/v1/compliance/attestations", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["status"] = status, ["cuec_id"] = cuecId, ["control"] = control, ["customer_id"] = customerId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Export Attestations.
+    ///
+    /// GET /api/v1/compliance/attestations/export
+    ///
+    /// Every accepted (and superseded) attestation for periods overlapping [start, end]. JSON:
+    /// each one signed, as `GET /attestations/{id}` gives it, with the public key to check them by.
+    /// CSV: one row each. OSCAL: the bank's assessment results for the period (the bank only), with
+    /// the attestations as OSCAL attestations.
+    /// </summary>
+    public Task<byte[]> ExportAttestationsAsync(string? start = null, string? end = null, string? format = null, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/compliance/attestations/export", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["format"] = format }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Get Attestation.
+    ///
+    /// GET /api/v1/compliance/attestations/{attestation_id}
+    ///
+    /// An attestation, with its signed body once accepted: `signed.attestation` is what the
+    /// signature covers, `signed.signature` the ECDSA P-256 signature over the SHA-256 of its
+    /// canonical JSON (sorted keys, no spaces) and the public key to check it with.
+    /// </summary>
+    public Task<AttestationDetail> GetAttestationAsync(string attestationId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AttestationDetail>("GET", $"/api/v1/compliance/attestations/{Uri.EscapeDataString(attestationId.ToString()!)}", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Accept Attestation.
+    ///
+    /// POST /api/v1/compliance/attestations/{attestation_id}/accept
+    ///
+    /// Accept a prepared attestation: it's signed, and any earlier accepted one for the same CUEC
+    /// and period is superseded. Under the bank's "second person" setting, whoever prepared a manual
+    /// one can't accept it.
+    /// </summary>
+    public Task<AttestationDetail> AcceptAttestationAsync(string attestationId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AttestationDetail>("POST", $"/api/v1/compliance/attestations/{Uri.EscapeDataString(attestationId.ToString()!)}/accept", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Reject Attestation.
+    ///
+    /// POST /api/v1/compliance/attestations/{attestation_id}/reject
+    ///
+    /// Reject a prepared attestation, saying why (a security event).
+    /// </summary>
+    public Task<AttestationDetail> RejectAttestationAsync(string attestationId, AttestationReject body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AttestationDetail>("POST", $"/api/v1/compliance/attestations/{Uri.EscapeDataString(attestationId.ToString()!)}/reject", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
     /// Control Inventory.
     ///
     /// GET /api/v1/compliance/controls
     ///
-    /// OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-    /// checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
-    /// to those controls, and the CUECs it relies on. `status`
-    /// is the worst of its live checks, or null when none of its checks is live yet.
+    /// OpenClear's control inventory: each control with its NIST SP 800-53 controls, its checks
+    /// (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps to
+    /// those controls, and the CUECs it relies on. `status` is the worst of its live checks, or null
+    /// when none of its checks is live yet.
     /// </summary>
     public Task<ControlInventory> ControlInventoryAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<ControlInventory>("GET", "/api/v1/compliance/controls", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Control Deviations.
+    ///
+    /// GET /api/v1/compliance/controls/{control_id}/deviations
+    ///
+    /// The deviations of a control's checks: each stretch of time a check was at FAIL (or WARN,
+    /// where the bank says so), with the cause and response once recorded. Oldest first.
+    /// </summary>
+    public Task<IReadOnlyList<DeviationRead>> ControlDeviationsAsync(string controlId, string? start = null, string? end = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<DeviationRead>>("GET", $"/api/v1/compliance/controls/{Uri.EscapeDataString(controlId.ToString()!)}/deviations", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Every row of ControlDeviationsAsync, following each page's Link: rel="next".
+    /// GET /api/v1/compliance/controls/{control_id}/deviations
+    /// </summary>
+    public IAsyncEnumerable<DeviationRead> IterControlDeviationsAsync(string controlId, string? start = null, string? end = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<DeviationRead>("GET", $"/api/v1/compliance/controls/{Uri.EscapeDataString(controlId.ToString()!)}/deviations", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Control Results.
+    ///
+    /// GET /api/v1/compliance/controls/{control_id}/results
+    ///
+    /// Every recorded result of a control's checks (`OC-AC-05`), oldest first: each scheduled run,
+    /// and a page view or a person's run where it changed the status. A result never changes once
+    /// recorded, so `updated_since` here means recorded at or after.
+    /// </summary>
+    public Task<IReadOnlyList<TestResultRead>> ControlResultsAsync(string controlId, string? start = null, string? end = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<TestResultRead>>("GET", $"/api/v1/compliance/controls/{Uri.EscapeDataString(controlId.ToString()!)}/results", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Every row of ControlResultsAsync, following each page's Link: rel="next".
+    /// GET /api/v1/compliance/controls/{control_id}/results
+    /// </summary>
+    public IAsyncEnumerable<TestResultRead> IterControlResultsAsync(string controlId, string? start = null, string? end = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<TestResultRead>("GET", $"/api/v1/compliance/controls/{Uri.EscapeDataString(controlId.ToString()!)}/results", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Cuec Inventory.
@@ -1361,11 +1618,103 @@ public sealed partial class ComplianceApi
     ///
     /// The complementary user entity controls: what OpenClear's controls rely on the bank, its
     /// customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
-    /// the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
-    /// customer's. Filter with `party`.
+    /// the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A
+    /// customer's own session sees only the customer's. Filter with `party`.
     /// </summary>
     public Task<CuecInventory> CuecInventoryAsync(string? party = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<CuecInventory>("GET", "/api/v1/compliance/cuecs", query: new Dictionary<string, object?> { ["party"] = party }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Record Attestation.
+    ///
+    /// POST /api/v1/compliance/cuecs/{cuec_id}/attestations
+    ///
+    /// Record a manual attestation of a CUEC for a period, with an evidence file if you have one
+    /// (kept read-only, with its SHA-256). It's prepared, not yet signed: someone with
+    /// `compliance:attest` accepts it, and under the bank's "second person" setting that's
+    /// someone else.
+    /// </summary>
+    public Task<AttestationRead> RecordAttestationAsync(string cuecId, string end, string result, string start, string statement, FilePart? evidenceFile = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<AttestationRead>("POST", $"/api/v1/compliance/cuecs/{Uri.EscapeDataString(cuecId.ToString()!)}/attestations", form: new Dictionary<string, object?> { ["end"] = end, ["evidence_file"] = evidenceFile, ["result"] = result, ["start"] = start, ["statement"] = statement }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Cuec Evidence.
+    ///
+    /// GET /api/v1/compliance/cuecs/{cuec_id}/evidence
+    ///
+    /// The evidence behind a CUEC for a period. For the bank's automated CUECs, the result
+    /// OpenClear would propose by CT-D6's rule (coverage of at least 95% of scheduled runs, no
+    /// deviation longer than the grace period, every population test passed) and the numbers
+    /// behind it: runs expected and recorded, statuses, deviations and the results' digests. For
+    /// the rest, the related check's latest result. With the CUEC's attestations for the period.
+    /// </summary>
+    public Task<CuecEvidence> CuecEvidenceAsync(string cuecId, string? start = null, string? end = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<CuecEvidence>("GET", $"/api/v1/compliance/cuecs/{Uri.EscapeDataString(cuecId.ToString()!)}/evidence", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Set Mappings.
+    ///
+    /// PUT /api/v1/compliance/cuecs/{cuec_id}/mappings
+    ///
+    /// Set a CUEC's mappings to exactly these, matched on `control_ref`: new ones are added,
+    /// ones left out removed, the rest updated. Turning `auto_accept` on or off is recorded in the
+    /// action log, and on is a security event.
+    /// </summary>
+    public Task<IReadOnlyList<MappingRead>> SetMappingsAsync(string cuecId, MappingsWrite body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<MappingRead>>("PUT", $"/api/v1/compliance/cuecs/{Uri.EscapeDataString(cuecId.ToString()!)}/mappings", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// List Mappings.
+    ///
+    /// GET /api/v1/compliance/mappings
+    ///
+    /// Your mappings: which of your own controls cover each CUEC (the bank's, or a customer's own).
+    /// </summary>
+    public Task<IReadOnlyList<MappingRead>> ListMappingsAsync(string? cuecId = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<MappingRead>>("GET", "/api/v1/compliance/mappings", query: new Dictionary<string, object?> { ["cuec_id"] = cuecId, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Every row of ListMappingsAsync, following each page's Link: rel="next".
+    /// GET /api/v1/compliance/mappings
+    /// </summary>
+    public IAsyncEnumerable<MappingRead> IterMappingsAsync(string? cuecId = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<MappingRead>("GET", "/api/v1/compliance/mappings", query: new Dictionary<string, object?> { ["cuec_id"] = cuecId, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Import Mappings.
+    ///
+    /// POST /api/v1/compliance/mappings/import
+    ///
+    /// Load mappings from the CUEC inventory's CSV (docs/compliance/cuecs.csv) with your controls
+    /// filled in. Rows left blank are skipped, and a mapping already there isn't added twice.
+    /// </summary>
+    public Task<MappingImport> ImportMappingsAsync(FilePart file, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<MappingImport>("POST", "/api/v1/compliance/mappings/import", form: new Dictionary<string, object?> { ["file"] = file }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Oscal Assessment Results.
+    ///
+    /// GET /api/v1/compliance/oscal/assessment-results
+    ///
+    /// The bank's control testing for a period as OSCAL 1.2.1 assessment results: an observation
+    /// per check that ran (its results' counts and digest), a finding per deviation, and each
+    /// accepted CUEC attestation.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> OscalAssessmentResultsAsync(string? start = null, string? end = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/compliance/oscal/assessment-results", query: new Dictionary<string, object?> { ["start"] = start, ["end"] = end }, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Oscal Component Definition.
+    ///
+    /// GET /api/v1/compliance/oscal/component-definition
+    ///
+    /// OpenClear as an OSCAL 1.2.1 component definition against NIST SP 800-53 Rev. 5: one
+    /// implemented requirement per control, each OpenClear control on it as an `openclear-control`
+    /// property and each CUEC as a `cuec` property (its party as the class) in the namespace
+    /// `https://github.com/chaffed/OpenClear/ns/oscal`.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, JsonElement>> OscalComponentDefinitionAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/compliance/oscal/component-definition", cancellationToken: cancellationToken);
 }
 
 /// <summary>

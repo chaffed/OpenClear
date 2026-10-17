@@ -918,6 +918,517 @@
         "title": "ApiClientRead",
         "type": "object"
       },
+      "AttestationDetail": {
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "accepted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted By"
+          },
+          "auto_accepted": {
+            "title": "Auto Accepted",
+            "type": "boolean"
+          },
+          "cuec_id": {
+            "title": "Cuec Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/AttestationFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "installation": {
+            "title": "Installation",
+            "type": "boolean"
+          },
+          "inventory_version": {
+            "title": "Inventory Version",
+            "type": "string"
+          },
+          "mappings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mappings",
+            "type": "array"
+          },
+          "method": {
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "party": {
+            "enum": [
+              "bank",
+              "customer",
+              "host"
+            ],
+            "title": "Party",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_kind": {
+            "title": "Period Kind",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "prepared_at": {
+            "format": "date-time",
+            "title": "Prepared At",
+            "type": "string"
+          },
+          "prepared_by": {
+            "title": "Prepared By",
+            "type": "string"
+          },
+          "rejected_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejected Reason"
+          },
+          "result": {
+            "enum": [
+              "operated",
+              "operated_with_exceptions",
+              "not_operated",
+              "not_applicable",
+              "not_tested"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "signed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignedAttestation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          },
+          "status": {
+            "enum": [
+              "prepared",
+              "accepted",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "id",
+          "cuec_id",
+          "party",
+          "customer_id",
+          "installation",
+          "period_kind",
+          "period_start",
+          "period_end",
+          "result",
+          "method",
+          "status",
+          "statement",
+          "evidence",
+          "files",
+          "mappings",
+          "prepared_by",
+          "prepared_at",
+          "accepted_by",
+          "accepted_at",
+          "auto_accepted",
+          "rejected_reason",
+          "supersedes_id",
+          "inventory_version",
+          "sha256",
+          "verified",
+          "updated_at",
+          "signed"
+        ],
+        "title": "AttestationDetail",
+        "type": "object"
+      },
+      "AttestationFile": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "sha256",
+          "size"
+        ],
+        "title": "AttestationFile",
+        "type": "object"
+      },
+      "AttestationRead": {
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "accepted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted By"
+          },
+          "auto_accepted": {
+            "title": "Auto Accepted",
+            "type": "boolean"
+          },
+          "cuec_id": {
+            "title": "Cuec Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/AttestationFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "installation": {
+            "title": "Installation",
+            "type": "boolean"
+          },
+          "inventory_version": {
+            "title": "Inventory Version",
+            "type": "string"
+          },
+          "mappings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mappings",
+            "type": "array"
+          },
+          "method": {
+            "enum": [
+              "automated",
+              "manual"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "party": {
+            "enum": [
+              "bank",
+              "customer",
+              "host"
+            ],
+            "title": "Party",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_kind": {
+            "title": "Period Kind",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "prepared_at": {
+            "format": "date-time",
+            "title": "Prepared At",
+            "type": "string"
+          },
+          "prepared_by": {
+            "title": "Prepared By",
+            "type": "string"
+          },
+          "rejected_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejected Reason"
+          },
+          "result": {
+            "enum": [
+              "operated",
+              "operated_with_exceptions",
+              "not_operated",
+              "not_applicable",
+              "not_tested"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "statement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statement"
+          },
+          "status": {
+            "enum": [
+              "prepared",
+              "accepted",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "id",
+          "cuec_id",
+          "party",
+          "customer_id",
+          "installation",
+          "period_kind",
+          "period_start",
+          "period_end",
+          "result",
+          "method",
+          "status",
+          "statement",
+          "evidence",
+          "files",
+          "mappings",
+          "prepared_by",
+          "prepared_at",
+          "accepted_by",
+          "accepted_at",
+          "auto_accepted",
+          "rejected_reason",
+          "supersedes_id",
+          "inventory_version",
+          "sha256",
+          "verified",
+          "updated_at"
+        ],
+        "title": "AttestationRead",
+        "type": "object"
+      },
+      "AttestationReject": {
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "AttestationReject",
+        "type": "object"
+      },
       "AuthenticationVerifyRequest": {
         "properties": {
           "credential": {
@@ -969,6 +1480,75 @@
         ],
         "title": "BillingMethod",
         "type": "string"
+      },
+      "Body_import_mappings_api_v1_compliance_mappings_import_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "cuecs.csv with your your_control_id (and your_control_owner, your_control_name, your_control_link) filled in",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_mappings_api_v1_compliance_mappings_import_post",
+        "type": "object"
+      },
+      "Body_record_attestation_api_v1_compliance_cuecs__cuec_id__attestations_post": {
+        "properties": {
+          "end": {
+            "description": "Last day, inclusive; the period must have ended",
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "evidence_file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Evidence to keep with it, under 10 MB (several: a zip)",
+            "title": "Evidence File"
+          },
+          "result": {
+            "enum": [
+              "operated",
+              "operated_with_exceptions",
+              "not_operated",
+              "not_applicable"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "start": {
+            "description": "First day of the period",
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "statement": {
+            "description": "What you attest, and how you know",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Statement",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "result",
+          "statement"
+        ],
+        "title": "Body_record_attestation_api_v1_compliance_cuecs__cuec_id__attestations_post",
+        "type": "object"
       },
       "Body_replay_api_v1_mrm_replay_post": {
         "properties": {
@@ -1726,6 +2306,86 @@
           "title"
         ],
         "title": "CsfSubcategory",
+        "type": "object"
+      },
+      "CuecEvidence": {
+        "properties": {
+          "attestations": {
+            "items": {
+              "$ref": "#/components/schemas/AttestationRead"
+            },
+            "title": "Attestations",
+            "type": "array"
+          },
+          "check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "cuec_id": {
+            "title": "Cuec Id",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "evidence_level": {
+            "enum": [
+              "automated",
+              "assisted",
+              "attested"
+            ],
+            "title": "Evidence Level",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "proposed_result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "operated",
+                  "operated_with_exceptions",
+                  "not_operated",
+                  "not_applicable",
+                  "not_tested"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Result"
+          }
+        },
+        "required": [
+          "cuec_id",
+          "evidence_level",
+          "check",
+          "period_start",
+          "period_end",
+          "proposed_result",
+          "evidence",
+          "attestations"
+        ],
+        "title": "CuecEvidence",
         "type": "object"
       },
       "CuecInventory": {
@@ -2494,6 +3154,101 @@
           "decided_at"
         ],
         "title": "DecisionRead",
+        "type": "object"
+      },
+      "DeviationRead": {
+        "properties": {
+          "cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause"
+          },
+          "check_key": {
+            "title": "Check Key",
+            "type": "string"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "hours": {
+            "title": "Hours",
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "responded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responded At"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
+          },
+          "status": {
+            "enum": [
+              "WARN",
+              "FAIL"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "check_key",
+          "status",
+          "opened_at",
+          "closed_at",
+          "hours",
+          "cause",
+          "response",
+          "responded_at",
+          "updated_at"
+        ],
+        "title": "DeviationRead",
         "type": "object"
       },
       "EdgeEcho": {
@@ -3989,6 +4744,198 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "MappingImport": {
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "added",
+          "problems"
+        ],
+        "title": "MappingImport",
+        "type": "object"
+      },
+      "MappingRead": {
+        "properties": {
+          "auto_accept": {
+            "title": "Auto Accept",
+            "type": "boolean"
+          },
+          "control_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control Name"
+          },
+          "control_ref": {
+            "title": "Control Ref",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "cuec_id": {
+            "title": "Cuec Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_version": {
+            "title": "Inventory Version",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cuec_id",
+          "customer_id",
+          "control_ref",
+          "control_name",
+          "owner",
+          "link",
+          "auto_accept",
+          "inventory_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MappingRead",
+        "type": "object"
+      },
+      "MappingWrite": {
+        "properties": {
+          "auto_accept": {
+            "default": false,
+            "description": "Accept and sign OpenClear's proposed attestations for this CUEC at once",
+            "title": "Auto Accept",
+            "type": "boolean"
+          },
+          "control_name": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control Name"
+          },
+          "control_ref": {
+            "description": "Your control's id in your inventory (BANK-IAM-07)",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Control Ref",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The control in your GRC tool (https://...)",
+            "title": "Link"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          }
+        },
+        "required": [
+          "control_ref"
+        ],
+        "title": "MappingWrite",
+        "type": "object"
+      },
+      "MappingsWrite": {
+        "properties": {
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/MappingWrite"
+            },
+            "maxItems": 50,
+            "title": "Mappings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mappings"
+        ],
+        "title": "MappingsWrite",
+        "type": "object"
+      },
       "MetricRead": {
         "properties": {
           "code": {
@@ -4555,6 +5502,26 @@
         "title": "SharedModelSummaryRead",
         "type": "object"
       },
+      "SignedAttestation": {
+        "properties": {
+          "attestation": {
+            "additionalProperties": true,
+            "title": "Attestation",
+            "type": "object"
+          },
+          "signature": {
+            "additionalProperties": true,
+            "title": "Signature",
+            "type": "object"
+          }
+        },
+        "required": [
+          "attestation",
+          "signature"
+        ],
+        "title": "SignedAttestation",
+        "type": "object"
+      },
       "StopPaymentCreate": {
         "properties": {
           "account_id": {
@@ -4828,6 +5795,93 @@
           "last_login_at"
         ],
         "title": "TenantUserRead",
+        "type": "object"
+      },
+      "TestResultRead": {
+        "properties": {
+          "check_key": {
+            "title": "Check Key",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "evidence_sha256": {
+            "title": "Evidence Sha256",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Start"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "started_by": {
+            "enum": [
+              "schedule",
+              "view",
+              "person"
+            ],
+            "title": "Started By",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PASS",
+              "WARN",
+              "FAIL"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "check_key",
+          "status",
+          "summary",
+          "evidence",
+          "evidence_sha256",
+          "period_start",
+          "period_end",
+          "started_by",
+          "recorded_at"
+        ],
+        "title": "TestResultRead",
         "type": "object"
       },
       "Tier": {
@@ -7730,9 +8784,466 @@
         ]
       }
     },
+    "/api/v1/compliance/attestations": {
+      "get": {
+        "description": "Attestations, newest period first; with `updated_since`, those prepared, accepted,\nrejected or superseded since, oldest change first. Each accepted one has its `sha256`, and\n`verified` says its signature checks out; the signed body is at `GET /attestations/{id}`.",
+        "operationId": "list_attestations_api_v1_compliance_attestations_get",
+        "parameters": [
+          {
+            "description": "Attestations for periods ending on or after this day",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Attestations for periods ending on or after this day",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "Attestations for periods starting on or before this day",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Attestations for periods starting on or before this day",
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "prepared",
+                    "accepted",
+                    "rejected",
+                    "superseded"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cuec_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cuec Id"
+            }
+          },
+          {
+            "description": "Only the CUECs mapped to this control of yours (BANK-IAM-07)",
+            "in": "query",
+            "name": "control",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only the CUECs mapped to this control of yours (BANK-IAM-07)",
+              "title": "Control"
+            }
+          },
+          {
+            "description": "The bank only: a customer's attestations instead of the bank's",
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The bank only: a customer's attestations instead of the bank's",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "description": "Rows per page (at most 1,000)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "description": "Rows per page (at most 1,000)",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttestationRead"
+                  },
+                  "title": "Response List Attestations Api V1 Compliance Attestations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Attestations",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/attestations/export": {
+      "get": {
+        "description": "Every accepted (and superseded) attestation for periods overlapping [start, end]. JSON:\neach one signed, as `GET /attestations/{id}` gives it, with the public key to check them by.\nCSV: one row each. OSCAL: the bank's assessment results for the period (the bank only), with\nthe attestations as OSCAL attestations.",
+        "operationId": "export_attestations_api_v1_compliance_attestations_export_get",
+        "parameters": [
+          {
+            "description": "First day, YYYY-MM-DD",
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "description": "First day, YYYY-MM-DD",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive",
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "description": "Last day, inclusive",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv",
+                "oscal"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The period's attestations: JSON, CSV or OSCAL"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Attestations",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/attestations/{attestation_id}": {
+      "get": {
+        "description": "An attestation, with its signed body once accepted: `signed.attestation` is what the\nsignature covers, `signed.signature` the ECDSA P-256 signature over the SHA-256 of its\ncanonical JSON (sorted keys, no spaces) and the public key to check it with.",
+        "operationId": "get_attestation_api_v1_compliance_attestations__attestation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attestation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attestation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Attestation",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/attestations/{attestation_id}/accept": {
+      "post": {
+        "description": "Accept a prepared attestation: it's signed, and any earlier accepted one for the same CUEC\nand period is superseded. Under the bank's \"second person\" setting, whoever prepared a manual\none can't accept it.",
+        "operationId": "accept_attestation_api_v1_compliance_attestations__attestation_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attestation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attestation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Attestation",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/attestations/{attestation_id}/reject": {
+      "post": {
+        "description": "Reject a prepared attestation, saying why (a security event).",
+        "operationId": "reject_attestation_api_v1_compliance_attestations__attestation_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attestation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attestation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestationReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Attestation",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
     "/api/v1/compliance/controls": {
       "get": {
-        "description": "OpenClear's control inventory: each control with its NIST SP 800-53 controls, its\nchecks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps\nto those controls, and the CUECs it relies on. `status`\nis the worst of its live checks, or null when none of its checks is live yet.",
+        "description": "OpenClear's control inventory: each control with its NIST SP 800-53 controls, its checks\n(each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps to\nthose controls, and the CUECs it relies on. `status` is the worst of its live checks, or null\nwhen none of its checks is live yet.",
         "operationId": "control_inventory_api_v1_compliance_controls_get",
         "responses": {
           "200": {
@@ -7757,9 +9268,319 @@
         ]
       }
     },
+    "/api/v1/compliance/controls/{control_id}/deviations": {
+      "get": {
+        "description": "The deviations of a control's checks: each stretch of time a check was at FAIL (or WARN,\nwhere the bank says so), with the cause and response once recorded. Oldest first.",
+        "operationId": "control_deviations_api_v1_compliance_controls__control_id__deviations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "control_id",
+            "required": true,
+            "schema": {
+              "title": "Control Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Deviations open on or after this day",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Deviations open on or after this day",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "Deviations opened on or before this day",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Deviations opened on or before this day",
+              "title": "End"
+            }
+          },
+          {
+            "description": "Rows per page (at most 1,000)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "description": "Rows per page (at most 1,000)",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviationRead"
+                  },
+                  "title": "Response Control Deviations Api V1 Compliance Controls  Control Id  Deviations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Control Deviations",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/controls/{control_id}/results": {
+      "get": {
+        "description": "Every recorded result of a control's checks (`OC-AC-05`), oldest first: each scheduled run,\nand a page view or a person's run where it changed the status. A result never changes once\nrecorded, so `updated_since` here means recorded at or after.",
+        "operationId": "control_results_api_v1_compliance_controls__control_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "control_id",
+            "required": true,
+            "schema": {
+              "title": "Control Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "First day, YYYY-MM-DD (UTC)",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, YYYY-MM-DD (UTC)",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "Last day, inclusive",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive",
+              "title": "End"
+            }
+          },
+          {
+            "description": "Rows per page (at most 1,000)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "description": "Rows per page (at most 1,000)",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TestResultRead"
+                  },
+                  "title": "Response Control Results Api V1 Compliance Controls  Control Id  Results Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Control Results",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
     "/api/v1/compliance/cuecs": {
       "get": {
-        "description": "The complementary user entity controls: what OpenClear's controls rely on the bank, its\ncustomers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with\nthe CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the\ncustomer's. Filter with `party`.",
+        "description": "The complementary user entity controls: what OpenClear's controls rely on the bank, its\ncustomers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with\nthe CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A\ncustomer's own session sees only the customer's. Filter with `party`.",
         "operationId": "cuec_inventory_api_v1_compliance_cuecs_get",
         "parameters": [
           {
@@ -7812,6 +9633,463 @@
           }
         ],
         "summary": "Cuec Inventory",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/cuecs/{cuec_id}/attestations": {
+      "post": {
+        "description": "Record a manual attestation of a CUEC for a period, with an evidence file if you have one\n(kept read-only, with its SHA-256). It's prepared, not yet signed: someone with\n`compliance:attest` accepts it, and under the bank's \"second person\" setting that's\nsomeone else.",
+        "operationId": "record_attestation_api_v1_compliance_cuecs__cuec_id__attestations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cuec_id",
+            "required": true,
+            "schema": {
+              "title": "Cuec Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_record_attestation_api_v1_compliance_cuecs__cuec_id__attestations_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Attestation",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/cuecs/{cuec_id}/evidence": {
+      "get": {
+        "description": "The evidence behind a CUEC for a period. For the bank's automated CUECs, the result\nOpenClear would propose by CT-D6's rule (coverage of at least 95% of scheduled runs, no\ndeviation longer than the grace period, every population test passed) and the numbers\nbehind it: runs expected and recorded, statuses, deviations and the results' digests. For\nthe rest, the related check's latest result. With the CUEC's attestations for the period.",
+        "operationId": "cuec_evidence_api_v1_compliance_cuecs__cuec_id__evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cuec_id",
+            "required": true,
+            "schema": {
+              "title": "Cuec Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "First day, YYYY-MM-DD",
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "description": "First day, YYYY-MM-DD",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive",
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "description": "Last day, inclusive",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CuecEvidence"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cuec Evidence",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/cuecs/{cuec_id}/mappings": {
+      "put": {
+        "description": "Set a CUEC's mappings to exactly these, matched on `control_ref`: new ones are added,\nones left out removed, the rest updated. Turning `auto_accept` on or off is recorded in the\naction log, and on is a security event.",
+        "operationId": "set_mappings_api_v1_compliance_cuecs__cuec_id__mappings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cuec_id",
+            "required": true,
+            "schema": {
+              "title": "Cuec Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingsWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MappingRead"
+                  },
+                  "title": "Response Set Mappings Api V1 Compliance Cuecs  Cuec Id  Mappings Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Mappings",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/mappings": {
+      "get": {
+        "description": "Your mappings: which of your own controls cover each CUEC (the bank's, or a customer's own).",
+        "operationId": "list_mappings_api_v1_compliance_mappings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cuec_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cuec Id"
+            }
+          },
+          {
+            "description": "Rows per page (at most 1,000)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "description": "Rows per page (at most 1,000)",
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+            "in": "query",
+            "name": "updated_since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only rows changed at or after this time (ISO 8601), in the order they changed. To page, pass the last row's `updated_at` here and its `id` as `after_id`; never skip rows with `offset` while they may be changing.",
+              "title": "Updated Since"
+            }
+          },
+          {
+            "description": "With `updated_since`: start after this row (the last one you received)",
+            "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "With `updated_since`: start after this row (the last one you received)",
+              "title": "After Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MappingRead"
+                  },
+                  "title": "Response List Mappings Api V1 Compliance Mappings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Mappings",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/mappings/import": {
+      "post": {
+        "description": "Load mappings from the CUEC inventory's CSV (docs/compliance/cuecs.csv) with your controls\nfilled in. Rows left blank are skipped, and a mapping already there isn't added twice.",
+        "operationId": "import_mappings_api_v1_compliance_mappings_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_mappings_api_v1_compliance_mappings_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingImport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Mappings",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/oscal/assessment-results": {
+      "get": {
+        "description": "The bank's control testing for a period as OSCAL 1.2.1 assessment results: an observation\nper check that ran (its results' counts and digest), a finding per deviation, and each\naccepted CUEC attestation.",
+        "operationId": "oscal_assessment_results_api_v1_compliance_oscal_assessment_results_get",
+        "parameters": [
+          {
+            "description": "First day, YYYY-MM-DD",
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "description": "First day, YYYY-MM-DD",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive",
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "description": "Last day, inclusive",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Oscal Assessment Results Api V1 Compliance Oscal Assessment Results Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Oscal Assessment Results",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/v1/compliance/oscal/component-definition": {
+      "get": {
+        "description": "OpenClear as an OSCAL 1.2.1 component definition against NIST SP 800-53 Rev. 5: one\nimplemented requirement per control, each OpenClear control on it as an `openclear-control`\nproperty and each CUEC as a `cuec` property (its party as the class) in the namespace\n`https://github.com/chaffed/OpenClear/ns/oscal`.",
+        "operationId": "oscal_component_definition_api_v1_compliance_oscal_component_definition_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Oscal Component Definition Api V1 Compliance Oscal Component Definition Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Oscal Component Definition",
         "tags": [
           "compliance"
         ]

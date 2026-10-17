@@ -72,6 +72,8 @@ dev = [
   "moto[s3]>=5",
   "redis>=5",
   "fakeredis[lua]>=2.20",
+  # tests/test_compliance/test_oscal.py: OSCAL documents against NIST's published JSON schemas.
+  "jsonschema>=4.21",
 ]
 
 [build-system]

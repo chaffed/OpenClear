@@ -144,6 +144,75 @@ export interface ApiClientRead {
   security_group: string | null;
 }
 
+export interface AttestationDetail {
+  accepted_at: string | null;
+  accepted_by: string | null;
+  auto_accepted: boolean;
+  cuec_id: string;
+  customer_id: string | null;
+  evidence: Record<string, unknown>;
+  files: Array<AttestationFile>;
+  id: string;
+  installation: boolean;
+  inventory_version: string;
+  mappings: Array<string>;
+  method: "automated" | "manual";
+  party: "bank" | "customer" | "host";
+  period_end: string;
+  period_kind: string;
+  period_start: string;
+  prepared_at: string;
+  prepared_by: string;
+  rejected_reason: string | null;
+  result: "operated" | "operated_with_exceptions" | "not_operated" | "not_applicable" | "not_tested";
+  sha256: string | null;
+  signed: SignedAttestation | null;
+  statement: string | null;
+  status: "prepared" | "accepted" | "rejected" | "superseded";
+  supersedes_id: string | null;
+  updated_at: string;
+  verified: boolean | null;
+}
+
+export interface AttestationFile {
+  name: string;
+  sha256: string;
+  size: number;
+}
+
+export interface AttestationRead {
+  accepted_at: string | null;
+  accepted_by: string | null;
+  auto_accepted: boolean;
+  cuec_id: string;
+  customer_id: string | null;
+  evidence: Record<string, unknown>;
+  files: Array<AttestationFile>;
+  id: string;
+  installation: boolean;
+  inventory_version: string;
+  mappings: Array<string>;
+  method: "automated" | "manual";
+  party: "bank" | "customer" | "host";
+  period_end: string;
+  period_kind: string;
+  period_start: string;
+  prepared_at: string;
+  prepared_by: string;
+  rejected_reason: string | null;
+  result: "operated" | "operated_with_exceptions" | "not_operated" | "not_applicable" | "not_tested";
+  sha256: string | null;
+  statement: string | null;
+  status: "prepared" | "accepted" | "rejected" | "superseded";
+  supersedes_id: string | null;
+  updated_at: string;
+  verified: boolean | null;
+}
+
+export interface AttestationReject {
+  reason: string;
+}
+
 export interface AuthenticationVerifyRequest {
   credential: Record<string, unknown>;
 }
@@ -244,6 +313,17 @@ export interface ControlInventory {
 export interface CsfSubcategory {
   id: string;
   title: string;
+}
+
+export interface CuecEvidence {
+  attestations: Array<AttestationRead>;
+  check: string | null;
+  cuec_id: string;
+  evidence: Record<string, unknown>;
+  evidence_level: "automated" | "assisted" | "attested";
+  period_end: string;
+  period_start: string;
+  proposed_result: "operated" | "operated_with_exceptions" | "not_operated" | "not_applicable" | "not_tested" | null;
 }
 
 export interface CuecInventory {
@@ -351,6 +431,19 @@ export interface DecisionRead {
   reason_code: string;
   return_transaction_code: string | null;
   submitted_by_user_id: string | null;
+}
+
+export interface DeviationRead {
+  cause: string | null;
+  check_key: string;
+  closed_at: string | null;
+  hours: number;
+  id: string;
+  opened_at: string;
+  responded_at: string | null;
+  response: string | null;
+  status: "WARN" | "FAIL";
+  updated_at: string;
 }
 
 export interface EdgeEcho {
@@ -580,6 +673,37 @@ export interface LoginResponse {
   token_type?: string;
 }
 
+export interface MappingImport {
+  added: number;
+  problems: Array<string>;
+}
+
+export interface MappingRead {
+  auto_accept: boolean;
+  control_name: string | null;
+  control_ref: string;
+  created_at: string;
+  cuec_id: string;
+  customer_id: string | null;
+  id: string;
+  inventory_version: string;
+  link: string | null;
+  owner: string | null;
+  updated_at: string;
+}
+
+export interface MappingWrite {
+  auto_accept?: boolean;
+  control_name?: string | null;
+  control_ref: string;
+  link?: string | null;
+  owner?: string | null;
+}
+
+export interface MappingsWrite {
+  mappings: Array<MappingWrite>;
+}
+
 export interface MetricRead {
   code: string;
   label: string;
@@ -689,6 +813,11 @@ export interface SharedModelSummaryRead {
   version: string | null;
 }
 
+export interface SignedAttestation {
+  attestation: Record<string, unknown>;
+  signature: Record<string, unknown>;
+}
+
 export interface StopPaymentCreate {
   account_id: string;
   amount?: number | string | null;
@@ -731,6 +860,19 @@ export interface TenantUserRead {
   membership_id: string;
   security_group_name: string;
   user_id: string;
+}
+
+export interface TestResultRead {
+  check_key: string;
+  evidence: Record<string, unknown>;
+  evidence_sha256: string;
+  id: string;
+  period_end: string | null;
+  period_start: string | null;
+  recorded_at: string;
+  started_by: "schedule" | "view" | "person";
+  status: "PASS" | "WARN" | "FAIL";
+  summary: string;
 }
 
 export interface Tier {
@@ -1336,17 +1478,133 @@ export class ComplianceApi {
   }
 
   /**
+   * List Attestations.
+   *
+   * GET /api/v1/compliance/attestations
+   *
+   * Attestations, newest period first; with `updated_since`, those prepared, accepted,
+   * rejected or superseded since, oldest change first. Each accepted one has its `sha256`, and
+   * `verified` says its signature checks out; the signed body is at `GET /attestations/{id}`.
+   */
+  listAttestations(query: { start?: string | null; end?: string | null; status?: "prepared" | "accepted" | "rejected" | "superseded" | null; cuec_id?: string | null; control?: string | null; customer_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<AttestationRead>> {
+    return this.c.call<Array<AttestationRead>>("GET", `/api/v1/compliance/attestations`, { query });
+  }
+
+  /**
+   * Every row of listAttestations, following each page's `Link: rel="next"`.
+   *
+   * GET /api/v1/compliance/attestations
+   */
+  iterAttestations(query: { start?: string | null; end?: string | null; status?: "prepared" | "accepted" | "rejected" | "superseded" | null; cuec_id?: string | null; control?: string | null; customer_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<AttestationRead> {
+    return this.c.paginate<AttestationRead>("GET", `/api/v1/compliance/attestations`, { query });
+  }
+
+  /**
+   * Export Attestations.
+   *
+   * GET /api/v1/compliance/attestations/export
+   *
+   * Every accepted (and superseded) attestation for periods overlapping [start, end]. JSON:
+   * each one signed, as `GET /attestations/{id}` gives it, with the public key to check them by.
+   * CSV: one row each. OSCAL: the bank's assessment results for the period (the bank only), with
+   * the attestations as OSCAL attestations.
+   */
+  exportAttestations(query: { start?: string; end?: string; format?: "json" | "csv" | "oscal" } = {}): Promise<Uint8Array> {
+    return this.c.call<Uint8Array>("GET", `/api/v1/compliance/attestations/export`, { query, raw: true });
+  }
+
+  /**
+   * Get Attestation.
+   *
+   * GET /api/v1/compliance/attestations/{attestation_id}
+   *
+   * An attestation, with its signed body once accepted: `signed.attestation` is what the
+   * signature covers, `signed.signature` the ECDSA P-256 signature over the SHA-256 of its
+   * canonical JSON (sorted keys, no spaces) and the public key to check it with.
+   */
+  getAttestation(attestationId: string): Promise<AttestationDetail> {
+    return this.c.call<AttestationDetail>("GET", `/api/v1/compliance/attestations/${encodeURIComponent(String(attestationId))}`, {  });
+  }
+
+  /**
+   * Accept Attestation.
+   *
+   * POST /api/v1/compliance/attestations/{attestation_id}/accept
+   *
+   * Accept a prepared attestation: it's signed, and any earlier accepted one for the same CUEC
+   * and period is superseded. Under the bank's "second person" setting, whoever prepared a manual
+   * one can't accept it.
+   */
+  acceptAttestation(attestationId: string): Promise<AttestationDetail> {
+    return this.c.call<AttestationDetail>("POST", `/api/v1/compliance/attestations/${encodeURIComponent(String(attestationId))}/accept`, {  });
+  }
+
+  /**
+   * Reject Attestation.
+   *
+   * POST /api/v1/compliance/attestations/{attestation_id}/reject
+   *
+   * Reject a prepared attestation, saying why (a security event).
+   */
+  rejectAttestation(attestationId: string, body: AttestationReject): Promise<AttestationDetail> {
+    return this.c.call<AttestationDetail>("POST", `/api/v1/compliance/attestations/${encodeURIComponent(String(attestationId))}/reject`, { json: body });
+  }
+
+  /**
    * Control Inventory.
    *
    * GET /api/v1/compliance/controls
    *
-   * OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-   * checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
-   * to those controls, and the CUECs it relies on. `status`
-   * is the worst of its live checks, or null when none of its checks is live yet.
+   * OpenClear's control inventory: each control with its NIST SP 800-53 controls, its checks
+   * (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps to
+   * those controls, and the CUECs it relies on. `status` is the worst of its live checks, or null
+   * when none of its checks is live yet.
    */
   controlInventory(): Promise<ControlInventory> {
     return this.c.call<ControlInventory>("GET", `/api/v1/compliance/controls`, {  });
+  }
+
+  /**
+   * Control Deviations.
+   *
+   * GET /api/v1/compliance/controls/{control_id}/deviations
+   *
+   * The deviations of a control's checks: each stretch of time a check was at FAIL (or WARN,
+   * where the bank says so), with the cause and response once recorded. Oldest first.
+   */
+  controlDeviations(controlId: string, query: { start?: string | null; end?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<DeviationRead>> {
+    return this.c.call<Array<DeviationRead>>("GET", `/api/v1/compliance/controls/${encodeURIComponent(String(controlId))}/deviations`, { query });
+  }
+
+  /**
+   * Every row of controlDeviations, following each page's `Link: rel="next"`.
+   *
+   * GET /api/v1/compliance/controls/{control_id}/deviations
+   */
+  iterControlDeviations(controlId: string, query: { start?: string | null; end?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<DeviationRead> {
+    return this.c.paginate<DeviationRead>("GET", `/api/v1/compliance/controls/${encodeURIComponent(String(controlId))}/deviations`, { query });
+  }
+
+  /**
+   * Control Results.
+   *
+   * GET /api/v1/compliance/controls/{control_id}/results
+   *
+   * Every recorded result of a control's checks (`OC-AC-05`), oldest first: each scheduled run,
+   * and a page view or a person's run where it changed the status. A result never changes once
+   * recorded, so `updated_since` here means recorded at or after.
+   */
+  controlResults(controlId: string, query: { start?: string | null; end?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<TestResultRead>> {
+    return this.c.call<Array<TestResultRead>>("GET", `/api/v1/compliance/controls/${encodeURIComponent(String(controlId))}/results`, { query });
+  }
+
+  /**
+   * Every row of controlResults, following each page's `Link: rel="next"`.
+   *
+   * GET /api/v1/compliance/controls/{control_id}/results
+   */
+  iterControlResults(controlId: string, query: { start?: string | null; end?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<TestResultRead> {
+    return this.c.paginate<TestResultRead>("GET", `/api/v1/compliance/controls/${encodeURIComponent(String(controlId))}/results`, { query });
   }
 
   /**
@@ -1356,11 +1614,112 @@ export class ComplianceApi {
    *
    * The complementary user entity controls: what OpenClear's controls rely on the bank, its
    * customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
-   * the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
-   * customer's. Filter with `party`.
+   * the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A
+   * customer's own session sees only the customer's. Filter with `party`.
    */
   cuecInventory(query: { party?: "bank" | "customer" | "host" | null } = {}): Promise<CuecInventory> {
     return this.c.call<CuecInventory>("GET", `/api/v1/compliance/cuecs`, { query });
+  }
+
+  /**
+   * Record Attestation.
+   *
+   * POST /api/v1/compliance/cuecs/{cuec_id}/attestations
+   *
+   * Record a manual attestation of a CUEC for a period, with an evidence file if you have one
+   * (kept read-only, with its SHA-256). It's prepared, not yet signed: someone with
+   * `compliance:attest` accepts it, and under the bank's "second person" setting that's
+   * someone else.
+   */
+  recordAttestation(cuecId: string, form: { end: string; evidence_file?: Blob | null; result: "operated" | "operated_with_exceptions" | "not_operated" | "not_applicable"; start: string; statement: string }): Promise<AttestationRead> {
+    return this.c.call<AttestationRead>("POST", `/api/v1/compliance/cuecs/${encodeURIComponent(String(cuecId))}/attestations`, { multipart: form });
+  }
+
+  /**
+   * Cuec Evidence.
+   *
+   * GET /api/v1/compliance/cuecs/{cuec_id}/evidence
+   *
+   * The evidence behind a CUEC for a period. For the bank's automated CUECs, the result
+   * OpenClear would propose by CT-D6's rule (coverage of at least 95% of scheduled runs, no
+   * deviation longer than the grace period, every population test passed) and the numbers
+   * behind it: runs expected and recorded, statuses, deviations and the results' digests. For
+   * the rest, the related check's latest result. With the CUEC's attestations for the period.
+   */
+  cuecEvidence(cuecId: string, query: { start?: string; end?: string } = {}): Promise<CuecEvidence> {
+    return this.c.call<CuecEvidence>("GET", `/api/v1/compliance/cuecs/${encodeURIComponent(String(cuecId))}/evidence`, { query });
+  }
+
+  /**
+   * Set Mappings.
+   *
+   * PUT /api/v1/compliance/cuecs/{cuec_id}/mappings
+   *
+   * Set a CUEC's mappings to exactly these, matched on `control_ref`: new ones are added,
+   * ones left out removed, the rest updated. Turning `auto_accept` on or off is recorded in the
+   * action log, and on is a security event.
+   */
+  setMappings(cuecId: string, body: MappingsWrite): Promise<Array<MappingRead>> {
+    return this.c.call<Array<MappingRead>>("PUT", `/api/v1/compliance/cuecs/${encodeURIComponent(String(cuecId))}/mappings`, { json: body });
+  }
+
+  /**
+   * List Mappings.
+   *
+   * GET /api/v1/compliance/mappings
+   *
+   * Your mappings: which of your own controls cover each CUEC (the bank's, or a customer's own).
+   */
+  listMappings(query: { cuec_id?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<MappingRead>> {
+    return this.c.call<Array<MappingRead>>("GET", `/api/v1/compliance/mappings`, { query });
+  }
+
+  /**
+   * Every row of listMappings, following each page's `Link: rel="next"`.
+   *
+   * GET /api/v1/compliance/mappings
+   */
+  iterMappings(query: { cuec_id?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<MappingRead> {
+    return this.c.paginate<MappingRead>("GET", `/api/v1/compliance/mappings`, { query });
+  }
+
+  /**
+   * Import Mappings.
+   *
+   * POST /api/v1/compliance/mappings/import
+   *
+   * Load mappings from the CUEC inventory's CSV (docs/compliance/cuecs.csv) with your controls
+   * filled in. Rows left blank are skipped, and a mapping already there isn't added twice.
+   */
+  importMappings(form: { file: Blob }): Promise<MappingImport> {
+    return this.c.call<MappingImport>("POST", `/api/v1/compliance/mappings/import`, { multipart: form });
+  }
+
+  /**
+   * Oscal Assessment Results.
+   *
+   * GET /api/v1/compliance/oscal/assessment-results
+   *
+   * The bank's control testing for a period as OSCAL 1.2.1 assessment results: an observation
+   * per check that ran (its results' counts and digest), a finding per deviation, and each
+   * accepted CUEC attestation.
+   */
+  oscalAssessmentResults(query: { start?: string; end?: string } = {}): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/compliance/oscal/assessment-results`, { query });
+  }
+
+  /**
+   * Oscal Component Definition.
+   *
+   * GET /api/v1/compliance/oscal/component-definition
+   *
+   * OpenClear as an OSCAL 1.2.1 component definition against NIST SP 800-53 Rev. 5: one
+   * implemented requirement per control, each OpenClear control on it as an `openclear-control`
+   * property and each CUEC as a `cuec` property (its party as the class) in the namespace
+   * `https://github.com/chaffed/OpenClear/ns/oscal`.
+   */
+  oscalComponentDefinition(): Promise<Record<string, unknown>> {
+    return this.c.call<Record<string, unknown>>("GET", `/api/v1/compliance/oscal/component-definition`, {  });
   }
 }
 

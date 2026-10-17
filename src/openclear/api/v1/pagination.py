@@ -34,7 +34,7 @@ def page_params(
 
 
 def set_page_headers(request: Request, response: Response, page: Page, total: int, *, since: "Since | None" = None,
-                     rows: list | None = None) -> None:
+                     rows: list | None = None, changed: str = "updated_at") -> None:
     response.headers["X-Total-Count"] = str(total)
     if since is not None:
         # A changed-since list pages by position, not offset: the next page starts after this
@@ -42,7 +42,7 @@ def set_page_headers(request: Request, response: Response, page: Page, total: in
         if rows and len(rows) == page.limit:
             last = rows[-1]
             next_url = request.url.remove_query_params(["offset", "after_id", "updated_since"]).include_query_params(
-                updated_since=last.updated_at.isoformat(), after_id=str(last.id), limit=page.limit)
+                updated_since=getattr(last, changed).isoformat(), after_id=str(last.id), limit=page.limit)
             response.headers["Link"] = f'<{next_url}>; rel="next"'
         return
     if page.offset + page.limit < total:
@@ -73,16 +73,18 @@ def updated_since_param(
     return Since(updated_since, after_id)
 
 
-def changed_since(model, since: Since | None, default_order: tuple) -> tuple[dict, tuple]:
+def changed_since(model, since: Since | None, default_order: tuple, *, changed: str = "updated_at") -> tuple[dict, tuple]:
     """For a list endpoint: (extra repository filters, order). With `since`, only rows changed
     at or after it (or, with after_id, strictly after that row in (updated_at, id) order), the
     oldest change first, so a data pipeline fetches only what changed and can page without
     missing a row that changes meanwhile (docs/guides/bi.md); otherwise the endpoint's usual
-    order."""
+    order. `changed` names the column for rows that are never changed once made (a control
+    test result's `recorded_at`)."""
     if since is None:
         return {}, default_order
+    column = getattr(model, changed)
     if since.after_id is None:
-        condition = model.updated_at >= since.time
+        condition = column >= since.time
     else:
-        condition = or_(model.updated_at > since.time, and_(model.updated_at == since.time, model.id > since.after_id))
-    return {"where": [condition]}, (model.updated_at, model.id)
+        condition = or_(column > since.time, and_(column == since.time, model.id > since.after_id))
+    return {"where": [condition]}, (column, model.id)

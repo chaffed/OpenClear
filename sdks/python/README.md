@@ -151,6 +151,7 @@ openclear push paid_items presented.csv                 # import a file, list th
 openclear decisions pull --consumer core --format csv   # new decisions, then acknowledge them
 openclear decisions files --download ./outbox           # outbox files, SHA-256 checked, then acknowledged
 openclear webhooks tail --secret whsec_...              # receive webhooks locally, verify and print them
+openclear compliance attestations --start 2026-01-01 --end 2026-03-31 --format oscal  # a quarter's attestations
 ```
 
 Exit codes:

@@ -227,6 +227,41 @@ def _support_access(session: Session, tenant_id: uuid.UUID, start: datetime, end
              "last_used_at": _iso(r.last_used_at)} for r in rows]
 
 
+def _control_testing(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> dict:
+    """The period's control testing (CONTROLS_PLAN.md CT2 to CT5): each check's results (counts and
+    the digest over their evidence digests), the deviations open in it, and the CUEC attestations
+    accepted for periods overlapping it, with their signatures' digests."""
+    from openclear.compliance import checks
+    from openclear.domain.control_result import ControlDeviation, ControlTestResult
+    from openclear.domain.cuec_attestation import CuecAttestation
+
+    results = session.execute(select(ControlTestResult).where(
+        ControlTestResult.tenant_id == tenant_id, ControlTestResult.recorded_at >= start, ControlTestResult.recorded_at < end)
+        .order_by(ControlTestResult.check_key, ControlTestResult.recorded_at)).scalars().all()
+    by_check: dict[str, list] = {}
+    for r in results:
+        by_check.setdefault(r.check_key, []).append(r)
+    titles = {c.key: c.title for c in checks.registry()}
+    deviations = session.execute(select(ControlDeviation).where(
+        ControlDeviation.tenant_id == tenant_id, ControlDeviation.opened_at < end,
+        (ControlDeviation.closed_at.is_(None)) | (ControlDeviation.closed_at >= start)).order_by(ControlDeviation.opened_at)).scalars().all()
+    attestations = session.execute(select(CuecAttestation).where(
+        CuecAttestation.tenant_id == tenant_id, CuecAttestation.status.in_(("accepted", "superseded")),
+        CuecAttestation.period_end >= start.date(), CuecAttestation.period_start < end.date())
+        .order_by(CuecAttestation.cuec_id, CuecAttestation.period_end)).scalars().all()
+    return {
+        "checks": [{"check": key, "title": titles.get(key, key), "results": len(rows),
+                    "statuses": {s: sum(r.status == s for r in rows) for s in ("PASS", "WARN", "FAIL")},
+                    "results_sha256": hashlib.sha256("".join(sorted(r.evidence_sha256 for r in rows)).encode()).hexdigest()}
+                   for key, rows in by_check.items()],
+        "deviations": [{"id": str(d.id), "check": d.check_key, "status": d.status, "opened_at": _iso(d.opened_at), "closed_at": _iso(d.closed_at),
+                        "cause": d.cause, "response": d.response} for d in deviations],
+        "attestations": [{"id": str(a.id), "cuec": a.cuec_id, "customer_id": str(a.customer_id) if a.customer_id else None,
+                          "period": [a.period_start.isoformat(), a.period_end.isoformat()], "result": a.result, "method": a.method,
+                          "status": a.status, "auto_accepted": a.auto_accepted, "sha256": a.sha256} for a in attestations],
+    }
+
+
 def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, generated_by_user_id: uuid.UUID | None) -> dict:
     from openclear.domain.tenant import Tenant
     from openclear.services import controls_service
@@ -249,6 +284,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "control_runs": _control_runs(session, tenant_id, period_start, period_end),
         "security_events": _security_events(session, tenant_id, period_start, period_end),
         "support_access": _support_access(session, tenant_id, period_start, period_end),
+        "control_testing": _control_testing(session, tenant_id, period_start, period_end),
         "controls": controls,
     }
 

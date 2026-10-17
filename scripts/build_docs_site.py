@@ -37,6 +37,7 @@ PAGES = [
     ("docs/PLUGINS.md", "guides/plugins.md", "Writing a plugin"),
     ("docs/guides/bi.md", "guides/bi.md", "Reporting with your BI platform"),
     ("docs/guides/siem.md", "guides/siem.md", "Sending security events to a SIEM"),
+    ("docs/guides/grc.md", "guides/grc.md", "Connecting your GRC tool"),
     ("docs/guides/edge.md", "guides/edge.md", "Running behind an edge network"),
     ("docs/compliance/README.md", "compliance/index.md", "Compliance"),
     ("docs/compliance/ffiec.md", "compliance/ffiec.md", "FFIEC IT Handbook"),
@@ -70,6 +71,7 @@ NAV = """nav:
       - Writing a plugin: guides/plugins.md
       - Reporting with your BI platform: guides/bi.md
       - Sending security events to a SIEM: guides/siem.md
+      - Connecting your GRC tool: guides/grc.md
       - Running behind an edge network: guides/edge.md
   - Compliance:
       - compliance/index.md

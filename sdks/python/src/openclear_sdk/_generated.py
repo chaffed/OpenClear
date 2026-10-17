@@ -167,6 +167,75 @@ class ApiClientRead(TypedDict):
     security_group: str | None
 
 
+class AttestationDetail(TypedDict):
+    accepted_at: str | None
+    accepted_by: str | None
+    auto_accepted: bool
+    cuec_id: str
+    customer_id: str | None
+    evidence: dict[str, Any]
+    files: list[AttestationFile]
+    id: str
+    installation: bool
+    inventory_version: str
+    mappings: list[str]
+    method: Literal["automated", "manual"]
+    party: Literal["bank", "customer", "host"]
+    period_end: str
+    period_kind: str
+    period_start: str
+    prepared_at: str
+    prepared_by: str
+    rejected_reason: str | None
+    result: Literal["operated", "operated_with_exceptions", "not_operated", "not_applicable", "not_tested"]
+    sha256: str | None
+    signed: SignedAttestation | None
+    statement: str | None
+    status: Literal["prepared", "accepted", "rejected", "superseded"]
+    supersedes_id: str | None
+    updated_at: str
+    verified: bool | None
+
+
+class AttestationFile(TypedDict):
+    name: str
+    sha256: str
+    size: int
+
+
+class AttestationRead(TypedDict):
+    accepted_at: str | None
+    accepted_by: str | None
+    auto_accepted: bool
+    cuec_id: str
+    customer_id: str | None
+    evidence: dict[str, Any]
+    files: list[AttestationFile]
+    id: str
+    installation: bool
+    inventory_version: str
+    mappings: list[str]
+    method: Literal["automated", "manual"]
+    party: Literal["bank", "customer", "host"]
+    period_end: str
+    period_kind: str
+    period_start: str
+    prepared_at: str
+    prepared_by: str
+    rejected_reason: str | None
+    result: Literal["operated", "operated_with_exceptions", "not_operated", "not_applicable", "not_tested"]
+    sha256: str | None
+    statement: str | None
+    status: Literal["prepared", "accepted", "rejected", "superseded"]
+    supersedes_id: str | None
+    updated_at: str
+    verified: bool | None
+
+
+class AttestationReject(TypedDict):
+    reason: str
+
+
 class AuthenticationVerifyRequest(TypedDict):
     credential: dict[str, Any]
 
@@ -268,6 +337,17 @@ class ControlInventory(TypedDict):
 class CsfSubcategory(TypedDict):
     id: str
     title: str
+
+
+class CuecEvidence(TypedDict):
+    attestations: list[AttestationRead]
+    check: str | None
+    cuec_id: str
+    evidence: dict[str, Any]
+    evidence_level: Literal["automated", "assisted", "attested"]
+    period_end: str
+    period_start: str
+    proposed_result: Literal["operated", "operated_with_exceptions", "not_operated", "not_applicable", "not_tested"] | None
 
 
 class CuecInventory(TypedDict):
@@ -376,6 +456,19 @@ class DecisionRead(TypedDict):
     reason_code: str
     return_transaction_code: str | None
     submitted_by_user_id: str | None
+
+
+class DeviationRead(TypedDict):
+    cause: str | None
+    check_key: str
+    closed_at: str | None
+    hours: float
+    id: str
+    opened_at: str
+    responded_at: str | None
+    response: str | None
+    status: Literal["WARN", "FAIL"]
+    updated_at: str
 
 
 class EdgeEcho(TypedDict):
@@ -613,6 +706,37 @@ carries no permissions (see auth/deps.py's get_mfa_pending_context)."""
     token_type: NotRequired[str]
 
 
+class MappingImport(TypedDict):
+    added: int
+    problems: list[str]
+
+
+class MappingRead(TypedDict):
+    auto_accept: bool
+    control_name: str | None
+    control_ref: str
+    created_at: str
+    cuec_id: str
+    customer_id: str | None
+    id: str
+    inventory_version: str
+    link: str | None
+    owner: str | None
+    updated_at: str
+
+
+class MappingWrite(TypedDict):
+    auto_accept: NotRequired[bool]
+    control_name: NotRequired[str | None]
+    control_ref: str
+    link: NotRequired[str | None]
+    owner: NotRequired[str | None]
+
+
+class MappingsWrite(TypedDict):
+    mappings: list[MappingWrite]
+
+
 class MetricRead(TypedDict):
     code: str
     label: str
@@ -730,6 +854,11 @@ class SharedModelSummaryRead(TypedDict):
     version: str | None
 
 
+class SignedAttestation(TypedDict):
+    attestation: dict[str, Any]
+    signature: dict[str, Any]
+
+
 class StopPaymentCreate(TypedDict):
     account_id: str
     amount: NotRequired[float | str | None]
@@ -776,6 +905,19 @@ scopes) appears once per membership, matching how access is actually granted."""
     membership_id: str
     security_group_name: str
     user_id: str
+
+
+class TestResultRead(TypedDict):
+    check_key: str
+    evidence: dict[str, Any]
+    evidence_sha256: str
+    id: str
+    period_end: str | None
+    period_start: str | None
+    recorded_at: str
+    started_by: Literal["schedule", "view", "person"]
+    status: Literal["PASS", "WARN", "FAIL"]
+    summary: str
 
 
 class Tier(TypedDict):
@@ -1269,17 +1411,113 @@ class ComplianceApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
+    def list_attestations(self, *, start: str | None = None, end: str | None = None, status: Literal["prepared", "accepted", "rejected", "superseded"] | None = None, cuec_id: str | None = None, control: str | None = None, customer_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[AttestationRead]:
+        """List Attestations.
+
+        GET /api/v1/compliance/attestations
+
+        Attestations, newest period first; with `updated_since`, those prepared, accepted,
+        rejected or superseded since, oldest change first. Each accepted one has its `sha256`, and
+        `verified` says its signature checks out; the signed body is at `GET /attestations/{id}`.
+        """
+        return self._c.call("GET", "/api/v1/compliance/attestations", query={"start": start, "end": end, "status": status, "cuec_id": cuec_id, "control": control, "customer_id": customer_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
+
+    def iter_attestations(self, *, start: str | None = None, end: str | None = None, status: Literal["prepared", "accepted", "rejected", "superseded"] | None = None, cuec_id: str | None = None, control: str | None = None, customer_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[AttestationRead]:
+        """Every row of list_attestations, following each page's `Link: rel="next"`.
+
+        GET /api/v1/compliance/attestations
+        """
+        return self._c.paginate("GET", "/api/v1/compliance/attestations", query={"start": start, "end": end, "status": status, "cuec_id": cuec_id, "control": control, "customer_id": customer_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
+
+    def export_attestations(self, *, start: str | None = None, end: str | None = None, format: Literal["json", "csv", "oscal"] | None = None) -> bytes:
+        """Export Attestations.
+
+        GET /api/v1/compliance/attestations/export
+
+        Every accepted (and superseded) attestation for periods overlapping [start, end]. JSON:
+        each one signed, as `GET /attestations/{id}` gives it, with the public key to check them by.
+        CSV: one row each. OSCAL: the bank's assessment results for the period (the bank only), with
+        the attestations as OSCAL attestations.
+        """
+        return self._c.call("GET", "/api/v1/compliance/attestations/export", query={"start": start, "end": end, "format": format}, raw=True)
+
+    def get_attestation(self, attestation_id: str) -> AttestationDetail:
+        """Get Attestation.
+
+        GET /api/v1/compliance/attestations/{attestation_id}
+
+        An attestation, with its signed body once accepted: `signed.attestation` is what the
+        signature covers, `signed.signature` the ECDSA P-256 signature over the SHA-256 of its
+        canonical JSON (sorted keys, no spaces) and the public key to check it with.
+        """
+        return self._c.call("GET", f"/api/v1/compliance/attestations/{_path(attestation_id)}")
+
+    def accept_attestation(self, attestation_id: str) -> AttestationDetail:
+        """Accept Attestation.
+
+        POST /api/v1/compliance/attestations/{attestation_id}/accept
+
+        Accept a prepared attestation: it's signed, and any earlier accepted one for the same CUEC
+        and period is superseded. Under the bank's "second person" setting, whoever prepared a manual
+        one can't accept it.
+        """
+        return self._c.call("POST", f"/api/v1/compliance/attestations/{_path(attestation_id)}/accept")
+
+    def reject_attestation(self, attestation_id: str, body: AttestationReject) -> AttestationDetail:
+        """Reject Attestation.
+
+        POST /api/v1/compliance/attestations/{attestation_id}/reject
+
+        Reject a prepared attestation, saying why (a security event).
+        """
+        return self._c.call("POST", f"/api/v1/compliance/attestations/{_path(attestation_id)}/reject", json=body)
+
     def control_inventory(self) -> ControlInventory:
         """Control Inventory.
 
         GET /api/v1/compliance/controls
 
-        OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-        checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
-        to those controls, and the CUECs it relies on. `status`
-        is the worst of its live checks, or null when none of its checks is live yet.
+        OpenClear's control inventory: each control with its NIST SP 800-53 controls, its checks
+        (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps to
+        those controls, and the CUECs it relies on. `status` is the worst of its live checks, or null
+        when none of its checks is live yet.
         """
         return self._c.call("GET", "/api/v1/compliance/controls")
+
+    def control_deviations(self, control_id: str, *, start: str | None = None, end: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[DeviationRead]:
+        """Control Deviations.
+
+        GET /api/v1/compliance/controls/{control_id}/deviations
+
+        The deviations of a control's checks: each stretch of time a check was at FAIL (or WARN,
+        where the bank says so), with the cause and response once recorded. Oldest first.
+        """
+        return self._c.call("GET", f"/api/v1/compliance/controls/{_path(control_id)}/deviations", query={"start": start, "end": end, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
+
+    def iter_control_deviations(self, control_id: str, *, start: str | None = None, end: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[DeviationRead]:
+        """Every row of control_deviations, following each page's `Link: rel="next"`.
+
+        GET /api/v1/compliance/controls/{control_id}/deviations
+        """
+        return self._c.paginate("GET", f"/api/v1/compliance/controls/{_path(control_id)}/deviations", query={"start": start, "end": end, "limit": limit, "updated_since": updated_since, "after_id": after_id})
+
+    def control_results(self, control_id: str, *, start: str | None = None, end: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[TestResultRead]:
+        """Control Results.
+
+        GET /api/v1/compliance/controls/{control_id}/results
+
+        Every recorded result of a control's checks (`OC-AC-05`), oldest first: each scheduled run,
+        and a page view or a person's run where it changed the status. A result never changes once
+        recorded, so `updated_since` here means recorded at or after.
+        """
+        return self._c.call("GET", f"/api/v1/compliance/controls/{_path(control_id)}/results", query={"start": start, "end": end, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
+
+    def iter_control_results(self, control_id: str, *, start: str | None = None, end: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[TestResultRead]:
+        """Every row of control_results, following each page's `Link: rel="next"`.
+
+        GET /api/v1/compliance/controls/{control_id}/results
+        """
+        return self._c.paginate("GET", f"/api/v1/compliance/controls/{_path(control_id)}/results", query={"start": start, "end": end, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def cuec_inventory(self, *, party: Literal["bank", "customer", "host"] | None = None) -> CuecInventory:
         """Cuec Inventory.
@@ -1288,10 +1526,95 @@ class ComplianceApi:
 
         The complementary user entity controls: what OpenClear's controls rely on the bank, its
         customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
-        the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
-        customer's. Filter with `party`.
+        the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A
+        customer's own session sees only the customer's. Filter with `party`.
         """
         return self._c.call("GET", "/api/v1/compliance/cuecs", query={"party": party})
+
+    def record_attestation(self, cuec_id: str, end: str, result: Literal["operated", "operated_with_exceptions", "not_operated", "not_applicable"], start: str, statement: str, *, evidence_file: FileInput | None = None) -> AttestationRead:
+        """Record Attestation.
+
+        POST /api/v1/compliance/cuecs/{cuec_id}/attestations
+
+        Record a manual attestation of a CUEC for a period, with an evidence file if you have one
+        (kept read-only, with its SHA-256). It's prepared, not yet signed: someone with
+        `compliance:attest` accepts it, and under the bank's "second person" setting that's
+        someone else.
+        """
+        return self._c.call("POST", f"/api/v1/compliance/cuecs/{_path(cuec_id)}/attestations", data={"end": end, "result": result, "start": start, "statement": statement}, files={"evidence_file": evidence_file})
+
+    def cuec_evidence(self, cuec_id: str, *, start: str | None = None, end: str | None = None) -> CuecEvidence:
+        """Cuec Evidence.
+
+        GET /api/v1/compliance/cuecs/{cuec_id}/evidence
+
+        The evidence behind a CUEC for a period. For the bank's automated CUECs, the result
+        OpenClear would propose by CT-D6's rule (coverage of at least 95% of scheduled runs, no
+        deviation longer than the grace period, every population test passed) and the numbers
+        behind it: runs expected and recorded, statuses, deviations and the results' digests. For
+        the rest, the related check's latest result. With the CUEC's attestations for the period.
+        """
+        return self._c.call("GET", f"/api/v1/compliance/cuecs/{_path(cuec_id)}/evidence", query={"start": start, "end": end})
+
+    def set_mappings(self, cuec_id: str, body: MappingsWrite) -> list[MappingRead]:
+        """Set Mappings.
+
+        PUT /api/v1/compliance/cuecs/{cuec_id}/mappings
+
+        Set a CUEC's mappings to exactly these, matched on `control_ref`: new ones are added,
+        ones left out removed, the rest updated. Turning `auto_accept` on or off is recorded in the
+        action log, and on is a security event.
+        """
+        return self._c.call("PUT", f"/api/v1/compliance/cuecs/{_path(cuec_id)}/mappings", json=body)
+
+    def list_mappings(self, *, cuec_id: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[MappingRead]:
+        """List Mappings.
+
+        GET /api/v1/compliance/mappings
+
+        Your mappings: which of your own controls cover each CUEC (the bank's, or a customer's own).
+        """
+        return self._c.call("GET", "/api/v1/compliance/mappings", query={"cuec_id": cuec_id, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
+
+    def iter_mappings(self, *, cuec_id: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[MappingRead]:
+        """Every row of list_mappings, following each page's `Link: rel="next"`.
+
+        GET /api/v1/compliance/mappings
+        """
+        return self._c.paginate("GET", "/api/v1/compliance/mappings", query={"cuec_id": cuec_id, "limit": limit, "updated_since": updated_since, "after_id": after_id})
+
+    def import_mappings(self, file: FileInput) -> MappingImport:
+        """Import Mappings.
+
+        POST /api/v1/compliance/mappings/import
+
+        Load mappings from the CUEC inventory's CSV (docs/compliance/cuecs.csv) with your controls
+        filled in. Rows left blank are skipped, and a mapping already there isn't added twice.
+        """
+        return self._c.call("POST", "/api/v1/compliance/mappings/import", files={"file": file})
+
+    def oscal_assessment_results(self, *, start: str | None = None, end: str | None = None) -> dict[str, Any]:
+        """Oscal Assessment Results.
+
+        GET /api/v1/compliance/oscal/assessment-results
+
+        The bank's control testing for a period as OSCAL 1.2.1 assessment results: an observation
+        per check that ran (its results' counts and digest), a finding per deviation, and each
+        accepted CUEC attestation.
+        """
+        return self._c.call("GET", "/api/v1/compliance/oscal/assessment-results", query={"start": start, "end": end})
+
+    def oscal_component_definition(self) -> dict[str, Any]:
+        """Oscal Component Definition.
+
+        GET /api/v1/compliance/oscal/component-definition
+
+        OpenClear as an OSCAL 1.2.1 component definition against NIST SP 800-53 Rev. 5: one
+        implemented requirement per control, each OpenClear control on it as an `openclear-control`
+        property and each CUEC as a `cuec` property (its party as the class) in the namespace
+        `https://github.com/chaffed/OpenClear/ns/oscal`.
+        """
+        return self._c.call("GET", "/api/v1/compliance/oscal/component-definition")
 
 
 class ConformanceApi:

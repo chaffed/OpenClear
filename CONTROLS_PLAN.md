@@ -361,3 +361,28 @@ One merge per phase, at most one migration each, the three full suites once per 
   test). **SOC 2 isn't done:** AICPA's mapping of the Trust Services Criteria to 800-53
   (`tsc_to_nist_800-53.xlsx`) is free but needs an AICPA sign-in to download; with that file the
   same import script can take it. When CT5 comes, its OSCAL and CSV exports carry the `csf` field.
+- 2026-10-17 CT5 built on branch `ct5-grc-api`. The API in section 5 under `/api/v1/compliance/`
+  (`api/v1/compliance.py`), with these differences: results and deviations are two lists
+  (`/controls/{id}/results`, `/controls/{id}/deviations`); mappings are listed at `/mappings` and
+  loaded at `/mappings/import`; `/cuecs` stays the inventory, with mappings and attestations
+  their own lists; the period's file is `/attestations/export?format=json|csv|oscal`, and
+  `/attestations` is a paged JSON list (filters: period, status, CUEC, `control` for your own
+  control id, and `customer_id` for the bank); a manual attestation takes one evidence file
+  through the API (several: a zip), since the SDK generators send one file per field. Results
+  page `updated_since` by `recorded_at`; `updated_at` added to `cuec_mapping`, `cuec_attestation`
+  and `control_deviation` (migration `d5f7a9b1c3e4`). `services/oscal_service.py`: OSCAL 1.2.1,
+  not the latest 1.2.3, because compliance-trestle 5.2 reads 1.2.0 and 1.2.1. The component
+  definition has one implemented requirement per 800-53 control; it has no field for a
+  customer's responsibility, so each OpenClear control and CUEC is a property in OpenClear's
+  namespace (`openclear-control`, `cuec` with the party as the class). Assessment results: an
+  observation per check, a finding per deviation (against the check's control objective), each
+  accepted attestation; `import-ap` points at a back-matter resource saying the checks run on
+  their own schedule. Both validate against NIST's schemas in the suite (`jsonschema`, a dev
+  dependency; the schemas' one `\p{L}` pattern rewritten for Python's `re`), and trestle 5.2.0
+  imported and validated both with no warnings (by hand, in its own environment; trestle's
+  link check counts only version 4 UUIDs, so the plan resource's is random). Evidence export:
+  `control_testing` (each check's counts and digest, deviations, attestations), in the PDF too.
+  CLI `openclear compliance controls|cuecs|attestations`. `docs/guides/grc.md`, whose signature
+  check is run by a test. CSF 2.0 subcategories are in the API, the attestations CSV and, as
+  `csf-subcategory` properties, the component definition. Next: SOC 2 when AICPA's file is in hand; CT-D13
+  and `software_currency` remain.

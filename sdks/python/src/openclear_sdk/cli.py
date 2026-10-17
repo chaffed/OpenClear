@@ -9,6 +9,7 @@
     openclear webhooks tail --secret whsec_...
     openclear audit export --start 2026-01-01 --end 2026-03-31 --format pdf > evidence.pdf
     openclear controls
+    openclear compliance attestations --start 2026-01-01 --end 2026-03-31 --format oscal > q1.json
     openclear events tail --follow --cursor-file .openclear-events
 
 Credentials come from OPENCLEAR_URL, OPENCLEAR_CLIENT_ID and OPENCLEAR_CLIENT_SECRET (or
@@ -139,6 +140,44 @@ def _controls(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
     return 1 if result["overall"] == "FAIL" else 0
 
 
+def _write_rows(rows: list[dict], columns: list[str], fmt: str, out: TextIO) -> None:
+    if fmt == "json":
+        print(json.dumps(rows, indent=2), file=out)
+        return
+    writer = csv.DictWriter(out, fieldnames=columns, extrasaction="ignore", lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({k: "; ".join(map(str, v)) if isinstance(v, list) else v for k, v in row.items()})
+
+
+def _compliance(oc: OpenClear, args: argparse.Namespace, out: TextIO) -> int:
+    """The control and CUEC inventories, and a period's attestations (CONTROLS_PLAN.md CT5)."""
+    if args.compliance_command == "controls":
+        rows = [{**c, "nist": [n["id"] for n in c["nist"]], "csf": [k["id"] for k in c["csf"]], "checks": [k["key"] for k in c["checks"]]}
+                for c in oc.compliance.control_inventory()["controls"] if not c["withdrawn"]]
+        if args.format == "table":
+            for c in rows:
+                print(f"{c['status'] or '-':4}  {c['id']:9} {c['title']} ({', '.join(c['nist'])})", file=out)
+        else:
+            _write_rows(rows, ["id", "family", "title", "status", "nist", "csf", "checks", "cuecs", "type", "nature"], args.format, out)
+        return 0
+    if args.compliance_command == "cuecs":
+        rows = [{**c, "csf": [k["id"] for k in c["csf"]]} for c in oc.compliance.cuec_inventory(party=args.party)["cuecs"] if not c["withdrawn"]]
+        if args.format == "table":
+            for c in rows:
+                print(f"{c['id']:15} {c['party']:8} {c['evidence']:9} {c['title']}", file=out)
+        else:
+            _write_rows(rows, ["id", "party", "nist", "title", "statement", "evidence", "check", "frequency", "csf", "controls"], args.format, out)
+        return 0
+    content = oc.compliance.export_attestations(start=args.start, end=args.end, format=args.format)
+    if args.output:
+        Path(args.output).write_bytes(content)
+        print(f"{args.output} ({len(content)} bytes)", file=sys.stderr)
+    else:
+        out.write(content.decode("utf-8"))
+    return 0
+
+
 def _events_tail(oc: OpenClear, args: argparse.Namespace, out: TextIO, *, sleep=None) -> int:
     """Prints the bank's security events as JSON lines, from a cursor, for a log collector
     to pick up (SIEM_PLAN.md S4). With --cursor-file, the position survives restarts; with
@@ -222,6 +261,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("controls", help="Each control's live status (exit 1 if any fails)")
 
+    compliance = commands.add_parser("compliance", help="Control and CUEC inventories, and attestations, for a GRC tool")
+    compliance_which = compliance.add_subparsers(dest="compliance_command", required=True)
+    inventory = compliance_which.add_parser("controls", help="OpenClear's controls, with NIST and CSF ids and each one's status")
+    inventory.add_argument("--format", choices=["table", "json", "csv"], default="table")
+    cuec_list = compliance_which.add_parser("cuecs", help="What OpenClear's controls rely on you to do")
+    cuec_list.add_argument("--party", choices=["bank", "customer", "host"])
+    cuec_list.add_argument("--format", choices=["table", "json", "csv"], default="table")
+    attestations = compliance_which.add_parser("attestations", help="A period's accepted CUEC attestations, signed")
+    attestations.add_argument("--start", required=True, help="First day, YYYY-MM-DD")
+    attestations.add_argument("--end", required=True, help="Last day, inclusive")
+    attestations.add_argument("--format", choices=["json", "csv", "oscal"], default="json",
+                              help="json: each signed, with the public key; csv: a row each; oscal: OSCAL assessment results")
+    attestations.add_argument("--output", "-o", help="Write to this file instead of standard output")
+
     events = commands.add_parser("events", help="Security events")
     events_which = events.add_subparsers(dest="events_command", required=True)
     events_tail = events_which.add_parser("tail", help="Print the bank's security events as JSON lines")
@@ -260,6 +313,8 @@ def main(argv: list[str] | None = None, *, http_client: Any = None, out: TextIO 
             return _audit_export(oc, args, out)
         if args.command == "controls":
             return _controls(oc, args, out)
+        if args.command == "compliance":
+            return _compliance(oc, args, out)
         if args.command == "events":
             return _events_tail(oc, args, out)
         if args.decisions_command == "pull":

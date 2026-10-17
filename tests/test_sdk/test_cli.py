@@ -125,3 +125,27 @@ def test_audit_export_of_a_long_period_waits_for_the_job(client, db_session, ten
     today = date.today()
     code, _out = _run(client, "audit", "export", "--start", str(today - timedelta(days=10)), "--end", str(today), "-o", str(target))
     assert code == 0 and evidence_service.verify(json.loads(target.read_bytes()))
+
+
+def test_compliance_inventories_and_attestations(client, db_session, tenant_factory, monkeypatch, tmp_path):
+    from tests.test_compliance.test_attestations import DAY, _hourly_results
+    from openclear.services import attestation_service
+
+    tenant, _account, _users = tenant_factory.make(slug="cli-grc")
+    attestation_service.add_mapping(db_session, tenant.id, None, "B-AC-5-01", control_ref="BANK-SOD-1", auto_accept=True)
+    _hourly_results(db_session, tenant, "segregation_of_duties")
+    attestation_service.prepare_automated(db_session, tenant.id, "monthly", DAY, DAY)
+    db_session.commit()
+    _creds(db_session, tenant, monkeypatch)
+
+    code, out = _run(client, "compliance", "controls")
+    assert code == 0 and any(line.split()[1] == "OC-AC-05" and "(AC-5)" in line for line in out.splitlines())
+    code, out = _run(client, "compliance", "cuecs", "--party", "customer", "--format", "csv")
+    rows = list(csv.DictReader(io.StringIO(out)))
+    assert code == 0 and rows and {r["party"] for r in rows} == {"customer"} and rows[0]["csf"]
+    code, out = _run(client, "compliance", "attestations", "--start", DAY.isoformat(), "--end", DAY.isoformat(), "--format", "csv")
+    assert code == 0 and [r["cuec_id"] for r in csv.DictReader(io.StringIO(out))] == ["B-AC-5-01"]
+    target = tmp_path / "q.json"
+    code, _out = _run(client, "compliance", "attestations", "--start", DAY.isoformat(), "--end", DAY.isoformat(), "--format", "oscal",
+                      "-o", str(target))
+    assert code == 0 and json.loads(target.read_text())["assessment-results"]["results"][0]["attestations"]

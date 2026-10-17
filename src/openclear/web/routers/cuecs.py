@@ -6,7 +6,6 @@ The bank sees its own and the host's CUECs; a customer's own session (compliance
 its own, as "Your responsibilities". Reading needs compliance:read; mappings and settings
 compliance:manage; preparing, accepting and rejecting attestations compliance:attest."""
 
-import hashlib
 import json
 import uuid
 from datetime import date
@@ -227,19 +226,16 @@ def add_mapping(cuec_id: str, control_ref: str = Form(""), control_name: str = F
 @router.post("/cuecs/{cuec_id}/attestations")
 async def attest(request: Request, cuec_id: str, db: Session = Depends(get_db), ctx: TenantContext = Depends(_attest),
                  _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
-    from openclear import storage
-
     form = await request.form()
-    files = []
+    uploads = []
     for upload in form.getlist("evidence_file"):
         if not getattr(upload, "filename", ""):
             continue
         data = await upload.read(FILE_LIMIT + 1)
         if len(data) > FILE_LIMIT:
             return _back(f"{BASE}/{cuec_id}", "Each file must be under 10 MB.")
-        name = upload.filename[-200:]
-        ref = storage.put("audit_archives", f"{ctx.tenant_id}/attestations/{uuid.uuid4().hex}-{name}", data, read_only=True)
-        files.append({"name": name, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data), "storage_ref": ref})
+        uploads.append((upload.filename, data))
+    files = attestation_service.store_files(ctx.tenant_id, uploads)
     try:
         attestation = attestation_service.record_manual(
             db, ctx.tenant_id, ctx.customer_id, cuec_id, start=date.fromisoformat(str(form.get("start"))),

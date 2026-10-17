@@ -697,8 +697,11 @@ third-party risk guidance):
   deviation beyond the grace period, every population test passed), the control owner accepts
   it unless a mapping accepts automatically, and the accepted attestation is signed (ECDSA P-256,
   downloadable with the public key). Customers attest theirs under *Your responsibilities*.
+  A GRC tool maps, pulls and verifies all of this through `/api/v1/compliance/` (or receives
+  webhooks), and reads OSCAL 1.2.1 component definitions and assessment results
+  ([docs/guides/grc.md](docs/guides/grc.md), `openclear compliance`).
 - **Evidence export** (`GET /api/v1/audit/export`, `openclear audit export`): a signed JSON or
-  PDF bundle for a period.
+  PDF bundle for a period, with the period's control testing and CUEC attestations.
 - **Secrets in the database** are AES-256-GCM. To rotate the key, move the old value to
   `OPENCLEAR_SSO_ENCRYPTION_KEY_PREVIOUS`, set a new `OPENCLEAR_SSO_ENCRYPTION_KEY` and
   restart: stored values are re-encrypted at startup.
