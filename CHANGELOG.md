@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.21.2 — 2026-10-17
 
 Security fix for people who belong to more than one organization:
 
