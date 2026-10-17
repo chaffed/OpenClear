@@ -267,5 +267,11 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   says service provider, platform staff, embedding host and security key, as `CONTEXT.md`
   does. OW-D16: the minimum length is worked out from the bank's MFA setting only.
   OW-D21: platform staff can reset a bank's only administrator.
+- 2026-10-17: OW1 under way. Private vulnerability reporting turned on. ASVS assessment of V6–V11
+  and V16 done (working notes in `security-findings/`, ADR 0002): four private advisories,
+  issues #1–#10 labelled `security`. The one high-severity finding (switching organization
+  skipped the target's sign-on rules) was fixed and published in 1.21.2. To decide in OW3b:
+  adaptive controls (time, place, device), checking that SSO users' identity provider used
+  MFA, tokens bound to their client, logging reads of sensitive data.
 
   Not started.
