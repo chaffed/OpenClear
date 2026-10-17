@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.20.0 — 2026-10-17
 
 - **A segregation-of-duties breach that *enforce* refused is now a `critical` security event**
   (it was `high`, as a breach *warn* lets through still is), as the control testing
