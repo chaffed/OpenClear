@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.21.0 — 2026-10-17
 
 Two people for settings changes (dual control for settings; DUAL_CONTROL_PLAN.md):
 
