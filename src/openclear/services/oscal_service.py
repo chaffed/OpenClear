@@ -9,7 +9,8 @@ JSON schemas in the test suite (tests/fixtures/oscal/).
   component definition has no field for a customer's responsibility, so each OpenClear control
   and each CUEC on a control is a property in OpenClear's namespace (`NS`): `openclear-control`,
   or `cuec` with the party as its class, each with its statement as remarks; and each NIST CSF
-  2.0 subcategory NIST maps to the control is a `csf-subcategory` property (CT6). The parties
+  2.0 subcategory NIST maps to the control is a `csf-subcategory` property (CT6), and with the
+  installation's SOC 2 mapping, each Trust Services Criterion a `soc2-criterion` one. The parties
   are also its responsible roles.
 - **Assessment results**: a bank's period. One observation per check that ran in it (its
   results' counts and the digest over them), one finding per deviation in it (not satisfied,
@@ -29,7 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.compliance import controls, cuecs
-from openclear.compliance.crosswalks import csf_for
+from openclear.compliance.crosswalks import csf_for, soc2_for
 
 OSCAL_VERSION = "1.2.1"
 NS = "https://github.com/chaffed/OpenClear/ns/oscal"
@@ -85,7 +86,8 @@ def component_definition(now: datetime | None = None) -> dict:
             "uuid": _uuid("requirement", nist), "control-id": cuecs.oscal_id(nist), "description": " ".join(parts),
             "props": [_prop("openclear-control", c.id, remarks=f"{c.title}. {c.statement}") for c in ours]
                      + [_prop("cuec", c.id, **{"class": ROLES[c.party]}, remarks=f"{c.title}. {c.statement}") for c in theirs]
-                     + [_prop("csf-subcategory", k) for k in csf_for(nist)],
+                     + [_prop("csf-subcategory", k) for k in csf_for(nist)]
+                     + [_prop("soc2-criterion", k) for k in soc2_for(nist) or ()],
             "responsible-roles": [{"role-id": r} for r in roles],
         })
     roles = [{"id": "provider", "title": "OpenClear, the software"}, {"id": "bank", "title": cuecs.PARTIES["bank"]},

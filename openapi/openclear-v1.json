@@ -4262,6 +4262,20 @@
             "title": "Nist",
             "type": "array"
           },
+          "soc2": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soc2"
+          },
           "statement": {
             "title": "Statement",
             "type": "string"
@@ -4314,6 +4328,7 @@
           "nature",
           "checks",
           "csf",
+          "soc2",
           "cuecs",
           "where",
           "withdrawn",
@@ -4413,6 +4428,20 @@
             "title": "Related",
             "type": "array"
           },
+          "soc2": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soc2"
+          },
           "statement": {
             "title": "Statement",
             "type": "string"
@@ -4445,6 +4474,7 @@
           "check_status",
           "frequency",
           "csf",
+          "soc2",
           "where",
           "withdrawn",
           "controls"

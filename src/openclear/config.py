@@ -379,6 +379,11 @@ class Settings(BaseSettings):
     # network works too); empty turns the check off, and it then warns that it can't tell. A newer
     # release out longer than the first number of days is a WARN, longer than the second a FAIL.
     release_feed_url: str = "https://api.github.com/repos/chaffed/OpenClear/releases"
+    # The SOC 2 crosswalk (compliance/crosswalks.py, CONTROLS_PLAN.md CT6): the JSON that
+    # `scripts/import_crosswalks.py soc2` makes from your own copy of AICPA's TSC to NIST 800-53
+    # mapping. Empty (the default): no SOC 2 column. AICPA's terms govern its use; OpenClear
+    # doesn't ship it.
+    soc2_mapping_path: str = ""
     software_currency_warn_days: int = 30
     software_currency_fail_days: int = 180
     retention_finished_jobs_days: int = 30

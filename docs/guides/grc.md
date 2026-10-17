@@ -194,6 +194,27 @@ trestle import -f assessment-results-q1.json -o openclear-2026-q1
 trestle validate -a
 ```
 
+## SOC 2
+
+OpenClear can add the 2017 Trust Services Criteria (SOC 2) to every control and CUEC, from
+AICPA's own mapping of the criteria to NIST SP 800-53 Rev. 5. AICPA's terms don't let OpenClear
+redistribute that mapping, so each installation uses its own copy:
+
+1. Sign in at aicpa-cima.com and download "Mapping: 2017 Trust Services Criteria to NIST
+   800-53" (`tsc_to_nist_800-53.xlsx`). Whether your use is within AICPA's terms is for you and
+   AICPA.
+2. On the OpenClear host, read it into OpenClear's form (criterion and control ids only):
+
+   ```
+   python scripts/import_crosswalks.py soc2 tsc_to_nist_800-53.xlsx --out /data/soc2-mapping.json
+   ```
+
+3. Set `OPENCLEAR_SOC2_MAPPING_PATH=/data/soc2-mapping.json` and restart.
+
+The controls and CUECs then carry `soc2` (`CC6.1`, ...) in the API, on each CUEC's page, in the
+attestations CSV, and as `soc2-criterion` properties in the OSCAL component definition. Without
+it, `soc2` is null. A criterion that lists a control covers its enhancements.
+
 ## Results and deviations directly
 
 If your GRC tool keeps its own test history, it can take OpenClear's raw results instead:

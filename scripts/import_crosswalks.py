@@ -12,7 +12,19 @@ tests/test_compliance/test_crosswalks.py regenerates the module from it and fail
 differ. To take a newer download, replace that file and run:
 
     python scripts/import_crosswalks.py
+
+**SOC 2** (CT6): AICPA's "Mapping: 2017 Trust Services Criteria to NIST 800-53", downloaded
+by whoever runs OpenClear under AICPA's terms, isn't redistributed: neither the file nor what's
+made from it is in this repository. This reads your copy and writes the criteria and the
+SP 800-53 Rev. 5 controls each lists (ids only, none of AICPA's text) to a JSON file outside
+the repository's tracked files; OPENCLEAR_SOC2_MAPPING_PATH points OpenClear at it:
+
+    python scripts/import_crosswalks.py soc2 third_party/aicpa-tsc-to-nist-800-53.xlsx \
+        --out third_party/soc2-mapping.json
 """
+
+import argparse
+import json
 
 import hashlib
 import re
@@ -93,10 +105,57 @@ def render(path: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+SOC2_SHEET = "NIST 800-53 as Points of Focus"
+SOC2_CRITERION = re.compile(r"^(CC\d|A1|C1|PI1|P\d)\.\d{1,2}$")
+SOC2_REFERENCE = re.compile(r"^([A-Z]{2})-(\d{1,2})(\(\d{1,2}\))?(?:[a-z](?:\.\d+)?)?$")  # AC-2, AC-2(1), AC-2a: a statement part is its control
+
+
+def read_soc2(path: Path) -> dict:
+    """AICPA's TSC-to-800-53 workbook as {criterion: [800-53 controls]}, ids only."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Workbook contains no default style")
+        book = openpyxl.load_workbook(path, read_only=True)
+    if SOC2_SHEET not in book.sheetnames:
+        raise SystemExit(f"{path} has no {SOC2_SHEET!r} sheet: is it AICPA's TSC to NIST 800-53 mapping?")
+    criteria: dict[str, set[str]] = {}
+    for row in book[SOC2_SHEET].iter_rows(min_row=3, values_only=True):
+        criterion, reference = (str(row[0]).strip() if row[0] else ""), (str(row[1]).strip() if row[1] else "")
+        if not SOC2_CRITERION.match(criterion) or reference in ("", "None"):
+            continue
+        match = SOC2_REFERENCE.match(reference)
+        if not match:
+            raise SystemExit(f"Unexpected SP 800-53 reference {reference!r} for {criterion}")
+        family, number, enhancement = match.groups()
+        criteria.setdefault(criterion, set()).add(f"{family}-{int(number)}" + (f"({int(enhancement[1:-1])})" if enhancement else ""))
+    overview = {str(r[0]).strip(): str(r[1]).strip() for r in book["Overview"].iter_rows(values_only=True) if r[0] and r[1]} \
+        if "Overview" in book.sheetnames else {}
+    return {"source": "AICPA, Mapping: 2017 Trust Services Criteria to NIST 800-53", "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "tsc_version": overview.get("Trust Services Criteria"), "nist_version": overview.get("NIST 800-53"),
+            "criteria": {k: sorted(v, key=_order) for k, v in sorted(criteria.items(), key=lambda kv: _criterion_order(kv[0]))}}
+
+
+def _criterion_order(criterion: str) -> tuple:
+    series, _, number = criterion.partition(".")
+    return (["CC", "A", "C", "PI", "P"].index(re.match(r"[A-Z]+", series).group(0)), series, int(number))
+
+
 def main() -> None:
-    source = Path(sys.argv[1]) if len(sys.argv) > 1 else SOURCE
-    OUT.write_text(render(source), encoding="utf-8")
-    print(f"Wrote {OUT}")
+    parser = argparse.ArgumentParser(description="Write the CSF 2.0 crosswalk, or read your SOC 2 mapping.")
+    parser.add_argument("which", nargs="?", choices=["csf", "soc2"], default="csf")
+    parser.add_argument("source", nargs="?", help="the downloaded workbook (default for csf: the copy kept with the tests)")
+    parser.add_argument("--out", default="third_party/soc2-mapping.json", help="soc2: where to write the mapping (keep it untracked)")
+    args = parser.parse_args()
+    if args.which == "csf":
+        OUT.write_text(render(Path(args.source) if args.source else SOURCE), encoding="utf-8")
+        print(f"Wrote {OUT}")
+        return
+    if not args.source:
+        raise SystemExit("Give the path to AICPA's workbook.")
+    data = read_soc2(Path(args.source))
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+    print(f"Wrote {out}: {len(data['criteria'])} criteria. Set OPENCLEAR_SOC2_MAPPING_PATH={out} to use it.")
 
 
 if __name__ == "__main__":

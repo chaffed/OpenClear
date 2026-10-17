@@ -67,6 +67,7 @@ class InventoryControl(BaseModel):
     nature: Literal["built_in", "configurable"]
     checks: list[ControlCheck]
     csf: list[CsfSubcategory]  # the NIST CSF 2.0 subcategories NIST maps to its 800-53 controls
+    soc2: list[str] | None  # the Trust Services Criteria AICPA maps to them (CC6.1); null when this installation has no SOC 2 mapping
     cuecs: list[str]
     where: str
     withdrawn: bool
@@ -95,6 +96,7 @@ class InventoryCuec(BaseModel):
     check_status: Literal["live", "planned"] | None
     frequency: str
     csf: list[CsfSubcategory]  # the NIST CSF 2.0 subcategories NIST maps to its 800-53 control
+    soc2: list[str] | None  # the Trust Services Criteria AICPA maps to it; null when this installation has no SOC 2 mapping
     where: str
     withdrawn: bool
     controls: list[str]  # the OpenClear controls that rely on it
@@ -602,7 +604,7 @@ def list_attestations(request: Request, response: Response,
 
 _CSV_COLUMNS = ("id", "cuec_id", "party", "customer_id", "installation", "period_kind", "period_start", "period_end", "result", "method",
                 "status", "mappings", "prepared_by", "prepared_at", "accepted_by", "accepted_at", "auto_accepted", "supersedes_id",
-                "inventory_version", "sha256", "verified", "csf", "statement")
+                "inventory_version", "sha256", "verified", "csf", "soc2", "statement")
 
 
 @router.get("/attestations/export", **file_response("application/octet-stream", "The period's attestations: JSON, CSV or OSCAL"))
@@ -636,8 +638,10 @@ def export_attestations(start: date = Query(..., description="First day, YYYY-MM
     writer = csv.DictWriter(out, fieldnames=_CSV_COLUMNS, extrasaction="ignore", lineterminator="\n")
     writer.writeheader()
     for row in _attestation_rows(db, rows):
-        csf = "; ".join(k["id"] for k in cuecs.by_id()[row["cuec_id"]].csf)
-        writer.writerow({**row, "mappings": "; ".join(row["mappings"]), "csf": csf})
+        cuec = cuecs.by_id()[row["cuec_id"]]
+        soc2 = cuec.as_dict()["soc2"]
+        writer.writerow({**row, "mappings": "; ".join(row["mappings"]), "csf": "; ".join(k["id"] for k in cuec.csf),
+                         "soc2": "; ".join(soc2) if soc2 is not None else ""})
     return Response(out.getvalue(), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
 
 

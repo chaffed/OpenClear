@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **SOC 2 (the 2017 Trust Services Criteria) for every control and CUEC**, from AICPA's mapping
+  to NIST SP 800-53 Rev. 5, which OpenClear doesn't redistribute: download it from AICPA, run
+  `scripts/import_crosswalks.py soc2` on it, and set `OPENCLEAR_SOC2_MAPPING_PATH`. Then a `soc2`
+  field in `GET /api/v1/compliance/controls` and `/cuecs` (null without a mapping), the criteria
+  on each CUEC's page, in the attestations CSV, and as `soc2-criterion` properties in the OSCAL
+  component definition. See "Connecting your GRC tool".
+
 ## 1.20.0 — 2026-10-17
 
 - **A segregation-of-duties breach that *enforce* refused is now a `critical` security event**

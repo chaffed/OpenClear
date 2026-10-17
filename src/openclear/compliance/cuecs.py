@@ -19,7 +19,7 @@ published copies (docs/compliance/cuecs.md, .json, .csv) from this module."""
 import re
 from dataclasses import dataclass, field
 
-from openclear.compliance.crosswalks import csf_for, csf_title
+from openclear.compliance.crosswalks import csf_for, csf_title, soc2_for
 
 VERSION = "1.0"
 NIST_CATALOG = "NIST SP 800-53 Rev. 5.1.1"
@@ -170,6 +170,7 @@ class Cuec:
             "related": list(self.related), "title": self.title, "statement": self.statement, "complements": self.complements,
             "evidence": self.evidence, "check": self.check, "check_status": self.check_status, "frequency": self.frequency,
             "csf": self.csf,
+            "soc2": None if (found := soc2_for(self.nist)) is None else list(found),
             "where": self.where, "withdrawn": self.withdrawn,
         }
 

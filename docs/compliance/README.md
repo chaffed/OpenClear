@@ -16,7 +16,8 @@ for each point is.
   attested each period: automated ones proposed from OpenClear's test history, and every
   accepted attestation signed
 - [NIST CSF 2.0](csf.md): both inventories by CSF 2.0 subcategory, following NIST's own mapping
-  from CSF 2.0 to SP 800-53
+  from CSF 2.0 to SP 800-53. SOC 2 criteria come from AICPA's mapping, which each installation
+  loads from its own copy ([Connecting your GRC tool](../guides/grc.md#soc-2))
 
 **These pages are not legal advice.** They describe features and where to find evidence. Each
 bank's own risk assessment decides whether its use of OpenClear meets a requirement, and

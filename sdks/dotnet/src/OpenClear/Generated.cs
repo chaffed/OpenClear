@@ -638,6 +638,7 @@ public sealed record InventoryControl
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("nature")] public string Nature { get; init; } = default!;
     [JsonPropertyName("nist")] public IReadOnlyList<NistControl> Nist { get; init; } = default!;
+    [JsonPropertyName("soc2")] public IReadOnlyList<string> Soc2 { get; init; } = default!;
     [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
     [JsonPropertyName("title")] public string Title { get; init; } = default!;
@@ -661,6 +662,7 @@ public sealed record InventoryCuec
     [JsonPropertyName("oscal_id")] public string OscalId { get; init; } = default!;
     [JsonPropertyName("party")] public string Party { get; init; } = default!;
     [JsonPropertyName("related")] public IReadOnlyList<string> Related { get; init; } = default!;
+    [JsonPropertyName("soc2")] public IReadOnlyList<string> Soc2 { get; init; } = default!;
     [JsonPropertyName("statement")] public string Statement { get; init; } = default!;
     [JsonPropertyName("title")] public string Title { get; init; } = default!;
     [JsonPropertyName("where")] public string Where { get; init; } = default!;

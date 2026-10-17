@@ -596,6 +596,7 @@ export interface InventoryControl {
   id: string;
   nature: "built_in" | "configurable";
   nist: Array<NistControl>;
+  soc2: Array<string> | null;
   statement: string;
   status: "PASS" | "WARN" | "FAIL" | null;
   title: string;
@@ -618,6 +619,7 @@ export interface InventoryCuec {
   oscal_id: string;
   party: "bank" | "customer" | "host";
   related: Array<string>;
+  soc2: Array<string> | null;
   statement: string;
   title: string;
   where: string;

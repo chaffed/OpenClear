@@ -8,7 +8,7 @@
   <h1><span class="control-id">{{ cuec.id }}</span> {{ cuec.title }}</h1>
   <p>{{ cuec.statement }}</p>
   <p class="hint"><strong>What OpenClear does that relies on it:</strong> {{ cuec.complements }}</p>
-  <p class="hint">NIST <abbr title="{{ cuec.nist_title }}">{{ cuec.nist }}</abbr>{% if cuec.csf %} (CSF 2.0 {% for k in cuec.csf %}<abbr title="{{ k.title }}">{{ k.id }}</abbr>{{ ", " if not loop.last }}{% endfor %}){% endif %}; evidence: {{ cuec.evidence }}{% if cuec.check %}, from the check <code>{{ cuec.check }}</code>{% endif %};
+  <p class="hint">NIST <abbr title="{{ cuec.nist_title }}">{{ cuec.nist }}</abbr>{% if cuec.csf %} (CSF 2.0 {% for k in cuec.csf %}<abbr title="{{ k.title }}">{{ k.id }}</abbr>{{ ", " if not loop.last }}{% endfor %}){% endif %}{% set soc2 = cuec.as_dict().soc2 %}{% if soc2 %}; SOC 2 {{ soc2 | join(", ") }}{% endif %}; evidence: {{ cuec.evidence }}{% if cuec.check %}, from the check <code>{{ cuec.check }}</code>{% endif %};
     {{ cuec.frequency | lower }}. Where: {{ cuec.where }}.
     {% if relied_on %}Relied on by {% for c in relied_on %}<span class="control-id">{{ c.id }}</span>{{ ", " if not loop.last }}{% endfor %}.{% endif %}</p>
 </div>

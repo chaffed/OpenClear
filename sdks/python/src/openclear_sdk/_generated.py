@@ -622,6 +622,7 @@ class InventoryControl(TypedDict):
     id: str
     nature: Literal["built_in", "configurable"]
     nist: list[NistControl]
+    soc2: list[str] | None
     statement: str
     status: Literal["PASS", "WARN", "FAIL"] | None
     title: str
@@ -644,6 +645,7 @@ class InventoryCuec(TypedDict):
     oscal_id: str
     party: Literal["bank", "customer", "host"]
     related: list[str]
+    soc2: list[str] | None
     statement: str
     title: str
     where: str

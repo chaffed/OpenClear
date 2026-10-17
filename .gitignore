@@ -22,3 +22,8 @@ data/
 
 # The docs site (scripts/build_docs_site.py)
 /site/
+
+# Licensed source files we may use but not redistribute (AICPA's TSC mapping, for the SOC 2
+# crosswalk). Never commit them; scripts/import_crosswalks.py reads them from here.
+/third_party/
+*tsc_to_nist*.xlsx

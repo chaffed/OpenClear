@@ -416,3 +416,15 @@ One merge per phase, at most one migration each, the three full suites once per 
   sandbox banks, which the scheduled runs and proposals skipped, so
   `control_tests_include_sandboxes` (off by default) lets them in; the yearly request to
   customers still skips them.
+- 2026-10-17 CT6's SOC 2 half, on branch `soc2-crosswalk`. AICPA's mapping (`tsc_to_nist_800-53.xlsx`,
+  TSC 2017 with the 2022 points of focus, to 800-53 r5) is behind a sign-in, and AICPA's terms
+  allow personal, non-commercial use and forbid redistributing or reusing it publicly or
+  commercially. So OpenClear ships the reader, not the data: `scripts/import_crosswalks.py soc2`
+  turns an installation's own copy into criterion and control ids (statement parts like `AC-2a`
+  read as their control; none of AICPA's text), written outside the tracked files;
+  `soc2_mapping_path` points at it; `crosswalks.soc2_for` matches as for CSF. `soc2` is null
+  without one; the published inventories never carry it (the export script drops it, and a test
+  checks). Tests use a made-up workbook in AICPA's layout. The owner's copy is in the ignored
+  `third_party/`; with it every control and CUEC gets SOC 2 criteria.
+  Whether to publish anything made from it (the docs site, the sandbox) is the owner's call
+  against AICPA's terms; nothing is. CONTROLS_PLAN.md is complete.

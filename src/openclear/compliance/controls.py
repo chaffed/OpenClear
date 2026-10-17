@@ -20,7 +20,7 @@ and its id is never reused.
 
 from dataclasses import dataclass, field
 
-from openclear.compliance.crosswalks import csf_for_all, csf_title
+from openclear.compliance.crosswalks import csf_for_all, csf_title, soc2_for_all
 from openclear.compliance.cuecs import NIST_TITLES, PLANNED_CHECKS, oscal_id
 
 VERSION = "1.0"
@@ -75,6 +75,7 @@ class OcControl:
             "type": self.type, "nature": self.nature,
             "checks": [{"key": c, "status": self.check_status(c)} for c in self.checks],
             "csf": [{"id": k, "title": csf_title(k)} for k in csf_for_all(self.nist)],
+            "soc2": soc2_for_all(self.nist),
             "cuecs": list(self.cuecs), "where": self.where, "withdrawn": self.withdrawn,
         }
 

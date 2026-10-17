@@ -91,9 +91,15 @@ def render_markdown() -> str:
     return "\n".join(parts).rstrip("\n") + "\n"
 
 
+def _published(c: cuecs.Cuec) -> dict:
+    """A CUEC as published: never with a SOC 2 column, which comes from AICPA's mapping that each
+    installation reads from its own copy (compliance/crosswalks.py) and isn't redistributed."""
+    return {k: v for k, v in c.as_dict().items() if k != "soc2"}
+
+
 def render_json() -> str:
     data = {"version": cuecs.VERSION, "catalog": cuecs.NIST_CATALOG, "parties": cuecs.PARTIES, "evidence": cuecs.EVIDENCE,
-            "planned_checks": cuecs.PLANNED_CHECKS, "cuecs": [c.as_dict() for c in cuecs.CUECS]}
+            "planned_checks": cuecs.PLANNED_CHECKS, "cuecs": [_published(c) for c in cuecs.CUECS]}
     return json.dumps(data, indent=2) + "\n"
 
 
