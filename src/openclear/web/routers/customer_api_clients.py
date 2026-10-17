@@ -51,9 +51,9 @@ def _form(request: Request, db: Session, ctx: TenantContext, *, error: str | Non
                            groups=customer_people_service.offered_groups(db, ctx.tenant_id), accounts=accounts)
 
 
-def _secret_page(request: Request, ctx: TenantContext, issued, *, rotated: bool) -> Response:
+def _secret_page(request: Request, ctx: TenantContext, issued, *, rotated: bool, waiting=None) -> Response:
     response = render_template(request, "admin/api_client_secret.html", ctx=ctx, client=issued.client, secret=issued.secret,
-                               rotated=rotated, base_path=BASE)
+                               rotated=rotated, base_path=BASE, waiting=waiting)
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -89,10 +89,27 @@ async def create_client(request: Request, db: Session = Depends(get_db), ctx: Te
     except ApiClientError as exc:
         db.rollback()
         return _form(request, db, ctx, error=str(exc), values=values, status_code=422)
+    from openclear.domain.tenant_membership import TenantMembership
+    from openclear.domain.user import User
+    from openclear.services import change_request_service
+
+    waiting = None
+    if change_request_service.needs_approval(db, ctx.tenant_id, "customer.api_client.activate", ctx.customer_id):
+        # Made, its secret shown once, but usable only when a second person approves (DUAL_CONTROL_PLAN.md).
+        db.get(TenantMembership, issued.client.membership_id).is_active = False
+        db.get(User, issued.client.user_id).is_active = False
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "customer.api_client.activate", {"api_client_id": str(issued.client.id)}, tenant_id=ctx.tenant_id,
+                customer_id=ctx.customer_id, user_id=ctx.user_id, summary=f"Let the new API client {issued.client.name} be used")
+        except ValueError as exc:
+            db.rollback()
+            return _form(request, db, ctx, error=str(exc), values=values, status_code=422)
+        waiting = outcome.change if outcome.waiting else None
     _record(db, ctx, "api_client.create",
             f"Created {'read-only ' if issued.client.read_only else ''}API client {issued.client.name} ({issued.client.client_id})", issued.client)
     db.commit()
-    return _secret_page(request, ctx, issued, rotated=False)
+    return _secret_page(request, ctx, issued, rotated=False, waiting=waiting)
 
 
 @router.post("/{api_client_id}/rotate")

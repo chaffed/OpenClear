@@ -73,6 +73,9 @@ class Tenant(Base):
     # whatever these say. Turned on only if someone else can approve (DC-D16).
     sensitive_changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     access_changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Every customer's sensitive changes (its sign-on, API clients, new administrators) need a
+    # second person: another of its administrators, or the bank (DUAL_CONTROL_PLAN.md DC3).
+    customer_changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

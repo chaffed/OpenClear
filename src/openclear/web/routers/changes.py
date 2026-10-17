@@ -23,7 +23,7 @@ router = APIRouter(tags=["web-changes"])
 
 # Anyone who could approve some kind of change, or who asked for one, sees the queue.
 _SEES_CHANGES = ("admin:manage", "tenant:manage", "security_group:manage", "user:manage", "api_client:manage", "customer:manage",
-                 "compliance:manage", "compliance:attest")
+                 "compliance:manage", "compliance:attest", "customer_user:manage", "customer_sso:manage", "customer_api_client:manage")
 
 
 @router.get("/ui/admin/changes")

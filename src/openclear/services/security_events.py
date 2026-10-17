@@ -199,6 +199,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_password_policy": "settings.changed",
     "tenant.update_access_rules": "settings.changed",
     "tenant.update_approval_switches": "settings.changed",
+    "customer.approval_switch": "settings.changed",
     "sso.password_login": "settings.changed",
     "tenant.update_data_export_timeout": "settings.changed",
     "tenant.update_decision_files": "settings.changed",

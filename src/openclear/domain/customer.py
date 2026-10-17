@@ -41,6 +41,9 @@ class Customer(Base):
     # Its own API clients (MOBILE_PLAN.md R4; customer_api_client:manage). Turning it off stops
     # the customer managing them; the clients it made keep working until revoked.
     self_manages_api_clients: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # The customer asks for a second person on its own sensitive changes, whatever the bank says
+    # (DUAL_CONTROL_PLAN.md DC3).
+    changes_need_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Whether new people its side adds wait for the bank's approval (MOBILE_PLAN.md R6): None
     # follows the bank (Tenant.approve_customer_users), True or False overrides it.
     approve_users: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

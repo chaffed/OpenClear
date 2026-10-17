@@ -69,4 +69,16 @@
   {%- endcall %}
 </div>
 {% endif %}
+<div class="card card-narrow">
+  <h2>A second person for our changes</h2>
+  {% if bank_approvals %}<p class="hint">Your bank asks for this for every customer: new sign-on, API clients and administrators wait
+    for another of your administrators, or the bank when you have only one.</p>{% endif %}
+  <form method="post" action="/ui/people/approvals">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="changes_need_approval" value="true" {{ "checked" if own_approvals else "" }}>
+      Our sign-on, API clients and new administrators need a second person</label>
+    <div class="form-actions"><button type="submit" class="secondary">{{ icon("save") }}Save</button>
+      <a href="/ui/admin/changes" class="button secondary">{{ icon("fact_check") }}Changes awaiting approval{% if waiting %} ({{ waiting }}){% endif %}</a></div>
+  </form>
+</div>
 {% endblock %}

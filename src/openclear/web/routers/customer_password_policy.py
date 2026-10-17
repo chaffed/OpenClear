@@ -75,14 +75,24 @@ def update_password_policy(
         parsed_min_length = int(min_length) if min_length.strip() else None
         if parsed_min_length is not None and parsed_min_length < 1:
             raise ValueError("Minimum password length must be at least 1")
-        customer_service.set_password_policy(
-            db, ctx.tenant_id, customer_id,
-            min_length=parsed_min_length, require_uppercase=require_uppercase, require_lowercase=require_lowercase,
-            require_number=require_number, require_symbol=require_symbol,
-        )
+        # Loosening the customer's own rules waits for a second person (DUAL_CONTROL_PLAN.md DC3).
+        from openclear.services import change_request_service
+
+        values = {"password_min_length": parsed_min_length, "password_require_uppercase": require_uppercase,
+                  "password_require_lowercase": require_lowercase, "password_require_number": require_number,
+                  "password_require_symbol": require_symbol}
+        outcome = change_request_service.request_or_apply(db, "customer.password_policy", {"values": values}, tenant_id=ctx.tenant_id,
+                                                          customer_id=customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
         return _render_form(request, db, ctx, customer_id, error=str(exc), status_code=422)
+    if outcome.waiting:
+        from urllib.parse import quote
+
+        from openclear.web.routers.tenant_settings import waiting_message
+
+        db.commit()
+        return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}", status_code=303)
 
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_password_policy",

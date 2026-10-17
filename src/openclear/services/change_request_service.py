@@ -138,7 +138,7 @@ def _customer_protected(session: Session, tenant, customer_id: uuid.UUID) -> boo
     from openclear.domain.customer import Customer
 
     customer = session.get(Customer, customer_id)
-    return bool(getattr(tenant, "customer_changes_need_approval", False) or getattr(customer, "changes_need_approval", False))
+    return bool(tenant.customer_changes_need_approval or (customer is not None and customer.changes_need_approval))
 
 
 def needs_approval(session: Session, tenant_id: uuid.UUID, kind_key: str, customer_id: uuid.UUID | None = None) -> bool:

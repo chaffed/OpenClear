@@ -131,7 +131,8 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
     if key == "dual-control":
         return {"require_dual_control": tenant.require_dual_control,
                 "sensitive_changes_need_approval": tenant.sensitive_changes_need_approval,
-                "access_changes_need_approval": tenant.access_changes_need_approval}
+                "access_changes_need_approval": tenant.access_changes_need_approval,
+                "customer_changes_need_approval": tenant.customer_changes_need_approval}
     if key == "outside-services":
         from openclear.services import outside_services
 
@@ -522,6 +523,7 @@ def update_dual_control(
     require_dual_control: bool = Form(False),
     sensitive_changes_need_approval: bool = Form(False),
     access_changes_need_approval: bool = Form(False),
+    customer_changes_need_approval: bool = Form(False),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
     _csrf: None = Depends(verify_csrf),
@@ -532,7 +534,7 @@ def update_dual_control(
     from openclear.services import change_request_service
 
     asked = {"require_dual_control": require_dual_control, "sensitive_changes_need_approval": sensitive_changes_need_approval,
-             "access_changes_need_approval": access_changes_need_approval}
+             "access_changes_need_approval": access_changes_need_approval, "customer_changes_need_approval": customer_changes_need_approval}
     messages = []
     try:
         decisions = change_request_service.request_or_apply(db, "dual_control", {"values": {"require_dual_control": require_dual_control}},
@@ -542,11 +544,13 @@ def update_dual_control(
         elif decisions.waiting:
             messages.append(waiting_message(decisions))
         switches = change_request_service.request_or_apply(
-            db, "approval_switches", {"values": {k: asked[k] for k in ("sensitive_changes_need_approval", "access_changes_need_approval")}},
+            db, "approval_switches", {"values": {k: asked[k] for k in ("sensitive_changes_need_approval", "access_changes_need_approval",
+                                                                        "customer_changes_need_approval")}},
             tenant_id=ctx.tenant_id, user_id=ctx.user_id)
         if switches.applied and switches.summary != "Nothing changed.":
             _record(db, ctx, "tenant.update_approval_switches", f"Second admin for changes: sensitive settings "
-                    f"{'on' if sensitive_changes_need_approval else 'off'}, access changes {'on' if access_changes_need_approval else 'off'}")
+                    f"{'on' if sensitive_changes_need_approval else 'off'}, access changes {'on' if access_changes_need_approval else 'off'}, "
+                    f"customers' changes {'on' if customer_changes_need_approval else 'off'}")
         elif switches.waiting:
             messages.append(waiting_message(switches))
     except (change_request_service.ChangeRequestError, ValueError) as exc:

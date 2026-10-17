@@ -57,14 +57,14 @@ def overview(request: Request, db: Session = Depends(get_db), ctx: TenantContext
 
 
 def _form(request: Request, db: Session, ctx: TenantContext, connection=None, *, error: str | None = None, status_code: int = 200,
-          scim_token: str | None = None) -> HTMLResponse:
+          scim_token: str | None = None, scim_waiting=None) -> HTMLResponse:
     customer = customer_sign_on_service.customer(db, ctx.tenant_id, ctx.customer_id)
     response = render_template(
         request, "sso/form.html", ctx=ctx, back_path=_BASE, sso_base=_BASE, connection=connection, customer=customer,
         mappings=sso_service.list_group_mappings(db, ctx.tenant_id, connection.id) if connection else [],
         groups=customer_people_service.offered_groups(db, ctx.tenant_id), providers=list(SsoProvider), error=error,
         saml_urls=_saml_urls(request, connection) if connection else None, scim_base=_scim_base(request), scim_token=scim_token,
-        customer_managed=True, status_code=status_code,
+        scim_waiting=scim_waiting, customer_managed=True, status_code=status_code,
     )
     if scim_token:
         response.headers["Cache-Control"] = "no-store"
@@ -73,9 +73,39 @@ def _form(request: Request, db: Session, ctx: TenantContext, connection=None, *,
 
 # Literal paths first: FastAPI matches in registration order, and "/{connection_id}" below
 # would otherwise take "/domains" and "/password-sign-in".
+def _change(db: Session, ctx: TenantContext, kind: str, payload: dict, summary: str | None = None):
+    """A change to the customer's own sign-on through dual control (DUAL_CONTROL_PLAN.md DC3):
+    (outcome, None), or (None, error)."""
+    from openclear.services import change_request_service
+
+    try:
+        return change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, customer_id=ctx.customer_id,
+                                                       user_id=ctx.user_id, summary=summary), None
+    except ValueError as exc:
+        db.rollback()
+        return None, str(exc)
+
+
+def _waiting(outcome) -> str:
+    if outcome.change is not None and outcome.change.applies_at:
+        return "Nobody else can approve this, so it takes effect in 24 hours unless you withdraw it."
+    return "Sent for approval: it takes effect when another administrator, or your bank, approves it."
+
+
 @router.post("/password-sign-in")
 def password_sign_in(allowed: bool = Form(False), db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                      _csrf: None = Depends(verify_csrf)) -> Response:
+    if allowed:
+        # Passwords back on is a protection off: it needs a second person (DUAL_CONTROL_PLAN.md).
+        outcome, error = _change(db, ctx, "customer.password_sign_in", {})
+        if error:
+            return _back(error, error=True)
+        if outcome.waiting:
+            db.commit()
+            return _back(_waiting(outcome))
+        _record(db, ctx, "customer_sign_on.password_sign_in", "Password sign-in allowed")
+        db.commit()
+        return _back("Password sign-in allowed.")
     try:
         customer_sign_on_service.set_password_sign_in(db, ctx.tenant_id, ctx.customer_id, enabled=allowed,
                                                       signed_in_through_sign_on=ctx.confined)
@@ -116,9 +146,19 @@ def create_connection(request: Request, form: SsoForm = Depends(sso_form), db: S
     except SignOnError as exc:
         db.rollback()
         return _form(request, db, ctx, error=str(exc), status_code=422)
+    from openclear.services import change_request_service
+
+    note = "Connection added. Map your identity provider's groups to roles below."
+    if change_request_service.needs_approval(db, ctx.tenant_id, "customer.sign_on.activate", ctx.customer_id):
+        connection.is_active = False  # on when a second person approves
+        outcome, error = _change(db, ctx, "customer.sign_on.activate", {"connection_id": str(connection.id)},
+                                 summary=f"Turn on the new sign-on connection {connection.display_name}")
+        if error:
+            return _form(request, db, ctx, error=error, status_code=422)
+        note = f"Connection added, off for now. {_waiting(outcome)}"
     _record(db, ctx, "customer_sign_on.create", f"Added the sign-on connection {connection.display_name}")
     db.commit()
-    return _back("Connection added. Map your identity provider's groups to roles below.", to=f"{_BASE}/{connection.id}/edit")
+    return _back(note, to=f"{_BASE}/{connection.id}/edit")
 
 
 def _connection(db: Session, ctx: TenantContext, connection_id: uuid.UUID, *, editable: bool = True):
@@ -136,12 +176,23 @@ def edit_connection(request: Request, connection_id: uuid.UUID, db: Session = De
 @router.post("/{connection_id}")
 def update_connection(request: Request, connection_id: uuid.UUID, form: SsoForm = Depends(sso_form), db: Session = Depends(get_db),
                       ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
+    from openclear.web.routers.sso_settings import _input_payload
+
     connection = _connection(db, ctx, connection_id)
+    data = form.to_input(ctx.customer_id)
+    savepoint = db.begin_nested()  # checked now, so a mistake shows at once rather than on approval
     try:
-        customer_sign_on_service.update(db, ctx.tenant_id, ctx.customer_id, connection_id, form.to_input(ctx.customer_id))
+        customer_sign_on_service.update(db, ctx.tenant_id, ctx.customer_id, connection_id, data)
     except SignOnError as exc:
-        db.rollback()
+        savepoint.rollback()
         return _form(request, db, ctx, _connection(db, ctx, connection_id), error=str(exc), status_code=422)
+    savepoint.rollback()
+    outcome, error = _change(db, ctx, "customer.sign_on.update", _input_payload(data, connection_id))
+    if error:
+        return _form(request, db, ctx, _connection(db, ctx, connection_id), error=error, status_code=422)
+    if outcome.waiting:
+        db.commit()
+        return _back(_waiting(outcome), to=f"{_BASE}/{connection_id}/edit")
     _record(db, ctx, "customer_sign_on.update", f"Changed the sign-on connection {connection.display_name}")
     db.commit()
     return _back("Saved.", to=f"{_BASE}/{connection_id}/edit")
@@ -152,6 +203,18 @@ def update_connection(request: Request, connection_id: uuid.UUID, form: SsoForm 
 def set_active(request: Request, connection_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                _csrf: None = Depends(verify_csrf)) -> Response:
     active = request.url.path.endswith("/reactivate")
+    if active:
+        connection = _connection(db, ctx, connection_id)
+        outcome, error = _change(db, ctx, "customer.sign_on.activate", {"connection_id": str(connection_id)},
+                                 summary=f"Turn on the sign-on connection {connection.display_name}")
+        if error:
+            return _back(error, error=True)
+        if outcome.waiting:
+            db.commit()
+            return _back(_waiting(outcome))
+        _record(db, ctx, "customer_sign_on.reactivate", f"Turned on the sign-on connection {connection.display_name}")
+        db.commit()
+        return _back("Connection turned on.")
     try:
         connection = customer_sign_on_service.set_active(db, ctx.tenant_id, ctx.customer_id, connection_id, active)
     except SignOnError as exc:
@@ -168,12 +231,14 @@ def add_mapping(connection_id: uuid.UUID, external_group: str = Form(""), securi
                 priority: int = Form(100), db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                 _csrf: None = Depends(verify_csrf)) -> Response:
     connection = _connection(db, ctx, connection_id)
-    try:
-        customer_sign_on_service.add_mapping(db, ctx.tenant_id, ctx.customer_id, connection_id, external_group=external_group,
-                                             security_group_id=security_group_id, priority=priority)
-    except SignOnError as exc:
-        db.rollback()
-        return _back(str(exc), error=True, to=f"{_BASE}/{connection_id}/edit")
+    outcome, error = _change(db, ctx, "customer.sign_on.mapping", {"connection_id": str(connection_id), "external_group": external_group.strip(),
+                                                                    "security_group_id": str(security_group_id), "priority": priority},
+                             summary=f"Give people in {external_group.strip()} a role")
+    if error:
+        return _back(error, error=True, to=f"{_BASE}/{connection_id}/edit")
+    if outcome.waiting:
+        db.commit()
+        return _back(_waiting(outcome), to=f"{_BASE}/{connection_id}/edit")
     _record(db, ctx, "customer_sign_on.mapping", f"Mapped the group {external_group.strip()} on {connection.display_name}")
     db.commit()
     return _back("Mapping added.", to=f"{_BASE}/{connection_id}/edit")
@@ -198,7 +263,19 @@ def issue_scim_token(request: Request, connection_id: uuid.UUID, db: Session = D
                      _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
     from openclear.services import scim_service
 
+    from openclear.services import change_request_service
+
     connection = _connection(db, ctx, connection_id)
+    if change_request_service.needs_approval(db, ctx.tenant_id, "customer.scim_token.set", ctx.customer_id):
+        # Shown once now; it works only when a second person approves (DUAL_CONTROL_PLAN.md).
+        import secrets
+
+        token = f"scim_{connection.tenant_id.hex}_{connection.id.hex}_{secrets.token_urlsafe(32)}"
+        outcome, error = _change(db, ctx, "customer.scim_token.set", {"connection_id": str(connection.id), "token_hash": scim_service._hash(token)})
+        if error:
+            return _back(error, error=True, to=f"{_BASE}/{connection_id}/edit")
+        db.commit()
+        return _form(request, db, ctx, connection, scim_token=token, scim_waiting=outcome.change)
     token = scim_service.issue_token(db, connection)
     _record(db, ctx, "customer_sign_on.scim_token", f"Issued a SCIM token for {connection.display_name}")
     db.commit()

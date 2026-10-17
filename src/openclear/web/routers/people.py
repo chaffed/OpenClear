@@ -19,7 +19,7 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.account import Account
 from openclear.domain.audit_log_entry import AuditLogEntry
-from openclear.services import audit_log_service, customer_people_service
+from openclear.services import change_request_service, audit_log_service, customer_people_service
 from openclear.services.customer_people_service import PeopleError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.rate_limit import rate_limit
@@ -58,9 +58,16 @@ def people(request: Request, db: Session = Depends(get_db), ctx: TenantContext =
         rows = customer_people_service.list_people(db, ctx.tenant_id, ctx.customer_id)
     except PeopleError:
         raise WebNotFound() from None
+    from openclear.domain.customer import Customer
+    from openclear.domain.tenant import Tenant
+
+    customer, tenant = db.get(Customer, ctx.customer_id), db.get(Tenant, ctx.tenant_id)
     return render_template(request, "people/list.html", ctx=ctx, people=rows,
                            invitations=customer_people_service.pending_invitations(db, ctx.tenant_id, ctx.customer_id),
-                           groups={g.id: g.name for g in customer_people_service.offered_groups(db, ctx.tenant_id)})
+                           groups={g.id: g.name for g in customer_people_service.offered_groups(db, ctx.tenant_id)},
+                           own_approvals=bool(customer and customer.changes_need_approval),
+                           bank_approvals=bool(tenant and tenant.customer_changes_need_approval),
+                           waiting=len(change_request_service.pending(db, ctx.tenant_id, customer_id=ctx.customer_id)))
 
 
 def _invite_form(request: Request, db: Session, ctx: TenantContext, *, error: str | None = None, values: dict | None = None,
@@ -74,6 +81,43 @@ def invite_form(request: Request, db: Session = Depends(get_db), ctx: TenantCont
     return _invite_form(request, db, ctx)
 
 
+def _gives_admin(db: Session, ctx: TenantContext, group_id: str) -> bool:
+    """Whether this role lets someone manage the customer's people (an administrator's)."""
+    from openclear.services import security_group_service
+
+    try:
+        group = security_group_service.get_security_group(db, ctx.tenant_id, uuid.UUID(group_id)) if group_id else None
+    except ValueError:
+        return False
+    return bool(group and customer_people_service.ADMIN_PERMISSION in (group.permissions or []))
+
+
+def _waiting(outcome) -> str:
+    if outcome.change is not None and outcome.change.applies_at:
+        return "Nobody else can approve this, so it takes effect in 24 hours unless you withdraw it."
+    return "Sent for approval: it takes effect when another administrator, or your bank, approves it."
+
+
+@router.post("/ui/people/approvals")
+def set_approvals(request: Request, changes_need_approval: bool = Form(False), db: Session = Depends(get_db),
+                  ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
+    """The customer asks for a second person on its own sensitive changes (DUAL_CONTROL_PLAN.md
+    DC3): on only while someone else can approve; off needs a second person."""
+    try:
+        outcome = change_request_service.request_or_apply(db, "customer.approval_switch", {"values": {"changes_need_approval": changes_need_approval}},
+                                                          tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id)
+    except ValueError as exc:
+        db.rollback()
+        return _back(str(exc))
+    if outcome.waiting:
+        db.commit()
+        return _back(_waiting(outcome))
+    if outcome.summary != "Nothing changed.":
+        _record(db, ctx, "customer.approval_switch", outcome.summary)
+    db.commit()
+    return _back("Saved.")
+
+
 @router.post("/ui/people/invite")
 async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                  _csrf: None = Depends(verify_csrf)) -> Response:
@@ -81,6 +125,22 @@ async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantCon
     values = {"email": str(form.get("email") or ""), "security_group_id": str(form.get("security_group_id") or ""),
               "scope": str(form.get("scope") or "all"), "account_ids": [str(v) for v in form.getlist("account_id")],
               "require_webauthn": form.get("require_webauthn") == "true"}
+    admin_role = _gives_admin(db, ctx, values["security_group_id"])
+    if admin_role and change_request_service.needs_approval(db, ctx.tenant_id, "customer.invite_admin", ctx.customer_id):
+        # A new administrator: the invitation goes out when a second person approves (DUAL_CONTROL_PLAN.md DC3).
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "customer.invite_admin", {"email": values["email"].strip(), "security_group_id": values["security_group_id"],
+                                              "all_accounts": values["scope"] != "some", "account_ids": values["account_ids"],
+                                              "require_webauthn": values["require_webauthn"], "invited_by": str(ctx.user_id),
+                                              "accept_base_url": get_settings().public_base_url or str(request.base_url)},
+                tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id,
+                summary=f"Invite {values['email'].strip()} as an administrator")
+        except ValueError as exc:
+            db.rollback()
+            return _invite_form(request, db, ctx, error=str(exc), values=values, status_code=422)
+        db.commit()
+        return _back(_waiting(outcome))
     try:
         invitation = customer_people_service.invite(
             db, ctx.tenant_id, ctx.customer_id, email=values["email"],
@@ -217,6 +277,23 @@ def person(request: Request, membership_id: uuid.UUID, db: Session = Depends(get
 async def update_person(request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db),
                         ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
     form = await request.form()
+    group_id = str(form.get("security_group_id") or "")
+    current = customer_people_service.get_person(db, ctx.tenant_id, ctx.customer_id, membership_id)
+    if (_gives_admin(db, ctx, group_id) and current is not None and not _gives_admin(db, ctx, str(current.membership.security_group_id))
+            and change_request_service.needs_approval(db, ctx.tenant_id, "customer.make_admin", ctx.customer_id)):
+        # Making someone an administrator waits for a second person (DUAL_CONTROL_PLAN.md DC3).
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "customer.make_admin", {"membership_id": str(membership_id), "security_group_id": group_id, "admin": True,
+                                            "require_webauthn": form.get("require_webauthn") == "true", "all_accounts": form.get("scope") != "some",
+                                            "account_ids": [str(a) for a in form.getlist("account_id")]},
+                tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id,
+                summary=f"Make {current.user.email} an administrator")
+        except ValueError as exc:
+            db.rollback()
+            return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+        db.commit()
+        return _back(_waiting(outcome))
     try:
         membership = customer_people_service.update_person(
             db, ctx.tenant_id, ctx.customer_id, membership_id,

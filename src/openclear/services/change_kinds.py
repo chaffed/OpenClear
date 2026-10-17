@@ -206,16 +206,20 @@ def _switch_functions(session, tenant_id, customer_id, before, after) -> list[tu
                 out.append((kind.title.lower(), kind.permission))
     if turned_on("access_changes_need_approval")(before, after):
         out.append(("people's access", "user:manage"))
+    if turned_on("customer_changes_need_approval")(before, after):
+        # The bank approves for a customer with nobody else (DC-D7).
+        out.append(("customers' changes", "customer:manage"))
     return out
 
 
 register(Kind(
     "approval_switches", "Second admin for changes", "protection", _BANK_ADMIN,
-    tenant_fields("sensitive_changes_need_approval", "access_changes_need_approval"), payload_values,
-    loosens=turned_off("sensitive_changes_need_approval", "access_changes_need_approval"), apply=_set_tenant(),
+    tenant_fields("sensitive_changes_need_approval", "access_changes_need_approval", "customer_changes_need_approval"), payload_values,
+    loosens=turned_off("sensitive_changes_need_approval", "access_changes_need_approval", "customer_changes_need_approval"), apply=_set_tenant(),
     describe=lambda before, after: "Second admin: " + "; ".join(
         f"{label} {'on' if after[name] else 'off'}" for name, label in (("sensitive_changes_need_approval", "sensitive settings"),
-                                                                        ("access_changes_need_approval", "access changes"))
+                                                                        ("access_changes_need_approval", "access changes"),
+                                                                        ("customer_changes_need_approval", "customers' changes"))
         if after[name] != before[name]),
     switches=_switch_functions,
     action="tenant.update_approval_switches",
@@ -829,4 +833,211 @@ register(Kind(
     loosens=lambda before, after: (after["all_accounts"] and not before["all_accounts"])
     or (not after["all_accounts"] and not before["all_accounts"] and bool(set(after["account_ids"]) - set(before["account_ids"]))),
     apply=_accounts_apply, setting=lambda payload: f"membership:{payload['membership_id']}:accounts", action="user.account_access",
+))
+
+
+# --- Customers (DC3): a customer's own administrators, approved by another of them or the bank ---
+
+
+def _customer_row(session, tenant_id, customer_id):
+    from openclear.services import customer_service
+
+    customer = customer_service.get_customer(session, tenant_id, customer_id)
+    if customer is None:
+        raise ChangeError("That customer no longer exists.")
+    return customer
+
+
+def _customer_sign_in_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_sign_on_service
+
+    try:
+        customer_sign_on_service.set_password_sign_in(session, tenant_id, customer_id, enabled=True, signed_in_through_sign_on=False)
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return "Password sign-in allowed again"
+
+
+register(Kind(
+    "customer.password_sign_in", "Password sign-in", "protection", "customer_sso:manage",
+    lambda s, t, c, p: {"enabled": bool(_customer_row(s, t, c).password_login_enabled)}, lambda payload: {"enabled": True},
+    loosens=lambda before, after: after["enabled"] and not before["enabled"], apply=_customer_sign_in_apply, scope="customer",
+    describe=lambda before, after: "Let our people sign in with passwords again", action="customer_sign_on.password_sign_in",
+))
+
+_CUSTOMER_PASSWORD = ("password_min_length", "password_require_uppercase", "password_require_lowercase", "password_require_number",
+                      "password_require_symbol")
+
+
+def _customer_password_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_service
+
+    v = payload_values(payload)
+    try:
+        customer_service.set_password_policy(session, tenant_id, customer_id, min_length=v["password_min_length"],
+                                             require_uppercase=v["password_require_uppercase"], require_lowercase=v["password_require_lowercase"],
+                                             require_number=v["password_require_number"], require_symbol=v["password_require_symbol"])
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return "Customer password policy changed"
+
+
+register(Kind(
+    "customer.password_policy", "Password policy", "protection", "customer_user:manage",
+    lambda s, t, c, p: {n: getattr(_customer_row(s, t, c), n) for n in _CUSTOMER_PASSWORD}, payload_values,
+    loosens=lambda before, after: (after["password_min_length"] or 0) < (before["password_min_length"] or 0)
+    or turned_off(*_CUSTOMER_PASSWORD[1:])(before, after),
+    apply=_customer_password_apply, scope="customer", describe=lambda before, after: "Weaken the customer's password policy",
+    action="customer.update_password_policy",
+))
+
+
+def _customer_connection_on(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_sign_on_service
+
+    connection = customer_sign_on_service.set_active(session, tenant_id, customer_id, uuid.UUID(payload["connection_id"]), True)
+    return f"Sign-on connection {connection.display_name} on"
+
+
+register(Kind(
+    "customer.sign_on.activate", "Sign-on", "sensitive", "customer_sso:manage",
+    lambda s, t, c, p: {"active": bool(_connection(s, t, c, p).is_active)}, lambda payload: {"active": True},
+    loosens=lambda before, after: after["active"] and not before["active"], apply=_customer_connection_on, scope="customer",
+    setting=lambda payload: f"sso:{payload['connection_id']}:active", action="customer_sign_on.reactivate",
+))
+
+
+def _customer_sso_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.auth.crypto import decrypt_secret
+    from openclear.domain.sso_connection import SsoProtocol, SsoProvider
+    from openclear.services import customer_sign_on_service, sso_service
+
+    data = dict(payload["input"])
+    data["provider"], data["protocol"] = SsoProvider(data["provider"]), SsoProtocol(data["protocol"])
+    data["customer_id"] = customer_id
+    data["client_secret"] = decrypt_secret(payload["client_secret_encrypted"]) if payload.get("client_secret_encrypted") else None
+    try:
+        connection = customer_sign_on_service.update(session, tenant_id, customer_id, uuid.UUID(payload["connection_id"]),
+                                                     sso_service.SsoConnectionInput(**data))
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"Changed the sign-on connection {connection.display_name}"
+
+
+register(Kind(
+    "customer.sign_on.update", "Sign-on", "sensitive", "customer_sso:manage", _sso_current, _sso_value,
+    loosens=lambda before, after: {k: v for k, v in before.items() if k != "display_name"} != {k: v for k, v in after.items() if k != "display_name"},
+    apply=_customer_sso_apply, scope="customer", setting=lambda payload: f"sso:{payload['connection_id']}:config",
+    describe=lambda before, after: f"Change how {after['display_name']} signs our people in", action="customer_sign_on.update",
+))
+
+
+def _customer_mapping_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_sign_on_service
+
+    try:
+        customer_sign_on_service.add_mapping(session, tenant_id, customer_id, uuid.UUID(payload["connection_id"]),
+                                             external_group=payload["external_group"], security_group_id=uuid.UUID(payload["security_group_id"]),
+                                             priority=int(payload.get("priority") or 100))
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"People in {payload['external_group']} get a role"
+
+
+register(Kind(
+    "customer.sign_on.mapping", "Sign-on", "sensitive", "customer_sso:manage", _mapping_current, lambda payload: {"mapped": True},
+    loosens=lambda before, after: after["mapped"] and not before["mapped"], apply=_customer_mapping_apply, scope="customer",
+    setting=lambda payload: f"sso:{payload['connection_id']}:mapping:{payload['external_group']}", action="customer_sign_on.mapping",
+))
+
+register(Kind(
+    "customer.scim_token.set", "Sign-on", "sensitive", "customer_sso:manage",
+    lambda s, t, c, p: {"token": _connection(s, t, c, p).scim_token_hash or None}, lambda payload: {"token": payload["token_hash"]},
+    loosens=lambda before, after: after["token"] != before["token"], apply=_scim_apply, scope="customer",
+    setting=lambda payload: f"sso:{payload['connection_id']}:scim", action="customer_sign_on.scim_token",
+    describe=lambda before, after: "Let our directory create and change people over SCIM",
+))
+
+register(Kind(
+    "customer.api_client.activate", "API clients", "sensitive", "customer_api_client:manage", _client_current, lambda payload: {"active": True},
+    loosens=lambda before, after: after["active"] and not before["active"], apply=_client_apply, scope="customer",
+    setting=lambda payload: f"api_client:{payload['api_client_id']}", action="api_client.activate",
+))
+
+_CUSTOMER_ADMIN = "customer_user:manage"
+
+
+def _invite_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_people_service
+
+    try:
+        invitation = customer_people_service.invite(
+            session, tenant_id, customer_id, email=payload["email"], security_group_id=uuid.UUID(payload["security_group_id"]),
+            all_accounts=bool(payload["all_accounts"]), account_ids=[uuid.UUID(a) for a in payload.get("account_ids") or []],
+            require_webauthn=bool(payload.get("require_webauthn")), invited_by_user_id=uuid.UUID(payload["invited_by"]),
+            accept_base_url=payload["accept_base_url"])
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"Invited {invitation.email} as an administrator"
+
+
+register(Kind(
+    "customer.invite_admin", "Our administrators", "sensitive", _CUSTOMER_ADMIN, lambda s, t, c, p: {"invited": False},
+    lambda payload: {"invited": True}, loosens=lambda before, after: True, apply=_invite_apply, scope="customer",
+    setting=lambda payload: f"invite:{payload['email'].strip().lower()}",
+    describe=lambda before, after: "Invite a new administrator", action="customer_people.invite",
+))
+
+
+def _person_current(session, tenant_id, customer_id, payload) -> dict:
+    membership = _membership(session, tenant_id, payload)
+    return {"security_group_id": str(membership.security_group_id),
+            "admin": _CUSTOMER_ADMIN in _group_permissions(session, tenant_id, membership.security_group_id)}
+
+
+def _person_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import customer_people_service
+
+    try:
+        customer_people_service.update_person(session, tenant_id, customer_id, uuid.UUID(payload["membership_id"]),
+                                              security_group_id=uuid.UUID(payload["security_group_id"]), require_webauthn=bool(payload["require_webauthn"]),
+                                              all_accounts=bool(payload["all_accounts"]),
+                                              account_ids=[uuid.UUID(a) for a in payload.get("account_ids") or []])
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+    return "Made someone an administrator"
+
+
+register(Kind(
+    "customer.make_admin", "Our administrators", "sensitive", _CUSTOMER_ADMIN, _person_current,
+    lambda payload: {"security_group_id": payload["security_group_id"], "admin": bool(payload["admin"])},
+    loosens=lambda before, after: after["admin"] and not before["admin"], apply=_person_apply, scope="customer",
+    setting=lambda payload: f"membership:{payload['membership_id']}:role", describe=lambda before, after: "Make someone an administrator",
+    action="customer_people.update",
+))
+
+
+def _customer_switch_functions(session, tenant_id, customer_id, before, after) -> list[tuple[str, str]]:
+    if not turned_on("changes_need_approval")(before, after):
+        return []
+    seen, out = set(), []
+    for kind in all_kinds():
+        if kind.scope == "customer" and kind.tier == "sensitive" and kind.permission not in seen:
+            seen.add(kind.permission)
+            out.append((kind.title.lower(), kind.permission))
+    return out
+
+
+def _customer_switch_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    customer = _customer_row(session, tenant_id, customer_id)
+    customer.changes_need_approval = bool(payload_values(payload)["changes_need_approval"])
+    session.flush()
+    return f"Our sensitive changes {'need' if customer.changes_need_approval else 'no longer need'} a second person"
+
+
+register(Kind(
+    "customer.approval_switch", "A second person for our changes", "protection", _CUSTOMER_ADMIN,
+    lambda s, t, c, p: {"changes_need_approval": bool(_customer_row(s, t, c).changes_need_approval)}, payload_values,
+    loosens=turned_off("changes_need_approval"), apply=_customer_switch_apply, scope="customer", switches=_customer_switch_functions,
+    action="customer.approval_switch",
 ))

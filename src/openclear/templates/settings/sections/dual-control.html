@@ -24,6 +24,12 @@
     </label>
     <p class="hint">Adding someone, or giving someone more access, waits for another person who manages users. Removing or
       narrowing access never waits.</p>
+    <label>
+      <input type="checkbox" name="customer_changes_need_approval" value="true" {{ "checked" if customer_changes_need_approval else "" }}>
+      Customers' sensitive changes need a second person
+    </label>
+    <p class="hint">A self-managing customer's sign-on, API clients and new administrators wait for another of its administrators,
+      or for you when it has only one. A customer can also ask for this itself.</p>
     <p class="hint">Turning a protection off (any of these, segregation of duties, lockout, password and inactivity rules,
       required sign-on, security event forwarding) always needs a second admin. Each switch turns on only while someone else
       can approve.</p>
