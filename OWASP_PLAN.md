@@ -273,5 +273,9 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   skipped the target's sign-on rules) was fixed and published in 1.21.2. To decide in OW3b:
   adaptive controls (time, place, device), checking that SSO users' identity provider used
   MFA, tokens bound to their client, logging reads of sensitive data.
+- 2026-10-17: ASVS assessment finished: all 16 chapters in scope (V1–V16, 283 requirements).
+  The last batch (V1–V5, V12–V15) found nothing high-severity; issues #11–#15. One more
+  decision for OW3b: malware scanning of uploads. OW1 still to do: risk profile, threat
+  model, SAMM, and building `docs/compliance/asvs.md` from the working notes.
 
   Not started.
