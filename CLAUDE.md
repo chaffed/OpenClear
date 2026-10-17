@@ -64,3 +64,17 @@ Then check `https://openclear-sandbox.fly.dev/health`, the version in `/openapi.
 ## Live checks against real tools (not in the suite)
 `scripts/siem_live_check.py` (Splunk, syslog-ng) · `scripts/sso_live_check.py` (Keycloak, OIDC and
 SAML) · `scripts/edge_check.py`. Port 18080 is taken by the Moov ACH container.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in chaffed/OpenClear, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
