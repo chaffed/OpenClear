@@ -49,7 +49,7 @@ Recommendations, for the owner to confirm or change before DC1.
 | DC-D3 | Which bank changes always need a second person? | **Turning a protection off or down** (tier A below), whether or not the bank turns on anything else: dual control, SoD *enforce*, the second-admin switch itself, lockout and password rules, the inactivity rules, the second person on attestations, the bank's approval of new customer users, required SSO, security event forwarding. |
 | DC-D4 | Which others? | **Tier B, behind a switch per bank** ("Sensitive settings need a second admin", off for existing banks and **on for new ones**): security groups and their permissions; SSO connections, mappings and SCIM tokens; new API clients and wider ones; webhooks and embedding origins; decision files and auto-import; plugins and the ML switch (the two existing kinds join here, no longer tied to SoD mode); customer self-service switches. Branding, messages, contact details and reminders stay one person's. |
 | DC-D5 | People's access? | **A separate switch per bank**, "Access changes need a second admin" (off by default): adding someone, or giving someone a group or accounts that grant more than they had. Removing or narrowing is at once (DC-D2). Kept separate because it changes daily work most. |
-| DC-D6 | A bank with only one eligible approver | **A 24-hour cooling-off instead**: the request applies itself after 24 hours unless another admin rejects it, every admin is emailed, and it's a `critical` security event ("applied without a second person"). Nothing deadlocks, and nothing changes quietly. The alternative, sending it to the service provider to approve, would let the provider change who may do what in a bank, which OpenClear has never allowed. |
+| DC-D6 | A bank with only one eligible approver | For a switch, this can't arise when it's turned on (DC-D16), only later (DC-D17), and tier A has no switch. In either case, **a 24-hour cooling-off instead**: the request applies itself after 24 hours unless another admin rejects it, every admin is emailed, and it's a `critical` security event ("applied without a second person"). Nothing deadlocks, and nothing changes quietly. The alternative, sending it to the service provider to approve, would let the provider change who may do what in a bank, which OpenClear has never allowed. |
 | DC-D7 | Who approves? | Someone other than the requester who holds the permission the change needs (`tenant:manage`, `security_group:manage`, `user:manage`, ...), in the same scope. A customer's change: another of that customer's administrators, or the bank (`customer:manage`) when it has only one. |
 | DC-D8 | What if the setting changed meanwhile? | **Approval is refused** ("it changed since this was asked"): the request records the value before, and on approval it must still be current. One open request per setting at a time. |
 | DC-D9 | How long does a request wait? | **7 days**, then it expires. The requester can withdraw it; a rejection needs a reason. |
@@ -58,6 +58,8 @@ Recommendations, for the owner to confirm or change before DC1.
 | DC-D12 | Service provider: which changes | **Two platform staff** for: activating or rolling back the shared model; granting or removing a platform role; provisioning, deactivating or reactivating a bank; billing fee items; creating platform API keys; accepting a host attestation (whoever prepared it can't, as CT-D9). A request made with an API key waits for a person. Retraining (which only makes a challenger) and job retries stay one step, but logged. |
 | DC-D13 | Provider: emergencies | `scripts/platform_staff.py --emergency` (run on the host, so only by whoever controls it) applies at once and records a `critical` event in the provider log. It's for the installation's first operator and for lockouts, not routine use. |
 | DC-D14 | The installation's configuration | Environment settings stay the provider's change management (their CUEC). OpenClear adds a check, "Installation settings unchanged", that keeps a digest of the security-relevant ones; a change opens a deviation, becomes a security event, and the evidence export carries the digest. |
+| DC-D16 | Turning on a second-person switch with nobody to be the second person | **Refused.** Any switch that makes a function need a second person is turned on only if at least one other active person (not the one turning it on, not an API client, not waiting for approval, with an active membership) holds the permission to approve that function, in the same scope. Otherwise the switch stays off and the page or API says who's missing: "Nobody else can approve security group changes: give a second person `security_group:manage` first." It applies to every such switch: the new ones (sensitive settings, access changes, customers' changes, a customer's own), the provider's, and the existing ones (dual control on decisions, the second person on attestations). The refusal is in the action log. |
+| DC-D17 | The other approvers go after the switch is on | **The switch stays on, and nothing that removes access waits** (DC-D2): deactivating, removing (by hand, by SCIM or by the inactivity rules) or narrowing the last other approver happens at once. From then on that function's requests fall back to the cooling-off (DC-D6), a check warns ("Nobody else can approve security group changes") and the admins are told. Refusing to deactivate someone because they're the last approver would make a security response wait. |
 | DC-D15 | Existing banks | Nothing changes for them until they act, except tier A (DC-D3), which applies from the release that ships it, announced in the changelog. Turning SoD from *enforce* to *warn* is the change most likely to be noticed. |
 
 ## 1. The mechanism (DC0)
@@ -80,6 +82,13 @@ Recommendations, for the owner to confirm or change before DC1.
 - **Notifications**: each eligible approver is told (a new `change_requested` notification), and the requester when it's decided. Webhooks `change_request.created` and `change_request.decided`. Security events: requested, approved, rejected, applied alone.
 - **Pages**: Settings → Changes becomes the queue for every kind, each with its difference, approve, reject with a reason, withdraw. A settings form whose change was sent for approval says so ("Sent for approval: Pat or Sam can approve it"), and while one is open the form shows it and offers to withdraw it.
 - **API**: `GET /api/v1/changes`, `GET /api/v1/changes/{id}`, `POST .../approve`, `.../reject`, `.../withdraw`. An API call that makes a protected change answers `202` with the request, as model activation already does.
+- **Approvers available** (DC-D16): `approvers(scope, kind, excluding=user)` lists the active
+  people who could approve a kind, the same rule the approval itself uses (DC-D7). Turning a
+  switch on calls it for every kind the switch covers and is refused, with the kinds that have
+  nobody, when any has none. The same list decides, at request time, whether a request waits
+  for a person or takes the cooling-off (DC-D17), and feeds the "Nobody else can approve" check.
+  The existing switches (`require_dual_control` with `exception:decide`, `attest_second_person`
+  with `compliance:attest`) get the same validation.
 - **The nightly job** expires old requests and applies cooling-off ones.
 
 ## 2. Bank (DC1, DC2)
@@ -140,7 +149,7 @@ so nothing it relies on loosens.
 
 | Phase | What | Tables | Shows |
 |---|---|---|---|
-| **DC0. Mechanism** | `change_request` widened (scope, before/after, setting, expiry, reason, statuses), RLS for provider rows; the kinds registry; `request_or_apply`; notifications, webhooks, events; Settings → Changes for every kind; the API; the nightly expiry and cooling-off | `change_request` (columns) | The two existing kinds through the new path, unchanged in behaviour |
+| **DC0. Mechanism** | `change_request` widened (scope, before/after, setting, expiry, reason, statuses), RLS for provider rows; the kinds registry; `request_or_apply`; approvers available, and the validation on the existing switches (dual control on decisions, attestations' second person); notifications, webhooks, events; Settings → Changes for every kind; the API; the nightly expiry and cooling-off | `change_request` (columns) | The two existing kinds through the new path, unchanged in behaviour; turning on dual control on decisions refused at a bank with nobody else who decides |
 | **DC1. Bank tier A and B** | Every tier A and B kind; the "Sensitive settings" switch (on for new banks and for banks on *enforce*); single-admin cooling-off | `tenant` (switch) | One admin can't turn off dual control or move SoD to *warn* alone; a security group change waits; a one-admin bank's change applies after 24 hours with every admin told |
 | **DC2. Access** | "Access changes need a second admin": new people and wider access wait | `tenant` (switch) | Adding a person waits for a second admin; removing someone is at once |
 | **DC3. Customers** | Customer tiers A and B; the bank's and the customer's switches; the bank as approver for a one-admin customer | `customer` (switch), `tenant` (switch) | A customer admin's SSO change waits for a second customer admin, or the bank |
@@ -156,6 +165,13 @@ DC5 in any order.
   an approver without the permission can't; approval applies exactly what an immediate change
   would; a value changed meanwhile refuses approval; one open request per setting; expiry;
   withdrawal; rejection needs a reason.
+- Turning on each switch: refused, naming the functions, when nobody else can approve one of
+  them (only the person turning it on; another person without the permission; an API client;
+  an inactive or waiting membership; someone at another customer or bank); allowed with one other
+  active approver. The same for the existing switches, and over the API.
+- The last other approver deactivated, removed by the inactivity rules or narrowed while a switch
+  is on: it happens at once, later requests take the cooling-off, the check warns, the admins are
+  told.
 - Tier A with the switch off; tier B with it on and off; the migration turning the switch on for
   banks on *enforce*.
 - Cooling-off: a one-admin bank's request applies after 24 hours, every admin is told, the event
@@ -176,3 +192,5 @@ DC5 in any order.
 (Newest last.)
 - 2026-10-17 Plan written from a review of what needs a second person today (above). Decisions
   DC-D1 to DC-D15 are recommendations, waiting for the owner.
+- 2026-10-17 The owner added DC-D16: a second-person switch can't be turned on unless someone
+  else can approve. DC-D17 (approvers leaving later) and the approvers list in DC0 follow from it.
