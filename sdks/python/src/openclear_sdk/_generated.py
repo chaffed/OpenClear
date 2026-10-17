@@ -2298,17 +2298,21 @@ class PlatformBillingApi:
         """
         return self._c.call("GET", "/api/v1/platform/billing/fee-items", auth="platform")
 
-    def create_fee_item(self, body: FeeItemCreate) -> FeeItemRead:
+    def create_fee_item(self, body: FeeItemCreate) -> Any:
         """Create Fee Item.
 
         POST /api/v1/platform/billing/fee-items
+
+        Asks for a new platform fee; a platform operator approves it in the operator view.
         """
         return self._c.call("POST", "/api/v1/platform/billing/fee-items", json=body, auth="platform")
 
-    def update_fee_item(self, fee_item_id: str, body: FeeItemUpdate) -> FeeItemRead:
+    def update_fee_item(self, fee_item_id: str, body: FeeItemUpdate) -> Any:
         """Update Fee Item.
 
         PATCH /api/v1/platform/billing/fee-items/{fee_item_id}
+
+        Asks for a change to a platform fee; a platform operator approves it in the operator view.
         """
         return self._c.call("PATCH", f"/api/v1/platform/billing/fee-items/{_path(fee_item_id)}", json=body, auth="platform")
 
@@ -2420,6 +2424,10 @@ class PlatformMlApi:
         """Activate Shared Model.
 
         PATCH /api/v1/platform/ml/models/{model_id}/activate
+
+        Asks for the shared model to be activated: it scores every bank that uses it, so it waits
+        for a person among the platform's operators to approve it in the operator view (`202` with
+        `change_request_id`). Already active: `200` with the model.
         """
         return self._c.call("PATCH", f"/api/v1/platform/ml/models/{_path(model_id)}/activate", auth="platform")
 
@@ -2437,6 +2445,9 @@ class PlatformMlApi:
         """Retrain Shared Model.
 
         POST /api/v1/platform/ml/retrain
+
+        Trains a challenger for the shared model, promoted only by the champion/challenger rule;
+        activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
         """
         return self._c.call("POST", "/api/v1/platform/ml/retrain", query={"network_code": network_code}, auth="platform")
 

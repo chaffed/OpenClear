@@ -110,7 +110,17 @@ def test_an_operator_sets_up_a_bank(client, db_session, tenant_factory):
     assert bad.status_code == 422 and "lowercase" in bad.text
     taken = client.post("/ui/platform/banks", data={"csrf_token": csrf, "name": "X", "slug": "new-bank", "admin_email": users["admin"].email})
     assert taken.status_code == 422 and "already signs in" in taken.text
-    made = client.post("/ui/platform/banks", data={"csrf_token": csrf, "name": "New Bank", "slug": "new-bank", "admin_email": "first@newbank.example"})
+    asked = client.post("/ui/platform/banks", data={"csrf_token": csrf, "name": "New Bank", "slug": "new-bank", "admin_email": "first@newbank.example"},
+                        follow_redirects=False)
+    assert asked.status_code == 303 and "/ui/platform/changes" in asked.headers["location"]  # a second operator sets it up (DUAL_CONTROL_PLAN.md)
+    assert db_session.execute(select(Tenant).where(Tenant.slug == "new-bank")).first() is None
+    from openclear.services import change_request_service
+
+    [change] = change_request_service.pending(db_session, None)
+    assert client.post(f"/ui/platform/changes/{change.id}/approve", data={"csrf_token": csrf}).status_code == 403  # not their own
+    _staff(db_session, "ops3@platform.example", "operator")
+    _, csrf = _platform_login(client, "ops3@platform.example")
+    made = client.post(f"/ui/platform/changes/{change.id}/approve", data={"csrf_token": csrf})
     assert made.status_code == 200 and "/ui/login/new-bank" in made.text
     tenant = db_session.execute(select(Tenant).where(Tenant.slug == "new-bank")).scalar_one()
     admin = db_session.execute(select(User).where(User.email == "first@newbank.example")).scalar_one()

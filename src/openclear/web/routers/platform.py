@@ -10,7 +10,7 @@ import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.auth import login_service
@@ -85,12 +85,13 @@ def host_attestations(request: Request, db: Session = Depends(get_db), user: Use
     from openclear.services import attestation_service
 
     rows = attestation_service.installation_attestations(db)
+    waiting = [a for a in rows if a.status == "prepared"]
     latest = {}
     for a in rows:
         if a.status == "accepted" and a.cuec_id not in latest:
             latest[a.cuec_id] = a
     today = date.today()
-    return render_template(request, "platform/host_attestations.html", user=user, cuecs=cuecs.for_party("host"), latest=latest,
+    return render_template(request, "platform/host_attestations.html", user=user, cuecs=cuecs.for_party("host"), latest=latest, waiting=waiting,
                            results=attestation_service.MANUAL_RESULTS, by_platform=get_settings().host_cuecs_attested_by == "platform",
                            default_start=(today.replace(day=1) - timedelta(days=1)).replace(day=1), default_end=today.replace(day=1) - timedelta(days=1))
 
@@ -107,15 +108,44 @@ def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), en
 
     if get_settings().host_cuecs_attested_by != "platform":
         return RedirectResponse("/ui/platform/host-attestations?flash=" + quote("Each bank attests the host's CUECs on this installation."), status_code=303)
+    from openclear.services import platform_log_service
+
     try:
-        attestation_service.record_installation(db, cuec_id, start=date.fromisoformat(start), end=date.fromisoformat(end), result=result,
-                                                statement=statement, user_id=user.id)
+        made = attestation_service.record_installation(db, cuec_id, start=date.fromisoformat(start), end=date.fromisoformat(end), result=result,
+                                                       statement=statement, user_id=user.id)
     except (attestation_service.AttestationError, ValueError) as exc:
         db.rollback()
         message = str(exc) if isinstance(exc, attestation_service.AttestationError) else "Choose the period's dates."
         return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(message), status_code=303)
+    platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.prepare",
+                                summary=f"Prepared {cuec_id} for {made.period_start} to {made.period_end}: {made.result}",
+                                resource_type="cuec_attestation", resource_id=made.id)
     db.commit()
-    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} attested and signed."), status_code=303)
+    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} prepared: someone else accepts and signs it."),
+                            status_code=303)
+
+
+@router.post("/host-attestations/{attestation_id}/accept")
+def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                            _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    from urllib.parse import quote
+
+    from openclear.domain.cuec_attestation import CuecAttestation
+    from openclear.services import attestation_service, platform_log_service
+
+    attestation = db.get(CuecAttestation, attestation_id)
+    if attestation is None or attestation.tenant_id is not None:
+        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote("No such host attestation."), status_code=303)
+    try:
+        attestation_service.accept_installation(db, attestation, user_id=user.id)
+    except attestation_service.AttestationError as exc:
+        db.rollback()
+        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(str(exc)), status_code=303)
+    platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.accept",
+                                summary=f"Accepted and signed {attestation.cuec_id} for {attestation.period_start} to {attestation.period_end}",
+                                resource_type="cuec_attestation", resource_id=attestation.id)
+    db.commit()
+    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{attestation.cuec_id} accepted and signed."), status_code=303)
 
 
 @router.get("/banks/new")
@@ -127,14 +157,82 @@ def new_bank(request: Request, _user: User = Depends(platform_session.require_op
 def create_bank(request: Request, name: str = Form(...), slug: str = Form(...), admin_email: str = Form(...),
                 db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
                 _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """Asks for a new bank: it's set up when another operator approves it (DUAL_CONTROL_PLAN.md DC4),
+    who then sees the first admin's temporary password to pass on."""
+    from openclear.services import change_request_service
+
+    savepoint = db.begin_nested()  # checked now, so a mistake shows at once rather than on approval
     try:
-        tenant, password = operator_service.provision(db, name=name, slug=slug, admin_email=admin_email, operator_email=user.email)
+        operator_service.provision(db, name=name, slug=slug, admin_email=admin_email, operator_email=user.email)
     except operator_service.ProvisioningError as exc:
+        savepoint.rollback()
+        return render_template(request, "platform/provision.html", error=str(exc), bank_name=name, slug=slug, admin_email=admin_email,
+                               status_code=422)
+    savepoint.rollback()
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "platform.provision", {"name": name.strip(), "slug": slug.strip().lower(), "admin_email": admin_email.strip().lower(),
+                                       "operator_email": user.email}, tenant_id=None, user_id=user.id, summary=f"Set up {name.strip()} ({slug.strip().lower()})")
+    except change_request_service.ChangeRequestError as exc:
         db.rollback()
         return render_template(request, "platform/provision.html", error=str(exc), bank_name=name, slug=slug, admin_email=admin_email,
                                status_code=422)
     db.commit()
-    return render_template(request, "platform/provisioned.html", tenant=tenant, admin_email=admin_email.strip().lower(), password=password)
+    note = ("Nobody else can approve it, so it's set up in 24 hours unless you withdraw it." if outcome.change and outcome.change.applies_at
+            else "Another operator sets it up by approving it under Changes.")
+    return RedirectResponse(f"/ui/platform/changes?flash={quote(note)}", status_code=303)
+
+
+@router.get("/changes")
+def changes_page(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """The service provider's changes waiting for a second operator, and its action log."""
+    from openclear.services import change_request_service, platform_log_service
+
+    waiting = change_request_service.pending(db, None)
+    rows = [{"change": c, "mine": c.requested_by_user_id == user.id, "can_decide": change_request_service.can_decide(db, c, user.id)}
+            for c in waiting]
+    from openclear.services import installation_settings
+
+    intact, checked, broken = platform_log_service.verify(db)
+    changed_settings, _row = installation_settings.changed(db)
+    db.commit()  # the first baseline, if this was the first look
+    return render_template(request, "platform/changes.html", user=user, rows=rows, log=platform_log_service.entries(db, limit=50),
+                           intact=intact, checked=checked, broken=broken, changed_settings=changed_settings)
+
+
+@router.post("/settings/acknowledge")
+def acknowledge_settings(db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                         _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """The installation's settings are as intended (DUAL_CONTROL_PLAN.md DC-D14): in the provider's log."""
+    from openclear.services import installation_settings
+
+    names = installation_settings.acknowledge(db, user_id=user.id)
+    db.commit()
+    return RedirectResponse(f"/ui/platform/changes?flash={quote('Acknowledged: ' + (', '.join(names) or 'no change'))}", status_code=303)
+
+
+@router.post("/changes/{change_id}/{verdict}")
+def decide_change(request: Request, change_id: uuid.UUID, verdict: str, reason: str = Form(""), db: Session = Depends(get_db),
+                  user: User = Depends(platform_session.require_operator), _csrf: None = Depends(verify_csrf)) -> Response:
+    from openclear.services import change_request_service
+
+    if verdict not in ("approve", "reject", "withdraw"):
+        return RedirectResponse("/ui/platform/changes", status_code=303)
+    try:
+        if verdict == "withdraw":
+            change_request_service.withdraw(db, None, change_id, user_id=user.id)
+        else:
+            change_request_service.decide(db, None, change_id, approve=verdict == "approve", user_id=user.id, reason=reason)
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/platform/changes?flash={quote(str(exc))}", status_code=303)
+    provisioned = db.info.pop("provisioned", None)
+    db.commit()
+    if provisioned:
+        tenant, password, admin_email = provisioned
+        return render_template(request, "platform/provisioned.html", tenant=tenant, admin_email=admin_email, password=password)
+    done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
+    return RedirectResponse(f"/ui/platform/changes?flash={quote(done)}", status_code=303)
 
 
 @router.post("/support/{grant_id}/start")

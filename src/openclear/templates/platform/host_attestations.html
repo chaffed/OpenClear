@@ -7,8 +7,8 @@
 <div class="card">
   <h1>The host's CUECs</h1>
   {% if by_platform %}
-  <p>What every bank on this installation relies on its host to do. Attest each once for the installation: it's signed at once,
-    and every bank sees it read-only.</p>
+  <p>What every bank on this installation relies on its host to do. Attest each once for the installation: one of the platform's
+    staff prepares it, another accepts and signs it, and every bank sees it read-only.</p>
   {% else %}
   <p class="flash flash-warn">On this installation each bank attests the host's CUECs itself (OPENCLEAR_HOST_CUECS_ATTESTED_BY=bank).</p>
   {% endif %}
@@ -19,6 +19,17 @@
     {% endfor %}
   </ul>
 </div>
+{% if by_platform and waiting %}
+<div class="card">
+  <h2>Waiting for a second person</h2>
+  <ul class="plain-list">{% for a in waiting %}
+    <li><span class="control-id">{{ a.cuec_id }}</span> {{ a.period_start }} to {{ a.period_end }}: {{ a.result | replace("_", " ") }}. {{ a.statement }}
+      {% if a.prepared_by_user_id != user.id %}<form method="post" action="/ui/platform/host-attestations/{{ a.id }}/accept" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">{{ icon("draw") }}Accept and sign</button></form>
+      {% else %}<span class="text-muted">You prepared it: someone else accepts it.</span>{% endif %}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
 {% if by_platform %}
 <div class="card card-narrow">
   <h2>Attest one</h2>
@@ -29,7 +40,7 @@
     <label>To <input type="date" name="end" value="{{ default_end }}" required></label>
     <label>Result <select name="result">{% for r in results %}<option value="{{ r }}">{{ r | replace("_", " ") | capitalize }}</option>{% endfor %}</select></label>
     <label>What you attest, and how you know <textarea name="statement" rows="4" required maxlength="8000"></textarea></label>
-    <button type="submit">{{ icon("draw") }}Attest and sign</button>
+    <button type="submit">{{ icon("draw") }}Prepare</button>
   </form>
 </div>
 {% endif %}

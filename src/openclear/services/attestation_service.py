@@ -501,8 +501,9 @@ def announce_accepted(session: Session, tenant_id: uuid.UUID, attestation: CuecA
 
 def record_installation(session: Session, cuec_id: str, *, start: date, end: date, result: str, statement: str,
                         user_id: uuid.UUID) -> CuecAttestation:
-    """A host CUEC attested once for the whole installation by its platform staff (CT-D12), accepted
-    and signed at once; every bank sees it read-only. Only from a session bound to no bank."""
+    """A host CUEC attested once for the whole installation by its platform staff (CT-D12): prepared
+    here, and accepted and signed by another of them (`accept_installation`; DUAL_CONTROL_PLAN.md DC4);
+    every bank sees it read-only. Only from a session bound to no bank."""
     cuec = cuecs.by_id().get(cuec_id)
     if cuec is None or cuec.party != "host" or cuec.withdrawn:
         raise AttestationError("Only the host's CUECs are attested for the installation.")
@@ -518,6 +519,15 @@ def record_installation(session: Session, cuec_id: str, *, start: date, end: dat
                                   status="prepared", prepared_by_user_id=user_id, prepared_at=_now(), inventory_version=cuecs.VERSION)
     session.add(attestation)
     session.flush()
+    return attestation
+
+
+def accept_installation(session: Session, attestation: CuecAttestation, *, user_id: uuid.UUID) -> CuecAttestation:
+    """Another of the platform's staff accepts and signs a host attestation (DUAL_CONTROL_PLAN.md DC4)."""
+    if attestation.tenant_id is not None or attestation.status != "prepared":
+        raise AttestationError("Only a prepared host attestation can be accepted here.")
+    if attestation.prepared_by_user_id == user_id:
+        raise AttestationError("Someone else from the platform's staff must accept what you prepared.")
     return _accept(session, attestation, user_id=user_id, auto=False)
 
 

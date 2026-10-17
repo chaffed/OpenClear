@@ -2564,18 +2564,22 @@ export class PlatformBillingApi {
    * Create Fee Item.
    *
    * POST /api/v1/platform/billing/fee-items
+   *
+   * Asks for a new platform fee; a platform operator approves it in the operator view.
    */
-  createFeeItem(body: FeeItemCreate): Promise<FeeItemRead> {
-    return this.c.call<FeeItemRead>("POST", `/api/v1/platform/billing/fee-items`, { json: body, auth: "platform" });
+  createFeeItem(body: FeeItemCreate): Promise<unknown> {
+    return this.c.call<unknown>("POST", `/api/v1/platform/billing/fee-items`, { json: body, auth: "platform" });
   }
 
   /**
    * Update Fee Item.
    *
    * PATCH /api/v1/platform/billing/fee-items/{fee_item_id}
+   *
+   * Asks for a change to a platform fee; a platform operator approves it in the operator view.
    */
-  updateFeeItem(feeItemId: string, body: FeeItemUpdate): Promise<FeeItemRead> {
-    return this.c.call<FeeItemRead>("PATCH", `/api/v1/platform/billing/fee-items/${encodeURIComponent(String(feeItemId))}`, { json: body, auth: "platform" });
+  updateFeeItem(feeItemId: string, body: FeeItemUpdate): Promise<unknown> {
+    return this.c.call<unknown>("PATCH", `/api/v1/platform/billing/fee-items/${encodeURIComponent(String(feeItemId))}`, { json: body, auth: "platform" });
   }
 
   /**
@@ -2712,6 +2716,10 @@ export class PlatformMlApi {
    * Activate Shared Model.
    *
    * PATCH /api/v1/platform/ml/models/{model_id}/activate
+   *
+   * Asks for the shared model to be activated: it scores every bank that uses it, so it waits
+   * for a person among the platform's operators to approve it in the operator view (`202` with
+   * `change_request_id`). Already active: `200` with the model.
    */
   activateSharedModel(modelId: string): Promise<MlModelRead> {
     return this.c.call<MlModelRead>("PATCH", `/api/v1/platform/ml/models/${encodeURIComponent(String(modelId))}/activate`, { auth: "platform" });
@@ -2733,6 +2741,9 @@ export class PlatformMlApi {
    * Retrain Shared Model.
    *
    * POST /api/v1/platform/ml/retrain
+   *
+   * Trains a challenger for the shared model, promoted only by the champion/challenger rule;
+   * activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
    */
   retrainSharedModel(query: { network_code?: string } = {}): Promise<RetrainResponse> {
     return this.c.call<RetrainResponse>("POST", `/api/v1/platform/ml/retrain`, { query, auth: "platform" });

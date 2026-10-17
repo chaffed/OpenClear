@@ -287,3 +287,21 @@ def login_headers(client: TestClient, tenant_slug: str, email: str, password: st
     )
     assert resp.status_code == 200, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+def approve_provider_changes(session: Session) -> None:
+    """Have a platform operator approve every service-provider change waiting (DUAL_CONTROL_PLAN.md
+    DC4), as the operator view would: for tests that set up fees or the shared model through the
+    platform API, which now waits for a person."""
+    from openclear.auth.security import hash_password
+    from openclear.domain.user import User
+    from openclear.services import change_request_service
+
+    approver = session.query(User).filter(User.email == "approving.operator@platform.example").first()
+    if approver is None:
+        approver = User(email="approving.operator@platform.example", hashed_password=hash_password(TenantFactory.PASSWORD), platform_role="operator")
+        session.add(approver)
+        session.flush()
+    for change in change_request_service.pending(session, None):
+        change_request_service.decide(session, None, change.id, approve=True, user_id=approver.id)
+    session.commit()

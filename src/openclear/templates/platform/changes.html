@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Changes — OpenClear{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card">
+  <h1>Changes waiting for a second operator</h1>
+  <p class="hint">Setting up a bank, the shared scoring model, platform staff and platform fees each need two of the platform's operators.
+    A change asked for with a platform API key waits for an operator. Every request and decision is in the log below.</p>
+  {% if rows %}
+  <table>
+    <thead><tr><th>Change</th><th>Before → after</th><th>Asked</th><th></th></tr></thead>
+    <tbody>{% for r in rows %}{% set c = r.change %}
+      <tr><td><strong>{{ c.summary }}</strong>{% if c.applies_at %}<br><span class="badge badge-warn">Applies {{ c.applies_at.strftime("%Y-%m-%d %H:%M") }} UTC: nobody else can approve</span>{% endif %}</td>
+        <td>{% for key, value in (c.after or {}).items() %}{% if (c.before or {}).get(key) != value %}<div><code>{{ key }}</code>: {{ (c.before or {}).get(key) }} → <strong>{{ value }}</strong></div>{% endif %}{% endfor %}</td>
+        <td class="nowrap">{{ c.requested_at.strftime("%Y-%m-%d %H:%M") if c.requested_at else "" }}<br><span class="text-muted">{{ "you" if r.mine else (c.requested_with if not c.requested_by_user_id else "") }}</span></td>
+        <td>{% if r.mine %}
+          <form method="post" action="/ui/platform/changes/{{ c.id }}/withdraw" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary">{{ icon("undo") }}Withdraw</button></form>
+          {% elif r.can_decide %}
+          <form method="post" action="/ui/platform/changes/{{ c.id }}/approve" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">{{ icon("check_circle") }}Approve</button></form>
+          <form method="post" action="/ui/platform/changes/{{ c.id }}/reject" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="visually-hidden" for="reason-{{ c.id }}">Why reject it</label>
+            <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required style="max-width:12em;">
+            <button type="submit" class="secondary">{{ icon("block") }}Reject</button></form>
+          {% endif %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p>Nothing is waiting.</p>{% endif %}
+</div>
+<div class="card">
+  <h2>Installation settings</h2>
+  {% if changed_settings %}
+  <p class="flash flash-warn">Changed outside OpenClear since an operator last acknowledged them: {{ changed_settings | join(", ") }}.
+    Every bank's "Installation settings unchanged" check warns until you confirm the change was intended.</p>
+  <form method="post" action="/ui/platform/settings/acknowledge">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">{{ icon("check_circle") }}Acknowledge them</button>
+  </form>
+  {% else %}<p><span class="badge badge-ok">As acknowledged</span> The security-relevant settings are as last acknowledged.</p>{% endif %}
+</div>
+<div class="card">
+  <h2>The provider's action log</h2>
+  <p>{% if intact %}<span class="badge badge-ok">Intact</span> {{ checked }} entries, chained and signed.{% else %}<span class="badge badge-danger">Broken</span> at entry {{ broken }}.{% endif %}</p>
+  <table>
+    <thead><tr><th>When</th><th>What</th></tr></thead>
+    <tbody>{% for e in log %}<tr><td class="nowrap">{{ e.occurred_at.strftime("%Y-%m-%d %H:%M") }}</td><td><code>{{ e.action }}</code> {{ e.summary }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

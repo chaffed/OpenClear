@@ -13447,6 +13447,7 @@
         ]
       },
       "post": {
+        "description": "Asks for a new platform fee; a platform operator approves it in the operator view.",
         "operationId": "create_fee_item_api_v1_platform_billing_fee_items_post",
         "requestBody": {
           "content": {
@@ -13459,15 +13460,13 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "202": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeeItemRead"
-                }
+                "schema": {}
               }
             },
-            "description": "Successful Response"
+            "description": "Waiting for a platform operator"
           },
           "422": {
             "content": {
@@ -13493,6 +13492,7 @@
     },
     "/api/v1/platform/billing/fee-items/{fee_item_id}": {
       "patch": {
+        "description": "Asks for a change to a platform fee; a platform operator approves it in the operator view.",
         "operationId": "update_fee_item_api_v1_platform_billing_fee_items__fee_item_id__patch",
         "parameters": [
           {
@@ -13517,15 +13517,13 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeeItemRead"
-                }
+                "schema": {}
               }
             },
-            "description": "Successful Response"
+            "description": "Waiting for a platform operator"
           },
           "422": {
             "content": {
@@ -14158,6 +14156,7 @@
     },
     "/api/v1/platform/ml/models/{model_id}/activate": {
       "patch": {
+        "description": "Asks for the shared model to be activated: it scores every bank that uses it, so it waits\nfor a person among the platform's operators to approve it in the operator view (`202` with\n`change_request_id`). Already active: `200` with the model.",
         "operationId": "activate_shared_model_api_v1_platform_ml_models__model_id__activate_patch",
         "parameters": [
           {
@@ -14181,6 +14180,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "description": "Waiting for two of the platform's staff (DUAL_CONTROL_PLAN.md DC4)"
           },
           "422": {
             "content": {
@@ -14259,6 +14261,7 @@
     },
     "/api/v1/platform/ml/retrain": {
       "post": {
+        "description": "Trains a challenger for the shared model, promoted only by the champion/challenger rule;\nactivating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.",
         "operationId": "retrain_shared_model_api_v1_platform_ml_retrain_post",
         "parameters": [
           {

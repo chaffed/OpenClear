@@ -363,8 +363,15 @@ def _record_platform(session: Session, change: ChangeRequest, user_id, action: s
     """The service provider's changes go in the provider's own log (DC4)."""
     from openclear.services import platform_log_service
 
-    platform_log_service.record(session, actor_user_id=user_id, action=action, summary=summary, resource_type="change_request",
-                                resource_id=change.id, metadata={"kind": change.kind})
+    key_id = None
+    if user_id is None and change.requested_with:
+        try:
+            key_id = uuid.UUID(change.requested_with)  # asked for with a platform API key
+        except ValueError:
+            key_id = None
+    platform_log_service.record(session, actor_user_id=user_id, actor_key_id=key_id if action == "change_request.create" else None,
+                                action=action, summary=summary, resource_type="change_request", resource_id=change.id,
+                                metadata={"kind": change.kind, **({"requested_with": change.requested_with} if change.requested_with else {})})
 
 
 def _notify_requested(session: Session, change: ChangeRequest, others: list) -> None:

@@ -101,6 +101,8 @@ CATALOG: dict[str, EventType] = {
     "change_request.approved": EventType("configuration", "medium"),
     "change_request.rejected": EventType("configuration", "low"),
     "change_request.withdrawn": EventType("configuration", "low"),
+    # The service provider changed something for the whole installation (services/platform_log_service.py).
+    "platform.action": EventType("configuration", "high"),
     "change_request.expired": EventType("configuration", "low"),
     # Nobody else could approve: applied after the cooling-off (DUAL_CONTROL_PLAN.md DC-D6).
     "change_request.applied_alone": EventType("configuration", "critical"),

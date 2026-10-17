@@ -1041,3 +1041,121 @@ register(Kind(
     loosens=turned_off("changes_need_approval"), apply=_customer_switch_apply, scope="customer", switches=_customer_switch_functions,
     action="customer.approval_switch",
 ))
+
+
+# --- The service provider (DC4): two of the platform's staff ------------------------------------
+
+_OPERATOR = "platform:operator"
+
+
+def _shared_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.ml_model import MlModel, MlModelStatus
+
+    model = session.get(MlModel, uuid.UUID(payload["model_id"]))
+    if model is None or model.tenant_id is not None or model.customer_id is not None:
+        raise ChangeError("That shared model no longer exists.")
+    return {"active": model.status == MlModelStatus.ACTIVE}
+
+
+def _shared_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.ml.registry import activate_model
+
+    model = activate_model(session, uuid.UUID(payload["model_id"]), expected_customer_id=None, expected_tenant_id=None)
+    return f"Activated the shared {model.network_code} model {model.version}, for every bank that uses it"
+
+
+register(Kind(
+    "platform.shared_model.activate", "The shared scoring model", "protection", _OPERATOR, _shared_current, lambda payload: {"active": True},
+    loosens=lambda before, after: after["active"] and not before["active"], apply=_shared_apply, scope="provider",
+    setting=lambda payload: "shared_model", describe=lambda before, after: "Activate a shared scoring model for every bank that uses it",
+    action="platform.shared_model.activate",
+))
+
+
+def _provision_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import operator_service
+
+    try:
+        tenant, password = operator_service.provision(session, name=payload["name"], slug=payload["slug"], admin_email=payload["admin_email"],
+                                                      operator_email=payload["operator_email"])
+    except operator_service.ProvisioningError as exc:
+        raise ChangeError(str(exc)) from None
+    # The first admin's temporary password, for whoever approved it to pass on (shown once, never stored).
+    session.info["provisioned"] = (tenant, password, payload["admin_email"])
+    return f"Set up {tenant.name} ({tenant.slug}), first admin {payload['admin_email']}"
+
+
+def _provision_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.tenant import Tenant
+    from sqlalchemy import select
+
+    return {"exists": session.execute(select(Tenant.id).where(Tenant.slug == payload["slug"].strip().lower())).first() is not None}
+
+
+register(Kind(
+    "platform.provision", "A new bank", "protection", _OPERATOR, _provision_current, lambda payload: {"exists": True},
+    loosens=lambda before, after: True, apply=_provision_apply, scope="provider", setting=lambda payload: f"bank:{payload['slug']}",
+    describe=lambda before, after: "Set up a new bank", action="platform.bank.provision",
+))
+
+
+def _role_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.user import User
+    from sqlalchemy import select
+
+    user = session.execute(select(User).where(User.email == payload["email"].strip().lower())).scalar_one_or_none()
+    if user is None:
+        raise ChangeError("Nobody signs in with that email.")
+    return {"role": user.platform_role}
+
+
+def _role_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import support_access_service
+
+    try:
+        user, _created = support_access_service.set_platform_role(session, payload["email"], payload.get("role"))
+    except support_access_service.SupportAccessError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"{user.email}: platform {payload.get('role') or 'staff role removed'}"
+
+
+register(Kind(
+    "platform.role", "Platform staff", "protection", _OPERATOR, _role_current, lambda payload: {"role": payload.get("role")},
+    # Becoming staff, or support becoming operator, widens; removing or lowering never waits.
+    loosens=lambda before, after: after["role"] is not None and (before["role"] is None or (after["role"] == "operator" and before["role"] != "operator")),
+    apply=_role_apply, scope="provider", setting=lambda payload: f"platform_role:{payload['email'].strip().lower()}",
+    describe=lambda before, after: f"Make someone platform {after['role']}", action="platform.role",
+))
+
+
+def _fee_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.services.billing import platform as platform_billing
+
+    if not payload.get("fee_item_id"):
+        return {"fee": None}
+    item = next((i for i in platform_billing.list_fee_items(session) if str(i.id) == payload["fee_item_id"]), None)
+    if item is None:
+        raise ChangeError("That fee no longer exists.")
+    return {"fee": {k: (str(getattr(item, k)) if getattr(item, k, None) is not None else None) for k in payload["data"]}}
+
+
+def _fee_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services.billing import platform as platform_billing
+
+    try:
+        if payload.get("fee_item_id"):
+            item = platform_billing.update_fee_item(session, uuid.UUID(payload["fee_item_id"]), **payload["data"])
+        else:
+            item = platform_billing.create_fee_item(session, **payload["data"])
+    except (LookupError, ValueError) as exc:
+        raise ChangeError(str(exc)) from None
+    return f"Platform fee {getattr(item, 'code', '')} {'changed' if payload.get('fee_item_id') else 'added'}"
+
+
+register(Kind(
+    "platform.fee_item", "Platform fees", "protection", _OPERATOR, _fee_current,
+    lambda payload: {"fee": {k: (str(v) if v is not None else None) for k, v in payload["data"].items()}},
+    loosens=lambda before, after: True,  # what every bank is billed
+    apply=_fee_apply, scope="provider", setting=lambda payload: f"fee:{payload.get('fee_item_id') or payload['data'].get('code')}",
+    describe=lambda before, after: "Change what banks are billed", action="platform.fee_item",
+))

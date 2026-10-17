@@ -238,8 +238,10 @@ CONTROLS: tuple[OcControl, ...] = (
     # --- Configuration management ---------------------------------------------------------
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
-      "storage settings, and the Controls page reports the settings in force.",
-      ("CM-6",), "preventive", "built_in", ("production_safety",), ("H-CM-6-01",), "Controls → Production safety"),
+      "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "
+      "settings warns until one of the platform's operators acknowledges it.",
+      ("CM-6",), "preventive", "built_in", ("production_safety", "installation_settings"), ("H-CM-6-01",),
+      "Controls → Production safety; the operator view's Changes"),
     C("OC-CM-02", "Versioned releases and migrations",
       "Each release is versioned with a changelog, its database migrations upgrade and downgrade, and the running version is "
       "published.",

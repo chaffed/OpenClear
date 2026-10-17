@@ -5,11 +5,12 @@
 platform API key with the `billing` scope. The operator's own fee schedule, and each
 bank's invoice for a period (JSON, CSV, or camt.086)."""
 
+import json
 import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.api.v1.files import CSV_FILE, XML_FILE
@@ -47,31 +48,50 @@ def list_fee_items(db: Session = Depends(get_db), _key: PlatformApiKey = Depends
     return [FeeItemRead.model_validate(i) for i in platform_billing.list_fee_items(db)]
 
 
-@router.post("/fee-items", response_model=FeeItemRead, status_code=status.HTTP_201_CREATED)
-def create_fee_item(payload: FeeItemCreate, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)) -> FeeItemRead:
+def _fee_change(db: Session, key: PlatformApiKey, payload: dict) -> JSONResponse:
+    """What every bank is billed waits for a platform operator (DUAL_CONTROL_PLAN.md DC4): `202`."""
+    from openclear.services import change_request_service
+
+    savepoint = db.begin_nested()  # checked now, so a mistake answers 422 at once
+    try:
+        if payload.get("fee_item_id"):
+            platform_billing.update_fee_item(db, uuid.UUID(payload["fee_item_id"]), **payload["data"])
+        else:
+            platform_billing.create_fee_item(db, **payload["data"])
+    except LookupError:
+        savepoint.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fee not found") from None
+    except ValueError as exc:
+        savepoint.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from None
+    savepoint.rollback()
+    try:
+        outcome = change_request_service.request_or_apply(db, "platform.fee_item", json.loads(json.dumps(payload, default=str)), tenant_id=None,
+                                                          user_id=None, channel="api", requested_with=str(key.id))
+    except change_request_service.ChangeRequestError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+    db.commit()
+    return JSONResponse({"status": "pending", "change_request_id": str(outcome.change.id) if outcome.change else None,
+                         "detail": "A platform operator must approve this in the operator view (Changes)."}, status_code=202)
+
+
+@router.post("/fee-items", status_code=status.HTTP_202_ACCEPTED, responses={202: {"description": "Waiting for a platform operator"}})
+def create_fee_item(payload: FeeItemCreate, db: Session = Depends(get_db), key: PlatformApiKey = Depends(_operator)) -> JSONResponse:
+    """Asks for a new platform fee; a platform operator approves it in the operator view."""
     data = payload.model_dump()
     data["tiers"] = [t.model_dump() for t in payload.tiers] if payload.tiers else None
-    try:
-        item = platform_billing.create_fee_item(db, **data)
-    except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
-    db.commit()
-    return FeeItemRead.model_validate(item)
+    return _fee_change(db, key, {"fee_item_id": None, "data": data})
 
 
-@router.patch("/fee-items/{fee_item_id}", response_model=FeeItemRead)
-def update_fee_item(fee_item_id: uuid.UUID, payload: FeeItemUpdate, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)) -> FeeItemRead:
+@router.patch("/fee-items/{fee_item_id}", status_code=status.HTTP_202_ACCEPTED, responses={202: {"description": "Waiting for a platform operator"}})
+def update_fee_item(fee_item_id: uuid.UUID, payload: FeeItemUpdate, db: Session = Depends(get_db),
+                    key: PlatformApiKey = Depends(_operator)) -> JSONResponse:
+    """Asks for a change to a platform fee; a platform operator approves it in the operator view."""
     data = payload.model_dump(exclude_unset=True)
     if "tiers" in data:
         data["tiers"] = [t.model_dump() for t in payload.tiers] if payload.tiers else None
-    try:
-        item = platform_billing.update_fee_item(db, fee_item_id, **data)
-    except LookupError:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fee not found") from None
-    except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
-    db.commit()
-    return FeeItemRead.model_validate(item)
+    return _fee_change(db, key, {"fee_item_id": str(fee_item_id), "data": data})
 
 
 def _invoices(db: Session, period: str | None, start: date | None, end: date | None, tenant_id: uuid.UUID | None):

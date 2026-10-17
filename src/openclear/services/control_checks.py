@@ -772,3 +772,19 @@ def software_currency(session: Session, tenant_id: uuid.UUID) -> Control:
     if days > settings.software_currency_warn_days:
         return Control("software_currency", title, WARN, f"{behind}, more than {settings.software_currency_warn_days}.", evidence)
     return Control("software_currency", title, PASS, f"{behind}, within {settings.software_currency_warn_days}. Latest: {newer[-1].tag}.", evidence)
+
+
+def installation_settings(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The installation's security-relevant settings, against what a platform operator last
+    acknowledged (services/installation_settings.py; DUAL_CONTROL_PLAN.md DC-D14)."""
+    from openclear.services import installation_settings as watched
+
+    title = "Installation settings unchanged"
+    names, row = watched.changed(session)
+    evidence = {"watched": list(watched.WATCHED), "changed": names,
+                "acknowledged_at": row.acknowledged_at.isoformat() if row and row.acknowledged_at else None}
+    if names:
+        return Control("installation_settings", title, WARN,
+                       f"Changed since the platform's operators last acknowledged them: {', '.join(names)}. An operator acknowledges "
+                       "them in the operator view once the change is confirmed as intended.", evidence)
+    return Control("installation_settings", title, PASS, f"The {len(watched.WATCHED)} watched settings are as last acknowledged.", evidence)

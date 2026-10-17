@@ -71,7 +71,7 @@ def list_jobs(
 
 
 @router.post("/{job_id}/retry", response_model=JobRead)
-def retry_job(job_id: uuid.UUID, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)) -> JobRead:
+def retry_job(job_id: uuid.UUID, db: Session = Depends(get_db), key: PlatformApiKey = Depends(_operator)) -> JobRead:
     """Queues a FAILED job again with a fresh set of attempts (after fixing whatever made
     it fail). Any other status is a 409."""
     job = db.get(Job, job_id)
@@ -80,6 +80,10 @@ def retry_job(job_id: uuid.UUID, db: Session = Depends(get_db), _key: PlatformAp
     if job.status != JobStatus.FAILED:
         raise HTTPException(status.HTTP_409_CONFLICT, f"Only a failed job can be retried; this one is {job.status.value}")
     job.status, job.attempts, job.run_after, job.finished_at = JobStatus.QUEUED, 0, datetime.now(timezone.utc), None
+    from openclear.services import platform_log_service
+
+    platform_log_service.record(db, actor_key_id=key.id, action="platform.job.retry", resource_type="job", resource_id=job.id,
+                                summary=f"Queued the failed job {job.kind} again")
     db.commit()
     jobs_queued(db.get_bind())
     db.refresh(job)

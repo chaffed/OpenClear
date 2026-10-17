@@ -170,6 +170,10 @@ def test_the_hosts_cuecs_attested_by_the_platform(db_session, tenant_factory, mo
                                           result="operated", statement="Backups tested.", user_id=users["admin"].id)
     made = attestation_service.record_installation(db_session, "H-CP-9-01", start=date(2026, 1, 1), end=date(2026, 3, 31), result="operated",
                                                    statement="Restore tested 2026-03-02.", user_id=users["admin"].id)
+    assert made.status == "prepared"  # another of the platform's staff accepts it (DUAL_CONTROL_PLAN.md DC4)
+    with pytest.raises(AttestationError, match="Someone else"):
+        attestation_service.accept_installation(db_session, made, user_id=users["admin"].id)
+    attestation_service.accept_installation(db_session, made, user_id=users["approver"].id)
     db_session.commit()
     assert made.tenant_id is None and made.status == "accepted" and attestation_service.verify(made)
     assert attestation_service.get_attestation(db_session, tenant.id, None, made.id) == made  # every bank reads it

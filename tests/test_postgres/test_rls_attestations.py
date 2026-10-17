@@ -31,6 +31,7 @@ def test_installation_rows_are_read_by_every_bank_and_written_by_none(app_sessio
     try:
         host = attestation_service.record_installation(platform, "H-CP-9-01", start=date(2026, 1, 1), end=date(2026, 3, 31),
                                                        result="operated", statement="Restore tested.", user_id=users["admin"].id)
+        attestation_service.accept_installation(platform, host, user_id=other_users["admin"].id)
         platform.commit()
     finally:
         platform.close()

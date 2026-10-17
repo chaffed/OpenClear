@@ -2494,17 +2494,21 @@ public sealed partial class PlatformBillingApi
     /// Create Fee Item.
     ///
     /// POST /api/v1/platform/billing/fee-items
+    ///
+    /// Asks for a new platform fee; a platform operator approves it in the operator view.
     /// </summary>
-    public Task<FeeItemRead> CreateFeeItemAsync(FeeItemCreate body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<FeeItemRead>("POST", "/api/v1/platform/billing/fee-items", json: body, platform: true, cancellationToken: cancellationToken);
+    public Task<JsonElement> CreateFeeItemAsync(FeeItemCreate body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<JsonElement>("POST", "/api/v1/platform/billing/fee-items", json: body, platform: true, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Update Fee Item.
     ///
     /// PATCH /api/v1/platform/billing/fee-items/{fee_item_id}
+    ///
+    /// Asks for a change to a platform fee; a platform operator approves it in the operator view.
     /// </summary>
-    public Task<FeeItemRead> UpdateFeeItemAsync(string feeItemId, FeeItemUpdate body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<FeeItemRead>("PATCH", $"/api/v1/platform/billing/fee-items/{Uri.EscapeDataString(feeItemId.ToString()!)}", json: body, platform: true, cancellationToken: cancellationToken);
+    public Task<JsonElement> UpdateFeeItemAsync(string feeItemId, FeeItemUpdate body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<JsonElement>("PATCH", $"/api/v1/platform/billing/fee-items/{Uri.EscapeDataString(feeItemId.ToString()!)}", json: body, platform: true, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Invoices.
@@ -2628,6 +2632,10 @@ public sealed partial class PlatformMlApi
     /// Activate Shared Model.
     ///
     /// PATCH /api/v1/platform/ml/models/{model_id}/activate
+    ///
+    /// Asks for the shared model to be activated: it scores every bank that uses it, so it waits
+    /// for a person among the platform's operators to approve it in the operator view (`202` with
+    /// `change_request_id`). Already active: `200` with the model.
     /// </summary>
     public Task<MlModelRead> ActivateSharedModelAsync(string modelId, CancellationToken cancellationToken = default) =>
         _c.CallAsync<MlModelRead>("PATCH", $"/api/v1/platform/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", platform: true, cancellationToken: cancellationToken);
@@ -2647,6 +2655,9 @@ public sealed partial class PlatformMlApi
     /// Retrain Shared Model.
     ///
     /// POST /api/v1/platform/ml/retrain
+    ///
+    /// Trains a challenger for the shared model, promoted only by the champion/challenger rule;
+    /// activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
     /// </summary>
     public Task<RetrainResponse> RetrainSharedModelAsync(string? networkCode = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<RetrainResponse>("POST", "/api/v1/platform/ml/retrain", query: new Dictionary<string, object?> { ["network_code"] = networkCode }, platform: true, cancellationToken: cancellationToken);

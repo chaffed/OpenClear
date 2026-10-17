@@ -52,26 +52,52 @@ def list_shared_models(
 
 @router.post("/ml/retrain", response_model=RetrainResponse)
 def retrain_shared_model(
-    network_code: str, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)
+    network_code: str, db: Session = Depends(get_db), key: PlatformApiKey = Depends(_operator)
 ) -> RetrainResponse:
+    """Trains a challenger for the shared model, promoted only by the champion/challenger rule;
+    activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log."""
+    from openclear.services import platform_log_service
+
     try:
         result = train_model(db, network_code)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+    platform_log_service.record(db, actor_key_id=key.id, action="platform.shared_model.retrain", resource_type="ml_model",
+                                resource_id=result.model_row.id,
+                                summary=f"Retrained the shared {network_code} model: {result.model_row.version}"
+                                        + (", promoted by the champion/challenger rule" if result.promoted else ", not promoted"))
+    db.commit()
     return RetrainResponse(
         network_code=network_code, promoted=result.promoted, metrics=result.metrics,
         model=MlModelRead.model_validate(result.model_row),
     )
 
 
-@router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead)
+@router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead,
+              responses={202: {"description": "Waiting for two of the platform's staff (DUAL_CONTROL_PLAN.md DC4)"}})
 def activate_shared_model(
-    model_id: uuid.UUID, db: Session = Depends(get_db), _key: PlatformApiKey = Depends(_operator)
-) -> MlModelRead:
-    _shared_model_or_404(db, model_id)
-    model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=None)
+    model_id: uuid.UUID, db: Session = Depends(get_db), key: PlatformApiKey = Depends(_operator)
+):
+    """Asks for the shared model to be activated: it scores every bank that uses it, so it waits
+    for a person among the platform's operators to approve it in the operator view (`202` with
+    `change_request_id`). Already active: `200` with the model."""
+    from fastapi.responses import JSONResponse
+
+    from openclear.services import change_request_service
+
+    model = _shared_model_or_404(db, model_id)
+    try:
+        outcome = change_request_service.request_or_apply(db, "platform.shared_model.activate", {"model_id": str(model_id)}, tenant_id=None,
+                                                          user_id=None, channel="api", requested_with=str(key.id),
+                                                          summary=f"Activate the shared {model.network_code} model {model.version}")
+    except change_request_service.ChangeRequestError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
     db.commit()
-    return MlModelRead.model_validate(model)
+    if outcome.waiting:
+        return JSONResponse({"status": "pending", "change_request_id": str(outcome.change.id),
+                             "detail": "A platform operator must approve this in the operator view (Changes)."}, status_code=202)
+    return MlModelRead.model_validate(db.get(MlModel, model_id))
 
 
 @router.get("/ml/models/{model_id}/feature-importance", response_model=dict[str, float])
