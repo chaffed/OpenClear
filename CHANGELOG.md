@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.19.0 — 2026-10-17
 
 Compliance for GRC tools (CONTROLS_PLAN.md CT5):
 
