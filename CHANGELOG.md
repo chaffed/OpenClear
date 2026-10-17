@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A segregation-of-duties breach that *enforce* refused is now a `critical` security event**
+  (it was `high`, as a breach *warn* lets through still is), as the control testing
+  specification asks.
+- `OPENCLEAR_CONTROL_TESTS_INCLUDE_SANDBOXES`: include sandbox banks in scheduled control testing
+  and attestation proposals (off by default; the public sandbox turns it on).
+
 - **A new check, "Software kept up to date"**, for the host's CUEC to apply updates: it reads
   OpenClear's published releases (`OPENCLEAR_RELEASE_FEED_URL`, GitHub's releases API by
   default, or a mirror; empty turns it off) and warns when a newer release has been out more

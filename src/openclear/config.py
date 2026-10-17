@@ -370,6 +370,10 @@ class Settings(BaseSettings):
     # from cron. The Controls page warns when a bank's last anomaly-capture run is over a day old.
     enable_control_test_scheduler: bool = False  # opt-in, same reasoning as enable_ml_scheduler
     control_test_cron_hour: int = 4
+    # Sandbox banks (an evaluator's, made by sign-up) are left out of scheduled control testing
+    # and attestation proposals, unless this is on: the public sandbox turns it on so its banks
+    # build a test history to look at. The yearly request to customers never goes to them.
+    control_tests_include_sandboxes: bool = False
     # The host's software currency check (services/release_feed.py, CONTROLS_PLAN.md CT2): where
     # OpenClear's releases are listed, as GitHub's releases API gives them (a mirror inside your
     # network works too); empty turns the check off, and it then warns that it can't tell. A newer

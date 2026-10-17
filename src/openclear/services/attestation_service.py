@@ -454,9 +454,14 @@ def prepare_due(session: Session, today: date | None = None) -> int:
     """Nightly: for each bank whose period ended yesterday, propose that period's attestations."""
     from openclear.db.tenancy import bind_session_to_tenant
 
+    from openclear.config import get_settings
+
     today = today or _now().date()
     made = 0
-    for tenant in session.execute(select(Tenant).where(Tenant.is_active.is_(True), Tenant.is_sandbox.is_(False))).scalars().all():
+    banks = select(Tenant).where(Tenant.is_active.is_(True))
+    if not get_settings().control_tests_include_sandboxes:
+        banks = banks.where(Tenant.is_sandbox.is_(False))
+    for tenant in session.execute(banks).scalars().all():
         start, end = previous_period(tenant.attestation_period, today)
         if end != today - timedelta(days=1):
             continue

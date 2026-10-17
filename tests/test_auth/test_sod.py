@@ -57,6 +57,13 @@ def _present_and_regroup(client, db_session, tenant, account, users):
     return ExceptionRepository(db_session, tenant.id).list(source_item_id=uuid.UUID(presented.json()["id"]))[0]
 
 
+def _sod_event_severities(db_session, tenant) -> list[str]:
+    from openclear.domain.security_event import SecurityEvent
+
+    return list(db_session.execute(select(SecurityEvent.severity).where(SecurityEvent.tenant_id == tenant.id,
+                                                                       SecurityEvent.name == "sod.violation")).scalars())
+
+
 def test_warn_mode_lets_the_presenter_decide_but_logs_it(client, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="sod-warn")
     exception = _present_and_regroup(client, db_session, tenant, account, users)
@@ -65,6 +72,7 @@ def test_warn_mode_lets_the_presenter_decide_but_logs_it(client, db_session, ten
     assert decided.status_code in (200, 201), decided.text
     [entry] = _violations(db_session, tenant)
     assert entry.metadata_json["rule"] == "presenter_decides" and entry.metadata_json["enforced"] is False
+    assert _sod_event_severities(db_session, tenant) == ["high"]  # let through: high
 
 
 def test_enforce_mode_refuses_the_presenter_and_keeps_the_record(client, db_session, tenant_factory):
@@ -87,6 +95,7 @@ def test_enforce_mode_refuses_the_presenter_and_keeps_the_record(client, db_sess
     assert ExceptionRepository(db_session, tenant.id).get(exception.id).status.value == "open"  # nothing was decided
     [entry] = _violations(db_session, tenant)
     assert entry.metadata_json["enforced"] is True and entry.metadata_json["severity"] == "critical"
+    assert _sod_event_severities(db_session, tenant) == ["critical"]  # a refused attempt: critical, as the spec asks
 
     # Someone else may decide it.
     other = client.post(f"/api/v1/exceptions/{exception.id}/decide", headers=login_headers(client, tenant.slug, users["approver"].email),

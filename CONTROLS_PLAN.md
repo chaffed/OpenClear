@@ -410,3 +410,9 @@ One merge per phase, at most one migration each, the three full suites once per 
   under `software_currency_warn_days` (30), WARN after, FAIL after `software_currency_fail_days`
   (180); WARN when the feed is off or unreadable, or the running version isn't a release. The
   suite runs with the feed off. `PLANNED_CHECKS` is now empty. Only SOC 2 remains.
+- 2026-10-17 The owner's choices on the specification check: a breach *enforce* refused is a
+  `critical` security event (`emit(severity=)` overrides the catalog's `high` for that event; one
+  *warn* lets through stays `high`). The sandbox runs scheduled control testing: its banks are all
+  sandbox banks, which the scheduled runs and proposals skipped, so
+  `control_tests_include_sandboxes` (off by default) lets them in; the yearly request to
+  customers still skips them.

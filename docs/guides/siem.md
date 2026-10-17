@@ -219,7 +219,7 @@ Suggested detections, as queries in plain terms. Adjust the thresholds to your b
 | Password guessing | `auth.login.failed` | 10 or more failures for one `actor.email`, or from one `source.ip`, within 10 minutes |
 | A lockout, then a sign-in from somewhere new | `auth.lockout`, then `auth.login.succeeded` | The same person signs in within a day of a lockout from a `source.ip` not seen for them in 30 days |
 | An admin granting themselves more | `security_group.changed`, `membership.changed` | `actor.id` equals the affected user, or the actor changes the group they're in |
-| A group that combines duties | `sod.violation`, `security_group.changed` | Any `sod.violation`; any `security_group.changed` whose details name conflicting permissions |
+| A group that combines duties | `sod.violation`, `security_group.changed` | Any `sod.violation` (`critical` when *enforce* refused it, `high` when *warn* let it through); any `security_group.changed` whose details name conflicting permissions |
 | A key rotation | `secrets.reencrypted` (stored secrets moved to a new key at startup) | Any occurrence outside a planned change window |
 | A large export | `data_export.started`, `audit.export`, `list.exported`, `users.exported` | Any full data export; more than 5 list exports by one person in an hour |
 | A control turning to FAIL | `control.status.changed` (recorded when the Controls page or API is read, and checked hourly) | Any with `outcome` failure (`details.to` is FAIL); a WARN for review; `details.to` PASS when it recovers |

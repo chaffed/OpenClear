@@ -189,3 +189,13 @@ def test_the_period_job(db_session, tenant_factory, monkeypatch):
     rows = attestation_service.attestations(db_session, tenant.id, None)
     assert {(a.period_start, a.period_end) for a in rows} == {(date(2026, 1, 1), date(2026, 3, 31))}
     assert json.loads(json.dumps(rows[0].evidence))  # plain JSON
+
+
+def test_sandbox_banks_are_left_out_unless_the_installation_includes_them(db_session, tenant_factory, monkeypatch):
+    tenant, _account, _users = tenant_factory.make(slug="att-sandbox")
+    tenant.is_sandbox, tenant.attestation_period = True, "monthly"
+    db_session.commit()
+    first = date(2026, 4, 1)  # the night after March ended
+    assert attestation_service.prepare_due(db_session, first) == 0
+    monkeypatch.setattr(get_settings(), "control_tests_include_sandboxes", True)
+    assert attestation_service.prepare_due(db_session, first) > 0

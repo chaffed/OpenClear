@@ -440,7 +440,10 @@ def _run_controls(schedule: str) -> None:
     chosen = [c for c in checks.registry() if c.schedule == schedule and not c.needs_request]
     session = get_session_factory()()
     try:
-        for tenant_id in list(session.execute(select(Tenant.id).where(Tenant.is_active.is_(True), Tenant.is_sandbox.is_(False))).scalars()):
+        banks = select(Tenant.id).where(Tenant.is_active.is_(True))
+        if not get_settings().control_tests_include_sandboxes:
+            banks = banks.where(Tenant.is_sandbox.is_(False))
+        for tenant_id in list(session.execute(banks).scalars()):
             try:
                 bind_session_to_tenant(session, tenant_id)
                 ran = control_results_service.run_checks(session, tenant_id, chosen, period=control_results_service.previous_day())

@@ -60,7 +60,7 @@ CATALOG: dict[str, EventType] = {
     # access
     "access.denied": EventType("access", "medium"),
     "rate_limit.exceeded": EventType("access", "medium"),
-    "sod.violation": EventType("access", "high"),
+    "sod.violation": EventType("access", "high"),  # critical when enforce refused it (from_audit_entry)
     "edge.secret.refused": EventType("access", "high"),
     # identity
     "user.created": EventType("identity", "medium"),
@@ -228,10 +228,12 @@ def emit(
     details: dict | None = None,
     audit_sequence: int | None = None,
     channel: str | None = None,
+    severity: str | None = None,
 ) -> SecurityEvent:
     """Records the event in the caller's transaction (the caller commits) and logs it.
     The request's IP, user agent, ids and channel come from the request context. Who did it
-    defaults to the request's signed-in person when not given."""
+    defaults to the request's signed-in person when not given. `severity` overrides the
+    catalog's for this one event."""
     kind = CATALOG[name]
     context = _context()
     if actor_type is None and context is not None and (context.user_id or context.api_client_id):
@@ -239,7 +241,7 @@ def emit(
         actor_id = actor_id or context.user_id or context.api_client_id
         actor_label = actor_label or context.user_email
     event = SecurityEvent(
-        tenant_id=tenant_id, name=name, category=kind.category, outcome=outcome, severity=kind.severity,
+        tenant_id=tenant_id, name=name, category=kind.category, outcome=outcome, severity=severity or kind.severity,
         reason=(reason or None) and reason[:60],
         actor_type=actor_type, actor_id=str(actor_id) if actor_id else None, actor_label=(actor_label or None) and actor_label[:320],
         target_type=target_type, target_id=str(target_id) if target_id else None,
@@ -265,12 +267,13 @@ def from_audit_entry(session: Session, entry) -> SecurityEvent | None:
     details = {"action": entry.action, "summary": entry.summary[:300]}
     if name == "settings.changed":
         details["setting"] = entry.action.split(".", 1)[1].removeprefix("update_")
-    outcome = "failure" if name == "sod.violation" and metadata.get("enforced") else "success"
+    refused = name == "sod.violation" and bool(metadata.get("enforced"))
+    outcome = "failure" if refused else "success"
     return emit(
         session, name, tenant_id=entry.tenant_id, outcome=outcome, reason=metadata.get("rule") if name == "sod.violation" else None,
         actor_type="user" if entry.actor_user_id else "system", actor_id=entry.actor_user_id,
         target_type=entry.resource_type, target_id=entry.resource_id, details=details, audit_sequence=entry.sequence,
-        channel=entry.channel.value,
+        channel=entry.channel.value, severity="critical" if refused else None,  # a breach attempt enforce refused
     )
 
 
