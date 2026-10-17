@@ -424,7 +424,7 @@ One merge per phase, at most one migration each, the three full suites once per 
   read as their control; none of AICPA's text), written outside the tracked files;
   `soc2_mapping_path` points at it; `crosswalks.soc2_for` matches as for CSF. `soc2` is null
   without one; the published inventories never carry it (the export script drops it, and a test
-  checks). Tests use a made-up workbook in AICPA's layout. The owner's copy is in the ignored
-  `third_party/`; with it every control and CUEC gets SOC 2 criteria.
-  Whether to publish anything made from it (the docs site, the sandbox) is the owner's call
-  against AICPA's terms; nothing is. CONTROLS_PLAN.md is complete.
+  checks). Tests use a made-up workbook in AICPA's layout. The owner tried a downloaded copy, then
+  removed it and what was made from it, to stay clear of AICPA's terms: OpenClear doesn't use
+  AICPA's mapping itself, and the bank or provider running an installation loads its own
+  (docs/guides/grc.md, "SOC 2"). The sandbox has none. CONTROLS_PLAN.md is complete.
