@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.21.1 — 2026-10-17
 
 Finishing dual control (DUAL_CONTROL_PLAN.md DC6):
 

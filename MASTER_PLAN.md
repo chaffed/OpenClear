@@ -143,3 +143,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-17 Dual control DC0 to DC5 built on branch dc0-mechanism (see DUAL_CONTROL_PLAN.md's progress log).
 - 2026-10-17 Released 1.21.0: dual control for settings changes at the provider, banks and customers (DUAL_CONTROL_PLAN.md DC0 to DC5), lockout and inactive accounts, and SOC 2 by bring-your-own mapping.
 - 2026-10-17 Dual control DC6 (the plan's remaining gaps) built on branch dc6-gaps.
+- 2026-10-17 Released 1.21.1: dual control's remaining gaps (DUAL_CONTROL_PLAN.md DC6): platform API keys with a second operator, the provider's log checked daily, the provider's side in the evidence export, admins told when a rule loses its last other approver.
