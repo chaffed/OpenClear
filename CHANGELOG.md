@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+NIST CSF 2.0 crosswalk (CONTROLS_PLAN.md CT6):
+
+- **Every control and CUEC now lists its NIST CSF 2.0 subcategories**, taken from NIST's own
+  mapping of CSF 2.0 to SP 800-53 Rev. 5.1.1 (the informative references in NIST's CSF 2.0
+  Reference Tool), not judged by hand. They're in `GET /api/v1/compliance/controls` and `/cuecs`
+  (a new `csf` field), in the published inventories (`docs/compliance/controls.md`, `cuecs.md`,
+  `.json`, and a `csf` column in `cuecs.csv`), and on each CUEC's page.
+- **A new page, NIST CSF 2.0** (`docs/compliance/csf.md`, on the docs site), lists OpenClear's controls and the
+  CUECs by CSF subcategory.
+- The **FFIEC page** names the OpenClear controls behind each theme, with their NIST SP 800-53
+  controls.
+
 ## 1.18.0 — 2026-10-16
 
 Control testing (CONTROLS_PLAN.md CT2):

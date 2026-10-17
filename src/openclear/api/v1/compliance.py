@@ -2,7 +2,8 @@
 # Copyright (C) 2026 Chaffed
 
 """The control and CUEC inventories (CONTROLS_PLAN.md CT1; compliance/controls.py, cuecs.py),
-read-only. Mappings, results and attestations arrive with CT2 to CT5 under the same prefix.
+read-only, with their NIST CSF 2.0 crosswalk (CT6). Mappings, results and attestations arrive
+with CT2 to CT5 under the same prefix.
 `GET /api/v1/controls/status` stays as it is (CT-D14)."""
 
 from typing import Literal
@@ -28,6 +29,11 @@ class NistControl(BaseModel):
     oscal_id: str
 
 
+class CsfSubcategory(BaseModel):
+    id: str  # PR.AA-05
+    title: str
+
+
 class ControlCheck(BaseModel):
     key: str
     status: Literal["live", "planned"]
@@ -45,6 +51,7 @@ class InventoryControl(BaseModel):
     type: Literal["preventive", "detective", "corrective"]
     nature: Literal["built_in", "configurable"]
     checks: list[ControlCheck]
+    csf: list[CsfSubcategory]  # the NIST CSF 2.0 subcategories NIST maps to its 800-53 controls
     cuecs: list[str]
     where: str
     withdrawn: bool
@@ -72,6 +79,7 @@ class InventoryCuec(BaseModel):
     check: str | None
     check_status: Literal["live", "planned"] | None
     frequency: str
+    csf: list[CsfSubcategory]  # the NIST CSF 2.0 subcategories NIST maps to its 800-53 control
     where: str
     withdrawn: bool
     controls: list[str]  # the OpenClear controls that rely on it
@@ -104,7 +112,8 @@ def inventory(live: list[controls_service.Control]) -> list[dict]:
 @router.get("/controls", response_model=ControlInventory)
 def control_inventory(db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("audit_log:read"))) -> dict:
     """OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-    checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+    checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
+    to those controls, and the CUECs it relies on. `status`
     is the worst of its live checks, or null when none of its checks is live yet."""
     if ctx.customer_id is not None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Controls are for the bank's own staff.")
@@ -117,8 +126,8 @@ def control_inventory(db: Session = Depends(get_db), ctx: TenantContext = Depend
 def cuec_inventory(party: Literal["bank", "customer", "host"] | None = Query(None),
                    ctx: TenantContext = Depends(get_current_context)) -> dict:
     """The complementary user entity controls: what OpenClear's controls rely on the bank, its
-    customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
-    with the OpenClear controls that rely on it. A customer's own session sees only the
+    customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
+    the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
     customer's. Filter with `party`."""
     if ctx.customer_id is not None:
         if party not in (None, "customer"):

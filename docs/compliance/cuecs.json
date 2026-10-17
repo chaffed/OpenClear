@@ -33,6 +33,28 @@
       "check": "dormant_accounts",
       "check_status": "live",
       "frequency": "Per event; reviewed quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Users \u2192 Export (with last sign-in); user.* and membership.* in the action log",
       "withdrawn": false
     },
@@ -53,6 +75,28 @@
       "check": "scim_sync",
       "check_status": "live",
       "frequency": "Continuous; reviewed quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Settings \u2192 Sign-on; scim.* in the action log",
       "withdrawn": false
     },
@@ -73,6 +117,12 @@
       "check": "access_review",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "Users \u2192 Export; the access review record (CT3)",
       "withdrawn": false
     },
@@ -93,6 +143,12 @@
       "check": "privileged_accounts",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "Settings \u2192 Security groups; Users \u2192 Export",
       "withdrawn": false
     },
@@ -112,6 +168,12 @@
       "check": "segregation_of_duties",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "Settings \u2192 Segregation of duties; Controls; sod.violation in the action log",
       "withdrawn": false
     },
@@ -131,6 +193,20 @@
       "check": "dual_control",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.IR-01",
+          "title": "Networks and environments are protected from unauthorized logical access and usage"
+        }
+      ],
       "where": "Settings \u2192 Decisions; decision histories in the evidence export",
       "withdrawn": false
     },
@@ -151,6 +227,24 @@
       "check": "two_person_changes",
       "check_status": "live",
       "frequency": "Per change",
+      "csf": [
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Settings \u2192 Changes; the evidence export's changes",
       "withdrawn": false
     },
@@ -171,6 +265,16 @@
       "check": "change_impact_replay",
       "check_status": "live",
       "frequency": "Per change",
+      "csf": [
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        }
+      ],
       "where": "Settings \u2192 Model risk; control runs in the evidence export",
       "withdrawn": false
     },
@@ -191,6 +295,16 @@
       "check": "admin_mfa",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "Controls \u2192 Admins use a second factor",
       "withdrawn": false
     },
@@ -210,6 +324,16 @@
       "check": "staff_mfa",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "Users \u2192 Export; Settings \u2192 Sign-on",
       "withdrawn": false
     },
@@ -230,6 +354,16 @@
       "check": "password_policy",
       "check_status": "live",
       "frequency": "On change; reviewed yearly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "Settings \u2192 Password policy; tenant.* in the action log",
       "withdrawn": false
     },
@@ -249,6 +383,16 @@
       "check": "api_client_secrets",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "Settings \u2192 API clients; Controls \u2192 Integration secrets rotated",
       "withdrawn": false
     },
@@ -268,6 +412,7 @@
       "check": "support_access_review",
       "check_status": "live",
       "frequency": "Per event",
+      "csf": [],
       "where": "Settings \u2192 Support access; support_access.* in the action log",
       "withdrawn": false
     },
@@ -287,6 +432,12 @@
       "check": null,
       "check_status": null,
       "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.AA-02",
+          "title": "Identities are proofed and bound to credentials based on the context of interactions"
+        }
+      ],
       "where": "Customers \u2192 People; customer.* in the action log",
       "withdrawn": false
     },
@@ -306,6 +457,28 @@
       "check": "customer_self_service",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Controls \u2192 Customer self-service",
       "withdrawn": false
     },
@@ -325,6 +498,16 @@
       "check": "customer_mfa",
       "check_status": "live",
       "frequency": "On change; reviewed yearly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "Customers \u2192 Sign-on; Customers \u2192 Password policy",
       "withdrawn": false
     },
@@ -342,6 +525,72 @@
       "check": null,
       "check_status": null,
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
       "where": "Customers \u2192 Positive pay settings",
       "withdrawn": false
     },
@@ -361,6 +610,56 @@
       "check": "control_response",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-02",
+          "title": "The physical environment is monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "Settings \u2192 Controls; control.status.changed security events",
       "withdrawn": false
     },
@@ -381,6 +680,56 @@
       "check": "anomaly_capture",
       "check_status": "live",
       "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-02",
+          "title": "The physical environment is monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "Settings \u2192 Model risk; Controls \u2192 Synthetic fraud caught",
       "withdrawn": false
     },
@@ -401,6 +750,20 @@
       "check": "event_delivery",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.PS-04",
+          "title": "Log records are generated and made available for continuous monitoring"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "Settings \u2192 Security event forwarding; Controls \u2192 Security events delivered",
       "withdrawn": false
     },
@@ -420,6 +783,12 @@
       "check": "evidence_export",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.PS-04",
+          "title": "Log records are generated and made available for continuous monitoring"
+        }
+      ],
       "where": "Settings \u2192 Controls \u2192 Export evidence",
       "withdrawn": false
     },
@@ -439,6 +808,56 @@
       "check": "sla",
       "check_status": "live",
       "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "Controls \u2192 Decisions and imports on time",
       "withdrawn": false
     },
@@ -458,6 +877,24 @@
       "check": "decision_delivery",
       "check_status": "live",
       "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
       "where": "Settings \u2192 Decision delivery; Controls \u2192 Decisions and imports on time",
       "withdrawn": false
     },
@@ -478,6 +915,32 @@
       "check": "file_reconciliation",
       "check_status": "live",
       "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.RA-09",
+          "title": "The authenticity and integrity of hardware and software are assessed prior to acquisition and use"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.PS-02",
+          "title": "Software is maintained, replaced, and removed commensurate with risk"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Bulk uploads; the file's details",
       "withdrawn": false
     },
@@ -497,6 +960,40 @@
       "check": "default_dispositions",
       "check_status": "live",
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "ID.IM-04",
+          "title": "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved"
+        },
+        {
+          "id": "PR.IR-02",
+          "title": "The organization's technology assets are protected from environmental threats"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RC.RP-03",
+          "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
+        },
+        {
+          "id": "RC.CO-04",
+          "title": "Public updates on incident recovery are shared using approved methods and messaging"
+        }
+      ],
       "where": "Customers \u2192 Positive pay settings",
       "withdrawn": false
     },
@@ -514,6 +1011,16 @@
       "check": null,
       "check_status": null,
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.AT-01",
+          "title": "Personnel are provided with awareness and training so that they possess the knowledge and skills to perform general tasks with cybersecurity risks in mind"
+        },
+        {
+          "id": "PR.AT-02",
+          "title": "Individuals in specialized roles are provided with awareness and training so that they possess the knowledge and skills to perform relevant tasks with cybersecurity risks in mind"
+        }
+      ],
       "where": "The bank's training records",
       "withdrawn": false
     },
@@ -534,6 +1041,48 @@
       "check": null,
       "check_status": null,
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
       "where": "The bank's incident response plan",
       "withdrawn": false
     },
@@ -553,6 +1102,52 @@
       "check": "outside_services",
       "check_status": "live",
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.OC-05",
+          "title": "Outcomes, capabilities, and services that the organization depends on are understood and communicated"
+        },
+        {
+          "id": "GV.SC-04",
+          "title": "Suppliers are known and prioritized by criticality"
+        },
+        {
+          "id": "GV.SC-05",
+          "title": "Requirements to address cybersecurity risks in supply chains are established, prioritized, and integrated into contracts and other types of agreements with suppliers and other relevant third parties"
+        },
+        {
+          "id": "GV.SC-06",
+          "title": "Planning and due diligence are performed to reduce risks before entering into formal supplier or other third-party relationships"
+        },
+        {
+          "id": "GV.SC-07",
+          "title": "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship"
+        },
+        {
+          "id": "GV.SC-08",
+          "title": "Relevant suppliers and other third parties are included in incident planning, response, and recovery activities"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-02",
+          "title": "Inventories of software, services, and systems managed by the organization are maintained"
+        },
+        {
+          "id": "ID.AM-04",
+          "title": "Inventories of services provided by suppliers are maintained"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Settings; docs/compliance/tprm.md",
       "withdrawn": false
     },
@@ -572,6 +1167,7 @@
       "check": "model_pooling_acknowledged",
       "check_status": "live",
       "frequency": "Once, and on change",
+      "csf": [],
       "where": "Settings \u2192 Fraud model",
       "withdrawn": false
     },
@@ -592,6 +1188,12 @@
       "check": "integration_tls",
       "check_status": "live",
       "frequency": "On change",
+      "csf": [
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        }
+      ],
       "where": "Settings \u2192 API clients and webhooks",
       "withdrawn": false
     },
@@ -612,6 +1214,28 @@
       "check": "customer_dormant_users",
       "check_status": "live",
       "frequency": "Per event; reviewed quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "People; the customer's action log",
       "withdrawn": false
     },
@@ -631,6 +1255,28 @@
       "check": null,
       "check_status": null,
       "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "The customer's own records",
       "withdrawn": false
     },
@@ -651,6 +1297,28 @@
       "check": "customer_sso",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-03",
+          "title": "Personnel activity and technology usage are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Sign-on (customer)",
       "withdrawn": false
     },
@@ -670,6 +1338,12 @@
       "check": "customer_access_review",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "People \u2192 Export",
       "withdrawn": false
     },
@@ -689,6 +1363,12 @@
       "check": "customer_sod",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "People",
       "withdrawn": false
     },
@@ -709,6 +1389,16 @@
       "check": "customer_mfa",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "People; Security",
       "withdrawn": false
     },
@@ -728,6 +1418,16 @@
       "check": "customer_api_client_secrets",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
       "where": "API clients (customer)",
       "withdrawn": false
     },
@@ -747,6 +1447,32 @@
       "check": null,
       "check_status": null,
       "frequency": "Every issue run",
+      "csf": [
+        {
+          "id": "ID.RA-09",
+          "title": "The authenticity and integrity of hardware and software are assessed prior to acquisition and use"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.PS-02",
+          "title": "Software is maintained, replaced, and removed commensurate with risk"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Issued items; uploads",
       "withdrawn": false
     },
@@ -766,6 +1492,12 @@
       "check": "rejected_rows",
       "check_status": "live",
       "frequency": "Every upload",
+      "csf": [
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
       "where": "Uploads \u2192 result",
       "withdrawn": false
     },
@@ -785,6 +1517,56 @@
       "check": "customer_decision_timeliness",
       "check_status": "live",
       "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "Exceptions",
       "withdrawn": false
     },
@@ -802,6 +1584,20 @@
       "check": "stale_ach_authorizations",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.IR-01",
+          "title": "Networks and environments are protected from unauthorized logical access and usage"
+        }
+      ],
       "where": "ACH authorizations",
       "withdrawn": false
     },
@@ -821,6 +1617,48 @@
       "check": "wsud_signed",
       "check_status": "live",
       "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
       "where": "Exceptions; Written statements",
       "withdrawn": false
     },
@@ -841,6 +1679,12 @@
       "check": null,
       "check_status": null,
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        }
+      ],
       "where": "The customer's own records",
       "withdrawn": false
     },
@@ -860,6 +1704,12 @@
       "check": null,
       "check_status": null,
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.AT-01",
+          "title": "Personnel are provided with awareness and training so that they possess the knowledge and skills to perform general tasks with cybersecurity risks in mind"
+        }
+      ],
       "where": "The customer's training records",
       "withdrawn": false
     },
@@ -877,6 +1727,16 @@
       "check": null,
       "check_status": null,
       "frequency": "Per change",
+      "csf": [
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        }
+      ],
       "where": "The customer's change records",
       "withdrawn": false
     },
@@ -897,6 +1757,12 @@
       "check": "storage_encryption",
       "check_status": "live",
       "frequency": "On change; reviewed yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        }
+      ],
       "where": "Controls \u2192 Disk and database encryption",
       "withdrawn": false
     },
@@ -916,6 +1782,16 @@
       "check": "key_age",
       "check_status": "live",
       "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        }
+      ],
       "where": "Controls \u2192 Production settings",
       "withdrawn": false
     },
@@ -936,6 +1812,12 @@
       "check": "transport_security",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        }
+      ],
       "where": "scripts/edge_check.py",
       "withdrawn": false
     },
@@ -955,6 +1837,28 @@
       "check": "edge",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.IR-01",
+          "title": "Networks and environments are protected from unauthorized logical access and usage"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Controls \u2192 Edge network set up",
       "withdrawn": false
     },
@@ -974,6 +1878,16 @@
       "check": "production_safety",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        }
+      ],
       "where": "Controls \u2192 Production settings",
       "withdrawn": false
     },
@@ -994,6 +1908,28 @@
       "check": null,
       "check_status": null,
       "frequency": "Daily; restore tested yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "PR.DS-11",
+          "title": "Backups of data are created, protected, maintained, and tested"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RC.RP-03",
+          "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
+        }
+      ],
       "where": "The host's backup records",
       "withdrawn": false
     },
@@ -1013,6 +1949,24 @@
       "check": "software_currency",
       "check_status": "planned",
       "frequency": "Monthly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.PS-02",
+          "title": "Software is maintained, replaced, and removed commensurate with risk"
+        }
+      ],
       "where": "/openapi.json version; CHANGELOG.md",
       "withdrawn": false
     },
@@ -1032,6 +1986,32 @@
       "check": null,
       "check_status": null,
       "frequency": "Monthly",
+      "csf": [
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-08",
+          "title": "Processes for receiving, analyzing, and responding to vulnerability disclosures are established"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        }
+      ],
       "where": "The host's scan records",
       "withdrawn": false
     },
@@ -1052,6 +2032,12 @@
       "check": "platform_staff",
       "check_status": "live",
       "frequency": "Quarterly",
+      "csf": [
+        {
+          "id": "PR.AA-05",
+          "title": "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties"
+        }
+      ],
       "where": "Support access; the host's access records",
       "withdrawn": false
     },
@@ -1072,6 +2058,12 @@
       "check": "event_delivery",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
       "where": "Controls \u2192 Security events delivered",
       "withdrawn": false
     },
@@ -1091,6 +2083,56 @@
       "check": "scheduled_jobs",
       "check_status": "live",
       "frequency": "Continuous",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
       "where": "/health; Controls",
       "withdrawn": false
     },
@@ -1111,6 +2153,48 @@
       "check": null,
       "check_status": null,
       "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
       "where": "The host's incident records",
       "withdrawn": false
     }

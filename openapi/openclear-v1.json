@@ -1710,6 +1710,24 @@
         "title": "ControlInventory",
         "type": "object"
       },
+      "CsfSubcategory": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CsfSubcategory",
+        "type": "object"
+      },
       "CuecInventory": {
         "properties": {
           "catalog": {
@@ -3400,6 +3418,13 @@
             "title": "Checks",
             "type": "array"
           },
+          "csf": {
+            "items": {
+              "$ref": "#/components/schemas/CsfSubcategory"
+            },
+            "title": "Csf",
+            "type": "array"
+          },
           "cuecs": {
             "items": {
               "type": "string"
@@ -3481,6 +3506,7 @@
           "type",
           "nature",
           "checks",
+          "csf",
           "cuecs",
           "where",
           "withdrawn",
@@ -3526,6 +3552,13 @@
               "type": "string"
             },
             "title": "Controls",
+            "type": "array"
+          },
+          "csf": {
+            "items": {
+              "$ref": "#/components/schemas/CsfSubcategory"
+            },
+            "title": "Csf",
             "type": "array"
           },
           "evidence": {
@@ -3604,6 +3637,7 @@
           "check",
           "check_status",
           "frequency",
+          "csf",
           "where",
           "withdrawn",
           "controls"
@@ -7698,7 +7732,7 @@
     },
     "/api/v1/compliance/controls": {
       "get": {
-        "description": "OpenClear's control inventory: each control with its NIST SP 800-53 controls, its\nchecks (each live check's status for this bank now) and the CUECs it relies on. `status`\nis the worst of its live checks, or null when none of its checks is live yet.",
+        "description": "OpenClear's control inventory: each control with its NIST SP 800-53 controls, its\nchecks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps\nto those controls, and the CUECs it relies on. `status`\nis the worst of its live checks, or null when none of its checks is live yet.",
         "operationId": "control_inventory_api_v1_compliance_controls_get",
         "responses": {
           "200": {
@@ -7725,7 +7759,7 @@
     },
     "/api/v1/compliance/cuecs": {
       "get": {
-        "description": "The complementary user entity controls: what OpenClear's controls rely on the bank, its\ncustomers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,\nwith the OpenClear controls that rely on it. A customer's own session sees only the\ncustomer's. Filter with `party`.",
+        "description": "The complementary user entity controls: what OpenClear's controls rely on the bank, its\ncustomers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with\nthe CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the\ncustomer's. Filter with `party`.",
         "operationId": "cuec_inventory_api_v1_compliance_cuecs_get",
         "parameters": [
           {

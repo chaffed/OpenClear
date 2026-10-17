@@ -5,6 +5,7 @@
 """Writes the published copies of the CUEC inventory (src/openclear/compliance/cuecs.py;
 CONTROLS_PLAN.md CT0) and the OpenClear control inventory (compliance/controls.py, CT1):
 - docs/compliance/controls.md, OpenClear's own controls;
+- docs/compliance/csf.md, both by NIST CSF 2.0 subcategory (compliance/crosswalks.py, CT6);
 - docs/compliance/cuecs.md, the page for people;
 - docs/compliance/cuecs.json, for a GRC tool or a script;
 - docs/compliance/cuecs.csv, to map onto a control inventory in a spreadsheet: its last
@@ -25,10 +26,10 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "compliance"
 sys.path.insert(0, str(ROOT / "src"))
 
-from openclear.compliance import controls, cuecs  # noqa: E402
+from openclear.compliance import controls, crosswalks, cuecs  # noqa: E402
 
 CSV_COLUMNS = ["id", "party", "nist", "nist_title", "oscal_id", "related", "title", "statement", "complements", "evidence", "check",
-               "check_status", "frequency", "where", "your_control_id", "your_control_owner"]
+               "check_status", "frequency", "csf", "where", "your_control_id", "your_control_owner"]
 
 INTRO = """# Complementary user entity controls
 
@@ -51,10 +52,16 @@ and owner.
   it as NIST's OSCAL id (`AC-2(1)` is `ac-2.1`), and list related controls.
 - **Evidence**: how OpenClear can show the CUEC operating.
 {evidence}
+- **CSF 2.0**: the NIST Cybersecurity Framework 2.0 subcategories that NIST's own mapping
+  links to the CUEC's 800-53 control ([by subcategory](csf.md)).
 - **Check**: the test that produces the evidence. *Live* checks are on the Controls page
   today, each keeping a test history from which an automated CUEC can be attested for a period;
   the one *planned* check, the host's software currency, needs a source of release dates.
 """
+
+
+def _csf(keys) -> str:
+    return ", ".join(keys) or "—"
 
 
 def _related(c: cuecs.Cuec) -> str:
@@ -67,12 +74,12 @@ def render_markdown() -> str:
     for party, label in cuecs.PARTIES.items():
         rows = cuecs.for_party(party)
         parts.append(f"## {label}\n")
-        parts.append("| Id | NIST | CUEC | What OpenClear does | Evidence | Check | How often | Where |")
-        parts.append("|---|---|---|---|---|---|---|---|")
+        parts.append("| Id | NIST | CSF 2.0 | CUEC | What OpenClear does | Evidence | Check | How often | Where |")
+        parts.append("|---|---|---|---|---|---|---|---|---|")
         for c in rows:
             nist = f"**{c.nist}** {c.nist_title}" + (f"<br>Related: {_related(c)}" if c.related else "")
             check = f"`{c.check}` ({c.check_status})" if c.check else "—"
-            parts.append(f"| {c.id} | {nist} | **{c.title}.** {c.statement} | {c.complements} | {c.evidence} | {check} | "
+            parts.append(f"| {c.id} | {nist} | {_csf(crosswalks.csf_for(c.nist))} | **{c.title}.** {c.statement} | {c.complements} | {c.evidence} | {check} | "
                          f"{c.frequency} | {c.where} |")
         parts.append("")
     parts.append("## Check still to come\n")
@@ -97,7 +104,8 @@ def render_csv() -> str:
     for c in cuecs.CUECS:
         row = c.as_dict()
         writer.writerow({**{k: row[k] for k in CSV_COLUMNS[:-2]}, "related": "; ".join(c.related), "check": c.check or "",
-                         "check_status": c.check_status or "", "your_control_id": "", "your_control_owner": ""})
+                         "check_status": c.check_status or "",
+                         "csf": "; ".join(k["id"] for k in row["csf"]), "your_control_id": "", "your_control_owner": ""})
     return buffer.getvalue()
 
 
@@ -116,6 +124,8 @@ Inventory version {version}. The same list, with each check's live status for yo
 
 - **Id**: `OC-<family>-<nn>`. Ids never change, and a withdrawn one is never reused.
 - **NIST**: the 800-53 Rev. 5 controls it carries out, the main one first.
+- **CSF 2.0**: the NIST Cybersecurity Framework 2.0 subcategories that NIST's own mapping
+  links to those 800-53 controls ([by subcategory](csf.md)).
 - **Type**: {types}.
 - **Nature**: {natures}. A configurable control relies on the CUEC that sets it.
 - **Checks**: the tests of the control. *Live* checks are on the Controls page today;
@@ -129,21 +139,59 @@ def render_controls_markdown() -> str:
     parts = [CONTROLS_INTRO.format(catalog=cuecs.NIST_CATALOG, version=controls.VERSION, types=types, natures=natures)]
     for family, label in controls.FAMILIES.items():
         parts.append(f"## {label}\n")
-        parts.append("| Id | Control | NIST | Type | Checks | Relies on | Where |")
-        parts.append("|---|---|---|---|---|---|---|")
+        parts.append("| Id | Control | NIST | CSF 2.0 | Type | Checks | Relies on | Where |")
+        parts.append("|---|---|---|---|---|---|---|---|")
         for c in controls.CONTROLS:
             if c.family != family or c.withdrawn:
                 continue
             nist = "<br>".join(f"**{n}** {cuecs.NIST_TITLES[n]}" for n in c.nist)
             checks = "<br>".join(f"`{k}` ({c.check_status(k)})" for k in c.checks) or "—"
             relies = ", ".join(c.cuecs) or "—"
-            parts.append(f"| {c.id} | **{c.title}.** {c.statement} | {nist} | {c.type}, {c.nature.replace('_', ' ')} | {checks} | "
+            parts.append(f"| {c.id} | **{c.title}.** {c.statement} | {nist} | {_csf(crosswalks.csf_for_all(c.nist))} | {c.type}, {c.nature.replace('_', ' ')} | {checks} | "
                          f"{relies} | {c.where} |")
         parts.append("")
     return "\n".join(parts) + "\n"
 
 
-OUTPUTS = {"controls.md": render_controls_markdown, "cuecs.md": render_markdown, "cuecs.json": render_json, "cuecs.csv": render_csv}
+CSF_INTRO = """# NIST CSF 2.0
+
+OpenClear's [controls](controls.md) and the [complementary user entity controls](cuecs.md)
+(CUECs) by NIST Cybersecurity Framework 2.0 subcategory. Both inventories are filed under
+{catalog} controls. This page follows NIST's own mapping from CSF 2.0 to those
+controls (the informative references in the [CSF 2.0 Reference Tool]({url})), not a judgment
+of ours. It isn't legal advice ([Compliance](README.md)).
+
+A subcategory that NIST maps to a control also covers its enhancements (`AC-2` covers
+`AC-2(1)`), and one mapped to a whole family (`IR`) covers every control in it. A subcategory
+with nothing below isn't one OpenClear's controls or CUECs address.
+
+{uncovered}
+"""
+
+
+def render_csf_markdown() -> str:
+    live = [c for c in controls.CONTROLS if not c.withdrawn]
+    current = [c for c in cuecs.CUECS if not c.withdrawn]
+    unmapped = sorted({n for c in live for n in c.nist} | {c.nist for c in current}, key=list(cuecs.NIST_TITLES).index)
+    unmapped = [n for n in unmapped if not crosswalks.csf_for(n)]
+    uncovered = ("NIST's mapping links no subcategory to " + ", ".join(f"`{n}`" for n in unmapped) +
+                 ", so a control or CUEC filed only under those isn't on this page.") if unmapped else ""
+    parts = [CSF_INTRO.format(catalog=cuecs.NIST_CATALOG, url=crosswalks.CSF_SOURCE_URL, uncovered=uncovered).rstrip() + "\n"]
+    for function, label in crosswalks.CSF_FUNCTIONS.items():
+        parts.append(f"## {label} ({function})\n")
+        parts.append("| Subcategory | OpenClear controls | CUECs |")
+        parts.append("|---|---|---|")
+        for key in crosswalks.SUBCATEGORIES:
+            if not key.startswith(function + "."):
+                continue
+            ours = [c.id for c in live if key in crosswalks.csf_for_all(c.nist)]
+            theirs = [c.id for c in current if key in crosswalks.csf_for(c.nist)]
+            parts.append(f"| **{key}** {crosswalks.csf_title(key)} | {', '.join(ours) or '—'} | {', '.join(theirs) or '—'} |")
+        parts.append("")
+    return "\n".join(parts)
+
+
+OUTPUTS = {"controls.md": render_controls_markdown, "csf.md": render_csf_markdown, "cuecs.md": render_markdown, "cuecs.json": render_json, "cuecs.csv": render_csv}
 
 
 def main() -> None:

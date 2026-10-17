@@ -45,6 +45,7 @@ PAGES = [
     ("docs/compliance/tprm.md", "compliance/tprm.md", "Third-party risk"),
     ("docs/compliance/controls.md", "compliance/controls.md", "OpenClear's controls"),
     ("docs/compliance/cuecs.md", "compliance/cuecs.md", "User entity controls (CUECs)"),
+    ("docs/compliance/csf.md", "compliance/csf.md", "NIST CSF 2.0"),
     ("docs/ARCHITECTURE.md", "reference/architecture.md", "Architecture"),
     ("CHANGELOG.md", "reference/changelog.md", "Changelog"),
     ("SDK_PLAN.md", "reference/sdk-plan.md", "SDK plan"),
@@ -78,6 +79,7 @@ NAV = """nav:
       - Third-party risk: compliance/tprm.md
       - OpenClear's controls: compliance/controls.md
       - User entity controls (CUECs): compliance/cuecs.md
+      - NIST CSF 2.0: compliance/csf.md
   - Reference:
       - Architecture: reference/architecture.md
       - Changelog: reference/changelog.md

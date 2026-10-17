@@ -265,6 +265,11 @@ class ControlInventory(TypedDict):
     version: str
 
 
+class CsfSubcategory(TypedDict):
+    id: str
+    title: str
+
+
 class CuecInventory(TypedDict):
     catalog: str
     cuecs: list[InventoryCuec]
@@ -508,6 +513,7 @@ class ImportedFileResultRead(TypedDict):
 
 class InventoryControl(TypedDict):
     checks: list[ControlCheck]
+    csf: list[CsfSubcategory]
     cuecs: list[str]
     family: str
     id: str
@@ -526,6 +532,7 @@ class InventoryCuec(TypedDict):
     check_status: Literal["live", "planned"] | None
     complements: str
     controls: list[str]
+    csf: list[CsfSubcategory]
     evidence: Literal["automated", "assisted", "attested"]
     frequency: str
     id: str
@@ -1268,7 +1275,8 @@ class ComplianceApi:
         GET /api/v1/compliance/controls
 
         OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-        checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+        checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
+        to those controls, and the CUECs it relies on. `status`
         is the worst of its live checks, or null when none of its checks is live yet.
         """
         return self._c.call("GET", "/api/v1/compliance/controls")
@@ -1279,8 +1287,8 @@ class ComplianceApi:
         GET /api/v1/compliance/cuecs
 
         The complementary user entity controls: what OpenClear's controls rely on the bank, its
-        customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
-        with the OpenClear controls that rely on it. A customer's own session sees only the
+        customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
+        the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
         customer's. Filter with `party`.
         """
         return self._c.call("GET", "/api/v1/compliance/cuecs", query={"party": party})

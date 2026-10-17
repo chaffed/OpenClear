@@ -680,7 +680,8 @@ third-party risk guidance):
   the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`. The page groups the checks under
   OpenClear's controls, each filed under NIST SP 800-53 ([docs/compliance/controls.md](docs/compliance/controls.md),
   `GET /api/v1/compliance/controls`), and what they rely on the bank, its customers and its host
-  to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)).
+  to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)). Both are
+  also listed by NIST CSF 2.0 subcategory, following NIST's own mapping ([docs/compliance/csf.md](docs/compliance/csf.md)).
   38 checks: some look at the bank as it is (hourly), some at every item in a period (nightly,
   over the previous day: dual control, two-person changes, replays before changes, support
   access, customers' timeliness). Every scheduled run is kept for seven years

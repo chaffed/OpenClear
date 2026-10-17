@@ -15,6 +15,8 @@ for each point is.
   own control inventory. In OpenClear (Settings → CUECs) each is mapped to your control and
   attested each period: automated ones proposed from OpenClear's test history, and every
   accepted attestation signed
+- [NIST CSF 2.0](csf.md): both inventories by CSF 2.0 subcategory, following NIST's own mapping
+  from CSF 2.0 to SP 800-53
 
 **These pages are not legal advice.** They describe features and where to find evidence. Each
 bank's own risk assessment decides whether its use of OpenClear meets a requirement, and

@@ -255,6 +255,12 @@ public sealed record ControlInventory
     [JsonPropertyName("version")] public string Version { get; init; } = default!;
 }
 
+public sealed record CsfSubcategory
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("title")] public string Title { get; init; } = default!;
+}
+
 public sealed record CuecInventory
 {
     [JsonPropertyName("catalog")] public string Catalog { get; init; } = default!;
@@ -516,6 +522,7 @@ public sealed record ImportedFileResultRead
 public sealed record InventoryControl
 {
     [JsonPropertyName("checks")] public IReadOnlyList<ControlCheck> Checks { get; init; } = default!;
+    [JsonPropertyName("csf")] public IReadOnlyList<CsfSubcategory> Csf { get; init; } = default!;
     [JsonPropertyName("cuecs")] public IReadOnlyList<string> Cuecs { get; init; } = default!;
     [JsonPropertyName("family")] public string Family { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -535,6 +542,7 @@ public sealed record InventoryCuec
     [JsonPropertyName("check_status")] public string CheckStatus { get; init; } = default!;
     [JsonPropertyName("complements")] public string Complements { get; init; } = default!;
     [JsonPropertyName("controls")] public IReadOnlyList<string> Controls { get; init; } = default!;
+    [JsonPropertyName("csf")] public IReadOnlyList<CsfSubcategory> Csf { get; init; } = default!;
     [JsonPropertyName("evidence")] public string Evidence { get; init; } = default!;
     [JsonPropertyName("frequency")] public string Frequency { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -1339,7 +1347,8 @@ public sealed partial class ComplianceApi
     /// GET /api/v1/compliance/controls
     ///
     /// OpenClear's control inventory: each control with its NIST SP 800-53 controls, its
-    /// checks (each live check's status for this bank now) and the CUECs it relies on. `status`
+    /// checks (each live check's status for this bank now), the NIST CSF 2.0 subcategories NIST maps
+    /// to those controls, and the CUECs it relies on. `status`
     /// is the worst of its live checks, or null when none of its checks is live yet.
     /// </summary>
     public Task<ControlInventory> ControlInventoryAsync(CancellationToken cancellationToken = default) =>
@@ -1351,8 +1360,8 @@ public sealed partial class ComplianceApi
     /// GET /api/v1/compliance/cuecs
     ///
     /// The complementary user entity controls: what OpenClear's controls rely on the bank, its
-    /// customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control,
-    /// with the OpenClear controls that rely on it. A customer's own session sees only the
+    /// customers and whoever runs OpenClear to do, each filed under its NIST SP 800-53 control (with
+    /// the CSF 2.0 subcategories NIST maps to it), with the OpenClear controls that rely on it. A customer's own session sees only the
     /// customer's. Filter with `party`.
     /// </summary>
     public Task<CuecInventory> CuecInventoryAsync(string? party = null, CancellationToken cancellationToken = default) =>

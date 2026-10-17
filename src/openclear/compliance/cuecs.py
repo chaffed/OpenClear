@@ -19,6 +19,8 @@ published copies (docs/compliance/cuecs.md, .json, .csv) from this module."""
 import re
 from dataclasses import dataclass, field
 
+from openclear.compliance.crosswalks import csf_for, csf_title
+
 VERSION = "1.0"
 NIST_CATALOG = "NIST SP 800-53 Rev. 5.1.1"
 
@@ -149,6 +151,11 @@ class Cuec:
         return NIST_TITLES[self.nist]
 
     @property
+    def csf(self) -> list[dict]:
+        """The NIST CSF 2.0 subcategories NIST maps to its 800-53 control (crosswalks.py)."""
+        return [{"id": k, "title": csf_title(k)} for k in csf_for(self.nist)]
+
+    @property
     def oscal_id(self) -> str:
         """The control's id in NIST's OSCAL catalog: AC-2(1) is `ac-2.1`."""
         return oscal_id(self.nist)
@@ -164,6 +171,7 @@ class Cuec:
             "id": self.id, "party": self.party, "nist": self.nist, "nist_title": self.nist_title, "oscal_id": self.oscal_id,
             "related": list(self.related), "title": self.title, "statement": self.statement, "complements": self.complements,
             "evidence": self.evidence, "check": self.check, "check_status": self.check_status, "frequency": self.frequency,
+            "csf": self.csf,
             "where": self.where, "withdrawn": self.withdrawn,
         }
 

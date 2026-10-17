@@ -348,3 +348,16 @@ One merge per phase, at most one migration each, the three full suites once per 
   their people, with the related check's latest result as evidence (automated proposals for them
   would need every check re-run within each customer's scope); the bank asking customers to attest
   each year (CT-D13) isn't built. Next: CT5.
+- 2026-10-17 CT6 (CSF half) built on branch `ct6-crosswalks`, before CT5 at the owner's request.
+  `scripts/import_crosswalks.py` makes `compliance/csf_data.py` from NIST's CSF 2.0 Reference Tool
+  download (kept at `tests/fixtures/crosswalks/`; a test regenerates the module from it): the 106
+  current subcategories and the SP 800-53 Rev. 5.1.1 controls NIST lists for each.
+  `compliance/crosswalks.py` turns that around: a subcategory naming a control also covers its
+  enhancements, one naming a family (IR) covers every control in it, one naming only an
+  enhancement doesn't cover the base. A `csf` field on both inventories (API, JSON, CSV, the
+  Markdown pages, the CUEC page) and `docs/compliance/csf.md` by subcategory. NIST maps nothing to
+  AC-21, AU-10, MA-4, SC-18 or SC-23, so OC-AC-11 and two CUECs have no CSF subcategory. The
+  FFIEC page names each theme's controls and their NIST ids (checked against the inventory by a
+  test). **SOC 2 isn't done:** AICPA's mapping of the Trust Services Criteria to 800-53
+  (`tsc_to_nist_800-53.xlsx`) is free but needs an AICPA sign-in to download; with that file the
+  same import script can take it. When CT5 comes, its OSCAL and CSV exports carry the `csf` field.
