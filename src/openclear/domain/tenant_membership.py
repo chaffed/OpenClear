@@ -58,6 +58,11 @@ class TenantMembership(Base):
     # inactive, and nothing but the bank's approval turns it on.
     pending_approval_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # The last sign-in to this bank (user.last_login_at is the person's last anywhere), or when an
+    # administrator reactivated the access, for deactivating and removing inactive access
+    # (services/inactivity_service.py); and when the person was last warned it would be turned off.
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    inactivity_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class MembershipAccount(Base):

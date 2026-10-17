@@ -56,6 +56,18 @@ class Tenant(Base):
     # ended, its request goes to each customer's people who can attest; the year asked for last.
     ask_customers_to_attest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     customers_asked_for_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Lockout after failed password sign-ins (auth/login_service.py): None takes the installation's
+    # login_max_failed_attempts and login_lockout_minutes; lockout_until_unlocked keeps the account
+    # locked until an administrator unlocks it.
+    login_max_failed_attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    login_lockout_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lockout_until_unlocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Inactive accounts (services/inactivity_service.py): deactivate a person's access after so
+    # many days without signing in to this bank, and remove it after so many; each off by default.
+    deactivate_inactive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    deactivate_inactive_days: Mapped[int] = mapped_column(Integer, nullable=False, default=90, server_default="90")
+    remove_inactive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    remove_inactive_days: Mapped[int] = mapped_column(Integer, nullable=False, default=365, server_default="365")
     # False only makes sense once at least one active bank-wide SsoConnection exists —
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.

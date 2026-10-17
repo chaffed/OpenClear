@@ -46,7 +46,7 @@ def launch(request: Request, code: str = "", db: Session = Depends(get_db)) -> R
         token_version=user.token_version, access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes, embed={"po": launch_row.parent_origin},
     )
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=tenant_id)
     audit_log_service.record_action(
         db, tenant_id, actor_user_id=user.id, channel="web", action="user.login_embed",
         summary=f"Signed in inside online banking ({launch_row.parent_origin})", resource_type="user", resource_id=user.id,

@@ -29,11 +29,11 @@ from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.web.templates import templates
 
-# ACCOUNT_LOCKED's and PASSWORD_CHANGED's emails are not skippable via preference -- the
+# ACCOUNT_LOCKED's, PASSWORD_CHANGED's and INACTIVITY_WARNING's emails are not skippable via preference -- the
 # user needs to know regardless of what they've configured, same "security mail isn't
 # optional" reasoning most apps apply to account-security notices. Every other type (and
 # SMS for every type, including these) stays fully preference-controlled.
-_ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED})
+_ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -46,6 +46,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.INVITATION: "You're invited to OpenClear",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
+    NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
 }
 
 
@@ -323,13 +324,14 @@ def notify_exception_auto_decided(session: Session, exception_item: ExceptionIte
         )
 
 
-def notify_account_locked(session: Session, user: User) -> None:
+def notify_account_locked(session: Session, user: User, *, minutes: int | None = 15) -> None:
+    """`minutes` None: locked until an administrator unlocks it (the bank's choice)."""
     _queue(
         session,
         tenant_id=None,
         recipient=user,
         notification_type=NotificationType.ACCOUNT_LOCKED,
-        template_context={},
+        template_context={"minutes": minutes},
         resource_type="user",
         resource_id=user.id,
     )

@@ -49,15 +49,22 @@ class AddUserResult:
     membership_id: uuid.UUID | None = None
 
 
-def record_login(session: Session, user_id: uuid.UUID) -> None:
+def record_login(session: Session, user_id: uuid.UUID, *, tenant_id: uuid.UUID | None = None) -> None:
     """Called once per completed login (not token refresh, not "switch organization") —
-    see the four call sites in web/routers/auth.py, api/v1/auth.py, and
+    see the call sites in web/routers/auth.py, web/routers/embed.py, api/v1/auth.py and
     api/v1/webauthn.py. Powers the last_login_at column an access-review/recertification
-    process (GET /api/v1/users) relies on to flag stale accounts."""
+    process (GET /api/v1/users) relies on to flag stale accounts, and, for the bank signed in
+    to, each of the person's memberships' last_active_at, from which inactive access is
+    deactivated and removed (services/inactivity_service.py)."""
     user = UserRepository(session).get(user_id)
     if user is None:
         return
-    user.last_login_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    user.last_login_at = now
+    if tenant_id is not None:
+        for membership in session.execute(select(TenantMembership).where(TenantMembership.user_id == user_id,
+                                                                         TenantMembership.tenant_id == tenant_id)).scalars():
+            membership.last_active_at = now
     session.flush()
 
 
@@ -320,6 +327,8 @@ def reactivate_membership(session: Session, tenant_id: uuid.UUID, membership_id:
     if membership is None:
         return None
     membership.is_active = True
+    # A fresh start for the inactivity rules, or tonight's run would turn it straight off again.
+    membership.last_active_at, membership.inactivity_warned_at = datetime.now(timezone.utc), None
     session.flush()
     return membership
 

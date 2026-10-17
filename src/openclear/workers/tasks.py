@@ -463,12 +463,18 @@ def _run_controls(schedule: str) -> None:
 
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
-    jobs, sent notifications, old bulk-upload row results and expired export archives."""
-    from openclear.services import housekeeping_service
+    jobs, sent notifications, old bulk-upload row results and expired export archives; then
+    each bank's rules for inactive access (services/inactivity_service.py)."""
+    from openclear.services import housekeeping_service, inactivity_service
 
     session = get_session_factory()()
     try:
         housekeeping_service.run(session)
+        try:
+            inactivity_service.sweep_all(session)
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("Deactivating and removing inactive access failed")
     finally:
         session.close()
 

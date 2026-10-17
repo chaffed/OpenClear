@@ -119,6 +119,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "user.create": "user.created",
     "user.deactivate": "user.deactivated",
     "user.reactivate": "user.reactivated",
+    "user.remove_inactive": "user.deactivated",  # services/inactivity_service.py: access removed after the bank's days
     "user.unlock": "user.unlocked",
     "user.grant_cross_tenant_access": "user.cross_tenant_access.granted",
     "user.update_membership": "membership.changed",
@@ -188,6 +189,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_session_timeout": "settings.changed",
     "tenant.update_dual_control": "settings.changed",
     "tenant.update_password_policy": "settings.changed",
+    "tenant.update_access_rules": "settings.changed",
     "tenant.update_data_export_timeout": "settings.changed",
     "tenant.update_decision_files": "settings.changed",
     "customer.update_password_policy": "settings.changed",

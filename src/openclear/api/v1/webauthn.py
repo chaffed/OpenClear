@@ -122,6 +122,6 @@ def login_verify(
         refresh_token_expire_minutes=ctx.refresh_token_expire_minutes,
     )
     tokens = TokenResponse(access_token=session_tokens.access_token, refresh_token=session_tokens.refresh_token)
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=ctx.tenant_id)
     db.commit()
     return tokens

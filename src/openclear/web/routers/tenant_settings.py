@@ -25,6 +25,7 @@ from openclear.services.tenant_service import (
     InvalidTenantSettingsInput,
     set_data_export_timeout,
     set_messages,
+    set_access_rules,
     set_password_policy,
     set_require_dual_control,
     set_session_timeouts,
@@ -46,6 +47,7 @@ SECTIONS = {
     "contact": "Contact info",
     "messages": "Messages",
     "password-policy": "Password policy",
+    "access-rules": "Lockout and inactive accounts",
     "timeouts": "Timeouts",
     "dual-control": "Dual control",
     "customer-approval": "New customer users",
@@ -117,6 +119,8 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         return {"login_message": tenant.login_message or "", "banner_message": tenant.banner_message or ""}
     if key == "password-policy":
         return _password_policy_kwargs(tenant)
+    if key == "access-rules":
+        return _access_rules_kwargs(tenant)
     if key == "timeouts":
         return {
             "access_token_expire_minutes": tenant.access_token_expire_minutes,
@@ -208,6 +212,15 @@ def _section_route(key: str):
 
 for _key in SECTIONS:
     router.add_api_route(f"/{_key}", _section_route(_key), methods=["GET"], response_class=HTMLResponse)
+
+
+def _access_rules_kwargs(tenant: Tenant) -> dict:
+    settings = get_settings()
+    return {"max_failed_attempts": tenant.login_max_failed_attempts, "lockout_minutes": tenant.login_lockout_minutes,
+            "lockout_until_unlocked": tenant.lockout_until_unlocked, "default_max_failed_attempts": settings.login_max_failed_attempts,
+            "default_lockout_minutes": settings.login_lockout_minutes, "deactivate_inactive": tenant.deactivate_inactive,
+            "deactivate_inactive_days": tenant.deactivate_inactive_days, "remove_inactive": tenant.remove_inactive,
+            "remove_inactive_days": tenant.remove_inactive_days, "housekeeping": settings.enable_housekeeping_scheduler}
 
 
 def _password_policy_kwargs(tenant: Tenant) -> dict:
@@ -523,6 +536,56 @@ def update_password_policy(
         _record(db, ctx, "tenant.update_password_policy", f"Updated password policy (min length: {tenant.password_min_length})")
     db.commit()
     return _saved(request, key="password-policy")
+
+
+@router.post("/access-rules")
+def update_access_rules(
+    request: Request,
+    max_failed_attempts: str = Form(""),
+    lockout_minutes: str = Form(""),
+    lockout_until_unlocked: bool = Form(False),
+    deactivate_inactive: bool = Form(False),
+    deactivate_inactive_days: int = Form(90),
+    remove_inactive: bool = Form(False),
+    remove_inactive_days: int = Form(365),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """Lockout after failed sign-ins, and deactivating and removing inactive access. A blank
+    lockout number takes the installation's."""
+    def number(text: str) -> int | None:
+        return int(text) if text.strip() else None
+
+    try:
+        tenant = set_access_rules(
+            db, ctx.tenant_id, max_failed_attempts=number(max_failed_attempts), lockout_minutes=number(lockout_minutes),
+            lockout_until_unlocked=lockout_until_unlocked, deactivate_inactive=deactivate_inactive,
+            deactivate_inactive_days=deactivate_inactive_days, remove_inactive=remove_inactive, remove_inactive_days=remove_inactive_days)
+    except (InvalidTenantSettingsInput, ValueError) as exc:
+        db.rollback()
+        settings = get_settings()
+        return render_section(
+            request, db, ctx, "access-rules", error=str(exc) if isinstance(exc, InvalidTenantSettingsInput) else "Give whole numbers.",
+            max_failed_attempts=max_failed_attempts or None, lockout_minutes=lockout_minutes or None,
+            lockout_until_unlocked=lockout_until_unlocked, default_max_failed_attempts=settings.login_max_failed_attempts,
+            default_lockout_minutes=settings.login_lockout_minutes, deactivate_inactive=deactivate_inactive,
+            deactivate_inactive_days=deactivate_inactive_days, remove_inactive=remove_inactive, remove_inactive_days=remove_inactive_days,
+            housekeeping=settings.enable_housekeeping_scheduler)
+    if tenant is not None:
+        _record(db, ctx, "tenant.update_access_rules", _access_rules_summary(tenant))
+    db.commit()
+    return _saved(request, key="access-rules")
+
+
+def _access_rules_summary(tenant: Tenant) -> str:
+    from openclear.auth.login_service import lockout_policy
+
+    attempts, minutes, until_unlocked = lockout_policy(tenant)
+    parts = [f"lock after {attempts} failed attempts " + ("until an administrator unlocks" if until_unlocked else f"for {minutes} minutes")]
+    parts.append(f"deactivate after {tenant.deactivate_inactive_days} days inactive" if tenant.deactivate_inactive else "no automatic deactivation")
+    parts.append(f"remove after {tenant.remove_inactive_days} days inactive" if tenant.remove_inactive else "no automatic removal")
+    return "Sign-in and inactive accounts: " + "; ".join(parts)
 
 
 @router.post("/messages")

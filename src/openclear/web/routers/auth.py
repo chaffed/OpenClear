@@ -9,6 +9,7 @@ from urllib.parse import quote
 import jwt
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.auth import saml_service
@@ -71,8 +72,13 @@ _SSO_FAILED_MESSAGE = (
 )
 
 
-def _locked_message() -> str:
-    minutes = get_settings().login_lockout_minutes
+def _locked_message(db: Session, tenant_slug: str) -> str:
+    from openclear.auth.login_service import lockout_policy
+
+    tenant = db.execute(select(Tenant).where(Tenant.slug == tenant_slug)).scalar_one_or_none()
+    _attempts, minutes, until_unlocked = lockout_policy(tenant)
+    if until_unlocked:
+        return "Too many failed attempts. Ask an administrator to unlock your account."
     return f"Too many failed attempts. Try again in {minutes} minutes, or ask an administrator to unlock your account."
 
 
@@ -113,7 +119,7 @@ def login_submit(
         if result.outcome == PasswordLoginOutcome.SSO_REQUIRED:
             message = _SSO_REQUIRED_MESSAGE
         elif result.outcome == PasswordLoginOutcome.LOCKED:
-            message = _locked_message()
+            message = _locked_message(db, tenant_slug)
         elif result.outcome == PasswordLoginOutcome.PENDING_APPROVAL:
             message = PENDING_APPROVAL_MESSAGE
         else:
@@ -155,7 +161,7 @@ def login_submit(
         access_token_expire_minutes=tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
     )
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=membership.tenant_id)
     db.commit()
     response = RedirectResponse(next_path, status_code=303)
     set_session_cookies(response, tokens)
@@ -246,7 +252,7 @@ def login_webauthn_verify(
         complete_authentication(db, user, ctx.tenant_id, payload.credential)
     except WebauthnError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=ctx.tenant_id)
     db.commit()
 
     next_path = safe_next_path(next)
@@ -298,7 +304,7 @@ def login_webauthn_setup_verify(
         complete_registration(db, user, ctx.tenant_id, payload.credential, nickname="Registered at mandatory sign-in")
     except WebauthnError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=ctx.tenant_id)
     db.commit()
 
     next_path = safe_next_path(next)
@@ -471,7 +477,7 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
         return error_page(PENDING_APPROVAL_MESSAGE)
 
     user, membership = result.user, result.membership
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=membership.tenant_id)
     audit_log_service.record_action(
         db,
         tenant_id,

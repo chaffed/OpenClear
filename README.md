@@ -486,7 +486,18 @@ to answer "who has access to what, and have they actually used it."
 `User.last_login_at` is now actually populated — it existed as a column before this but
 nothing ever set it. It's stamped at the moment a login *completes* (password-only, or
 after WebAuthn MFA finishes), on both the web and API channels; token refresh and
-"switch organization" don't count as a fresh login and don't touch it.
+"switch organization" don't count as a fresh login and don't touch it. Each membership also
+keeps its own `last_active_at`, the last sign-in to that bank.
+
+**Lockout and inactive accounts** (Settings → Lockout and inactive accounts, `tenant:manage`):
+a bank sets how many failed password sign-ins lock an account (by default this installation's
+`OPENCLEAR_LOGIN_MAX_FAILED_ATTEMPTS`, 5) and for how long (`OPENCLEAR_LOGIN_LOCKOUT_MINUTES`,
+15), or keeps it locked until an administrator unlocks it. It can also have OpenClear
+**deactivate** access after a number of days without a sign-in to the bank, and **remove** it
+after a number of days, each turned on separately (both off by default). People are told a week
+before; API clients and the platform's staff are never touched; the bank's last active
+administrator who can manage users is always kept; a removed person's name stays on everything
+they did. Runs daily with housekeeping (`OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER`).
 
 The same list can be exported straight from `/ui/users` as **CSV** or **JSON**
 (`/ui/users/export.csv` / `.json`, same permission, same underlying data — no separate

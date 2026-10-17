@@ -33,7 +33,8 @@ router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 # always-checked control, since there's nothing for the user to meaningfully see or do
 # with it.
 _PREFERENCE_TYPES = [
-    t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INVITATION)
+    t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INVITATION,
+                                             NotificationType.INACTIVITY_WARNING)
 ]
 
 _NOTIFICATION_TYPE_LABELS = {

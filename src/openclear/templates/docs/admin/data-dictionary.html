@@ -133,6 +133,10 @@ erDiagram
 <tr><td>attest_second_person</td><td>Boolean</td><td>no</td><td></td><td>Whoever prepares a manual attestation can't accept it.</td></tr>
 <tr><td>ask_customers_to_attest</td><td>Boolean</td><td>no</td><td></td><td>Ask each customer's people who can attest to attest its own CUECs once a year has ended.</td></tr>
 <tr><td>customers_asked_for_year</td><td>Integer</td><td>yes</td><td></td><td>The last year customers were asked to attest for, so each year is asked once.</td></tr>
+<tr><td>login_max_failed_attempts / login_lockout_minutes</td><td>Integer</td><td>yes</td><td></td><td>The bank's lockout after failed password sign-ins; null takes the installation's.</td></tr>
+<tr><td>lockout_until_unlocked</td><td>Boolean</td><td>no</td><td></td><td>A locked account stays locked until an administrator unlocks it.</td></tr>
+<tr><td>deactivate_inactive / deactivate_inactive_days</td><td>Boolean / Integer</td><td>no</td><td></td><td>Deactivate a person's access after this many days without a sign-in to the bank (off by default; 90).</td></tr>
+<tr><td>remove_inactive / remove_inactive_days</td><td>Boolean / Integer</td><td>no</td><td></td><td>Remove a person's access (the membership) after this many days without a sign-in (off by default; 365).</td></tr>
 <tr><td>approve_customer_users</td><td>Boolean</td><td>no</td><td></td><td>New people a customer's side adds (an invitation, its own sign-on or SCIM) wait for the bank's approval before they can sign in. Off by default; a customer's approve_users overrides it.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
@@ -326,6 +330,8 @@ scope) and a security group. One user can hold several of these.</p>
 <tr><td>require_webauthn</td><td>Boolean</td><td>no</td><td></td><td>Forces a passkey check even where the tenant/customer otherwise allows SSO or password-only login.</td></tr>
 <tr><td>all_accounts</td><td>Boolean</td><td>no</td><td></td><td>For a customer membership: sees all of the customer's accounts (the default), or only those in membership_account.</td></tr>
 <tr><td>pending_approval_at</td><td>DateTime</td><td>yes</td><td></td><td>Set while the membership waits for the bank's approval (it stays inactive; only the bank's approval turns it on). Cleared on approval; a rejected membership is removed.</td></tr>
+<tr><td>last_active_at</td><td>DateTime</td><td>yes</td><td></td><td>The last sign-in to this bank, or when an administrator reactivated the access; inactivity is counted from it (from created_at if null).</td></tr>
+<tr><td>inactivity_warned_at</td><td>DateTime</td><td>yes</td><td></td><td>When the person was last told their access would be deactivated or removed, so they're told once.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>

@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from openclear.compliance.crosswalks import csf_for_all, csf_title, soc2_for_all
 from openclear.compliance.cuecs import NIST_TITLES, PLANNED_CHECKS, oscal_id
 
-VERSION = "1.0"
+VERSION = "1.1"  # 1.1: OC-AC-02 deactivates and removes inactive access; OC-IA-01 the bank sets lockout
 
 FAMILIES = {
     "AC": "Access control",
@@ -90,9 +90,10 @@ CONTROLS: tuple[OcControl, ...] = (
       "Settings → Security groups; auth/permissions.py"),
     C("OC-AC-02", "Access ends when a person leaves",
       "Adding, changing and removing a person's access is recorded in the action log, and a deactivated person can't sign in "
-      "or use a token from that moment. An identity provider can do the same through SCIM.",
+      "or use a token from that moment. An identity provider can do the same through SCIM. If the bank chooses, OpenClear "
+      "deactivates access after so many days without a sign-in and removes it after so many, telling the person a week before.",
       ("AC-2", "AC-2(3)", "AC-2(1)"), "preventive", "built_in", ("dormant_accounts", "access_review", "scim_sync"),
-      ("B-AC-2-01", "B-AC-6(7)-01", "B-AC-2(1)-01"), "Users; the action log"),
+      ("B-AC-2-01", "B-AC-6(7)-01", "B-AC-2(1)-01"), "Users; Settings → Lockout and inactive accounts; the action log"),
     C("OC-AC-03", "Customers see only their own",
       "A business customer's people reach only their own customer's accounts, items and decisions, and never the bank's own "
       "permissions. A customer manages its own people and sign-on only when the bank allows it.",
@@ -137,8 +138,9 @@ CONTROLS: tuple[OcControl, ...] = (
     # --- Identification and authentication ------------------------------------------------
     C("OC-IA-01", "Password policy and lockout",
       "Passwords meet the bank's policy (length and the kinds of character required), and repeated failed sign-ins lock "
-      "the account for a time.",
-      ("IA-5(1)", "AC-7"), "preventive", "configurable", ("password_policy",), ("B-IA-5(1)-01",), "Settings → Password policy"),
+      "the account for a time, or until an administrator unlocks it, as the bank sets.",
+      ("IA-5(1)", "AC-7"), "preventive", "configurable", ("password_policy",), ("B-IA-5(1)-01",),
+      "Settings → Password policy; Settings → Lockout and inactive accounts"),
     C("OC-IA-02", "Security keys and passkeys",
       "People sign in with a FIDO2 security key or passkey as a second factor, which a bank or customer can require.",
       ("IA-2(1)", "IA-2(2)", "IA-2(8)"), "preventive", "configurable", ("admin_mfa", "staff_mfa", "customer_mfa"),

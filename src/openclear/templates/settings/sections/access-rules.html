@@ -1,0 +1,34 @@
+{% from "_macros/icon.html" import icon %}
+<form method="post" action="/ui/settings/access-rules">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset>
+    <legend>Lockout after failed sign-ins</legend>
+    <p class="hint">For password sign-ins. Leave a number blank for this installation's ({{ default_max_failed_attempts }} attempts,
+      {{ default_lockout_minutes }} minutes).</p>
+    <label>Lock after this many failed attempts
+      <input type="number" name="max_failed_attempts" min="3" max="20" value="{{ max_failed_attempts or '' }}"
+             placeholder="{{ default_max_failed_attempts }}" style="max-width:8em;"></label>
+    <label>Lock for this many minutes
+      <input type="number" name="lockout_minutes" min="1" max="1440" value="{{ lockout_minutes or '' }}"
+             placeholder="{{ default_lockout_minutes }}" style="max-width:8em;"></label>
+    <label><input type="checkbox" name="lockout_until_unlocked" value="true" {{ "checked" if lockout_until_unlocked else "" }}>
+      Keep the account locked until an administrator unlocks it</label>
+  </fieldset>
+  <fieldset>
+    <legend>Inactive accounts</legend>
+    <p class="hint">Counted from each person's last sign-in to your bank, staff and your customers' people alike. They're told a
+      week before. API clients and the platform's staff are never touched, and your last active administrator is always kept.</p>
+    <label><input type="checkbox" name="deactivate_inactive" value="true" {{ "checked" if deactivate_inactive else "" }}>
+      Deactivate access after</label>
+    <label class="indented"><input type="number" name="deactivate_inactive_days" min="14" value="{{ deactivate_inactive_days }}" required
+             style="max-width:8em;"> days without a sign-in <span class="hint">(an administrator can reactivate it)</span></label>
+    <label><input type="checkbox" name="remove_inactive" value="true" {{ "checked" if remove_inactive else "" }}>
+      Remove access after</label>
+    <label class="indented"><input type="number" name="remove_inactive_days" min="14" value="{{ remove_inactive_days }}" required
+             style="max-width:8em;"> days without a sign-in <span class="hint">(the person no longer belongs to your bank; what they
+             did stays in the action log under their name)</span></label>
+    {% if not housekeeping %}<p class="hint">These run daily with housekeeping, which this installation hasn't turned on
+      (<code>OPENCLEAR_ENABLE_HOUSEKEEPING_SCHEDULER</code>): ask whoever runs OpenClear.</p>{% endif %}
+  </fieldset>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

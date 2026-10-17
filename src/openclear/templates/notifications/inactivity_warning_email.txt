@@ -1,0 +1,6 @@
+Nobody has signed in to {{ bank }} in OpenClear with this account for a while, so your access
+will be {{ what }} in {{ days }} day{{ "s" if days != 1 else "" }} under {{ bank }}'s rules.
+
+To keep it, sign in before then. If you no longer need it, there's nothing to do.
+
+You get this because you have access to {{ bank }} in OpenClear.

@@ -122,6 +122,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
              "Minimum length and required characters for new passwords.",
              f"{tenant.password_min_length}+ characters" + (f", {_plural(policy_rules, 'rule')}" if policy_rules else ""),
              modal=True, keywords="passwords length complexity"),
+        Tile("access-rules", "Security & access", "Lockout and inactive accounts", "block", "/ui/settings/access-rules",
+             "Lock accounts after failed sign-ins; deactivate and remove access nobody uses.", _access_rules_state(tenant),
+             modal=True, keywords="lockout locked failed attempts inactive dormant deactivate remove delete stale accounts"),
         Tile("timeouts", "Security & access", "Timeouts", "timer", "/ui/settings/timeouts",
              "How long sessions last, and how long a data export may run.",
              f"Idle {_minutes(tenant.access_token_expire_minutes, settings.jwt_access_token_expire_minutes)} · "
@@ -169,6 +172,13 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
              "Files your bank's file transfer drops are imported automatically.",
              "On" if settings.auto_import_enabled else "Off", modal=True, keywords="dropbox sftp folder files"),
     ]
+
+
+def _access_rules_state(tenant) -> str:
+    rules = [f"deactivate after {tenant.deactivate_inactive_days} days" if tenant.deactivate_inactive else "",
+             f"remove after {tenant.remove_inactive_days} days" if tenant.remove_inactive else ""]
+    rules = [r for r in rules if r]
+    return ("Inactive: " + ", ".join(rules)) if rules else "No automatic deactivation"
 
 
 def _support_state(db, tenant_id) -> str:

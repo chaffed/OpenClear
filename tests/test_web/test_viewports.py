@@ -455,6 +455,7 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
                 SHOTS.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=SHOTS / f"{name}-{width}.png", full_page=True, animations="disabled", caret="hide")
             if width == REFERENCE_WIDTH:
+                page.mouse.move(0, 0)  # no hover left over from a step's click on an earlier page
                 page.evaluate(STEADY)
                 taken = page.screenshot(full_page=True, animations="disabled", caret="hide")
                 reference = SCREENSHOTS / f"{name}.png"

@@ -68,6 +68,20 @@ class PasswordLoginResult:
     identity: AuthenticatedIdentity | None = None
 
 
+# "Locked until an administrator unlocks it" (Tenant.lockout_until_unlocked): far enough ahead never to pass.
+LOCKED_UNTIL_UNLOCKED = datetime(9999, 12, 31, tzinfo=timezone.utc)
+
+
+def lockout_policy(tenant: Tenant | None, settings=None) -> tuple[int, int, bool]:
+    """(failed attempts that lock, minutes the lock lasts, whether it lasts until an
+    administrator unlocks it): the bank's own, or the installation's."""
+    settings = settings or get_settings()
+    if tenant is None:
+        return settings.login_max_failed_attempts, settings.login_lockout_minutes, False
+    return (tenant.login_max_failed_attempts or settings.login_max_failed_attempts,
+            tenant.login_lockout_minutes or settings.login_lockout_minutes, bool(tenant.lockout_until_unlocked))
+
+
 def authenticate_password(
     session: Session, tenant_slug: str, email: str, password: str, *, settings: Settings | None = None
 ) -> PasswordLoginResult:
@@ -80,7 +94,7 @@ def authenticate_password(
 
     Account lockout is tracked on User (global to the identity, not per-tenant — a brute
     force targets this one password regardless of which tenant the attempt is against;
-    see domain/user.py). This function only flushes, never commits — callers
+    see domain/user.py), by the policy of the bank the attempt is against (lockout_policy). This function only flushes, never commits — callers
     (web/routers/auth.py::login_submit, api/v1/auth.py::login) must each commit right
     after calling this, or a failed attempt's counter increment is silently lost when the
     request's session closes."""
@@ -112,13 +126,14 @@ def authenticate_password(
 
     if not verify_password(password, user.hashed_password):
         user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.login_max_failed_attempts:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.login_lockout_minutes)
+        attempts, minutes, until_unlocked = lockout_policy(tenant, settings)
+        if user.failed_login_attempts >= attempts:
+            user.locked_until = LOCKED_UNTIL_UNLOCKED if until_unlocked else datetime.now(timezone.utc) + timedelta(minutes=minutes)
             session.flush()
             # Only fires the moment the lockout threshold is actually crossed, not on
             # every subsequent rejected attempt while already locked (that's the
             # early-return at the top of this function, above).
-            notification_service.notify_account_locked(session, user)
+            notification_service.notify_account_locked(session, user, minutes=None if until_unlocked else minutes)
             failed("invalid_credentials", tenant.id, user)
             return failed("threshold_reached", tenant.id, user, PasswordLoginOutcome.LOCKED, name="auth.lockout")
         session.flush()

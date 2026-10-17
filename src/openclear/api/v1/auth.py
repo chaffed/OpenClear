@@ -27,7 +27,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     if result.outcome == PasswordLoginOutcome.SSO_REQUIRED:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This organization requires single sign-on")
     if result.outcome == PasswordLoginOutcome.LOCKED:
-        raise HTTPException(status.HTTP_423_LOCKED, "Too many failed attempts — account is temporarily locked")
+        raise HTTPException(status.HTTP_423_LOCKED, "Too many failed attempts — the account is locked")
     if result.outcome == PasswordLoginOutcome.PENDING_APPROVAL:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Waiting for the bank to approve this person")
     if result.outcome != PasswordLoginOutcome.SUCCESS or result.identity is None:
@@ -56,7 +56,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
         refresh_token_expire_minutes=tenant.refresh_token_expire_minutes,
     )
     response = LoginResponse(mfa_required=False, access_token=tokens.access_token, refresh_token=tokens.refresh_token)
-    user_service.record_login(db, user.id)
+    user_service.record_login(db, user.id, tenant_id=membership.tenant_id)
     db.commit()
     return response
 

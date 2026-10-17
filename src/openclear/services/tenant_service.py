@@ -300,6 +300,43 @@ def set_password_policy(
     return tenant
 
 
+def set_access_rules(
+    session: Session,
+    tenant_id: uuid.UUID,
+    *,
+    max_failed_attempts: int | None,
+    lockout_minutes: int | None,
+    lockout_until_unlocked: bool,
+    deactivate_inactive: bool,
+    deactivate_inactive_days: int,
+    remove_inactive: bool,
+    remove_inactive_days: int,
+) -> Tenant | None:
+    """The bank's lockout after failed sign-ins (None: the installation's), and its rules for
+    deactivating and removing inactive access (services/inactivity_service.py). Raises
+    InvalidTenantSettingsInput for numbers out of range."""
+    from openclear.services.inactivity_service import InactivityError, validate
+
+    if max_failed_attempts is not None and not 3 <= max_failed_attempts <= 20:
+        raise InvalidTenantSettingsInput("Lock after between 3 and 20 failed attempts.")
+    if lockout_minutes is not None and not 1 <= lockout_minutes <= 1440:
+        raise InvalidTenantSettingsInput("Lock for between 1 minute and a day.")
+    try:
+        validate(deactivate=deactivate_inactive, deactivate_days=deactivate_inactive_days, remove=remove_inactive,
+                 remove_days=remove_inactive_days)
+    except InactivityError as exc:
+        raise InvalidTenantSettingsInput(str(exc)) from None
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    tenant.login_max_failed_attempts, tenant.login_lockout_minutes = max_failed_attempts, lockout_minutes
+    tenant.lockout_until_unlocked = lockout_until_unlocked
+    tenant.deactivate_inactive, tenant.deactivate_inactive_days = deactivate_inactive, deactivate_inactive_days
+    tenant.remove_inactive, tenant.remove_inactive_days = remove_inactive, remove_inactive_days
+    session.flush()
+    return tenant
+
+
 def set_messages(
     session: Session, tenant_id: uuid.UUID, *, login_message: str | None, banner_message: str | None
 ) -> Tenant | None:

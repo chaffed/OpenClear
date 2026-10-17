@@ -34,6 +34,9 @@ class NotificationType(str, enum.Enum):
     # services/attestation_service.py: the bank asks the customer's people who can attest to
     # attest its own CUECs for the year that ended (CONTROLS_PLAN.md CT-D13).
     ATTESTATION_REQUESTED = "attestation_requested"
+    # services/inactivity_service.py: the person's access to a bank will be turned off or removed
+    # in a week unless they sign in.
+    INACTIVITY_WARNING = "inactivity_warning"
 
 
 class NotificationChannel(str, enum.Enum):

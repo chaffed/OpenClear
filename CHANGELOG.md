@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+Lockout and inactive accounts (Settings → Lockout and inactive accounts):
+
+- **A bank sets its own lockout**: how many failed password sign-ins lock an account and for how
+  long (by default the installation's 5 and 15 minutes), or locked until an administrator
+  unlocks it.
+- **Deactivate inactive access** after a number of days without a sign-in to the bank, and
+  **remove** it after a number of days, each with its own switch (both off by default). People
+  are told a week before; API clients and the platform's staff are never touched; the bank's
+  last active administrator is always kept; a removed person's name stays on everything they
+  did. Each is in the action log and a security event. Runs daily with housekeeping.
+- Each membership keeps its own last sign-in (`last_active_at`), and the dormant-account checks
+  use it and say when the bank's rule is on. OC-AC-02 and OC-IA-01 say so too (control
+  inventory 1.1).
+
 - **SOC 2 (the 2017 Trust Services Criteria) for every control and CUEC**, from AICPA's mapping
   to NIST SP 800-53 Rev. 5, which OpenClear doesn't redistribute: download it from AICPA, run
   `scripts/import_crosswalks.py soc2` on it, and set `OPENCLEAR_SOC2_MAPPING_PATH`. Then a `soc2`

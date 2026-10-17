@@ -1,5 +1,6 @@
 Your OpenClear account was locked after too many failed sign-in attempts.
 
-If this was you, the lock clears itself automatically after a short wait. If you don't
+{% if minutes %}If this was you, the lock clears itself after {{ minutes }} minutes. If you don't
 recognize these attempts, contact your organization's administrator so they can look
-into it and unlock your account early if needed.
+into it and unlock your account early if needed.{% else %}It stays locked until an administrator unlocks it: contact your organization's
+administrator. If you don't recognize these attempts, tell them that too.{% endif %}

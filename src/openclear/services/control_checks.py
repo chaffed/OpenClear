@@ -55,8 +55,23 @@ def _people(session: Session, tenant_id: uuid.UUID, *, customers: bool | None):
 
 
 def _dormant(user, membership, now: datetime) -> bool:
-    last = _aware(user.last_login_at) or _aware(membership.created_at)
+    """No sign-in to this bank for DORMANT_DAYS (membership.last_active_at; before it was kept,
+    the person's last sign-in anywhere)."""
+    last = _aware(membership.last_active_at) or _aware(user.last_login_at) or _aware(membership.created_at)
     return last is not None and last < now - timedelta(days=DORMANT_DAYS)
+
+
+def _inactivity_rule(session: Session, tenant_id: uuid.UUID) -> str | None:
+    """The bank's automatic rule for inactive access, in words, or None (services/inactivity_service.py)."""
+    from openclear.domain.tenant import Tenant
+
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    parts = [f"deactivates access after {tenant.deactivate_inactive_days} days" if tenant.deactivate_inactive else "",
+             f"removes it after {tenant.remove_inactive_days}" if tenant.remove_inactive else ""]
+    parts = [p for p in parts if p]
+    return " and ".join(parts) if parts else None
 
 
 def _with_second_factor(session: Session, tenant_id: uuid.UUID, user_ids) -> set:
@@ -76,12 +91,14 @@ def dormant_accounts(session: Session, tenant_id: uuid.UUID) -> Control:
     now = _now()
     staff = _people(session, tenant_id, customers=False)
     dormant = sorted(u.email for u, m, _p in staff if _dormant(u, m, now))
-    evidence = {"active_staff": len(staff), "no_sign_in_for_90_days": dormant[:LIST_LIMIT], "dormant": len(dormant)}
+    rule = _inactivity_rule(session, tenant_id)
+    evidence = {"active_staff": len(staff), "no_sign_in_for_90_days": dormant[:LIST_LIMIT], "dormant": len(dormant), "automatic": rule}
     title = "Dormant staff accounts"
     if dormant:
         return Control("dormant_accounts", title, WARN,
                        f"{_plural(len(dormant), 'staff member')} haven't signed in for {DORMANT_DAYS} days: {', '.join(dormant[:10])}. "
-                       "Deactivate anyone who's left.", evidence)
+                       + (f"Your rule {rule}." if rule else "Deactivate anyone who's left, or have OpenClear do it "
+                                                            "(Settings → Lockout and inactive accounts)."), evidence)
     return Control("dormant_accounts", title, PASS, f"All {len(staff)} active staff signed in within {DORMANT_DAYS} days.", evidence)
 
 
@@ -89,7 +106,8 @@ def customer_dormant_users(session: Session, tenant_id: uuid.UUID) -> Control:
     now = _now()
     people = _people(session, tenant_id, customers=True)
     dormant = sorted(u.email for u, m, _p in people if _dormant(u, m, now))
-    evidence = {"active_customer_people": len(people), "no_sign_in_for_90_days": dormant[:LIST_LIMIT], "dormant": len(dormant)}
+    evidence = {"active_customer_people": len(people), "no_sign_in_for_90_days": dormant[:LIST_LIMIT], "dormant": len(dormant),
+                "automatic": _inactivity_rule(session, tenant_id)}
     title = "Dormant customer accounts"
     if dormant:
         return Control("customer_dormant_users", title, WARN,
