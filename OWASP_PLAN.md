@@ -37,11 +37,11 @@ work. OW3 onward runs alongside feature work.
 
 | Guide section | Gap |
 |---|---|
-| Requirements: ASVS, risk profile | No target ASVS level and no assessment against one. No written data classification or risk profile. |
+| Requirements: ASVS, risk profile | No target ASVS level and no assessment against one (scope: `docs/security/asvs-5.0-scope.csv`, 283 requirements, from OWASP's own CSV). No written data classification or risk profile. |
 | Design: threat modeling | No threat model, no data-flow diagram, no privacy review (LINDDUN). |
 | Implementation: dependencies | `pyproject.toml` sets only lower bounds (`>=`), and there's no lock file, so each install can differ. No SCA, no SBOM, no Dependabot. The vendored JS (`static/js/vendor/`) isn't tracked anywhere, and neither are the SDKs' own dependencies. |
 | Implementation: DevSecOps pipeline | No SAST and no secret scanning. The Actions are pinned by tag rather than SHA. `tests.yml` doesn't declare `permissions:`. The base images are pinned by tag rather than digest. |
-| Digital identity: passwords (ASVS 6.2) | No breached-password check (6.2.12, L1). Existing passwords are never re-checked. The 8-character default meets ASVS's minimum but not NIST 800-63B-4 for single-factor sign-in (15). |
+| Digital identity: passwords (ASVS 6.2) | No breached-password check (6.2.12, L2). Existing passwords are never re-checked. The 8-character default meets ASVS's minimum but not NIST 800-63B-4 for single-factor sign-in (15). |
 | Digital identity: MFA (ASVS 6.3.3, L2) | A bank can't require a second factor for password sign-ins. A user who loses their key can't be reset by an admin; only the user can remove their own keys. |
 | Verification: WSTG, DAST | No DAST. Security tests exist, but nothing ties them to the requirements they prove. |
 | Operations | `docs/guides/edge.md` tells service providers which CRS rules to exclude, but nothing tests those exclusions against the real CRS. No `security.txt`, no `SECURITY.md`. |
@@ -91,7 +91,8 @@ The ASVS assessment (OW1) will add to this list.
 - **OW-D4. Tests prove requirements by marking them:** `@pytest.mark.asvs("6.2.12")`.
   `scripts/asvs_crosswalk.py` builds the evidence column from those marks, so the page can't
   claim a test that doesn't exist. A test fails if a Met row has no mark and no file.
-- **OW-D5. Gaps stay private until they're fixed.** The repo is public, so an exploitable
+- **OW-D5. Gaps stay private until they're fixed.** Working notes from the assessment live in
+  `security-findings/`, which git ignores. The repo is public, so an exploitable
   finding becomes a private GitHub security advisory, never a public issue. A finding that
   can't be exploited (missing documentation, a gap in the pipeline) becomes an ordinary
   issue labelled `security`. `asvs.md` is published once OW3 lands, and its remaining "Not
@@ -180,7 +181,8 @@ The ASVS assessment (OW1) will add to this list.
   After it, they must register a key at sign-in before going further.
 - **OW-D21. An admin can reset a user's second factor.** Anyone with `user:manage` (a customer
   admin for their own customer's users) can remove all of a user's keys. The user must then
-  register a new one at their next sign-in. The reset is an audited action and an
+  register a new one at their next sign-in. The admin must record how they confirmed the
+  person's identity (ASVS 6.4.4: proofing at the same level as enrollment). The reset is an audited action and an
   `auth.mfa.reset` security event, and the user is emailed. It isn't under dual control,
   because waiting for a second admin near the cutoff costs the customer money. If the person
   who lost a key is a bank's only administrator, platform staff can reset them, as a

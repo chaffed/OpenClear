@@ -27,3 +27,6 @@ data/
 # crosswalk). Never commit them; scripts/import_crosswalks.py reads them from here.
 /third_party/
 *tsc_to_nist*.xlsx
+
+# ASVS assessment working notes: kept out of the public repo until fixed (docs/adr/0002)
+/security-findings/

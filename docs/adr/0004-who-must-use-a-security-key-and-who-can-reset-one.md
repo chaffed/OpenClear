@@ -8,7 +8,8 @@ never exempt, whatever the banks' settings, because one platform staff account r
 bank.
 
 A user who loses their key is reset by an administrator with `user:manage` at their bank or
-customer, at once and without a second person. Dual control was rejected here: a decider
+customer, at once and without a second person, after recording how they confirmed the person's
+identity (ASVS 6.4.4). Dual control was rejected here: a decider
 locked out near the cutoff costs the customer money, and the reset is caught instead by its
 security event and the email to the user. A bank's only administrator can't be reset by
 anyone at the bank, so platform staff can reset them, but only as a protected change under
