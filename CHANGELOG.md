@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.18.0 — 2026-10-16
 
 Control testing (CONTROLS_PLAN.md CT2):
 

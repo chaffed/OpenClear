@@ -132,3 +132,4 @@ zone, M7 is still built and tested, against a stub edge; only the final confirma
 - 2026-10-16 CONTROLS_PLAN.md CT2: 25 new checks (38 in all), population checks over a period, kept test history, deviations with responses. Next: CT3.
 - 2026-10-16 CONTROLS_PLAN.md CT3: access reviews (bank and customer), file reconciliation, decision acknowledgement, outside services, the bank's standards; 45 checks. Next: CT4.
 - 2026-10-17 CONTROLS_PLAN.md CT4: CUEC mappings and signed attestations (proposed from the test history, accepted or auto-accepted; customers' own; the host's by the bank or the platform). Next: CT5.
+- 2026-10-16 Released 1.18.0: control testing (CONTROLS_PLAN.md CT2–CT4): 45 checks with kept results and deviations, access reviews, and CUEC mappings with signed attestations. Next: CT6.

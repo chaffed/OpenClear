@@ -27,6 +27,7 @@ VERSION_HISTORY: dict[str, str] = {
     "1.15.0": "c6e8a0c2e4f7",
     "1.16.0": "d7f9b1c3e5a8",
     "1.17.0": "f1a3c5e7b9d2",
+    "1.18.0": "c4e6a8b0d2f3",
 }
 
 
