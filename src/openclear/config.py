@@ -537,6 +537,8 @@ class Settings(BaseSettings):
     # https://bank.example/security"); without one the file isn't served. Expires defaults to a
     # year from today; set a date to make it go stale on purpose if the contact isn't reviewed.
     security_txt_contact: str | None = None
+    # FastAPI's interactive API pages (/docs, /redoc): None means on everywhere except production.
+    api_docs_enabled: bool | None = None
     security_txt_expires: date | None = None
     security_txt_policy: str | None = None
 

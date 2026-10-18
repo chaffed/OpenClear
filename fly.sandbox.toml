@@ -13,6 +13,8 @@ primary_region = "iad"
   OPENCLEAR_CLIENT_IP_HEADER = "Fly-Client-IP"
   OPENCLEAR_TRUSTED_PROXY_CIDRS = "172.16.0.0/12,fdaa::/16"
   OPENCLEAR_PUBLIC_BASE_URL = "https://openclear-sandbox.fly.dev"
+  # A developer sandbox: keep the interactive API pages (off by default in production).
+  OPENCLEAR_API_DOCS_ENABLED = "true"
   OPENCLEAR_WEBAUTHN_RP_ID = "openclear-sandbox.fly.dev"
   OPENCLEAR_WEBAUTHN_ORIGIN = "https://openclear-sandbox.fly.dev"
   OPENCLEAR_SANDBOX_LIFETIME_DAYS = "30"

@@ -44,7 +44,7 @@ def parse_version(text: str) -> tuple[int, ...] | None:
 
 def _fetch(url: str) -> list[Release]:
     try:
-        response = httpx.get(url, timeout=TIMEOUT_SECONDS, follow_redirects=True,
+        response = httpx.get(url, timeout=TIMEOUT_SECONDS, follow_redirects=False,  # a fixed URL: a redirect is unexpected (ASVS 15.3.2)
                              headers={"Accept": "application/vnd.github+json", "User-Agent": "OpenClear software currency check"})
         response.raise_for_status()
         rows = response.json()

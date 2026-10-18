@@ -190,7 +190,13 @@ def create_app() -> FastAPI:
 
     logging_config.configure()
 
-    app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan)
+    # FastAPI's interactive pages (/docs, /redoc) are off in production unless asked for
+    # (ASVS 5.0 13.4.5); /openapi.json stays, since the SDKs and the docs site read it.
+    docs_on = get_settings().api_docs_enabled
+    if docs_on is None:
+        docs_on = get_settings().environment != "production"
+    app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan,
+                  docs_url="/docs" if docs_on else None, redoc_url="/redoc" if docs_on else None)
 
     # Built-in and allowed plugins register their networks, providers and formats
     # (plugins/__init__.py). A new payment network is a plugin package, not an edit here.
