@@ -618,6 +618,12 @@ def assert_production_safe(settings: Settings) -> None:
     # Local import to avoid a cycle: ocr/factory.py (which does real provider
     # construction) imports this module, so this module can only import the small,
     # dependency-free constant from ocr/base.py, not factory.py itself.
+    if not settings.siem_tls_verify:
+        raise RuntimeError(
+            "Refusing to start with OPENCLEAR_ENVIRONMENT=production while OPENCLEAR_SIEM_TLS_VERIFY is false: "
+            "security events would go to a receiver whose certificate isn't checked. Give its CA in "
+            "OPENCLEAR_SIEM_TLS_CA_FILE instead."
+        )
     if settings.log_format != "json":
         logging.getLogger(__name__).warning(
             "OPENCLEAR_LOG_FORMAT is text in production: use json so log collectors can parse every field "

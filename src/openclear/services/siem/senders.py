@@ -98,6 +98,7 @@ def _connect(infos: list[tuple], timeout: float, what: str) -> socket.socket:
 
 def _tls_context(target: Target) -> ssl.SSLContext:
     context = ssl.create_default_context(cafile=target.ca_file or None)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2  # ASVS 5.0 12.1.1, whatever the system default
     if not target.verify:
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
@@ -154,7 +155,7 @@ def hec_url(url: str) -> str:
 def _client(target: Target) -> httpx.Client:
     """Public addresses only unless allowed (auth/outbound_http.py), trusting the
     installation's CA file when it names one."""
-    verify = _tls_context(target) if (target.ca_file or not target.verify) else True
+    verify = _tls_context(target)  # always our context, so HEC gets the TLS 1.2 minimum too
     transport = httpx.HTTPTransport(verify=verify) if target.allow_private else _PublicOnlyTransport(verify=verify)
     return httpx.Client(transport=transport, follow_redirects=False, timeout=target.timeout)
 

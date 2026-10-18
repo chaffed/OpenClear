@@ -80,3 +80,19 @@ def test_production_environment_passes_with_azure_storage_configured():
     settings = Settings(environment="production", storage_backend="azure", azure_storage_container="files",
                         azure_storage_account_url="https://acct.blob.core.windows.net", **_OVERRIDDEN)
     assert_production_safe(settings)  # must not raise
+
+
+@pytest.mark.asvs("12.3.2")
+def test_production_refuses_unverified_siem_tls():
+    with pytest.raises(RuntimeError, match="SIEM_TLS_VERIFY"):
+        assert_production_safe(Settings(environment="production", siem_tls_verify=False, **_OVERRIDDEN))
+
+
+@pytest.mark.asvs("12.1.1")
+def test_siem_tls_needs_1_2_or_newer():
+    import ssl
+
+    from openclear.services.siem.senders import Target, _tls_context
+
+    target = Target(kind="syslog", host="siem.example.com", port=6514, transport="tls")
+    assert _tls_context(target).minimum_version == ssl.TLSVersion.TLSv1_2
