@@ -58,14 +58,15 @@ class SamlAssertion:
 
 
 def generate_sp_keypair(connection_id: uuid.UUID) -> tuple[str, str]:
-    """A self-signed RSA-2048 certificate and key for one connection, valid ten years:
+    """A self-signed RSA-3072 certificate and key for one connection (128-bit security, ASVS 5.0
+    11.2.3; connections made before 1.22.1 keep their RSA-2048 keys), valid ten years:
     (certificate PEM, encrypted private key)."""
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.x509.oid import NameOID
 
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f"OpenClear SAML {connection_id}")])
     now = dt.datetime.now(dt.timezone.utc)
     cert = (

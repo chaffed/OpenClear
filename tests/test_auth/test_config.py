@@ -96,3 +96,15 @@ def test_siem_tls_needs_1_2_or_newer():
 
     target = Target(kind="syslog", host="siem.example.com", port=6514, transport="tls")
     assert _tls_context(target).minimum_version == ssl.TLSVersion.TLSv1_2
+
+
+@pytest.mark.asvs("11.2.3")
+def test_new_saml_connections_get_rsa_3072_keys():
+    import uuid
+
+    from cryptography import x509
+
+    from openclear.auth.saml_service import generate_sp_keypair
+
+    certificate_pem, _encrypted_key = generate_sp_keypair(uuid.uuid4())
+    assert x509.load_pem_x509_certificate(certificate_pem.encode()).public_key().key_size == 3072
