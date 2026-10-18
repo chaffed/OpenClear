@@ -470,6 +470,8 @@ table.evidence tr.mismatch td, table.evidence tr.mismatch th { background: var(-
 /* min-width only: a max-width here would override .card-narrow's own width. */
 .card, .page > * { min-width: 0; }
 pre, code { overflow-wrap: anywhere; }
+/* Long addresses and identifiers in table cells break rather than make a phone scroll sideways. */
+.wrap-anywhere { overflow-wrap: anywhere; }
 @media (max-width: 1023.98px) {
   /* The root cause of the sideways scrolling: .page's `margin: 0 auto` stops a flex item
      from stretching to the column's width, so it grew to fit its widest table instead of

@@ -53,7 +53,7 @@
   <p>{% if intact %}<span class="badge badge-ok">Intact</span> {{ checked }} entries, chained and signed.{% else %}<span class="badge badge-danger">Broken</span> at entry {{ broken }}.{% endif %}</p>
   <table>
     <thead><tr><th>When</th><th>What</th></tr></thead>
-    <tbody>{% for e in log %}<tr><td class="nowrap">{{ e.occurred_at.strftime("%Y-%m-%d %H:%M") }}</td><td><code>{{ e.action }}</code> {{ e.summary }}</td></tr>{% endfor %}</tbody>
+    <tbody>{% for e in log %}<tr><td class="nowrap">{{ e.occurred_at.strftime("%Y-%m-%d %H:%M") }}</td><td class="wrap-anywhere"><code>{{ e.action }}</code> {{ e.summary }}</td></tr>{% endfor %}</tbody>
   </table>
 </div>
 {% endblock %}
