@@ -305,5 +305,10 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   minutes, are audited and emailed (F-2; new `auth` session claim). `security.txt` and
   `SECURITY.md`. Found on the way: a broad `data/` rule in .gitignore hid the bundled list;
   the security-headers middleware overwrote pages' `no-referrer`.
+- 2026-10-18: 1.22.0 released (OW1 docs, OW2, OW3a); the three advisories published. Then the
+  `ready-for-agent` issues for 1.22.1: #1 (pre-hash before bcrypt), #6 (SSO by subject), #7
+  (RSA-3072 for new SAML keys; re-keying existing ones is #21), #8 (token iss/aud), #9 (text
+  log escaping), #11 (cookie prefixes), #12 (API docs pages off in production), #13
+  (Clear-Site-Data), #20 (SIEM TLS). #2 was done in 1.22.0.
 
   Not started.

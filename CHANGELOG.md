@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+Security fixes from the ASVS assessment (OWASP_PLAN.md):
+
+- **Every character of a password counts.** bcrypt only reads 72 bytes, so passwords are now
+  pre-hashed (HMAC-SHA-256) first. Existing hashes keep working and are upgraded at the next
+  sign-in.
+- **Single sign-on matches people by the provider's subject**, not only their email: a sign-in
+  whose subject and email disagree with what OpenClear knows is refused until an
+  administrator checks (`auth.sso.failed`). SAML connections with transient NameIDs still
+  match by email.
+- **Tokens name their issuer and purpose**, so a token from another installation, or signed for
+  another use, is refused. Tokens issued before this release still work until they expire.
+- **Cookies use `__Host-` and `__Secure-` prefixes over HTTPS.** Nobody is signed out by the
+  upgrade: the old names are still read until 1.23.
+- **Signing out clears the browser's cache and storage** (`Clear-Site-Data`).
+- **Production defaults:** the interactive API pages (`/docs`, `/redoc`) are off unless
+  `api_docs_enabled` is set (the API schema stays at `/openapi.json`). Production refuses to
+  start with `siem_tls_verify` false, and SIEM delivery requires TLS 1.2 or newer. Text logs
+  escape line breaks, and production warns when logs aren't JSON.
+- **New SAML connections get RSA-3072 signing keys.** Existing ones keep theirs for now.
+- The release feed no longer follows redirects.
+
 ## 1.22.0 — 2026-10-18
 
 Passwords, resets and security keys (OWASP_PLAN.md OW3a):

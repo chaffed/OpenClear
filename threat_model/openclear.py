@@ -167,10 +167,10 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "Sessions record how they were signed in; switching is allowed only where that sign-in is accepted.",
            "web/routers/tenant_switch.py::switch_refusal; 1.21.2; ASVS 6.3.4, 6.8.1", "Mitigated"),
     Threat("OC-T04", "S", "Identity provider", "A bank's or customer's identity provider asserts someone it doesn't vouch for.",
-           "A provider links only people already members in its own scope; groups are re-read on every sign-in; "
-           "a customer's sign-on is confined to that customer.",
-           "OC-IA-03, OC-IA-05; services/sso_service.py; SECURITY_REVIEW.md R2; ASVS 6.8.1",
-           "Partly (matching by subject: issue #6)"),
+           "A provider links only people already members in its own scope, matched by its stable subject; groups are "
+           "re-read on every sign-in; a customer's sign-on is confined to that customer.",
+           "OC-IA-03, OC-IA-05; services/sso_service.py; SECURITY_REVIEW.md R2; ASVS 6.8.1, 10.5.2",
+           "Mitigated"),
     Threat("OC-T05", "S", "Internet", "Password guessing and credential stuffing.",
            "Lockout, per-person and per-IP rate limits, the bank's password policy (15 characters for new banks), "
            "breached and context-word checks, passwords re-checked at sign-in, the same answer for unknown and "
