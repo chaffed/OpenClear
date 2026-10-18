@@ -390,7 +390,7 @@ No bulk endpoint exists for stop payments.
 `matched` / `exception`), `settlement_status` (`pending` / `paid` / `returned`),
 `created_at`. Submitting a paid item automatically attempts to match it against an
 outstanding issued item; a non-match becomes an exception item (see
-[Exceptions and decisions](#exceptions-and-decisions)).
+[Exceptions and decisions](#exceptions-and-decisions--apiv1exceptions)).
 
 ### Check images — `/api/v1/check-images`
 
