@@ -26,8 +26,6 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
     db.commit()
     if result.outcome == PasswordLoginOutcome.SSO_REQUIRED:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This organization requires single sign-on")
-    if result.outcome == PasswordLoginOutcome.LOCKED:
-        raise HTTPException(status.HTTP_423_LOCKED, "Too many failed attempts — the account is locked")
     if result.outcome == PasswordLoginOutcome.PENDING_APPROVAL:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Waiting for the bank to approve this person")
     if result.outcome != PasswordLoginOutcome.SUCCESS or result.identity is None:

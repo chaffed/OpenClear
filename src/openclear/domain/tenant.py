@@ -97,10 +97,11 @@ class Tenant(Base):
     # self-service change/reset flow) — see auth/password_policy.py. A customer's own
     # policy (domain/customer.py) can only add to this, never weaken it: the effective
     # policy for a user is always max(tenant, customer) per numeric field and
-    # tenant-OR-customer per boolean field, by construction. Defaults are deliberately
-    # permissive (no complexity required) so existing behavior is unaffected until a
-    # tenant admin opts in.
-    password_min_length: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    # tenant-OR-customer per boolean field, by construction. No composition rules by default
+    # (ASVS 5.0 6.2.5); a bank may still turn them on.
+    # 15 for banks created from 1.22 (NIST 800-63B-4 for single-factor sign-in; OWASP_PLAN.md
+    # OW-D16); earlier banks keep the 8 they were created with.
+    password_min_length: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     password_require_uppercase: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     password_require_lowercase: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     password_require_number: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

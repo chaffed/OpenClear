@@ -54,6 +54,9 @@ CATALOG: dict[str, EventType] = {
     "auth.act_as.refused": EventType("authentication", "medium"),
     "auth.password.changed": EventType("authentication", "medium"),
     "auth.password.reset": EventType("authentication", "medium"),
+    # A password that verified but is breached or shorter than the policy now requires: the
+    # person must change it before going further (auth/login_service.py; OWASP_PLAN.md OW-D17).
+    "auth.password.weak": EventType("authentication", "medium"),
     "scim.auth.failed": EventType("authentication", "medium"),
     "embed.launch": EventType("authentication", "low"),
     "embed.launch.refused": EventType("authentication", "medium"),

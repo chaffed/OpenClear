@@ -64,7 +64,8 @@ def test_a_banks_own_lockout(client, db_session, tenant_factory):
     client.get("/ui/login")
     page = client.post("/ui/login", data={"tenant_slug": tenant.slug, "email": other, "password": TenantFactory.PASSWORD,
                                           "csrf_token": client.cookies.get("csrf_token"), "next": "/ui/"})
-    assert "Ask an administrator to unlock your account." in page.text
+    # Same answer as a wrong password (ASVS 6.3.8), saying how locks work here.
+    assert "locked until an administrator unlocks it" in page.text and "Invalid organization slug" in page.text
 
 
 def test_a_sign_in_counts_for_that_bank_only(client, db_session, tenant_factory):

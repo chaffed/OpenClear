@@ -72,14 +72,17 @@ _SSO_FAILED_MESSAGE = (
 )
 
 
-def _locked_message(db: Session, tenant_slug: str) -> str:
+def _invalid_message(db: Session, tenant_slug: str) -> str:
+    """The same answer for a wrong password, an unknown email and a locked account, so the
+    page doesn't reveal which emails have accounts (ASVS 5.0 6.3.8). It says when accounts
+    lock; the account's owner is emailed when theirs does."""
     from openclear.auth.login_service import lockout_policy
 
     tenant = db.execute(select(Tenant).where(Tenant.slug == tenant_slug)).scalar_one_or_none()
-    _attempts, minutes, until_unlocked = lockout_policy(tenant)
-    if until_unlocked:
-        return "Too many failed attempts. Ask an administrator to unlock your account."
-    return f"Too many failed attempts. Try again in {minutes} minutes, or ask an administrator to unlock your account."
+    attempts, minutes, until_unlocked = lockout_policy(tenant)
+    lasts = "until an administrator unlocks it" if until_unlocked else f"for {minutes} minutes"
+    return (f"Invalid organization slug, email, or password. After {attempts} failed attempts an account is locked "
+            f"{lasts}, and its owner is emailed.")
 
 
 @router.get("/login")
@@ -118,12 +121,10 @@ def login_submit(
         # auth decision above.
         if result.outcome == PasswordLoginOutcome.SSO_REQUIRED:
             message = _SSO_REQUIRED_MESSAGE
-        elif result.outcome == PasswordLoginOutcome.LOCKED:
-            message = _locked_message(db, tenant_slug)
         elif result.outcome == PasswordLoginOutcome.PENDING_APPROVAL:
             message = PENDING_APPROVAL_MESSAGE
-        else:
-            message = "Invalid organization slug, email, or password."
+        else:  # a wrong password, an unknown email or a locked account all look alike
+            message = _invalid_message(db, tenant_slug)
         return render_template(
             request,
             "auth/login.html",

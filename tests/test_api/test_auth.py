@@ -61,14 +61,14 @@ def test_login_locks_account_after_max_failed_attempts(client, tenant_factory):
         "/api/v1/auth/login",
         json={"tenant_slug": tenant.slug, "email": users["admin"].email, "password": "wrong"},
     )
-    assert resp.status_code == 423
+    assert resp.status_code == 401  # a locked account looks like a wrong password (ASVS 6.3.8)
 
     # Even the correct password is now rejected until the lockout expires or an admin unlocks it.
     resp = client.post(
         "/api/v1/auth/login",
         json={"tenant_slug": tenant.slug, "email": users["admin"].email, "password": tenant_factory.PASSWORD},
     )
-    assert resp.status_code == 423
+    assert resp.status_code == 401  # a locked account looks like a wrong password (ASVS 6.3.8)
 
 
 def test_login_rejects_unknown_tenant(client):

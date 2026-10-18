@@ -40,7 +40,7 @@ def _only(db_session, tenant, keep: str, users):
 
 
 def _policy(**over) -> dict:
-    values = {"password_min_length": 12, "password_require_uppercase": True, "password_require_lowercase": True,
+    values = {"password_min_length": 16, "password_require_uppercase": True, "password_require_lowercase": True,
               "password_require_number": True, "password_require_symbol": False, **over}
     return {"values": values}
 
@@ -51,12 +51,12 @@ def test_tightening_applies_at_once_and_loosening_waits(db_session, tenant_facto
     admin = users["admin"]
     stronger = changes.request_or_apply(db_session, "password_policy", _policy(), tenant_id=tenant.id, user_id=admin.id)
     db_session.commit()
-    assert stronger.applied and db_session.get(Tenant, tenant.id).password_min_length == 12
+    assert stronger.applied and db_session.get(Tenant, tenant.id).password_min_length == 16
 
     weaker = changes.request_or_apply(db_session, "password_policy", _policy(password_min_length=8), tenant_id=tenant.id, user_id=admin.id)
     db_session.commit()
-    assert weaker.waiting and weaker.change.applies_at is None and db_session.get(Tenant, tenant.id).password_min_length == 12
-    assert weaker.change.before["password_min_length"] == 12 and weaker.change.after["password_min_length"] == 8
+    assert weaker.waiting and weaker.change.applies_at is None and db_session.get(Tenant, tenant.id).password_min_length == 16
+    assert weaker.change.before["password_min_length"] == 16 and weaker.change.after["password_min_length"] == 8
     told = db_session.execute(select(Notification.recipient_user_id).where(Notification.notification_type == NotificationType.CHANGE_REQUESTED)).scalars().all()
     assert second.id in told and admin.id not in told
 
@@ -170,7 +170,7 @@ def test_expiry_and_withdrawal(db_session, tenant_factory):
     assert changes.settle(db_session, again.change.requested_at + timedelta(days=8)) == 1
     db_session.expire_all()
     assert db_session.get(ChangeRequest, again.change.id).status == "expired"
-    assert db_session.get(Tenant, tenant.id).password_min_length == 12
+    assert db_session.get(Tenant, tenant.id).password_min_length == 16
 
 
 def test_the_changes_page_and_api(client, db_session, tenant_factory):
@@ -214,7 +214,7 @@ def test_the_evidence_export_lists_the_periods_changes(db_session, tenant_factor
     listed = evidence_service.build(db_session, tenant.id, start=today, end=today, generated_by_user_id=None)["change_control"]
     assert [(c["kind"], c["status"], c["requested_by"], c["decided_by"]) for c in listed] == \
         [("password_policy", "approved", users["admin"].email, second.email)]
-    assert listed[0]["before"]["password_min_length"] == 12 and listed[0]["after"]["password_min_length"] == 8
+    assert listed[0]["before"]["password_min_length"] == 16 and listed[0]["after"]["password_min_length"] == 8
 
 
 def test_admins_are_told_when_a_rule_loses_its_last_other_approver(db_session, tenant_factory):

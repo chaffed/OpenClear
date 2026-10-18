@@ -97,3 +97,7 @@ openclear = ["templates/**/*.html", "static/**/*"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+  # The ASVS 5.0 requirement a test proves (OWASP_PLAN.md OW-D4): @pytest.mark.asvs("6.2.12").
+  "asvs(requirement): the ASVS 5.0 requirement this test is evidence for",
+]

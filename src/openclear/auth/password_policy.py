@@ -74,9 +74,28 @@ def describe(policy: PasswordPolicy) -> str:
     return ", ".join(parts[:-1]) + ", and " + parts[-1]
 
 
-def validate_password(password: str, policy: PasswordPolicy) -> None:
+_MIN_CONTEXT_WORD = 4
+
+
+def _letters_and_digits(text: str) -> str:
+    return "".join(c for c in text.lower() if c.isalnum())
+
+
+def context_words(*, email: str | None = None, tenants=(), customers=()) -> list[str]:
+    """Words a password mustn't contain (ASVS 5.0 6.1.2, 6.2.11): "openclear", each bank's name
+    and slug, each customer's name, and the email's local part, compared as lowercase letters
+    and digits only, so "Acme Bank" also catches "acme-bank!". Words shorter than four
+    characters are left out, or they'd refuse too much."""
+    raw = ["openclear", email.split("@", 1)[0] if email else ""]
+    raw += [t.name for t in tenants] + [t.slug for t in tenants] + [c.name for c in customers]
+    return sorted({w for w in map(_letters_and_digits, raw) if len(w) >= _MIN_CONTEXT_WORD})
+
+
+def validate_password(password: str, policy: PasswordPolicy, *, context: list[str] = (), check_breached: bool = True) -> None:
     """Raises ValueError listing every unmet requirement in one message, matching this
-    app's convention of routers re-rendering a form with error=str(exc)."""
+    app's convention of routers re-rendering a form with error=str(exc). Besides the policy,
+    a password mustn't contain a context word, nor be a known breached password
+    (auth/breached_passwords.py; OWASP_PLAN.md OW-D15)."""
     problems = []
     if len(password) < policy.min_length:
         problems.append(f"be at least {policy.min_length} characters")
@@ -88,5 +107,13 @@ def validate_password(password: str, policy: PasswordPolicy) -> None:
         problems.append("include a number")
     if policy.require_symbol and not any(not c.isalnum() for c in password):
         problems.append("include a symbol")
+    flattened = _letters_and_digits(password)
+    if any(word in flattened for word in context):
+        problems.append("not contain the name of your organization, OpenClear, or your email address")
+    if check_breached and not problems:  # no network call for a password already refused
+        from openclear.auth.breached_passwords import is_breached
+
+        if is_breached(password):
+            problems.append("not be a password that has appeared in a data breach")
     if problems:
         raise ValueError("Password must " + "; ".join(problems) + ".")

@@ -8,6 +8,8 @@ ml_artifacts/
 .pytest_cache/
 *.egg-info/
 data/
+# ...but not the bundled breached-password list (auth/breached_passwords.py).
+!src/openclear/auth/data/
 .openclear-run/
 # the launcher's data folder before the rename; it moves it on first run
 .pospay-run/

@@ -135,4 +135,4 @@ def test_who_may_decide(db_session, tenant_factory):
         changes.decide(db_session, tenant.id, waiting.id, approve=False, user_id=second.id)
     changes.decide(db_session, tenant.id, waiting.id, approve=False, user_id=second.id, reason="Too weak")
     db_session.commit()
-    assert db_session.get(Tenant, tenant.id).password_min_length == 12
+    assert db_session.get(Tenant, tenant.id).password_min_length == 16

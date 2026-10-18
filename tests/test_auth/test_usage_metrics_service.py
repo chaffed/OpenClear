@@ -63,7 +63,7 @@ def test_get_tenant_usage_counts_every_dimension(db_session, tenant_factory):
     db_session.commit()
     viewer_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Viewer")
     user_service.create_user_with_membership(
-        db_session, tenant.id, email="extra-usage-user@example.com", password="ExtraUser123!", security_group_id=viewer_group.id,
+        db_session, tenant.id, email="extra-usage-user@example.com", password="Reads-statements-9!", security_group_id=viewer_group.id,
     )
     db_session.commit()
 

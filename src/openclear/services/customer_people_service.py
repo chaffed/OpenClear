@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from openclear.auth.password_policy import effective_policy, validate_password
+from openclear.auth.password_policy import context_words, effective_policy, validate_password
 from openclear.auth.security import hash_password, verify_password
 from openclear.db.tenancy import bind_session_to_tenant, memberships_elsewhere
 from openclear.domain.customer import Customer
@@ -283,7 +283,8 @@ def accept_as_new(session: Session, opened: OpenInvitation, password: str | None
     if opened.existing_user is not None:
         raise PeopleError("You already have an OpenClear sign-in: confirm with its password.")
     if opened.password_sign_in:
-        validate_password(password or "", effective_policy(opened.tenant, opened.customer))
+        validate_password(password or "", effective_policy(opened.tenant, opened.customer), context=context_words(
+            email=opened.invitation.email, tenants=[opened.tenant], customers=[opened.customer] if opened.customer else []))
         hashed = hash_password(password)
     else:
         hashed = hash_password(secrets.token_urlsafe(48))  # never told to anyone: they sign in through sign-on

@@ -136,6 +136,15 @@ class Settings(BaseSettings):
     # minutes/refresh_token_expire_minutes, see services/tenant_service.py).
     login_max_failed_attempts: int = 5
     login_lockout_minutes: int = 15
+    # Breached passwords (auth/breached_passwords.py; ASVS 5.0 6.2.4, 6.2.12): the bundled list
+    # of the 100,000 most common is always checked. breached_password_file adds a bigger list
+    # in Have I Been Pwned's download format (sorted "SHA1:count" lines, searched in place, so
+    # even the full download needs no loading), for installations that can't reach the
+    # internet. breached_password_hibp asks HIBP's range API (k-anonymity: only the first five
+    # characters of the hash leave the server); if it can't be reached, the lists decide.
+    breached_password_file: str | None = None
+    breached_password_hibp: bool = False
+    breached_password_hibp_timeout_seconds: float = 3.0
 
     # WebAuthn/FIDO2 — rp_id must be a domain the browser considers the current origin's
     # registrable domain (no scheme/port); origin must be the exact scheme+host(+port).

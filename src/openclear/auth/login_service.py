@@ -72,6 +72,23 @@ class PasswordLoginResult:
 LOCKED_UNTIL_UNLOCKED = datetime(9999, 12, 31, tzinfo=timezone.utc)
 
 
+_DUMMY_HASH: str | None = None
+
+
+def _spend_a_password_check(password: str) -> None:
+    """Runs bcrypt against a throwaway hash, so a sign-in that fails before the real check
+    (unknown bank, unknown or inactive person, a locked account) takes as long as a wrong
+    password and doesn't reveal which emails have accounts (ASVS 5.0 6.3.8)."""
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        import secrets
+
+        from openclear.auth.security import hash_password
+
+        _DUMMY_HASH = hash_password(secrets.token_urlsafe(24))
+    verify_password(password, _DUMMY_HASH)
+
+
 def lockout_policy(tenant: Tenant | None, settings=None) -> tuple[int, int, bool]:
     """(failed attempts that lock, minutes the lock lasts, whether it lasts until an
     administrator unlocks it): the bank's own, or the installation's."""
@@ -112,6 +129,7 @@ def authenticate_password(
 
     tenant = session.execute(select(Tenant).where(Tenant.slug == tenant_slug)).scalar_one_or_none()
     if tenant is None or not tenant.is_active:
+        _spend_a_password_check(password)
         return failed("unknown_bank")
     # The rest of login reads RLS-protected tables (memberships, security groups, keys),
     # so the session runs as this bank from here on (a no-op off Postgres).
@@ -119,9 +137,11 @@ def authenticate_password(
 
     user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
     if user is None or not user.is_active or user.is_service_account:
+        _spend_a_password_check(password)
         return failed("unknown_user" if user is None else "inactive", tenant.id, user)
 
     if user.locked_until is not None and _as_utc(user.locked_until) > datetime.now(timezone.utc):
+        _spend_a_password_check(password)
         return failed("locked", tenant.id, user, PasswordLoginOutcome.LOCKED)
 
     if not verify_password(password, user.hashed_password):
@@ -192,11 +212,39 @@ def authenticate_password(
         mfa_required=mfa_required,
         needs_webauthn_enrollment=needs_webauthn_enrollment,
     )
+    _flag_weak_password(session, tenant, membership, user, password)
     security_events.emit(
         session, "auth.login.succeeded", tenant_id=tenant.id, actor_type="user", actor_id=user.id, actor_label=user.email,
         details={"method": "password", "second_factor_required": mfa_required},
     )
     return PasswordLoginResult(PasswordLoginOutcome.SUCCESS, identity=identity)
+
+
+def _flag_weak_password(session: Session, tenant: Tenant, membership: TenantMembership, user, password: str) -> None:
+    """Sign-in is the only moment OpenClear holds the plaintext of an existing password, so
+    it's checked here against today's rules (OWASP_PLAN.md OW-D17): a password that is known
+    to be breached, or shorter than the policy now requires, still lets the person in, but
+    they must change it before going further (must_change_password). Once per person; not
+    in the demo organization, whose shared password can't be changed."""
+    if user.must_change_password or tenant.is_demo:
+        return
+    from openclear.auth.breached_passwords import is_breached
+    from openclear.auth.password_policy import effective_policy
+    from openclear.services import security_events
+
+    customer = session.get(Customer, membership.customer_id) if membership.customer_id else None
+    if len(password) < effective_policy(tenant, customer).min_length:
+        reason = "too_short"
+    elif is_breached(password):
+        reason = "breached"
+    else:
+        return
+    user.must_change_password = True
+    session.flush()
+    security_events.emit(
+        session, "auth.password.weak", tenant_id=tenant.id, actor_type="user", actor_id=user.id, actor_label=user.email,
+        outcome="success", reason=reason,
+    )
 
 
 def scope_allows_password_login(session: Session, tenant: Tenant, membership: TenantMembership) -> bool:

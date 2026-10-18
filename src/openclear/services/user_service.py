@@ -10,7 +10,7 @@ from typing import Any, Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from openclear.auth.password_policy import PasswordPolicy, effective_policy, strictest, validate_password
+from openclear.auth.password_policy import PasswordPolicy, context_words, effective_policy, strictest, validate_password
 from openclear.auth.security import hash_password, verify_password
 from openclear.bulk_import.fields import RowFieldError, optional_str, require_str
 from openclear.bulk_import.results import UserBulkRowResult
@@ -155,7 +155,8 @@ def create_user_with_membership(
 ) -> User:
     tenant = session.get(Tenant, tenant_id)
     customer = customer_service.get_customer(session, tenant_id, customer_id) if customer_id else None
-    validate_password(password, effective_policy(tenant, customer))
+    validate_password(password, effective_policy(tenant, customer),
+                      context=context_words(email=email, tenants=[tenant], customers=[customer] if customer else []))
 
     user = User(email=email, hashed_password=hash_password(password))
     UserRepository(session).add(user)
@@ -395,6 +396,19 @@ def password_policy_for_user(session: Session, user_id: uuid.UUID) -> PasswordPo
     return strictest(policies)
 
 
+def password_context_for_user(session: Session, user: User) -> list[str]:
+    """Words this person's password mustn't contain: their email's, and every organization's
+    and customer's they belong to (auth/password_policy.py::context_words)."""
+    tenants, customers = [], []
+    for row in list_memberships_for_user(session, user.id):
+        tenants.append(row.tenant)
+        if row.membership.customer_id:
+            customer = customer_service.get_customer(session, row.membership.tenant_id, row.membership.customer_id)
+            if customer is not None:
+                customers.append(customer)
+    return context_words(email=user.email, tenants=tenants, customers=customers)
+
+
 def change_own_password(
     session: Session, tenant_id: uuid.UUID, user_id: uuid.UUID, *, current_password: str, new_password: str
 ) -> User:
@@ -424,7 +438,7 @@ def change_own_password(
     policy = password_policy_for_user(session, user_id)
     if policy is not None:
         try:
-            validate_password(new_password, policy)
+            validate_password(new_password, policy, context=password_context_for_user(session, user))
         except ValueError as exc:
             raise PasswordChangeError(str(exc)) from None
 
