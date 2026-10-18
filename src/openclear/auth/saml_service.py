@@ -204,8 +204,11 @@ def process_response(connection: SsoConnection, base: str, post_data: dict, *, r
         raise SamlError("The SAML response answers a request this sign-in didn't make.")
 
     attributes = auth.get_attributes() or {}
-    subject = auth.get_nameid() or ""
-    email_values = attributes.get(connection.saml_email_attribute, []) if connection.saml_email_attribute else [subject]
+    name_id = auth.get_nameid() or ""
+    # A transient NameID changes at every sign-in, so it can't identify the person: it isn't
+    # recorded as the subject (services/sso_service.py matches people by subject).
+    subject = "" if (auth.get_nameid_format() or "").endswith(":transient") else name_id
+    email_values = attributes.get(connection.saml_email_attribute, []) if connection.saml_email_attribute else [name_id]
     email = (email_values[0] if email_values else "").strip().lower()
     if "@" not in email:
         raise SamlError("The SAML assertion has no email address.")

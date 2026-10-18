@@ -72,6 +72,8 @@ _SSO_REQUIRED_MESSAGE = "This organization requires single sign-on — use the b
 _SSO_FAILED_MESSAGE = (
     "Single sign-on couldn't be completed. Please try again, and contact your administrator if it keeps happening."
 )
+_IDENTITY_CONFLICT_MESSAGE = ("Your organization's sign-on sent a different identity for this email than before. "
+                              "Ask your administrator to check your account before you sign in.")
 
 
 def _invalid_message(db: Session, tenant_slug: str) -> str:
@@ -476,6 +478,9 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
     if result.outcome == "not_authorized":
         db.commit()
         return error_page(_NOT_AUTHORIZED_MESSAGE)
+    if result.outcome == "identity_conflict":
+        db.commit()  # keeps the security event
+        return error_page(_IDENTITY_CONFLICT_MESSAGE)
     if result.outcome == "not_provisioned":
         return error_page(_NOT_PROVISIONED_MESSAGE)
     if result.outcome == "pending_approval":

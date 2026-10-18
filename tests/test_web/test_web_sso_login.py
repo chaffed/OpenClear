@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import pytest
 from openclear.auth.security import decode_sso_state_token
 from openclear.domain.sso_connection import SsoProvider
 from openclear.services import security_group_service, sso_service
@@ -394,3 +395,50 @@ def test_editing_sso_connection_to_internal_issuer_shows_form_error(client, db_s
     assert f"/ui/admin/sso/{connection.id}/edit?error=" in resp.headers["location"]
     db_session.expire_all()
     assert sso_service.get_connection(db_session, tenant.id, connection.id).issuer == "https://idp.example.com"
+
+
+# --- People matched by the provider's subject (ASVS 10.5.2) ---
+
+
+def _claims(email, subject):
+    from openclear.auth.oidc_service import OidcClaims
+
+    return OidcClaims(email=email, subject=subject, groups=["openclear-users"])
+
+
+@pytest.mark.asvs("10.5.2")
+def test_a_reassigned_email_is_refused(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-subject-reassigned")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    first = sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("pat@acme.example.com", "sub-pat"))
+    db_session.commit()
+    assert first.outcome == "success"
+
+    # The provider gives pat@ to someone new, with a new subject.
+    newcomer = sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("pat@acme.example.com", "sub-new-person"))
+    assert newcomer.outcome == "identity_conflict"
+
+
+def test_a_known_subject_with_a_changed_email_is_refused(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-subject-changed")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("lee@acme.example.com", "sub-lee")).outcome == "success"
+    db_session.commit()
+    moved = sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("lee.smith@acme.example.com", "sub-lee"))
+    assert moved.outcome == "identity_conflict"
+
+
+def test_the_same_subject_and_email_sign_in_as_before(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-subject-same")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    for _ in range(2):
+        assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("kim@acme.example.com", "sub-kim")).outcome == "success"
+        db_session.commit()
+
+
+def test_without_a_subject_only_the_email_is_used(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-subject-none")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    for _ in range(2):  # e.g. a SAML transient NameID: nothing to compare
+        assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("ana@acme.example.com", "")).outcome == "success"
+        db_session.commit()

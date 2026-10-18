@@ -220,7 +220,7 @@ def remove_group_mapping(session: Session, tenant_id: uuid.UUID, mapping_id: uui
 
 @dataclass(frozen=True, slots=True)
 class SsoLoginResult:
-    outcome: Literal["success", "not_authorized", "not_provisioned", "pending_approval"]
+    outcome: Literal["success", "not_authorized", "not_provisioned", "pending_approval", "identity_conflict"]
     user: User | None = None
     membership: TenantMembership | None = None
 
@@ -243,10 +243,39 @@ def _resolve_security_group_id(
 
 
 def complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoConnection, claims: OidcClaims) -> SsoLoginResult:
+    conflict = _identity_conflict(session, connection, claims)
+    if conflict is not None:
+        from openclear.services import security_events
+
+        security_events.emit(session, "auth.sso.failed", tenant_id=tenant_id, outcome="failure", reason=conflict,
+                             actor_label=claims.email[:320], details={"connection": connection.display_name})
+        return SsoLoginResult(outcome="identity_conflict")
     result = _complete_sso_login(session, tenant_id, connection, claims)
     if result.outcome == "success" and claims.subject:
         record_identity(session, tenant_id, connection, claims.subject, result.user)
     return result
+
+
+def _identity_conflict(session: Session, connection: SsoConnection, claims: OidcClaims) -> str | None:
+    """Whether the provider's subject (OIDC `sub`, a persistent SAML NameID) disagrees with the
+    email it sent (ASVS 5.0 10.5.2). The subject is what identifies a person at the provider;
+    an email can be given to someone else. Two cases are refused until an administrator looks:
+    - subject_email_changed: a known subject arrives with a different email;
+    - email_reassigned: a new subject arrives with the email of someone already known on this
+      connection by another subject (the email was given to someone new).
+    Without a subject (a transient NameID) only the email is used, as before."""
+    if not claims.subject:
+        return None
+    from sqlalchemy import select
+
+    known = find_identity_user(session, connection, claims.subject)
+    if known is not None:
+        return None if known.email.lower() == claims.email.lower() else "subject_email_changed"
+    by_email = UserRepository(session).get_by_email(claims.email)
+    if by_email is not None and session.execute(select(SsoIdentity.id).where(
+            SsoIdentity.connection_id == connection.id, SsoIdentity.user_id == by_email.id)).first():
+        return "email_reassigned"
+    return None
 
 
 def record_identity(session: Session, tenant_id: uuid.UUID, connection: SsoConnection, subject: str, user: User) -> SsoIdentity:
