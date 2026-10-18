@@ -39,6 +39,20 @@
     <p>{{ account_access }}. <a href="/ui/users/{{ membership.id }}/accounts">Choose accounts</a></p>
   </section>
   {% endif %}
+  {% if member_user.id != ctx.user_id %}
+  <section class="card-section">
+    <h2>Lost security key</h2>
+    <p class="hint">Removes all of {{ member_user.email }}'s security keys here; they add a new one when they next sign in,
+      and are signed out everywhere. First confirm it's really them, the way you would to reset a password.</p>
+    <form method="post" action="/ui/users/{{ membership.id }}/reset-security-keys"
+          data-confirm="Remove all of {{ member_user.email }}'s security keys?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>How did you confirm it's them? <input type="text" name="identity_check" required minlength="10" maxlength="300"
+        placeholder="e.g. called their number on file"></label>
+      <button type="submit" class="secondary">Reset security keys</button>
+    </form>
+  </section>
+  {% endif %}
   <p class="link-line"><a href="/ui/users">Cancel</a></p>
 </div>
 {% endblock %}

@@ -360,6 +360,20 @@ def sign_out(request: Request, membership_id: uuid.UUID, db: Session = Depends(g
     return out if isinstance(out, Response) else _back(f"Signed {out[1].user.email} out everywhere.")
 
 
+@router.post("/ui/people/{membership_id}/reset-security-keys")
+def reset_security_keys(request: Request, membership_id: uuid.UUID, identity_check: str = Form(""), db: Session = Depends(get_db),
+                        ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
+    out = _action(request, db, ctx, membership_id,
+                  lambda: customer_people_service.reset_security_keys(db, ctx.tenant_id, ctx.customer_id, membership_id,
+                                                                      actor_user_id=ctx.user_id, identity_check=identity_check),
+                  "customer_people.reset_security_keys",
+                  "Reset the security keys of {email}. Identity confirmed by: " + identity_check.strip()[:300].replace("{", "(").replace("}", ")"))
+    if isinstance(out, Response):
+        return out
+    (user, _removed), _person = out
+    return _back(f"{user.email}'s security keys were removed. They'll add a new one when they next sign in.")
+
+
 @router.post("/ui/people/{membership_id}/reset-password")
 def reset_password(request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                    _csrf: None = Depends(verify_csrf)) -> Response:

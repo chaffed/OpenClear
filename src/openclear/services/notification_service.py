@@ -386,13 +386,14 @@ def notify_password_reset_link(session: Session, user: User, *, link: str, hours
     session.flush()
 
 
-def notify_security_key_changed(session: Session, user: User, *, added: bool, nickname: str | None, bank_name: str) -> None:
+def notify_security_key_changed(session: Session, user: User, *, added: bool, nickname: str | None, bank_name: str,
+                                reset_by_admin: bool = False) -> None:
     _queue(
         session,
         tenant_id=None,
         recipient=user,
         notification_type=NotificationType.SECURITY_KEY_CHANGED,
-        template_context={"added": added, "nickname": nickname, "bank_name": bank_name},
+        template_context={"added": added, "nickname": nickname, "bank_name": bank_name, "reset_by_admin": reset_by_admin},
         resource_type="user",
         resource_id=user.id,
     )

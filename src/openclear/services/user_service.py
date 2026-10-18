@@ -377,6 +377,40 @@ class PasswordChangeError(ValueError):
     (routers re-render the form with error=str(exc), this app's usual convention)."""
 
 
+MIN_IDENTITY_CHECK = 10
+
+
+def admin_reset_security_keys(
+    session: Session, tenant_id: uuid.UUID, membership_id: uuid.UUID, *, actor_user_id: uuid.UUID, identity_check: str
+) -> tuple[User, int]:
+    """Removes every security key the person has at this bank, so they register a new one at
+    their next sign-in (OWASP_PLAN.md OW-D21; ADR 0004). Keys belong to one bank, so their other
+    organizations are unaffected. The administrator must say how they confirmed it's really the
+    person (ASVS 5.0 6.4.4); it goes in the action log. Every session ends, and the person is
+    emailed. Returns the user and how many keys were removed."""
+    from sqlalchemy import delete
+
+    from openclear.domain.webauthn_credential import WebauthnCredential
+
+    identity_check = (identity_check or "").strip()
+    if len(identity_check) < MIN_IDENTITY_CHECK:
+        raise PasswordChangeError("Say how you confirmed it's really them, for example a call to their number on file.")
+    membership = TenantMembershipRepository(session, tenant_id).get(membership_id)
+    if membership is None:
+        raise PasswordChangeError("User not found.")
+    if membership.user_id == actor_user_id:
+        raise PasswordChangeError("To change your own security keys, use Security.")
+    user = session.get(User, membership.user_id)
+    removed = session.execute(delete(WebauthnCredential).where(
+        WebauthnCredential.tenant_id == tenant_id, WebauthnCredential.user_id == user.id)).rowcount or 0
+    session_service.revoke_all_sessions(session, user)
+    tenant = session.get(Tenant, tenant_id)
+    notification_service.notify_security_key_changed(session, user, added=False, nickname=None,
+                                                     bank_name=tenant.name if tenant else "your bank", reset_by_admin=True)
+    session.flush()
+    return user, removed
+
+
 def password_policy_for_user(session: Session, user_id: uuid.UUID) -> PasswordPolicy | None:
     """The strictest policy across every active membership this identity holds — a User
     has ONE password shared by all of them, so it must satisfy the tightest one, not just

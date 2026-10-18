@@ -53,6 +53,14 @@
     <button type="submit" class="secondary">Unlock</button>
   </form>
   {% endif %}
+  <form method="post" action="/ui/people/{{ person.membership.id }}/reset-security-keys" class="inline-form"
+        data-confirm="Remove all of {{ person.user.email }}'s security keys? They'll add a new one when they next sign in.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="visually-hidden" for="identity-check">How did you confirm it's them?</label>
+    <input id="identity-check" type="text" name="identity_check" required minlength="10" maxlength="300"
+           placeholder="How did you confirm it's them?">
+    <button type="submit" class="secondary">Reset security keys</button>
+  </form>
   <form method="post" action="/ui/people/{{ person.membership.id }}/reset-password" class="inline-form"
         data-confirm="Reset the password for {{ person.user.email }}? Their current password stops working and they'll be emailed a link to choose a new one.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

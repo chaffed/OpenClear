@@ -373,6 +373,19 @@ def unlock(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membe
     return user
 
 
+def reset_security_keys(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membership_id: uuid.UUID,
+                        *, actor_user_id: uuid.UUID, identity_check: str) -> tuple[User, int]:
+    """A customer administrator resets one of its people's security keys (OW-D21)."""
+    from openclear.services import user_service
+
+    get_person(session, tenant_id, customer_id, membership_id)  # one of this customer's people, or not found
+    try:
+        return user_service.admin_reset_security_keys(session, tenant_id, membership_id, actor_user_id=actor_user_id,
+                                                      identity_check=identity_check)
+    except user_service.PasswordChangeError as exc:
+        raise PeopleError(str(exc)) from None
+
+
 def reset_password(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membership_id: uuid.UUID,
                    *, actor_user_id: uuid.UUID, base_url: str) -> User:
     """Emails the person a one-time link to choose a new password (services/password_reset_service.py)."""

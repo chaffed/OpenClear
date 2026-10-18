@@ -364,6 +364,31 @@ def sign_out_everywhere(
     return RedirectResponse("/ui/users?flash=" + quote(f"{user.email} has been signed out everywhere."), status_code=303)
 
 
+@router.post("/{membership_id}/reset-security-keys", dependencies=[Depends(_people_only)])
+def reset_security_keys(
+    request: Request,
+    membership_id: uuid.UUID,
+    identity_check: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    """Someone lost their key: remove all of theirs here, after confirming it's them (OW-D21)."""
+    try:
+        user, removed = user_service.admin_reset_security_keys(db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id,
+                                                               identity_check=identity_check)
+    except user_service.PasswordChangeError as exc:
+        return RedirectResponse(f"/ui/users/{membership_id}/edit?error=" + quote(str(exc)), status_code=303)
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.security_key_reset",
+        summary=f"Reset the security keys of {user.email} ({removed} removed). Identity confirmed by: {identity_check.strip()[:300]}",
+        resource_type="user", resource_id=user.id,
+    )
+    db.commit()
+    return RedirectResponse("/ui/users?flash=" + quote(
+        f"{user.email}'s security keys were removed. They'll add a new one when they next sign in."), status_code=303)
+
+
 @router.post("/{membership_id}/reset-password", dependencies=[Depends(_people_only)])
 def reset_password(
     request: Request,

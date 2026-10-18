@@ -130,3 +130,53 @@ def test_the_bank_can_turn_it_on_for_a_customer_from_its_page(client, db_session
                 data={"csrf_token": client.cookies.get("csrf_token"), "require_security_key": "true"})
     db_session.refresh(customer)
     assert customer.require_security_key and customer.security_key_required_since is not None
+
+
+# --- An administrator resets someone's security keys (OW-D21) ---
+
+
+def _browser_as(client, tenant, user):
+    client.get("/ui/login")
+    client.post("/ui/login", data={"tenant_slug": tenant.slug, "email": user.email, "password": TenantFactory.PASSWORD,
+                                   "csrf_token": client.cookies.get("csrf_token"), "next": "/ui/"})
+    return client.cookies.get("csrf_token")
+
+
+@pytest.mark.asvs("6.4.4")
+def test_an_admin_resets_keys_after_saying_how_they_confirmed_it(client, db_session, tenant_factory):
+    from openclear.domain.audit_log_entry import AuditLogEntry
+    from openclear.domain.notification import Notification, NotificationType
+
+    tenant, _account, users = tenant_factory.make(slug="key-reset-admin")
+    viewer = users["viewer"]
+    for _ in range(2):
+        db_session.add(WebauthnCredential(tenant_id=tenant.id, user_id=viewer.id, credential_id=uuid.uuid4().bytes, public_key=b"k",
+                                          sign_count=0))
+    db_session.commit()
+    membership = _membership(db_session, tenant, viewer)
+    csrf = _browser_as(client, tenant, users["admin"])
+
+    vague = client.post(f"/ui/users/{membership.id}/reset-security-keys", data={"csrf_token": csrf, "identity_check": "ok"},
+                        follow_redirects=False)
+    assert "error=" in vague.headers["location"]
+    done = client.post(f"/ui/users/{membership.id}/reset-security-keys",
+                       data={"csrf_token": csrf, "identity_check": "Called her desk line on file"}, follow_redirects=False)
+
+    assert "flash=" in done.headers["location"]
+    assert db_session.query(WebauthnCredential).filter_by(tenant_id=tenant.id, user_id=viewer.id).count() == 0
+    entry = db_session.query(AuditLogEntry).filter_by(tenant_id=tenant.id, action="user.security_key_reset").one()
+    assert "Called her desk line on file" in entry.summary and "2 removed" in entry.summary
+    note = db_session.query(Notification).filter_by(recipient_user_id=viewer.id,
+                                                    notification_type=NotificationType.SECURITY_KEY_CHANGED).one()
+    assert "removed all your security keys" in note.body
+
+
+def test_a_customer_admin_resets_only_their_own_people(client, db_session, tenant_factory):
+    from tests.test_web.test_customer_people import _setup
+
+    s = _setup(db_session, tenant_factory, slug="key-reset-cust")
+    csrf = _browser_as(client, s["tenant"], s["admin"])
+    outsider = _membership(db_session, s["tenant"], s["users"]["viewer"])  # bank staff, not this customer's
+    refused = client.post(f"/ui/people/{outsider.id}/reset-security-keys",
+                          data={"csrf_token": csrf, "identity_check": "Called them on file"})
+    assert refused.status_code in (404, 422)
