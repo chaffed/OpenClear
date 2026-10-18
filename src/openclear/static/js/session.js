@@ -75,6 +75,14 @@
     }
   };
 
+  // Signing out forgets the session's timing here too, for browsers that ignore the
+  // server's Clear-Site-Data header.
+  document.querySelectorAll('form[action="/ui/logout"]').forEach((form) => {
+    form.addEventListener("submit", () => {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* storage refused: nothing to clear */ }
+    });
+  });
+
   const signOut = () => {
     const form = document.querySelector('form[action="/ui/logout"]');
     if (form) form.submit();

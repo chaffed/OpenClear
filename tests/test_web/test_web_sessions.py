@@ -513,3 +513,14 @@ def test_create_session_tokens_share_one_session(db_session, tenant_factory):
     assert access["tv"] == refresh["tv"] == 3
     assert access["type"] == "access" and refresh["type"] == "refresh"
     assert refresh["exp"] == access["sxp"] == int(tokens.session_expires_at.timestamp())
+
+
+@pytest.mark.asvs("14.3.1")
+def test_ending_a_session_clears_the_browser_s_cache_and_storage(client, tenant_factory):
+    tenant, _account, users = tenant_factory.make(slug="sess-clear-site")
+    client.get("/ui/login")
+    client.post("/ui/login", data={"tenant_slug": tenant.slug, "email": users["admin"].email, "password": TenantFactory.PASSWORD,
+                                   "csrf_token": client.cookies.get("csrf_token"), "next": "/ui/"})
+    out = client.post("/ui/logout", data={"csrf_token": client.cookies.get("csrf_token")}, follow_redirects=False)
+    assert out.headers["clear-site-data"] == '"cache", "storage"'
+    assert client.get("/ui/embed/ended").headers["clear-site-data"] == '"cache", "storage"'

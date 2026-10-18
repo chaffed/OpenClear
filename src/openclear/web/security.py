@@ -119,7 +119,13 @@ def set_mfa_cookie(response: Response, token: str) -> None:
     )
 
 
+CLEAR_SITE_DATA = '"cache", "storage"'
+
+
 def clear_auth_cookies(response: Response, *, embed: bool = False) -> None:
+    # The session's pages and browser storage go with it (ASVS 5.0 14.3.1): cached pages that
+    # carried account data, and session.js's timing entry.
+    response.headers["Clear-Site-Data"] = CLEAR_SITE_DATA
     # Attributes here must match exactly what was used when the cookie was SET, or the
     # browser silently keeps it — the most common way a "logout" button does nothing.
     response.delete_cookie(ACCESS_COOKIE_NAME, path="/", secure=_secure_cookies(), samesite="lax")

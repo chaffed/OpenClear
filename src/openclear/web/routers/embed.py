@@ -16,7 +16,7 @@ from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, embed_service, user_service
 from openclear.web.deps import render_template
-from openclear.web.security import set_session_cookies
+from openclear.web.security import CLEAR_SITE_DATA, set_session_cookies
 
 router = APIRouter(prefix="/ui/embed", tags=["web-embed"])
 logger = logging.getLogger(__name__)
@@ -26,7 +26,9 @@ def _ended(request: Request, message: str, status_code: int = 200) -> HTMLRespon
     # Framable by anyone: it says only that the session ended and tells the frame's parent
     # so (no data, no actions), so the online banking page can start a new one.
     request.state.frame_ancestor = "*"
-    return render_template(request, "embed/ended.html", ctx=None, message=message, status_code=status_code)
+    response = render_template(request, "embed/ended.html", ctx=None, message=message, status_code=status_code)
+    response.headers["Clear-Site-Data"] = CLEAR_SITE_DATA  # the embedded session's cache and storage
+    return response
 
 
 @router.get("/launch")
