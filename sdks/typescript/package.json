@@ -27,8 +27,8 @@
     "test": "node --test test/*.test.ts"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
-    "@types/node": "^24.0.0"
+    "typescript": "^7.0.2",
+    "@types/node": "^26.6.5"
   },
   "repository": {
     "type": "git",
