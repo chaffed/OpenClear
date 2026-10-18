@@ -34,7 +34,7 @@ from openclear.web.templates import templates
 # optional" reasoning most apps apply to account-security notices. Every other type (and
 # SMS for every type, including these) stays fully preference-controlled.
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
-                                 NotificationType.PASSWORD_RESET_LINK})
+                                 NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -46,6 +46,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.DEADLINE_REMINDER: "Items to decide before the cutoff",
     NotificationType.INVITATION: "You're invited to OpenClear",
     NotificationType.PASSWORD_RESET_LINK: "Choose a new OpenClear password",
+    NotificationType.SECURITY_KEY_CHANGED: "A security key was changed on your OpenClear sign-in",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -383,6 +384,18 @@ def notify_password_reset_link(session: Session, user: User, *, link: str, hours
         resource_type="user", resource_id=user.id,
     ))
     session.flush()
+
+
+def notify_security_key_changed(session: Session, user: User, *, added: bool, nickname: str | None, bank_name: str) -> None:
+    _queue(
+        session,
+        tenant_id=None,
+        recipient=user,
+        notification_type=NotificationType.SECURITY_KEY_CHANGED,
+        template_context={"added": added, "nickname": nickname, "bank_name": bank_name},
+        resource_type="user",
+        resource_id=user.id,
+    )
 
 
 def notify_invitation(

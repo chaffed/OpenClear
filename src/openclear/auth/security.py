@@ -47,6 +47,7 @@ def create_token(
     support_grant_id: uuid.UUID | None = None,
     confined: bool = False,
     signed_in_with: str | None = None,
+    authenticated_at: int | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -121,6 +122,11 @@ def create_token(
         # organization checks it against what that organization allows
         # (web/routers/tenant_switch.py::switch_refusal). Carried through refreshes.
         payload["am"] = signed_in_with
+    if authenticated_at is not None:
+        # When the person last proved who they are (a password, a security key, SSO), as epoch
+        # seconds: a sensitive change such as adding a security key needs it to be recent
+        # (auth/deps.py::recently_signed_in). Carried, never renewed, by refresh and switch.
+        payload["auth"] = authenticated_at
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 
@@ -138,6 +144,11 @@ class SessionTokens:
     embed: dict | None = None
 
 
+# create_session_tokens' default: the person has just authenticated. Refresh, switch and
+# re-issue pass the session's own time (or None, for a token from before 1.22) instead.
+NEW_SIGN_IN = object()
+
+
 def create_session_tokens(
     *,
     user_id: uuid.UUID,
@@ -152,6 +163,7 @@ def create_session_tokens(
     embed: dict | None = None,
     confined: bool = False,
     signed_in_with: str | None = None,
+    authenticated_at: "int | None | object" = NEW_SIGN_IN,
     settings: Settings | None = None,
 ) -> SessionTokens:
     """Mints the access + refresh pair for one login session — every sign-in, refresh,
@@ -167,6 +179,8 @@ def create_session_tokens(
     access_minutes = access_token_expire_minutes if access_token_expire_minutes is not None else settings.jwt_access_token_expire_minutes
     refresh_minutes = refresh_token_expire_minutes if refresh_token_expire_minutes is not None else settings.jwt_refresh_token_expire_minutes
     session_id = session_id or uuid.uuid4()
+    if authenticated_at is NEW_SIGN_IN:
+        authenticated_at = int(now.timestamp())
     session_expires_at = session_expires_at or now + timedelta(minutes=refresh_minutes)
     access_expires_at = min(now + timedelta(minutes=access_minutes), session_expires_at)
     common = dict(
@@ -180,6 +194,7 @@ def create_session_tokens(
         embed=embed,
         confined=confined,
         signed_in_with=signed_in_with,
+        authenticated_at=authenticated_at,
         settings=settings,
     )
     return SessionTokens(

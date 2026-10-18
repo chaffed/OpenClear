@@ -43,6 +43,9 @@ CATALOG: dict[str, EventType] = {
     "auth.lockout": EventType("authentication", "high"),
     "auth.mfa.succeeded": EventType("authentication", "low"),
     "auth.mfa.failed": EventType("authentication", "medium"),
+    # A security key added to or removed from someone's sign-in (needs a recent sign-in).
+    "auth.mfa.added": EventType("authentication", "medium"),
+    "auth.mfa.removed": EventType("authentication", "medium"),
     "auth.sso.succeeded": EventType("authentication", "low"),
     "auth.sso.failed": EventType("authentication", "medium"),
     "auth.logout": EventType("authentication", "low"),
@@ -170,6 +173,8 @@ AUDIT_EVENTS: dict[str, str] = {
     "user.password_change": "auth.password.changed",
     "user.password_reset": "auth.password.reset",
     "user.password_reset_completed": "auth.password.changed",
+    "user.security_key_added": "auth.mfa.added",
+    "user.security_key_removed": "auth.mfa.removed",
     "user.sign_out_everywhere": "auth.session.revoked",
     "user.sign_out_other_sessions": "auth.session.revoked",
     "user.login_sso": "auth.sso.succeeded",

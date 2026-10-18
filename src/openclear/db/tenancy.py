@@ -53,6 +53,8 @@ class TenantContext:
     # How the session was signed in ("password", "sso"; None for a token minted before
     # 1.21.2), from the token's `am` claim (auth/security.py::create_token).
     signed_in_with: str | None = None
+    # When the person last authenticated (epoch seconds; the token's `auth` claim), or None.
+    authenticated_at: int | None = None
 
     # Per-tenant session-length override (services/tenant_service.py::set_session_timeouts)
     # — None means "use config.Settings.jwt_access/refresh_token_expire_minutes", the same

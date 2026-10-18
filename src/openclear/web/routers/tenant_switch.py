@@ -118,6 +118,7 @@ def switch_tenant(
             token_type="mfa_pending",
             token_version=user.token_version,
             signed_in_with=ctx.signed_in_with,
+            authenticated_at=ctx.authenticated_at,
         )
         # switch_refusal has already made sure a key is registered there.
         response = RedirectResponse(f"/ui/login/webauthn?next={quote('/ui/')}", status_code=303)
@@ -139,6 +140,7 @@ def switch_tenant(
         access_token_expire_minutes=target.tenant.access_token_expire_minutes,
         refresh_token_expire_minutes=target.tenant.refresh_token_expire_minutes,
         signed_in_with=ctx.signed_in_with,
+        authenticated_at=ctx.authenticated_at,  # a switch isn't a new sign-in
     )
     response = RedirectResponse("/ui/", status_code=303)
     set_session_cookies(response, tokens)

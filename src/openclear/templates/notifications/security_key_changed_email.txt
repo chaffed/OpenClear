@@ -1,0 +1,3 @@
+{% if added %}A security key{% if nickname %} ("{{ nickname }}"){% endif %} was added to your OpenClear sign-in at {{ bank_name }}.{% else %}A security key{% if nickname %} ("{{ nickname }}"){% endif %} was removed from your OpenClear sign-in at {{ bank_name }}.{% endif %}
+
+If this was you, there's nothing to do. If it wasn't, tell your administrator now: someone else may be signed in as you.

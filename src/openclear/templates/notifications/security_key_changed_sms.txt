@@ -1,0 +1,1 @@
+A security key was {% if added %}added to{% else %}removed from{% endif %} your OpenClear sign-in. If it wasn't you, tell your administrator now.

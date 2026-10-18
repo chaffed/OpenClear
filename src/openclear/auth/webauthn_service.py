@@ -214,3 +214,22 @@ def delete_credential(session: Session, tenant_id: uuid.UUID, user_id: uuid.UUID
     session.delete(row)
     session.flush()
     return True
+
+
+def record_key_change(session: Session, ctx, user: User, *, added: bool, nickname: str | None, channel: str) -> None:
+    """A security key added or removed (needs a recent sign-in: auth/deps.py::recently_signed_in):
+    the audited action, its security event, and an email to the person (ASVS 5.0 6.3.7). The
+    caller commits."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import audit_log_service, notification_service
+
+    label = f' "{nickname}"' if nickname else ""
+    audit_log_service.record_action(
+        session, ctx.tenant_id, actor_user_id=user.id, channel=channel,
+        action="user.security_key_added" if added else "user.security_key_removed",
+        summary=f"{user.email} {'added' if added else 'removed'} a security key{label}",
+        resource_type="user", resource_id=user.id,
+    )
+    tenant = session.get(Tenant, ctx.tenant_id)
+    notification_service.notify_security_key_changed(session, user, added=added, nickname=nickname,
+                                                     bank_name=tenant.name if tenant else "your bank")

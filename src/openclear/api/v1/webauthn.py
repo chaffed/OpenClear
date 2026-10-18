@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from openclear.auth.deps import get_current_context, get_mfa_pending_context
+from openclear.auth.deps import RECENT_SIGN_IN_REQUIRED, get_current_context, get_mfa_pending_context, recently_signed_in
 from openclear.auth.security import create_session_tokens
 from openclear.auth.webauthn_service import (
     WebauthnError,
@@ -16,6 +16,7 @@ from openclear.auth.webauthn_service import (
     complete_registration,
     delete_credential,
     list_credentials,
+    record_key_change,
 )
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
@@ -36,11 +37,18 @@ def _get_user_or_500(db: Session, ctx: TenantContext) -> User:
     return user
 
 
+def _require_recent_sign_in(ctx: TenantContext) -> None:
+    """Adding or removing a key needs a recent sign-in (auth/deps.py::recently_signed_in)."""
+    if not recently_signed_in(ctx):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, RECENT_SIGN_IN_REQUIRED)
+
+
 @router.post("/register/options")
 def register_options(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(get_current_context),
 ) -> Response:
+    _require_recent_sign_in(ctx)
     user = _get_user_or_500(db, ctx)
     options_json = begin_registration(db, user, ctx.tenant_id)
     db.commit()
@@ -53,11 +61,13 @@ def register_verify(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(get_current_context),
 ) -> WebauthnCredentialRead:
+    _require_recent_sign_in(ctx)
     user = _get_user_or_500(db, ctx)
     try:
         credential = complete_registration(db, user, ctx.tenant_id, payload.credential, nickname=payload.nickname)
     except WebauthnError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    record_key_change(db, ctx, user, added=True, nickname=credential.nickname, channel="api")
     db.commit()
     return WebauthnCredentialRead.model_validate(credential)
 
@@ -77,9 +87,12 @@ def remove_credential(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(get_current_context),
 ) -> None:
+    _require_recent_sign_in(ctx)
+    nickname = next((c.nickname for c in list_credentials(db, ctx.tenant_id, ctx.user_id) if c.id == credential_id), None)
     deleted = delete_credential(db, ctx.tenant_id, ctx.user_id, credential_id)
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Credential not found")
+    record_key_change(db, ctx, _get_user_or_500(db, ctx), added=False, nickname=nickname, channel="api")
     db.commit()
 
 

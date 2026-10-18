@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from openclear.auth.permissions import CUSTOMER_SCOPE_MASKED_PERMISSIONS, CUSTOMER_SELF_SERVICE_PERMISSIONS
 from openclear.auth.security import decode_token
+from openclear.config import get_settings
 from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext, bind_session_to_tenant
@@ -191,6 +192,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
         confined=bool(payload.get("cfd")),
         signed_in_with=payload.get("am"),
+        authenticated_at=payload.get("auth"),
     )
     # Who this request is for, for logs, rate limits and security events (web/request_context.py).
     from openclear.web import request_context
@@ -436,3 +438,16 @@ def require_permission(permission: str):
         return ctx
 
     return _check
+
+
+RECENT_SIGN_IN_REQUIRED = "For your security, sign in again to change your security keys."
+
+
+def recently_signed_in(ctx: TenantContext) -> bool:
+    """Whether the person proved who they are within Settings.recent_sign_in_minutes: needed to
+    add or remove a security key, so a stolen session can't swap in its own (ASVS 5.0 7.5.1).
+    A session from before 1.22 has no sign-in time and isn't recent."""
+    if ctx.authenticated_at is None:
+        return False
+    age = datetime.now(timezone.utc).timestamp() - ctx.authenticated_at
+    return age <= get_settings().recent_sign_in_minutes * 60

@@ -148,6 +148,9 @@ class Settings(BaseSettings):
     # How long the link an administrator's password reset emails stays usable
     # (services/password_reset_service.py).
     password_reset_link_hours: int = 24
+    # Adding or removing a security key needs a sign-in this recent (auth/deps.py::
+    # recently_signed_in; ASVS 5.0 7.5.1); otherwise the person signs in again first.
+    recent_sign_in_minutes: int = 10
 
     # WebAuthn/FIDO2 — rp_id must be a domain the browser considers the current origin's
     # registrable domain (no scheme/port); origin must be the exact scheme+host(+port).

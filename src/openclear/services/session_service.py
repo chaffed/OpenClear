@@ -118,5 +118,6 @@ def refresh_session(session: Session, refresh_token: str) -> tuple[SessionTokens
         embed=claims.get("emb"),  # an embedded session stays one
         confined=bool(claims.get("cfd")),  # and a confined one stays confined
         signed_in_with=claims.get("am"),
+        authenticated_at=claims.get("auth"),
     )
     return tokens, tenant

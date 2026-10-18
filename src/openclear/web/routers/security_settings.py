@@ -14,12 +14,14 @@ from openclear.auth.webauthn_service import (
     complete_registration,
     delete_credential,
     list_credentials,
+    record_key_change,
 )
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.notification import NotificationType
 from openclear.domain.user import User
 from openclear.schemas.webauthn import RegistrationVerifyRequest
+from openclear.auth.deps import RECENT_SIGN_IN_REQUIRED, recently_signed_in
 from openclear.auth.password_policy import describe
 from openclear.auth.security import create_session_tokens
 from openclear.services import audit_log_service, notification_service, session_service, user_service
@@ -34,7 +36,7 @@ router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 # with it.
 _PREFERENCE_TYPES = [
     t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INVITATION,
-                                             NotificationType.PASSWORD_RESET_LINK,
+                                             NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
                                              NotificationType.INACTIVITY_WARNING)
 ]
 
@@ -180,6 +182,7 @@ def _reissue_current_session(response: Response, ctx: TenantContext, user: User)
             embed={"po": ctx.embed_parent_origin} if ctx.embed_parent_origin else None,
             confined=ctx.confined,
             signed_in_with=ctx.signed_in_with,
+            authenticated_at=ctx.authenticated_at,
         ),
     )
 
@@ -242,6 +245,8 @@ def register_options(
     ctx: TenantContext = Depends(get_web_context),
     _csrf: None = Depends(verify_csrf_header),
 ) -> Response:
+    if not recently_signed_in(ctx):
+        return JSONResponse({"error": RECENT_SIGN_IN_REQUIRED}, status_code=403)
     user = db.get(User, ctx.user_id)
     options_json = begin_registration(db, user, ctx.tenant_id)
     db.commit()
@@ -255,11 +260,14 @@ def register_verify(
     ctx: TenantContext = Depends(get_web_context),
     _csrf: None = Depends(verify_csrf_header),
 ) -> JSONResponse:
+    if not recently_signed_in(ctx):
+        return JSONResponse({"error": RECENT_SIGN_IN_REQUIRED}, status_code=403)
     user = db.get(User, ctx.user_id)
     try:
         credential = complete_registration(db, user, ctx.tenant_id, payload.credential, nickname=payload.nickname)
     except WebauthnError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
+    record_key_change(db, ctx, user, added=True, nickname=credential.nickname, channel="web")
     db.commit()
     return JSONResponse({"id": str(credential.id), "nickname": credential.nickname})
 
@@ -271,7 +279,14 @@ def delete_credential_route(
     ctx: TenantContext = Depends(get_web_context),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
+    if not recently_signed_in(ctx):
+        return RedirectResponse(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}", status_code=303)
+    nickname = next((c.nickname for c in list_credentials(db, ctx.tenant_id, ctx.user_id) if c.id == credential_id), None)
     deleted = delete_credential(db, ctx.tenant_id, ctx.user_id, credential_id)
+    if deleted:
+        record_key_change(db, ctx, db.get(User, ctx.user_id), added=False, nickname=nickname, channel="web")
     db.commit()
-    flash = "Security key removed." if deleted else "Security key not found."
+    # ASVS 7.4.3: after removing a factor, offer to end every other session.
+    flash = ("Security key removed. If it was lost or stolen, use Sign out other devices below." if deleted
+             else "Security key not found.")
     return RedirectResponse(f"/ui/security?flash={quote(flash)}", status_code=303)
