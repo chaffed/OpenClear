@@ -13,7 +13,7 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from openclear.auth.keys import load_private_key
-from openclear.auth.security import decode_token
+from openclear.auth.security import PLATFORM_AUDIENCE, decode_token, token_issuer
 from openclear.config import get_settings
 from openclear.db.session import get_db
 from openclear.domain.user import User
@@ -34,7 +34,7 @@ def create_token(user: User) -> str:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload = {"sub": str(user.id), "type": "platform", "role": user.platform_role, "tv": user.token_version,
-               "iat": now, "exp": now + LIFETIME}
+               "iss": token_issuer(settings), "aud": PLATFORM_AUDIENCE, "iat": now, "exp": now + LIFETIME}
     return jwt.encode(payload, load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
 
 
@@ -68,7 +68,7 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise PlatformAuthRequired()
     try:
-        payload = decode_token(token)
+        payload = decode_token(token, audience=PLATFORM_AUDIENCE)
     except jwt.PyJWTError:
         raise PlatformAuthRequired() from None
     if payload.get("type") != "platform":

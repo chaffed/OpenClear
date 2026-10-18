@@ -100,3 +100,44 @@ def test_a_new_sign_in_records_its_time(db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="key-new")
     before = int(time.time())
     assert decode_token(_tokens(db_session, tenant, users["admin"]).access_token)["auth"] >= before
+
+
+# --- Issuer and audience on OpenClear's own tokens (ASVS 9.2.3, 9.2.4) ---
+
+
+@pytest.mark.asvs("9.2.3")
+def test_tokens_name_this_installation_and_their_purpose(db_session, tenant_factory, monkeypatch):
+    import jwt
+
+    from openclear.auth.security import PLATFORM_AUDIENCE, SESSION_AUDIENCE, token_issuer
+    from openclear.config import get_settings
+
+    tenant, _account, users = tenant_factory.make(slug="tok-iss-aud")
+    token = _tokens(db_session, tenant, users["admin"]).access_token
+    claims = decode_token(token)
+    assert claims["iss"] == token_issuer() and claims["aud"] == SESSION_AUDIENCE
+
+    with pytest.raises(jwt.InvalidAudienceError):  # a session token isn't a platform session
+        decode_token(token, audience=PLATFORM_AUDIENCE)
+    monkeypatch.setattr(get_settings(), "webauthn_origin", "https://another-installation.example")
+    with pytest.raises(jwt.InvalidIssuerError):  # nor good at another installation with the same keys
+        decode_token(token)
+
+
+@pytest.mark.asvs("9.2.4")
+def test_a_token_from_before_the_claims_is_still_accepted_until_1_23():
+    from datetime import datetime, timedelta, timezone
+
+    import jwt
+
+    from openclear.auth.keys import load_private_key
+    from openclear.config import get_settings
+
+    settings = get_settings()
+    old = jwt.encode({"sub": "x", "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
+                     load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
+    assert decode_token(old)["sub"] == "x"
+    half = jwt.encode({"sub": "x", "aud": "something-else", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
+                      load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
+    with pytest.raises(jwt.InvalidTokenError):
+        decode_token(half)

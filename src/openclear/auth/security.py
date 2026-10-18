@@ -109,6 +109,8 @@ def create_token(
         "tenant_id": str(tenant_id),
         "security_group_id": str(security_group_id),
         "type": token_type,
+        "iss": token_issuer(settings),
+        "aud": SESSION_AUDIENCE,
         "iat": now,
         "exp": expires_at or now + timedelta(minutes=expire_minutes),
         "tv": token_version,
@@ -225,12 +227,39 @@ def create_session_tokens(
     )
 
 
-def decode_token(token: str, *, verify_exp: bool = True, settings: Settings | None = None) -> dict:
+# Every token OpenClear signs names this installation as its issuer and what it's for as its
+# audience (ASVS 5.0 9.2.3, 9.2.4), so a token from another installation, or signed for another
+# purpose with the same key, is refused. Tokens from before 1.22.1 carry neither and are
+# accepted until 1.23; the longest of them (a refresh token) has expired long before.
+SESSION_AUDIENCE = "openclear-session"  # web sessions, API tokens, MFA-pending
+PLATFORM_AUDIENCE = "openclear-platform"
+SSO_STATE_AUDIENCE = "openclear-sso-state"
+
+
+def token_issuer(settings: Settings | None = None) -> str:
+    return (settings or get_settings()).webauthn_origin.rstrip("/")
+
+
+def _decode(token: str, settings: Settings, audience: str, options: dict) -> dict:
+    public_key = load_public_key(settings.jwt_public_key_path)
+    algorithms = [settings.jwt_algorithm]
+    try:
+        return jwt.decode(token, public_key, algorithms=algorithms, audience=audience, issuer=token_issuer(settings),
+                          options=options)
+    except jwt.MissingRequiredClaimError as exc:
+        if exc.claim not in ("aud", "iss"):
+            raise
+        payload = jwt.decode(token, public_key, algorithms=algorithms, options={**options, "verify_aud": False})
+        if "aud" in payload or "iss" in payload:  # half the claims: not a pre-1.22.1 token
+            raise
+        return payload
+
+
+def decode_token(token: str, *, verify_exp: bool = True, settings: Settings | None = None,
+                 audience: str = SESSION_AUDIENCE) -> dict:
     """verify_exp=False is only for logout, which must still be able to revoke a session
     whose access token has already expired (the signature is still verified)."""
-    settings = settings or get_settings()
-    public_key = load_public_key(settings.jwt_public_key_path)
-    return jwt.decode(token, public_key, algorithms=[settings.jwt_algorithm], options={"verify_exp": verify_exp})
+    return _decode(token, settings or get_settings(), audience, {"verify_exp": verify_exp})
 
 
 _SSO_STATE_EXPIRE_MINUTES = 10
@@ -268,6 +297,8 @@ def create_sso_state_token(
         # path-scoped cookie it stays with the browser that started the login.
         "code_verifier": code_verifier,
         "type": "sso_state",
+        "iss": token_issuer(settings),
+        "aud": SSO_STATE_AUDIENCE,
         "iat": now,
         "exp": now + timedelta(minutes=_SSO_STATE_EXPIRE_MINUTES),
     }
@@ -276,9 +307,7 @@ def create_sso_state_token(
 
 
 def decode_sso_state_token(token: str, *, settings: Settings | None = None) -> dict:
-    settings = settings or get_settings()
-    public_key = load_public_key(settings.jwt_public_key_path)
-    payload = jwt.decode(token, public_key, algorithms=[settings.jwt_algorithm])
+    payload = _decode(token, settings or get_settings(), SSO_STATE_AUDIENCE, {})
     if payload.get("type") != "sso_state":
         raise jwt.InvalidTokenError("Not an sso_state token")
     return payload
