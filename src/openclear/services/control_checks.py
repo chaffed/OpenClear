@@ -208,13 +208,14 @@ def customer_sod(session: Session, tenant_id: uuid.UUID) -> Control:
 
 def platform_staff(session: Session, tenant_id: uuid.UUID) -> Control:
     """The installation's platform staff (scripts/platform_staff.py), each with a second factor."""
+    from openclear.domain.platform_webauthn import PlatformWebauthnCredential
     from openclear.domain.user import User
-    from openclear.domain.webauthn_credential import WebauthnCredential
 
     title = "Platform staff use a second factor"
     staff = session.execute(select(User).where(User.platform_role.is_not(None), User.is_active.is_(True))).scalars().all()
-    with_keys = set(session.execute(select(WebauthnCredential.user_id).where(
-        WebauthnCredential.user_id.in_([u.id for u in staff]))).scalars()) if staff else set()
+    # Platform sign-in requires a key since 1.23 (OW-D23); this lists anyone who hasn't signed in since.
+    with_keys = set(session.execute(select(PlatformWebauthnCredential.user_id).where(
+        PlatformWebauthnCredential.user_id.in_([u.id for u in staff]))).scalars()) if staff else set()
     without = sorted(u.email for u in staff if u.id not in with_keys)
     evidence = {"platform_staff": len(staff), "without_a_security_key": without}
     if without:

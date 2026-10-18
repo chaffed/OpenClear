@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Reset an administrator's security key — OpenClear platform{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Reset an administrator's security key</h1>
+  <p>For {{ bank.name }}, when its only administrator lost their security key and nobody at the bank
+    can reset it. Another operator must approve it under Changes. Confirm it's really them first,
+    through a contact the bank gave you, not one they give you now.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/reset-admin-key">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Administrator's email <input type="email" name="email" required value="{{ email or '' }}"></label>
+    <label>How did you confirm it's them? <input type="text" name="identity_check" required minlength="10" maxlength="300"
+      value="{{ identity_check or '' }}"></label>
+    <button type="submit">{{ icon("send") }}Ask for approval</button>
+  </form>
+  <p class="link-line"><a href="/ui/platform">Back</a></p>
+</div>
+{% endblock %}

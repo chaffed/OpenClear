@@ -82,6 +82,53 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+# Between the password and the security key at platform sign-in (OW-D23): proves only that the
+# password was right, for ten minutes, on the sign-in pages.
+PENDING_COOKIE = "platform_pending"
+PENDING_PATH = "/ui/platform/login"
+PENDING_LIFETIME = timedelta(minutes=10)
+
+
+def create_pending_token(user: User) -> str:
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(user.id), "type": "platform_pending", "tv": user.token_version, "iss": token_issuer(settings),
+               "aud": PLATFORM_AUDIENCE, "iat": now, "exp": now + PENDING_LIFETIME}
+    return jwt.encode(payload, load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
+
+
+def set_pending_cookie(response, token: str) -> None:
+    from openclear.web.security import _secure_cookies, cookie_name
+
+    response.set_cookie(cookie_name(PENDING_COOKIE), token, httponly=True, secure=_secure_cookies(), samesite="strict",
+                        path=PENDING_PATH, max_age=int(PENDING_LIFETIME.total_seconds()))
+
+
+def clear_pending_cookie(response) -> None:
+    from openclear.web.security import _secure_cookies, cookie_name
+
+    response.delete_cookie(cookie_name(PENDING_COOKIE), path=PENDING_PATH, secure=_secure_cookies(), samesite="strict")
+
+
+def pending_user(request: Request, db: Session) -> User | None:
+    """The platform staff member whose password was just right, or None."""
+    from openclear.web.security import read_cookie
+
+    token = read_cookie(request, PENDING_COOKIE)
+    if not token:
+        return None
+    try:
+        payload = decode_token(token, audience=PLATFORM_AUDIENCE)
+    except jwt.PyJWTError:
+        return None
+    if payload.get("type") != "platform_pending":
+        return None
+    user = db.get(User, uuid.UUID(payload["sub"]))
+    if user is None or not user.is_active or user.platform_role is None or payload.get("tv", 0) != user.token_version:
+        return None
+    return user
+
+
 def require_operator(user: User = Depends(current_user)) -> User:
     if user.platform_role != "operator":
         raise PlatformForbidden()

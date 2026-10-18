@@ -33,7 +33,8 @@ SSO_STATE_COOKIE_PATH = "/ui/login/sso"
 # __Secure- for the narrow-path ones, which __Host- doesn't allow. Plain HTTP (local
 # development) can't use either, so keeps the bare names. Until 1.23 the bare names are still
 # read, so an upgrade signs nobody out.
-_NARROW_PATH_COOKIES = {"refresh_token", "mfa_token", "sso_state", "saml_state", "platform_session", "support_session"}
+_NARROW_PATH_COOKIES = {"refresh_token", "mfa_token", "sso_state", "saml_state", "platform_session", "support_session",
+                        "platform_pending"}
 
 
 def cookie_name(base: str) -> str:

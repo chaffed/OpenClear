@@ -1174,6 +1174,72 @@ register(Kind(
 ))
 
 
+def sole_bank_admin(session, bank_id: uuid.UUID, email: str):
+    """The bank's only active administrator (user:manage, bank-wide) if that's `email`, else None:
+    the one case platform staff may reset a bank user's security keys (OW-D21; ADR 0004)."""
+    from sqlalchemy import select
+
+    from openclear.db.tenancy import acting_as_tenant
+    from openclear.domain.security_group import SecurityGroup
+    from openclear.domain.tenant_membership import TenantMembership
+    from openclear.domain.user import User
+
+    with acting_as_tenant(session, bank_id):
+        rows = session.execute(select(User, SecurityGroup).join(TenantMembership, TenantMembership.user_id == User.id)
+                               .join(SecurityGroup, SecurityGroup.id == TenantMembership.security_group_id)
+                               .where(TenantMembership.tenant_id == bank_id, TenantMembership.customer_id.is_(None),
+                                      TenantMembership.is_active.is_(True), User.is_active.is_(True))).all()
+    admins = [u for u, g in rows if "user:manage" in (g.permissions or [])]
+    return admins[0] if len(admins) == 1 and admins[0].email.lower() == email.strip().lower() else None
+
+
+def _admin_key_reset_current(session, tenant_id, customer_id, payload) -> dict:
+    from sqlalchemy import func, select
+
+    from openclear.db.tenancy import acting_as_tenant
+    from openclear.domain.user import User
+    from openclear.domain.webauthn_credential import WebauthnCredential
+
+    user = session.execute(select(User).where(User.email == payload["email"])).scalar_one_or_none()
+    if user is None:
+        return {"keys": 0}
+    bank_id = uuid.UUID(payload["bank_id"])
+    with acting_as_tenant(session, bank_id):
+        return {"keys": session.execute(select(func.count()).select_from(WebauthnCredential).where(
+            WebauthnCredential.tenant_id == bank_id, WebauthnCredential.user_id == user.id)).scalar_one()}
+
+
+def _admin_key_reset_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from sqlalchemy import delete
+
+    from openclear.db.tenancy import acting_as_tenant
+    from openclear.domain.tenant import Tenant
+    from openclear.domain.webauthn_credential import WebauthnCredential
+    from openclear.services import notification_service, session_service
+
+    bank_id = uuid.UUID(payload["bank_id"])
+    admin = sole_bank_admin(session, bank_id, payload["email"])
+    if admin is None:  # checked again: another administrator may exist by now
+        raise ChangeError("That person isn't the bank's only administrator now: another administrator at the bank can reset them.")
+    with acting_as_tenant(session, bank_id):
+        session.execute(delete(WebauthnCredential).where(WebauthnCredential.tenant_id == bank_id, WebauthnCredential.user_id == admin.id))
+        bank = session.get(Tenant, bank_id)
+    session_service.revoke_all_sessions(session, admin)
+    notification_service.notify_security_key_changed(session, admin, added=False, nickname=None,
+                                                     bank_name=bank.name if bank else "your bank", reset_by_admin=True)
+    session.flush()
+    return f"Reset the security keys of {admin.email}, the only administrator at {bank.name if bank else bank_id}"
+
+
+register(Kind(
+    "platform.security_key_reset", "A bank administrator's security keys", "protection", _OPERATOR, _admin_key_reset_current,
+    lambda payload: {"keys": 0},
+    loosens=lambda before, after: True,  # platform staff acting on a bank's user: always two operators (ADR 0004)
+    apply=_admin_key_reset_apply, scope="provider", setting=lambda payload: f"admin_key_reset:{payload['bank_id']}:{payload['email']}",
+    describe=lambda before, after: "Reset a bank's only administrator's security keys", action="platform.security_key_reset",
+))
+
+
 def _key_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     from openclear.services import platform_api_key_service
 

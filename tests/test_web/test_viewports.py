@@ -249,10 +249,10 @@ def _sign_in(client, slug: str, email: str) -> str:
 
 
 def _sign_in_platform(client, email: str) -> None:
+    from tests.test_auth.webauthn_helpers import platform_sign_in
+
     client.cookies.clear()
-    client.get("/ui/platform/login")
-    response = client.post("/ui/platform/login", data={"email": email, "password": TenantFactory.PASSWORD,
-                                                       "csrf_token": client.cookies.get("csrf_token")}, follow_redirects=False)
+    response, _csrf = platform_sign_in(client, email, TenantFactory.PASSWORD)
     assert response.status_code == 303, response.text
 
 

@@ -19,7 +19,7 @@ from openclear.domain.user import User
 from openclear.services import operator_service, support_access_service
 from openclear.web import platform_session
 from openclear.web.deps import render_template
-from openclear.web.security import clear_auth_cookies, verify_csrf
+from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
 
 router = APIRouter(prefix="/ui/platform", tags=["web-platform"])
 
@@ -36,9 +36,113 @@ def login(request: Request, email: str = Form(...), password: str = Form(...), d
     db.commit()
     if user is None:
         return render_template(request, "platform/login.html", error="Invalid email or password.", email=email, status_code=401)
-    response = RedirectResponse("/ui/platform", status_code=303)
+    # A security key always follows the password (OW-D23): registered here the first time.
+    from openclear.auth import platform_webauthn_service
+
+    step = "key" if platform_webauthn_service.credentials(db, user.id) else "key/setup"
+    response = RedirectResponse(f"/ui/platform/login/{step}", status_code=303)
+    platform_session.set_pending_cookie(response, platform_session.create_pending_token(user))
+    return response
+
+
+def _key_page(request: Request, db: Session, template: str) -> HTMLResponse:
+    if platform_session.pending_user(request, db) is None:
+        return RedirectResponse("/ui/platform/login", status_code=303)
+    return render_template(request, template)
+
+
+@router.get("/login/key")
+def key_form(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _key_page(request, db, "platform/login_key.html")
+
+
+@router.get("/login/key/setup")
+def key_setup_form(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _key_page(request, db, "platform/login_key_setup.html")
+
+
+def _pending_or_401(request: Request, db: Session):
+    user = platform_session.pending_user(request, db)
+    if user is None:
+        raise _KeyError("Your sign-in expired: start again.")
+    return user
+
+
+class _KeyError(Exception):
+    pass
+
+
+def _signed_in(user) -> JSONResponse:
+    response = JSONResponse({"redirect": "/ui/platform"})
+    platform_session.clear_pending_cookie(response)
     platform_session.set_cookie(response, platform_session.create_token(user))
     return response
+
+
+@router.post("/login/key/options")
+def key_options(request: Request, db: Session = Depends(get_db), _csrf: None = Depends(verify_csrf_header)) -> Response:
+    from openclear.auth import platform_webauthn_service
+    from openclear.auth.webauthn_service import WebauthnError
+
+    try:
+        options = platform_webauthn_service.begin_authentication(db, _pending_or_401(request, db))
+    except (_KeyError, WebauthnError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    db.commit()
+    return Response(content=options, media_type="application/json")
+
+
+@router.post("/login/key/verify")
+async def key_verify(request: Request, db: Session = Depends(get_db), _csrf: None = Depends(verify_csrf_header)) -> Response:
+    from openclear.auth import platform_webauthn_service
+    from openclear.auth.webauthn_service import WebauthnError
+
+    body = await request.json()
+    try:
+        user = _pending_or_401(request, db)
+        platform_webauthn_service.complete_authentication(db, user, body.get("credential"))
+    except (_KeyError, WebauthnError) as exc:
+        db.commit()
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    db.commit()
+    return _signed_in(user)
+
+
+@router.post("/login/key/setup/options")
+def key_setup_options(request: Request, db: Session = Depends(get_db), _csrf: None = Depends(verify_csrf_header)) -> Response:
+    from openclear.auth import platform_webauthn_service
+
+    try:
+        user = _pending_or_401(request, db)
+    except _KeyError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    if platform_webauthn_service.credentials(db, user.id):  # a first key only: later ones need the existing one
+        return JSONResponse({"error": "You already have a security key: sign in with it."}, status_code=400)
+    options = platform_webauthn_service.begin_registration(db, user)
+    db.commit()
+    return Response(content=options, media_type="application/json")
+
+
+@router.post("/login/key/setup/verify")
+async def key_setup_verify(request: Request, db: Session = Depends(get_db), _csrf: None = Depends(verify_csrf_header)) -> Response:
+    from openclear.auth import platform_webauthn_service
+    from openclear.auth.webauthn_service import WebauthnError
+
+    body = await request.json()
+    try:
+        user = _pending_or_401(request, db)
+        if platform_webauthn_service.credentials(db, user.id):
+            raise _KeyError("You already have a security key: sign in with it.")
+        row = platform_webauthn_service.complete_registration(db, user, body.get("credential"), nickname=body.get("nickname"))
+    except (_KeyError, WebauthnError) as exc:
+        db.commit()
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    from openclear.services import platform_log_service
+
+    platform_log_service.record(db, action="platform.security_key.added", summary=f"{user.email} added a security key"
+                                f"{' (' + row.nickname + ')' if row.nickname else ''}", actor_user_id=user.id)
+    db.commit()
+    return _signed_in(user)
 
 
 @router.post("/logout")
@@ -72,6 +176,45 @@ def bank_controls(tenant_id: uuid.UUID, db: Session = Depends(get_db), _user: Us
     if counts.get("WARN"):
         return JSONResponse({"state": f"{counts['WARN']} WARN", "tone": "warn"})
     return JSONResponse({"state": "All pass", "tone": "ok"})
+
+
+@router.get("/banks/{tenant_id}/reset-admin-key")
+def reset_admin_key_form(request: Request, tenant_id: uuid.UUID, db: Session = Depends(get_db),
+                         _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return RedirectResponse("/ui/platform", status_code=303)
+    return render_template(request, "platform/reset_admin_key.html", bank=bank)
+
+
+@router.post("/banks/{tenant_id}/reset-admin-key")
+def reset_admin_key(request: Request, tenant_id: uuid.UUID, email: str = Form(...), identity_check: str = Form(""),
+                    db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                    _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """A bank whose only administrator lost their key can't reset them itself: platform staff can,
+    as a change a second operator approves (OW-D21; ADR 0004)."""
+    from openclear.services import change_request_service
+    from openclear.services.change_kinds import sole_bank_admin
+
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return RedirectResponse("/ui/platform", status_code=303)
+    error = None
+    if len(identity_check.strip()) < 10:
+        error = "Say how you confirmed it's really them, for example a call to a number the bank gave you."
+    elif sole_bank_admin(db, tenant_id, email) is None:
+        error = "Only the bank's only administrator can be reset from here; otherwise another administrator at the bank does it."
+    if error:
+        return render_template(request, "platform/reset_admin_key.html", bank=bank, email=email, identity_check=identity_check,
+                               error=error, status_code=422)
+    change_request_service.request_or_apply(
+        db, "platform.security_key_reset", {"bank_id": str(tenant_id), "email": email.strip().lower(),
+                                            "identity_check": identity_check.strip()[:300]},
+        tenant_id=None, user_id=user.id, summary=f"Reset the security keys of {email.strip()} at {bank.name}. "
+                                                 f"Identity confirmed by: {identity_check.strip()[:300]}")
+    db.commit()
+    return RedirectResponse("/ui/platform/changes?flash=" + quote("Another operator resets them by approving it under Changes."),
+                            status_code=303)
 
 
 @router.get("/host-attestations")

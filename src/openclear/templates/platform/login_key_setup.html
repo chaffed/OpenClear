@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Register a security key — OpenClear platform{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Register a security key</h1>
+  <p>Platform sign-in always needs a security key or passkey, since a platform account reaches every
+    bank. Register one now to finish signing in; you'll use it every time from now on.</p>
+  <p id="webauthn-error" class="flash flash-error" style="display:none;"></p>
+  <button type="button" id="webauthn-setup-btn">{{ icon("vpn_key") }}Register security key</button>
+  <p class="link-line"><a href="/ui/platform/login">Start again</a></p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/webauthn.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+  const errorEl = document.getElementById("webauthn-error");
+  function showError(message) { errorEl.textContent = message; errorEl.style.display = "block"; }
+  document.getElementById("webauthn-setup-btn").addEventListener("click", () => {
+    errorEl.style.display = "none";
+    registerWebAuthn("Platform key", (result) => { window.location = result.redirect || "/ui/platform"; }, showError,
+                     "/ui/platform/login/key/setup");
+  });
+  if (!window.PublicKeyCredential) { showError("This browser doesn't support security keys (WebAuthn)."); }
+</script>
+{% endblock %}

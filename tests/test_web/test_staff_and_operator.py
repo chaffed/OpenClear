@@ -31,10 +31,9 @@ def _login(client, slug, email):
 
 
 def _platform_login(client, email, password=STAFF_PASSWORD):
-    client.get("/ui/platform/login")
-    csrf = client.cookies.get("csrf_token")
-    resp = client.post("/ui/platform/login", data={"email": email, "password": password, "csrf_token": csrf}, follow_redirects=False)
-    return resp, csrf
+    from tests.test_auth.webauthn_helpers import platform_sign_in
+
+    return platform_sign_in(client, email, password)
 
 
 def _staff(db_session, email, role):
@@ -272,3 +271,60 @@ def test_platform_pages_and_the_support_banner_in_a_browser(client, db_session, 
     finally:
         browser.close()
         runner.stop()
+
+
+@pytest.mark.asvs("6.3.3")
+def test_platform_sign_in_always_needs_a_security_key(client, db_session):
+    from fastapi.testclient import TestClient
+
+    from openclear.domain.platform_webauthn import PlatformWebauthnCredential
+
+    staff = _staff(db_session, "keyed@platform.example", "operator")
+    browser = TestClient(client.app)
+    browser.get("/ui/platform/login")
+    password_only = browser.post("/ui/platform/login", data={"email": staff.email, "password": STAFF_PASSWORD,
+                                                            "csrf_token": browser.cookies.get("csrf_token")}, follow_redirects=False)
+    assert password_only.headers["location"] == "/ui/platform/login/key/setup"
+    assert browser.get("/ui/platform", follow_redirects=False).headers["location"] == "/ui/platform/login"  # not signed in yet
+
+    _platform_login(client, staff.email)  # registers a key
+    assert db_session.query(PlatformWebauthnCredential).filter_by(user_id=staff.id).count() == 1
+    client.cookies.clear()
+    again, _ = _platform_login(client, staff.email)
+    assert again.headers["location"] == "/ui/platform/login/key"  # a challenge now, never a second registration
+
+
+@pytest.mark.asvs("6.4.4")
+def test_platform_staff_reset_only_a_bank_s_sole_administrator_with_a_second_operator(client, db_session, tenant_factory):
+    import uuid as _uuid
+
+    from openclear.domain.webauthn_credential import WebauthnCredential
+    from openclear.services import change_request_service, security_group_service, user_service
+
+    tenant, _account, users = tenant_factory.make(slug="platform-admin-reset")
+    first = _staff(db_session, "first-op@platform.example", "operator")
+    second = _staff(db_session, "second-op@platform.example", "operator")
+    _, csrf = _platform_login(client, first.email)
+
+    # The factory's bank has an admin; making a second admin means the bank resets them itself.
+    admins = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
+    other = user_service.create_user_with_membership(db_session, tenant.id, email="other-admin@platform-admin-reset.example.com",
+                                                     password=TenantFactory.PASSWORD, security_group_id=admins.id)
+    db_session.commit()
+    form = {"csrf_token": csrf, "email": users["admin"].email, "identity_check": "Called the bank's main number on file"}
+    refused = client.post(f"/ui/platform/banks/{tenant.id}/reset-admin-key", data=form)
+    assert refused.status_code == 422 and "another administrator" in refused.text
+
+    user_service.deactivate_membership(db_session, tenant.id, next(
+        m.membership.id for m in user_service.list_memberships_for_user(db_session, other.id)))
+    db_session.add(WebauthnCredential(tenant_id=tenant.id, user_id=users["admin"].id, credential_id=_uuid.uuid4().bytes,
+                                      public_key=b"k", sign_count=0))
+    db_session.commit()
+    asked = client.post(f"/ui/platform/banks/{tenant.id}/reset-admin-key", data=form, follow_redirects=False)
+    assert asked.headers["location"].startswith("/ui/platform/changes")
+    assert db_session.query(WebauthnCredential).filter_by(user_id=users["admin"].id).count() == 1  # waits for a second operator
+
+    change = next(c for c in change_request_service.pending(db_session, None) if c.kind == "platform.security_key_reset")
+    change_request_service.decide(db_session, None, change.id, approve=True, user_id=second.id)
+    db_session.commit()
+    assert db_session.query(WebauthnCredential).filter_by(user_id=users["admin"].id).count() == 0

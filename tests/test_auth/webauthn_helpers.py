@@ -88,3 +88,39 @@ class FakeAuthenticator:
                 "signature": bytes_to_base64url(signature),
             },
         }
+
+
+# Platform staff's authenticators, by email, so a second sign-in in the same test uses the key
+# the first registered (web/routers/platform.py: a key always follows the password).
+_PLATFORM_AUTHENTICATORS: dict[str, "FakeAuthenticator"] = {}
+
+
+def platform_sign_in(client, email: str, password: str):
+    """Signs in to the platform pages: the password, then the security key (registering one the
+    first time). Returns the password step's response and the CSRF token; when the password is
+    refused, stops there."""
+    import webauthn as _webauthn
+
+    from openclear.config import get_settings
+
+    client.get("/ui/platform/login")
+    csrf = client.cookies.get("csrf_token")
+    resp = client.post("/ui/platform/login", data={"email": email, "password": password, "csrf_token": csrf},
+                       follow_redirects=False)
+    if resp.status_code != 303:
+        return resp, csrf
+    settings = get_settings()
+    fake = _PLATFORM_AUTHENTICATORS.setdefault(email, FakeAuthenticator(settings.webauthn_rp_id, settings.webauthn_origin))
+    headers = {"X-CSRF-Token": csrf}
+    if resp.headers["location"].endswith("/key/setup"):
+        options = _webauthn.helpers.parse_registration_options_json(
+            client.post("/ui/platform/login/key/setup/options", headers=headers).text)
+        done = client.post("/ui/platform/login/key/setup/verify", headers=headers,
+                           json={"credential": fake.create_registration_credential(options.challenge)})
+    else:
+        options = _webauthn.helpers.parse_authentication_options_json(
+            client.post("/ui/platform/login/key/options", headers=headers).text)
+        done = client.post("/ui/platform/login/key/verify", headers=headers,
+                           json={"credential": fake.create_authentication_credential(options.challenge)})
+    assert done.status_code == 200, done.text
+    return resp, client.cookies.get("csrf_token")

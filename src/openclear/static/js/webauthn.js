@@ -30,9 +30,10 @@ function csrfHeaders(extra) {
   return Object.assign({ "X-CSRF-Token": getCookie("__Host-csrf_token") || getCookie("csrf_token") || "" }, extra || {});
 }
 
-async function loginWebAuthn(nextPath, onError) {
+async function loginWebAuthn(nextPath, onError, endpointBase) {
+  const base = endpointBase || "/ui/login/webauthn";  // platform staff: /ui/platform/login/key
   try {
-    const optionsResp = await fetch("/ui/login/webauthn/options", { method: "POST", headers: csrfHeaders() });
+    const optionsResp = await fetch(`${base}/options`, { method: "POST", headers: csrfHeaders() });
     const optionsBody = await optionsResp.json();
     if (!optionsResp.ok) {
       onError(optionsBody.error || "Could not start sign-in.");
@@ -60,7 +61,7 @@ async function loginWebAuthn(nextPath, onError) {
       },
     };
 
-    const verifyResp = await fetch(`/ui/login/webauthn/verify?next=${encodeURIComponent(nextPath)}`, {
+    const verifyResp = await fetch(`${base}/verify?next=${encodeURIComponent(nextPath)}`, {
       method: "POST",
       headers: csrfHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ credential }),
