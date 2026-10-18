@@ -1,6 +1,6 @@
 [project]
 name = "openclear"
-version = "1.21.2"
+version = "1.22.0"
 description = "Multi-tenant, multi-network positive pay platform (checks, ACH) with pluggable OCR and ML-assisted exception review."
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.11"

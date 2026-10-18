@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.22.0 — 2026-10-18
 
 Passwords, resets and security keys (OWASP_PLAN.md OW3a):
 
