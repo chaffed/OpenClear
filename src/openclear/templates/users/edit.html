@@ -39,6 +39,19 @@
     <p>{{ account_access }}. <a href="/ui/users/{{ membership.id }}/accounts">Choose accounts</a></p>
   </section>
   {% endif %}
+  {% if member_user.id != ctx.user_id %}
+  <section class="card-section">
+    <h2>Email address</h2>
+    {% if pending_email %}<p class="hint">Waiting for {{ pending_email.new_email }} to confirm.</p>{% endif %}
+    <p class="hint">The address {{ member_user.email }} signs in with. The new address gets a link to confirm, and both are told.
+      Only for someone who belongs to no other organization.</p>
+    <form method="post" action="/ui/users/{{ membership.id }}/email" class="toolbar">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>New address <input type="email" name="new_email" required maxlength="320" autocomplete="off"></label>
+      <button type="submit" class="secondary">Change email</button>
+    </form>
+  </section>
+  {% endif %}
   <section class="card-section">
     <h2>Sessions</h2>
     {% if sessions %}

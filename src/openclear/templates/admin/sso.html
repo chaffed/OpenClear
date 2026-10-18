@@ -51,6 +51,10 @@
   {% endif %}
 </div>
 
+{% set domains_base = "/ui/admin/sso/domains" %}
+{% set domains_purpose = "Your sign-on can then move someone to a new address there, and you can move everyone to it at once." %}
+{% include "sign_on/_domains.html" %}
+
 <div class="card card-narrow">
   <h1>Enforcement</h1>
   <form method="post" action="/ui/admin/sso/password-login">

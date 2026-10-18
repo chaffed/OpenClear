@@ -49,6 +49,8 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.PASSWORD_RESET_LINK: "Choose a new OpenClear password",
     NotificationType.SECURITY_KEY_CHANGED: "A security key was changed on your OpenClear sign-in",
     NotificationType.NEW_DEVICE_SIGN_IN: "A new sign-in to your OpenClear account",
+    NotificationType.EMAIL_CHANGE_CONFIRM: "Confirm your new OpenClear email address",
+    NotificationType.EMAIL_CHANGED: "The email address on your OpenClear sign-in changed",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -407,6 +409,19 @@ def notify_new_device(session: Session, user: User, *, browser: str, address: st
         template_context={"browser": browser, "address": address, "at": at.strftime("%Y-%m-%d %H:%M UTC"), "bank_name": bank_name},
         resource_type="user", resource_id=user.id,
     )
+
+
+def notify_email_address(session: Session, user: User, *, destination: str, notification_type: NotificationType,
+                         context: dict[str, Any], tenant_id: uuid.UUID | None = None) -> None:
+    """An email about a person's address, sent to an address rather than to the person's
+    current one (services/email_change_service.py): the new address's confirmation link, and
+    the notice of a change to both the old and new. Always email."""
+    session.add(Notification(
+        tenant_id=tenant_id, recipient_user_id=user.id, notification_type=notification_type, channel=NotificationChannel.EMAIL,
+        destination=destination, subject=_EMAIL_SUBJECTS[notification_type],
+        body=_render_body(notification_type, NotificationChannel.EMAIL, context), resource_type="user", resource_id=user.id,
+    ))
+    session.flush()
 
 
 def notify_invitation(

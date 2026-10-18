@@ -394,3 +394,12 @@ whichever release follows.
   required), the SSO MFA check, key-pair-only API clients, the password hint, the 1.22.1
   fallbacks removed, CUECs B-IA-2(2)-02/-03, the security documentation (#3, #10, #15) and
   `docs/compliance/asvs.md` with `scripts/asvs_crosswalk.py`.
+- 2026-10-18: OW3c built on `ow3c`: the sessions table and its pages, signing a person or
+  everyone out (OW-D29; ASVS 7.4.5, 7.5.2 now Met); new-device emails by a hashed `__Host-device`
+  cookie, the first browser quiet (OW-D30; 6.3.5 Met); email changes by the person and
+  administrators (a link to the new address), SCIM and SSO (a verified domain, nobody else with
+  it, no memberships elsewhere), one `apply_change` emailing both addresses and recording
+  `user.email.changed` (OW-D31); bank email domains on the SSO page (OW-D32); "Move everyone
+  to a new domain" as an always-approved protected change, with a confirmation link for people
+  who belong elsewhere (OW-D33). Found on the way: demo and sandbox wipes didn't delete rows
+  keyed only by person (now `demo_tenant_service.delete_users`).

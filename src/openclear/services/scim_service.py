@@ -269,7 +269,13 @@ def _set_email(session: Session, scim_user: ScimUser, email: str) -> None:
     if memberships_elsewhere(session, user.id, scim_user.tenant_id, customer_id=connection.customer_id if customer_managed else None,
                              within_customer=customer_managed):
         raise ScimError(409, "This person belongs to other organizations too, so their email can't be changed here.", "mutability")
-    user.email = email
+    from openclear.services import email_change_service
+
+    try:  # emails both addresses and records user.email.changed (OWASP_PLAN.md OW-D31)
+        email_change_service.apply_change(session, user, email, tenant_id=scim_user.tenant_id, actor_user_id=None, channel="api",
+                                          via="directory")
+    except email_change_service.EmailChangeError as exc:
+        raise ScimError(400, str(exc), "invalidValue") from None
 
 
 def create_user(session: Session, connection: SsoConnection, payload: dict) -> ScimUser:

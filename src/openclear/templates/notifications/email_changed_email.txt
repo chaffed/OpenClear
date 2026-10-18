@@ -1,0 +1,3 @@
+The email address you sign in to OpenClear with changed from {{ old_email }} to {{ new_email }}{% if via == "admin" %}, at an administrator's request{% elif via == "directory" %}, by your organization's directory{% elif via == "sso" %}, by your organization's sign-on{% elif via == "domain_move" %}, when your organization moved to its new domain{% endif %}.
+
+If this was you, or you expected it, there's nothing to do. If not, tell your administrator at {{ bank_name }} now.

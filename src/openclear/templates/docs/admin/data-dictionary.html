@@ -382,19 +382,68 @@ starts. A newer reset replaces an unused link.</p>
 </table>
 
 <h3>customer_email_domain</h3>
-<p>An email domain a customer says is its own, verified by a DNS TXT record
-(<code>openclear-verification=&lt;token&gt;</code>). A customer-managed sign-on connection creates people only in verified domains.</p>
+<p>An email domain a customer, or the bank itself, says is its own, verified by a DNS TXT record
+(<code>openclear-verification=&lt;token&gt;</code>). A customer-managed sign-on connection creates people only in verified domains;
+sign-on moves a known person to a new address only in one; and "Move everyone to a new domain" moves only to one.</p>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
-<tr><td>tenant_id / customer_id</td><td>UUID</td><td>no</td><td>FK → tenant.id / customer.id</td><td></td></tr>
-<tr><td>domain</td><td>String(253)</td><td>no</td><td></td><td>Lower case. One customer per domain within a bank.</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>Empty for the bank's own domains (1.24).</td></tr>
+<tr><td>domain</td><td>String(253)</td><td>no</td><td></td><td>Lower case. One owner per domain within a bank.</td></tr>
 <tr><td>verification_token</td><td>String(64)</td><td>no</td><td></td><td></td></tr>
 <tr><td>verified_at / created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
 </tbody>
 </table>
 <p class="hint">Unique constraint on (tenant_id, domain).</p>
+
+<h3>login_session</h3>
+<p>One signed-in session, recorded at its first request and refreshed at most every five minutes, for the
+"Where you're signed in" list and signing everyone out (1.24). Kept 30 days after it ends.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td>The session id in the person's tokens (<code>sid</code>).</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id, indexed</td><td>Row-level security applies.</td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id, indexed</td><td></td></tr>
+<tr><td>signed_in_with</td><td>String(20)</td><td>yes</td><td></td><td>password, sso or embed.</td></tr>
+<tr><td>token_version</td><td>Integer</td><td>no</td><td></td><td>The person's token version at sign-in; a newer one means it was signed out everywhere.</td></tr>
+<tr><td>user_agent / ip_address</td><td>String(300) / String(45)</td><td>yes</td><td></td><td>The browser and address at the last request recorded.</td></tr>
+<tr><td>started_at / last_seen_at / expires_at / ended_at</td><td>Timestamp</td><td>varies</td><td></td><td>ended_at is set when it's signed out.</td></tr>
+</tbody>
+</table>
+
+<h3>user_device</h3>
+<p>A browser a person has signed in from, known by a long-lived random cookie of which only the SHA-256 is kept. A sign-in
+from a browser not listed emails the person (1.24). Belongs to the person, not a bank: no row-level security.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id, indexed</td><td></td></tr>
+<tr><td>device_hash</td><td>String(64)</td><td>no</td><td></td><td>SHA-256 of the cookie's value.</td></tr>
+<tr><td>user_agent</td><td>String(300)</td><td>yes</td><td></td><td>The browser when first seen.</td></tr>
+<tr><td>first_seen_at / last_seen_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+</tbody>
+</table>
+<p class="hint">Unique constraint on (user_id, device_hash).</p>
+
+<h3>email_change</h3>
+<p>A change of the email someone signs in with, waiting for the new address to confirm it (1.24). Asked for by the person or an
+administrator; a newer request replaces an older one.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id, indexed</td><td>Whose address.</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id</td><td>The bank whose page asked, for its action log. No row-level security: the link is opened before sign-in.</td></tr>
+<tr><td>new_email</td><td>String(320)</td><td>no</td><td></td><td></td></tr>
+<tr><td>token_hash</td><td>String(64)</td><td>no</td><td>unique</td><td>SHA-256 of the link's secret; the link is only in the email to the new address.</td></tr>
+<tr><td>requested_by_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td>The person, or the administrator who asked.</td></tr>
+<tr><td>created_at / expires_at / used_at</td><td>Timestamp</td><td>varies</td><td></td><td>The link works once, for 24 hours.</td></tr>
+</tbody>
+</table>
 
 <h3>membership_account</h3>
 <p>An account a customer membership may see, when it isn't for all of the customer's accounts

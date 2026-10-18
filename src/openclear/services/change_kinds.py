@@ -1100,6 +1100,43 @@ register(Kind(
 ))
 
 
+
+# --- Moving everyone to a new email domain (OWASP_PLAN.md OW-D33) -------------------------------
+# Always a second person: it changes how a whole organization signs in.
+
+
+def _domain_move_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.services import email_change_service
+
+    try:
+        email_change_service.check_domain_move(session, tenant_id, customer_id, payload["from_domain"], payload["to_domain"])
+    except email_change_service.EmailChangeError as exc:
+        raise ChangeError(str(exc)) from None
+    return {"to_domain": None}
+
+
+def _domain_move_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import email_change_service
+
+    try:
+        return email_change_service.move_domain(session, tenant_id, customer_id, payload["from_domain"], payload["to_domain"],
+                                                actor_user_id=user_id, base_url=payload["base_url"])
+    except email_change_service.EmailChangeError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+def _domain_move_kind(key: str, permission: str, scope: str) -> Kind:
+    return Kind(
+        key, "Moving everyone to a new email domain", "protection", permission, _domain_move_current,
+        lambda payload: {"to_domain": payload["to_domain"]}, loosens=lambda before, after: True, apply=_domain_move_apply, scope=scope,
+        setting=lambda payload: f"email_domain_move:{payload['from_domain']}",
+        describe=lambda before, after: f"Move everyone's email address to {after['to_domain']}",
+    )
+
+
+register(_domain_move_kind("bank.email_domain.move", "user:manage", "bank"))
+register(_domain_move_kind("customer.email_domain.move", _CUSTOMER_ADMIN, "customer"))
+
 # --- The service provider (DC4): two of the platform's staff ------------------------------------
 
 _OPERATOR = "platform:operator"

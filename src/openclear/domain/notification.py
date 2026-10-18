@@ -36,6 +36,10 @@ class NotificationType(str, enum.Enum):
     SECURITY_KEY_CHANGED = "security_key_changed"
     # services/device_service.py: a sign-in from a browser this person hasn't used before (OW-D30). Always email.
     NEW_DEVICE_SIGN_IN = "new_device_sign_in"
+    # services/email_change_service.py: the link to confirm a new address, and the notice to both addresses (OW-D31).
+    # Sent to an address, not a person's preferences: always email.
+    EMAIL_CHANGE_CONFIRM = "email_change_confirm"
+    EMAIL_CHANGED = "email_changed"
     # services/customer_approval_service.py: the bank approved or rejected someone the
     # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
     CUSTOMER_USER_DECIDED = "customer_user_decided"

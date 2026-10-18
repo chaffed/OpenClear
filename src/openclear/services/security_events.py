@@ -78,6 +78,8 @@ CATALOG: dict[str, EventType] = {
     "user.cross_tenant_access.granted": EventType("identity", "high"),
     "membership.changed": EventType("identity", "medium"),
     "user.invited": EventType("identity", "medium"),
+    "user.email.change_requested": EventType("identity", "medium"),
+    "user.email.changed": EventType("identity", "high"),  # OW-D31: the address someone signs in with
     "compliance.auto_accept.changed": EventType("configuration", "high"),  # attestations accepted without a person (CT4)
     "compliance.attestation.rejected": EventType("configuration", "medium"),
     "user.approved": EventType("identity", "medium"),  # the bank let in someone a customer added (MOBILE_PLAN.md R6)
@@ -169,6 +171,11 @@ AUDIT_EVENTS: dict[str, str] = {
     "customer_sign_on.domain_added": "sso_connection.changed",
     "customer_sign_on.domain_verified": "sso_connection.changed",
     "customer_sign_on.domain_removed": "sso_connection.changed",
+    "sso.domain_added": "sso_connection.changed",
+    "sso.domain_verified": "sso_connection.changed",
+    "sso.domain_removed": "sso_connection.changed",
+    "user.email.change_requested": "user.email.change_requested",
+    "user.email.changed": "user.email.changed",
     "customer_sign_on.scim_token": "sso_connection.scim_token.issued",
     "customer_sign_on.scim_revoked": "sso_connection.changed",
     "customer_sign_on.password_sign_in": "settings.changed",

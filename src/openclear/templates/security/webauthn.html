@@ -48,6 +48,22 @@
 </div>
 
 <div class="card">
+  <h2>Email address</h2>
+  <p>You sign in as <strong class="wrap-anywhere">{{ email }}</strong>.
+    {% if pending_email %}Waiting for <span class="wrap-anywhere">{{ pending_email.new_email }}</span> to confirm.{% endif %}</p>
+  {% if ctx.signed_in_with == "sso" %}
+  <p class="hint">Your organization's sign-on sets this address.</p>
+  {% else %}
+  <form method="post" action="/ui/security/email" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>New address <input type="email" name="new_email" required maxlength="320" autocomplete="email"></label>
+    <button type="submit" class="secondary">Change email</button>
+  </form>
+  <p class="hint">We'll send a link to the new address; the change happens when you open it. Both addresses are told.</p>
+  {% endif %}
+</div>
+
+<div class="card">
   <h2>Where you're signed in</h2>
   {% if sessions %}
   <ul class="session-list">

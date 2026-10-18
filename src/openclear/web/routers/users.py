@@ -683,6 +683,30 @@ def access_grant(
 # as /bulk vs /{item_id} elsewhere in this codebase.
 
 
+@router.post("/{membership_id}/email", dependencies=[Depends(_people_only)])
+def change_email(
+    request: Request,
+    membership_id: uuid.UUID,
+    new_email: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    """Asks for someone's new address, confirmed by a link to it (OWASP_PLAN.md OW-D31)."""
+    from openclear.services import email_change_service
+
+    try:
+        user, change = email_change_service.request_for_member(
+            db, ctx.tenant_id, membership_id, new_email, customer_id=None, actor_user_id=ctx.user_id,
+            base_url=get_settings().public_base_url or str(request.base_url))
+    except email_change_service.EmailChangeError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/users/{membership_id}/edit?error=" + quote(str(exc)), status_code=303)
+    db.commit()
+    return RedirectResponse(f"/ui/users/{membership_id}/edit?flash=" + quote(
+        f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened."), status_code=303)
+
+
 @router.get("/{membership_id}/edit", dependencies=[Depends(_people_only)])
 def edit_user_form(
     request: Request,
@@ -697,12 +721,13 @@ def edit_user_form(
     groups = security_group_service.list_security_groups(db, ctx.tenant_id)
     customers = customer_service.list_customers(db, ctx.tenant_id)
     access = account_access_service.get_access(db, ctx.tenant_id, membership.id) if membership.customer_id else None
-    from openclear.services import session_service
+    from openclear.services import email_change_service, session_service
 
     return render_template(
         request, "users/edit.html", ctx=ctx, membership=membership, member_user=member_user, groups=groups, customers=customers,
         account_access=account_access_service.describe(access) if access else None,
         sessions=session_service.active_sessions(db, ctx.tenant_id, [member_user.id]), describe_browser=session_service.describe_browser,
+        pending_email=email_change_service.pending(db, member_user.id),
     )
 
 

@@ -94,7 +94,7 @@ V6.3.1,Met,src/openclear/auth/login_service.py,
 V6.3.2,Met,src/openclear/auth/login_service.py,
 V6.3.3,Met,src/openclear/auth/security_key_policy.py,A bank or customer requires a security key; SSO and embedded sign-ins rely on CUECs B-IA-2(2)-02 and -03.
 V6.3.4,Met,src/openclear/auth/login_service.py,
-V6.3.5,Partly,src/openclear/services/notification_service.py,Lockouts are emailed; new-device emails planned for 1.24 (OW-D30).
+V6.3.5,Met,src/openclear/services/device_service.py,Lockouts and sign-ins from a new browser are emailed (OW-D30).
 V6.3.6,Met,src/openclear/auth/login_service.py,
 V6.3.7,Met,src/openclear/auth/login_service.py,
 V6.3.8,Met,src/openclear/auth/login_service.py,
@@ -135,9 +135,9 @@ V7.4.1,Met,src/openclear/services/session_service.py; src/openclear/web/security
 V7.4.2,Met,src/openclear/services/session_service.py; src/openclear/web/security.py,
 V7.4.3,Met,src/openclear/services/session_service.py; src/openclear/web/security.py,
 V7.4.4,Met,src/openclear/services/session_service.py; src/openclear/web/security.py,
-V7.4.5,Partly,src/openclear/services/user_service.py,"One person, yes; everyone at once planned for 1.24 (OW-D29)."
+V7.4.5,Met,src/openclear/services/session_service.py,"One person, or everyone at the bank or customer at once (OW-D29)."
 V7.5.1,Met,src/openclear/auth/deps.py,
-V7.5.2,Partly,src/openclear/web/routers/security_settings.py,"Sign out other devices, yes; a list of sessions planned for 1.24 (OW-D29)."
+V7.5.2,Met,src/openclear/web/routers/security_settings.py,"A list of sessions, each signed out on its own, after a recent sign-in (OW-D29)."
 V7.5.3,Met,src/openclear/services/change_request_service.py,Sensitive changes and decisions take a second person (dual control).
 V7.6.1,Met,docs/security/authentication.md,
 V7.6.2,Met,docs/security/authentication.md,

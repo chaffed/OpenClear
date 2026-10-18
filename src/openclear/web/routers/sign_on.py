@@ -130,6 +130,28 @@ def add_domain(domain: str = Form(""), db: Session = Depends(get_db), ctx: Tenan
     return _back(f"Added {row.domain}. Publish its TXT record, then press Verify.")
 
 
+@router.post("/domains/move")
+def move_domain(request: Request, from_domain: str = Form(""), to_domain: str = Form(""), db: Session = Depends(get_db),
+                ctx: TenantContext = Depends(require_web_permission("customer_user:manage")), _csrf: None = Depends(verify_csrf)) -> Response:
+    """Everyone at the old domain moves to the same name at a verified new one: a protected change,
+    always approved by a second person (OWASP_PLAN.md OW-D33)."""
+    from openclear.config import get_settings
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    payload = {"from_domain": from_domain.strip().lower(), "to_domain": to_domain.strip().lower(),
+               "base_url": get_settings().public_base_url or str(request.base_url)}
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "customer.email_domain.move", payload, tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id,
+            summary=f"Move everyone at {payload['from_domain']} to {payload['to_domain']}")
+    except ValueError as exc:
+        db.rollback()
+        return _back(str(exc), error=True)
+    db.commit()
+    return _back(outcome.summary if outcome.applied else waiting_message(outcome))
+
+
 @router.get("/new")
 def new_connection(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
     try:

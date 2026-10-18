@@ -152,13 +152,27 @@ def set_password_sign_in(session: Session, tenant_id: uuid.UUID, customer_id: uu
 # --- Email domains --------------------------------------------------------------------------
 
 
-def domains(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> list[CustomerEmailDomain]:
+def _owned_by(customer_id: uuid.UUID | None):
+    """A customer's domains, or with no customer the bank's own (OWASP_PLAN.md OW-D32)."""
+    return CustomerEmailDomain.customer_id.is_(None) if customer_id is None else CustomerEmailDomain.customer_id == customer_id
+
+
+def domains(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list[CustomerEmailDomain]:
     return list(session.execute(select(CustomerEmailDomain).where(
-        CustomerEmailDomain.tenant_id == tenant_id, CustomerEmailDomain.customer_id == customer_id).order_by(CustomerEmailDomain.domain)).scalars())
+        CustomerEmailDomain.tenant_id == tenant_id, _owned_by(customer_id)).order_by(CustomerEmailDomain.domain)).scalars())
 
 
-def add_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, domain: str) -> CustomerEmailDomain:
-    customer(session, tenant_id, customer_id)
+def verified_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, email: str) -> bool:
+    """Whether the email's domain is verified for this customer, or for the bank with no customer."""
+    domain = (email or "").rsplit("@", 1)[-1].strip().lower()
+    return session.execute(select(CustomerEmailDomain.id).where(
+        CustomerEmailDomain.tenant_id == tenant_id, _owned_by(customer_id), CustomerEmailDomain.domain == domain,
+        CustomerEmailDomain.verified_at.is_not(None))).first() is not None
+
+
+def add_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, domain: str) -> CustomerEmailDomain:
+    if customer_id is not None:
+        customer(session, tenant_id, customer_id)
     domain = (domain or "").strip().lower().rstrip(".").removeprefix("@")
     if not _DOMAIN.match(domain):
         raise SignOnError("Enter a domain such as acme.com.")
@@ -167,15 +181,17 @@ def add_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, d
     taken = session.execute(select(CustomerEmailDomain).where(
         CustomerEmailDomain.tenant_id == tenant_id, CustomerEmailDomain.domain == domain)).scalar_one_or_none()
     if taken is not None:
-        raise SignOnError("That domain is already added" + (" here." if taken.customer_id == customer_id else " for another customer."))
+        raise SignOnError("That domain is already added" + (" here." if taken.customer_id == customer_id else
+                                                            " for the bank." if taken.customer_id is None else " for another customer."))
     row = CustomerEmailDomain(tenant_id=tenant_id, customer_id=customer_id, domain=domain, verification_token=secrets.token_hex(16))
     session.add(row)
     session.flush()
     return row
 
 
-def _domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, domain_id: uuid.UUID) -> CustomerEmailDomain:
-    customer(session, tenant_id, customer_id)
+def _domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, domain_id: uuid.UUID) -> CustomerEmailDomain:
+    if customer_id is not None:
+        customer(session, tenant_id, customer_id)
     row = session.get(CustomerEmailDomain, domain_id)
     if row is None or row.tenant_id != tenant_id or row.customer_id != customer_id:
         raise SignOnError("Domain not found.")
@@ -196,7 +212,7 @@ def txt_records(name: str) -> list[str]:
     return [b"".join(r.strings).decode("utf-8", "replace") for r in answer]
 
 
-def verify_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, domain_id: uuid.UUID) -> CustomerEmailDomain:
+def verify_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, domain_id: uuid.UUID) -> CustomerEmailDomain:
     """Looks for `openclear-verification=<token>` in a TXT record at the domain, or at
     _openclear.<domain>."""
     row = _domain(session, tenant_id, customer_id, domain_id)
@@ -209,7 +225,7 @@ def verify_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID
     return row
 
 
-def remove_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, domain_id: uuid.UUID) -> str:
+def remove_domain(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, domain_id: uuid.UUID) -> str:
     row = _domain(session, tenant_id, customer_id, domain_id)
     name = row.domain
     session.delete(row)
@@ -222,7 +238,4 @@ def may_create_person(session: Session, conn: SsoConnection, email: str) -> bool
     set up; for a customer's own, only in the customer's verified domains."""
     if conn.managed_by != MANAGED_BY_CUSTOMER:
         return True
-    domain = (email or "").rsplit("@", 1)[-1].strip().lower()
-    return session.execute(select(CustomerEmailDomain.id).where(
-        CustomerEmailDomain.tenant_id == conn.tenant_id, CustomerEmailDomain.customer_id == conn.customer_id,
-        CustomerEmailDomain.domain == domain, CustomerEmailDomain.verified_at.is_not(None))).first() is not None
+    return verified_domain(session, conn.tenant_id, conn.customer_id, email)

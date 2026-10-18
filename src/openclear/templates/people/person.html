@@ -66,6 +66,12 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="secondary">Reset password</button>
   </form>
+  <form method="post" action="/ui/people/{{ person.membership.id }}/email" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="visually-hidden" for="new-email">New email address</label>
+    <input id="new-email" type="email" name="new_email" required maxlength="320" autocomplete="off" placeholder="New email address">
+    <button type="submit" class="secondary">Change email</button>
+  </form>
   <form method="post" action="/ui/people/{{ person.membership.id }}/sign-out" class="inline-form"
         data-confirm="Sign {{ person.user.email }} out everywhere? Every session they have open ends.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

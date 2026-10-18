@@ -11,8 +11,8 @@ OpenClear measured against the [OWASP Application Security Verification Standard
 
 | Status | Requirements |
 |---|---|
-| Met | 210 |
-| Partly | 12 |
+| Met | 213 |
+| Partly | 9 |
 | Not met | 5 |
 | Service provider's (CUEC) | 15 |
 | Not applicable | 41 |
@@ -144,9 +144,9 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 | **V6.3.2** Verify that default user accounts (e.g., "root", "admin", or "sa") are not present in the application or are disabled. | 1 | Met | `src/openclear/auth/login_service.py` |  |
 | **V6.3.3** Verify that either a multi-factor authentication mechanism or a combination of single-factor authentication mechanisms, must be used in order to access the a… | 2 | Met | `src/openclear/auth/security_key_policy.py`, `test_after_the_grace_period_a_password_sign_in_needs_a_key`, `test_platform_sign_in_always_needs_a_security_key` | A bank or customer requires a security key; SSO and embedded sign-ins rely on CUECs B-IA-2(2)-02 and -03. |
 | **V6.3.4** Verify that, if the application includes multiple authentication pathways, there are no undocumented pathways and that security controls and authentication s… | 2 | Met | `src/openclear/auth/login_service.py` |  |
-| **V6.3.5** Verify that users are notified of suspicious authentication attempts (successful or unsuccessful). This may include authentication attempts from an unusual l… | 3 | Partly | `src/openclear/services/notification_service.py` | Lockouts are emailed; new-device emails planned for 1.24 (OW-D30). |
+| **V6.3.5** Verify that users are notified of suspicious authentication attempts (successful or unsuccessful). This may include authentication attempts from an unusual l… | 3 | Met | `src/openclear/services/device_service.py`, `test_a_new_browser_emails_the_person_and_a_known_one_doesnt` | Lockouts and sign-ins from a new browser are emailed (OW-D30). |
 | **V6.3.6** Verify that email is not used as either a single-factor or multi-factor authentication mechanism. | 3 | Met | `src/openclear/auth/login_service.py` |  |
-| **V6.3.7** Verify that users are notified after updates to authentication details, such as credential resets or modification of the username or email address. | 3 | Met | `src/openclear/auth/login_service.py`, `test_a_recent_session_removes_a_key_and_it_is_recorded_and_emailed` |  |
+| **V6.3.7** Verify that users are notified after updates to authentication details, such as credential resets or modification of the username or email address. | 3 | Met | `src/openclear/auth/login_service.py`, `test_a_recent_session_removes_a_key_and_it_is_recorded_and_emailed`, `test_a_person_changes_their_own_email_by_a_link_to_the_new_one` |  |
 | **V6.3.8** Verify that valid users cannot be deduced from failed authentication challenges, such as by basing on error messages, HTTP response codes, or different respo… | 3 | Met | `src/openclear/auth/login_service.py`, `test_unknown_and_locked_accounts_spend_a_password_check`, `test_the_api_answers_a_locked_account_like_a_wrong_password` |  |
 | **V6.4.1** Verify that system generated initial passwords or activation codes are securely randomly generated, follow the existing password policy, and expire after a s… | 1 | Met | `src/openclear/services/password_reset_service.py`, `src/openclear/services/user_service.py`, `test_a_reset_link_expires_and_a_newer_one_replaces_it` |  |
 | **V6.4.2** Verify that password hints or knowledge-based authentication (so-called "secret questions") are not present. | 1 | Met | `src/openclear/services/password_reset_service.py`, `src/openclear/services/user_service.py` |  |
@@ -190,9 +190,9 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 | **V7.4.2** Verify that the application terminates all active sessions when a user account is disabled or deleted (such as an employee leaving the company). | 1 | Met | `src/openclear/services/session_service.py`, `src/openclear/web/security.py` |  |
 | **V7.4.3** Verify that the application gives the option to terminate all other active sessions after a successful change or removal of any authentication factor (includ… | 2 | Met | `src/openclear/services/session_service.py`, `src/openclear/web/security.py` |  |
 | **V7.4.4** Verify that all pages that require authentication have easy and visible access to logout functionality. | 2 | Met | `src/openclear/services/session_service.py`, `src/openclear/web/security.py` |  |
-| **V7.4.5** Verify that application administrators are able to terminate active sessions for an individual user or for all users. | 2 | Partly | `src/openclear/services/user_service.py` | One person, yes; everyone at once planned for 1.24 (OW-D29). |
+| **V7.4.5** Verify that application administrators are able to terminate active sessions for an individual user or for all users. | 2 | Met | `src/openclear/services/session_service.py`, `test_an_admin_signs_everyone_out_but_themselves` | One person, or everyone at the bank or customer at once (OW-D29). |
 | **V7.5.1** Verify that the application requires full re-authentication before allowing modifications to sensitive account attributes which may affect authentication suc… | 2 | Met | `src/openclear/auth/deps.py`, `test_a_stale_session_cant_change_keys_on_the_web` |  |
-| **V7.5.2** Verify that users are able to view and (having authenticated again with at least one factor) terminate any or all currently active sessions. | 2 | Partly | `src/openclear/web/routers/security_settings.py` | Sign out other devices, yes; a list of sessions planned for 1.24 (OW-D29). |
+| **V7.5.2** Verify that users are able to view and (having authenticated again with at least one factor) terminate any or all currently active sessions. | 2 | Met | `src/openclear/web/routers/security_settings.py`, `test_a_person_sees_their_sessions_and_ends_another` | A list of sessions, each signed out on its own, after a recent sign-in (OW-D29). |
 | **V7.5.3** Verify that the application requires further authentication with at least one factor or secondary verification before performing highly sensitive transaction… | 3 | Met | `src/openclear/services/change_request_service.py` | Sensitive changes and decisions take a second person (dual control). |
 | **V7.6.1** Verify that session lifetime and termination between Relying Parties (RPs) and Identity Providers (IdPs) behave as documented, requiring re-authentication as… | 2 | Met | `docs/security/authentication.md` |  |
 | **V7.6.2** Verify that creation of a session requires either the user's consent or an explicit action, preventing the creation of new application sessions without user… | 2 | Met | `docs/security/authentication.md` |  |

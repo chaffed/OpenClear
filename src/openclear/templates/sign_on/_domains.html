@@ -1,0 +1,52 @@
+<div class="card">
+  <h2>Email domains</h2>
+  <p>Prove a domain is yours by publishing a DNS TXT record at the domain (or at <code>_openclear.</code> in front of it).
+    {{ domains_purpose }}</p>
+  {% if domains %}
+  <table>
+    <thead><tr><th>Domain</th><th>TXT record</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for d in domains %}
+      <tr>
+        <td>{{ d.domain }}</td>
+        <td><code>{{ txt_prefix }}{{ d.verification_token }}</code></td>
+        <td>{% if d.verified_at %}<span class="badge badge-ok">verified</span>{% else %}<span class="badge">not yet</span>{% endif %}</td>
+        <td>
+          {% if not d.verified_at %}
+          <form method="post" action="{{ domains_base }}/{{ d.id }}/verify" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Verify</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ domains_base }}/{{ d.id }}/delete" class="inline-form" data-confirm="Remove {{ d.domain }}?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="link-button">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <form method="post" action="{{ domains_base }}" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Domain <input type="text" name="domain" placeholder="acme.com" required></label>
+    <button type="submit" class="secondary">{{ icon("add") }}Add domain</button>
+  </form>
+  {% set verified = domains | selectattr("verified_at") | list %}
+  {% if verified %}
+  <h3>Move everyone to a new domain</h3>
+  <p class="hint">After a rename: everyone with an address at the old domain moves to the same name at the new one, and both
+    addresses are told. A second administrator approves it first. Anyone who also belongs to another organization is sent a
+    link to confirm it themselves.</p>
+  <form method="post" action="{{ domains_base }}/move" class="toolbar"
+        data-confirm="Move everyone at the old domain to the new one? A second administrator approves it first.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Old domain <input type="text" name="from_domain" placeholder="oldname.com" required></label>
+    <label>New domain
+      <select name="to_domain">{% for d in verified %}<option>{{ d.domain }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit" class="secondary">Move everyone</button>
+  </form>
+  {% endif %}
+</div>

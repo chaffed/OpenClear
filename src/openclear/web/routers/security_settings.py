@@ -37,7 +37,8 @@ router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 _PREFERENCE_TYPES = [
     t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INVITATION,
                                              NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
-                                             NotificationType.NEW_DEVICE_SIGN_IN,
+                                             NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.EMAIL_CHANGE_CONFIRM,
+                                             NotificationType.EMAIL_CHANGED,
                                              NotificationType.INACTIVITY_WARNING)
 ]
 
@@ -73,8 +74,41 @@ def security_settings(
 ) -> HTMLResponse:
     credentials = list_credentials(db, ctx.tenant_id, ctx.user_id)
     sessions = session_service.active_sessions(db, ctx.tenant_id, [ctx.user_id])
+    from openclear.services import email_change_service
+
     return render_template(request, "security/webauthn.html", ctx=ctx, credentials=credentials, sessions=sessions,
-                           describe_browser=session_service.describe_browser)
+                           describe_browser=session_service.describe_browser, email=db.get(User, ctx.user_id).email,
+                           pending_email=email_change_service.pending(db, ctx.user_id))
+
+
+@router.post("/email")
+def change_my_email(
+    request: Request,
+    new_email: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """A link to the new address confirms it (OWASP_PLAN.md OW-D31). After a recent sign-in, and
+    not for someone signed in through their organization's sign-on, which owns their address."""
+    from openclear.config import get_settings
+    from openclear.services import email_change_service
+
+    if ctx.signed_in_with == "sso":
+        return RedirectResponse(f"/ui/security?error={quote('Your organization’s sign-on sets your address; ask its administrator.')}",
+                                status_code=303)
+    if not recently_signed_in(ctx):
+        return RedirectResponse(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}", status_code=303)
+    try:
+        change = email_change_service.request_change(db, db.get(User, ctx.user_id), new_email, tenant_id=ctx.tenant_id,
+                                                     requested_by_user_id=ctx.user_id,
+                                                     base_url=get_settings().public_base_url or str(request.base_url))
+    except email_change_service.EmailChangeError as exc:
+        db.rollback()
+        return RedirectResponse(f"/ui/security?error={quote(str(exc))}", status_code=303)
+    db.commit()
+    return RedirectResponse(f"/ui/security?flash={quote(f'We sent a link to {change.new_email}. Open it to finish the change.')}",
+                            status_code=303)
 
 
 @router.post("/sessions/{session_id}/end")

@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Sessions and identity (OWASP_PLAN.md OW3c):
+
+- **Where you're signed in:** the Security page lists your sessions (browser, address, when),
+  and you can sign out any one of them. An administrator sees a person's sessions on their page,
+  and can **sign everyone out** at once (Users, or People for a customer's administrators),
+  except themselves.
+- **New-device emails:** a sign-in from a browser you haven't used before emails you, always.
+  Your first browser after upgrading is recorded quietly.
+- **Email addresses can change.** You sign in with your email, but you are your account, not
+  your address. From Security, after a recent sign-in, you can ask for a new address; a link to
+  it confirms the change. An administrator can do the same for someone who belongs only to their
+  organization. The bank's directory (SCIM) changes it directly, and sign-on moves a known person
+  to a new address in one of the bank's or customer's verified domains. Every change emails the
+  old and the new address.
+- **A bank can verify its own email domains** (Single Sign-On page), as customers already can.
+- **Move everyone to a new domain** after a rename: everyone at the old domain moves to the
+  same name at a verified new one, once a second administrator approves. Anyone who also
+  belongs to another organization is sent a link to confirm it themselves.
+
 ## 1.23.0 — 2026-10-18
 
 Required security keys and the ASVS crosswalk (OWASP_PLAN.md OW3b):

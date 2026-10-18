@@ -255,6 +255,12 @@ def complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoCo
                              details={"connection": connection.display_name, "authentication": list(claims.authentication)[:10]})
         return SsoLoginResult(outcome="mfa_not_reported")
     conflict = _identity_conflict(session, connection, claims)
+    if conflict == "subject_email_changed" and _may_follow_new_email(session, connection, claims):
+        from openclear.services import email_change_service
+
+        email_change_service.apply_change(session, find_identity_user(session, connection, claims.subject), claims.email,
+                                          tenant_id=tenant_id, actor_user_id=None, channel="web", via="sso")
+        conflict = None
     if conflict is not None:
         from openclear.services import security_events
 
@@ -280,6 +286,24 @@ MFA_EVIDENCE = frozenset({
 def mfa_reported(connection: SsoConnection, claims: OidcClaims) -> bool:
     accepted = MFA_EVIDENCE | {v.strip() for v in (connection.mfa_values or "").split(",") if v.strip()}
     return any(value in accepted for value in claims.authentication)
+
+
+def _may_follow_new_email(session: Session, connection: SsoConnection, claims: OidcClaims) -> bool:
+    """Whether a known subject's new email can simply be taken (OWASP_PLAN.md OW-D31): its domain
+    is verified for the connection's bank or customer, nobody else has it, and the person
+    belongs nowhere else (their address is theirs across every bank)."""
+    from openclear.db.tenancy import memberships_elsewhere
+    from openclear.services import customer_sign_on_service, email_change_service
+
+    user = find_identity_user(session, connection, claims.subject)
+    if user is None or not customer_sign_on_service.verified_domain(session, connection.tenant_id, connection.customer_id, claims.email):
+        return False
+    try:
+        email_change_service.check_available(session, user, claims.email)
+    except email_change_service.EmailChangeError:
+        return False
+    return not memberships_elsewhere(session, user.id, connection.tenant_id, customer_id=connection.customer_id,
+                                     within_customer=connection.customer_id is not None)
 
 
 def _identity_conflict(session: Session, connection: SsoConnection, claims: OidcClaims) -> str | None:

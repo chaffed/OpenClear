@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Confirm your email address — OpenClear{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  {% if not opened %}
+  <h1>This link can't be used</h1>
+  <p>It has already been used, was replaced by a newer one, or has expired. Ask for the change again.</p>
+  {% elif done %}
+  <h1>Your address has changed</h1>
+  <p>You now sign in to OpenClear as <strong class="wrap-anywhere">{{ opened.user.email }}</strong>. We've told your old address too.</p>
+  <p><a href="/ui/login">Sign in</a></p>
+  {% else %}
+  <h1>Confirm your new address</h1>
+  <p>Change the address you sign in to OpenClear with from <strong class="wrap-anywhere">{{ opened.user.email }}</strong>
+    to <strong class="wrap-anywhere">{{ opened.change.new_email }}</strong>?</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">{{ icon("check_circle") }}Confirm</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

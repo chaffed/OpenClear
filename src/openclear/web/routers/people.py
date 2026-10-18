@@ -387,6 +387,23 @@ def reset_security_keys(request: Request, membership_id: uuid.UUID, identity_che
     return _back(f"{user.email}'s security keys were removed. They'll add a new one when they next sign in.")
 
 
+@router.post("/ui/people/{membership_id}/email")
+def change_email(request: Request, membership_id: uuid.UUID, new_email: str = Form(""), db: Session = Depends(get_db),
+                 ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:
+    """Asks for someone's new address, confirmed by a link to it (OWASP_PLAN.md OW-D31)."""
+    from openclear.services import email_change_service
+
+    try:
+        user, change = email_change_service.request_for_member(
+            db, ctx.tenant_id, membership_id, new_email, customer_id=ctx.customer_id, actor_user_id=ctx.user_id,
+            base_url=get_settings().public_base_url or str(request.base_url))
+    except email_change_service.EmailChangeError as exc:
+        db.rollback()
+        return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+    db.commit()
+    return _back(f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
+
+
 @router.post("/ui/people/{membership_id}/reset-password")
 def reset_password(request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                    _csrf: None = Depends(verify_csrf)) -> Response:

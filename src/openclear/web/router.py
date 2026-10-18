@@ -54,6 +54,7 @@ from openclear.web.routers.license import router as license_router
 from openclear.web.routers.paid_items import router as paid_items_router
 from openclear.web.routers.security_groups import router as security_groups_router
 from openclear.web.routers.security_settings import router as security_settings_router
+from openclear.web.routers.email_change import router as email_change_router
 from openclear.web.routers.session import router as session_router
 from openclear.web.routers.sso_settings import router as sso_settings_router
 from openclear.web.routers.stop_payments import router as stop_payments_router
@@ -71,6 +72,7 @@ web_router.include_router(auth_router)
 web_router.include_router(session_router)
 web_router.include_router(dashboard_router)
 web_router.include_router(security_settings_router)
+web_router.include_router(email_change_router)
 web_router.include_router(tenant_switch_router)
 web_router.include_router(tenant_ml_router)
 web_router.include_router(tenant_settings_router)

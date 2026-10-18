@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.auth.outbound_http import UnsafeUrlError
@@ -15,7 +15,7 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.sso_connection import SsoProtocol, SsoProvider
 from openclear.domain.tenant import Tenant
-from openclear.services import audit_log_service, customer_service, security_group_service, sso_service
+from openclear.services import audit_log_service, customer_service, customer_sign_on_service, security_group_service, sso_service
 from openclear.services.sso_service import SsoConnectionInput
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
@@ -126,7 +126,82 @@ def list_bank_connections(
     return render_template(
         request, "admin/sso.html", ctx=ctx, connections=connections,
         password_login_enabled=_tenant_password_login_enabled(db, ctx.tenant_id),
+        domains=customer_sign_on_service.domains(db, ctx.tenant_id, None), txt_prefix=customer_sign_on_service.TXT_PREFIX,
     )
+
+
+# The bank's own email domains (OWASP_PLAN.md OW-D32): the customers' check, with no customer.
+
+def _domain_back(message: str, *, error: bool = False) -> RedirectResponse:
+    from urllib.parse import quote
+
+    return RedirectResponse(f"/ui/admin/sso?{'error' if error else 'flash'}=" + quote(message), status_code=303)
+
+
+def _domain_action(db: Session, ctx: TenantContext, action: str, summary: str) -> None:
+    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action=action, summary=summary,
+                                     resource_type="tenant", resource_id=ctx.tenant_id)
+
+
+@router.post("/ui/admin/sso/domains")
+def add_bank_domain(domain: str = Form(""), db: Session = Depends(get_db),
+                    ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> Response:
+    try:
+        row = customer_sign_on_service.add_domain(db, ctx.tenant_id, None, domain)
+    except customer_sign_on_service.SignOnError as exc:
+        db.rollback()
+        return _domain_back(str(exc), error=True)
+    _domain_action(db, ctx, "sso.domain_added", f"Added the email domain {row.domain}")
+    db.commit()
+    return _domain_back(f"Added {row.domain}. Publish its TXT record, then press Verify.")
+
+
+@router.post("/ui/admin/sso/domains/move")
+def move_bank_domain(request: Request, from_domain: str = Form(""), to_domain: str = Form(""), db: Session = Depends(get_db),
+                     ctx: TenantContext = Depends(require_web_permission("user:manage")), _csrf: None = Depends(verify_csrf)) -> Response:
+    """Everyone at the old domain moves to the same name at a verified new one: a protected change,
+    always approved by a second person (OWASP_PLAN.md OW-D33)."""
+    from openclear.config import get_settings
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    payload = {"from_domain": from_domain.strip().lower(), "to_domain": to_domain.strip().lower(),
+               "base_url": get_settings().public_base_url or str(request.base_url)}
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "bank.email_domain.move", payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            summary=f"Move everyone at {payload['from_domain']} to {payload['to_domain']}")
+    except ValueError as exc:
+        db.rollback()
+        return _domain_back(str(exc), error=True)
+    db.commit()
+    return _domain_back(outcome.summary if outcome.applied else waiting_message(outcome))
+
+
+@router.post("/ui/admin/sso/domains/{domain_id}/verify")
+def verify_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
+                       ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> Response:
+    try:
+        row = customer_sign_on_service.verify_domain(db, ctx.tenant_id, None, domain_id)
+    except customer_sign_on_service.SignOnError as exc:
+        db.rollback()
+        return _domain_back(str(exc), error=True)
+    _domain_action(db, ctx, "sso.domain_verified", f"Verified the email domain {row.domain}")
+    db.commit()
+    return _domain_back(f"{row.domain} is verified.")
+
+
+@router.post("/ui/admin/sso/domains/{domain_id}/delete")
+def remove_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
+                       ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> Response:
+    try:
+        name = customer_sign_on_service.remove_domain(db, ctx.tenant_id, None, domain_id)
+    except customer_sign_on_service.SignOnError as exc:
+        db.rollback()
+        return _domain_back(str(exc), error=True)
+    _domain_action(db, ctx, "sso.domain_removed", f"Removed the email domain {name}")
+    db.commit()
+    return _domain_back(f"Removed {name}.")
 
 
 @router.get("/ui/admin/sso/new")

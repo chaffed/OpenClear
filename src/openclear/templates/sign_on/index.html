@@ -51,42 +51,9 @@
   {% endif %}
 </div>
 
-<div class="card">
-  <h2>Email domains</h2>
-  <p>Prove a domain is yours by publishing a DNS TXT record at the domain (or at <code>_openclear.</code> in front of it).
-    Your sign-on and directory can then create people with addresses there.</p>
-  {% if domains %}
-  <table>
-    <thead><tr><th>Domain</th><th>TXT record</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      {% for d in domains %}
-      <tr>
-        <td>{{ d.domain }}</td>
-        <td><code>{{ txt_prefix }}{{ d.verification_token }}</code></td>
-        <td>{% if d.verified_at %}<span class="badge badge-ok">verified</span>{% else %}<span class="badge">not yet</span>{% endif %}</td>
-        <td>
-          {% if not d.verified_at %}
-          <form method="post" action="/ui/sign-on/domains/{{ d.id }}/verify" class="inline-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="link-button">Verify</button>
-          </form>
-          {% endif %}
-          <form method="post" action="/ui/sign-on/domains/{{ d.id }}/delete" class="inline-form" data-confirm="Remove {{ d.domain }}?">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="link-button">Remove</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <form method="post" action="/ui/sign-on/domains" class="toolbar">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Domain <input type="text" name="domain" placeholder="acme.com" required></label>
-    <button type="submit" class="secondary">{{ icon("add") }}Add domain</button>
-  </form>
-</div>
+{% set domains_base = "/ui/sign-on/domains" %}
+{% set domains_purpose = "Your sign-on and directory can then create people with addresses there." %}
+{% include "sign_on/_domains.html" %}
 
 <div class="card">
   <h2>Passwords</h2>
