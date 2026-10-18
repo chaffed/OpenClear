@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.23.0 — 2026-10-18
 
 Required security keys and the ASVS crosswalk (OWASP_PLAN.md OW3b):
 
