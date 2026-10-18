@@ -257,6 +257,7 @@ def test_tokens_minted_before_session_claims_still_work(client, db_session, tena
     import jwt
 
     from openclear.auth.keys import load_private_key
+    from openclear.auth.security import SESSION_AUDIENCE, token_issuer
 
     tenant, _account, users = tenant_factory.make(slug="sess-legacy-token")
     viewer = users["viewer"]
@@ -265,7 +266,8 @@ def test_tokens_minted_before_session_claims_still_work(client, db_session, tena
     settings = get_settings()
     legacy = jwt.encode(
         {"sub": str(viewer.id), "tenant_id": str(tenant.id), "security_group_id": str(membership.security_group_id),
-         "type": "access", "iat": now, "exp": now + timedelta(minutes=5)},  # no tv, sid, or sxp
+         "type": "access", "iat": now, "exp": now + timedelta(minutes=5),  # no tv, sid, or sxp
+         "iss": token_issuer(), "aud": SESSION_AUDIENCE},  # required since 1.23
         load_private_key(settings.jwt_private_key_path),
         algorithm=settings.jwt_algorithm,
     )

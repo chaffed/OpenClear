@@ -125,7 +125,7 @@ def test_tokens_name_this_installation_and_their_purpose(db_session, tenant_fact
 
 
 @pytest.mark.asvs("9.2.4")
-def test_a_token_from_before_the_claims_is_still_accepted_until_1_23():
+def test_a_token_without_an_issuer_and_audience_is_refused():
     from datetime import datetime, timedelta, timezone
 
     import jwt
@@ -136,8 +136,5 @@ def test_a_token_from_before_the_claims_is_still_accepted_until_1_23():
     settings = get_settings()
     old = jwt.encode({"sub": "x", "type": "access", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
                      load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
-    assert decode_token(old)["sub"] == "x"
-    half = jwt.encode({"sub": "x", "aud": "something-else", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)},
-                      load_private_key(settings.jwt_private_key_path), algorithm=settings.jwt_algorithm)
-    with pytest.raises(jwt.InvalidTokenError):
-        decode_token(half)
+    with pytest.raises(jwt.MissingRequiredClaimError):
+        decode_token(old)

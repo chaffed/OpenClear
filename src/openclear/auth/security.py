@@ -229,8 +229,8 @@ def create_session_tokens(
 
 # Every token OpenClear signs names this installation as its issuer and what it's for as its
 # audience (ASVS 5.0 9.2.3, 9.2.4), so a token from another installation, or signed for another
-# purpose with the same key, is refused. Tokens from before 1.22.1 carry neither and are
-# accepted until 1.23; the longest of them (a refresh token) has expired long before.
+# purpose with the same key, is refused. Both are required (1.22.1 still accepted tokens without
+# either, issued before it).
 SESSION_AUDIENCE = "openclear-session"  # web sessions, API tokens, MFA-pending
 PLATFORM_AUDIENCE = "openclear-platform"
 SSO_STATE_AUDIENCE = "openclear-sso-state"
@@ -243,16 +243,8 @@ def token_issuer(settings: Settings | None = None) -> str:
 def _decode(token: str, settings: Settings, audience: str, options: dict) -> dict:
     public_key = load_public_key(settings.jwt_public_key_path)
     algorithms = [settings.jwt_algorithm]
-    try:
-        return jwt.decode(token, public_key, algorithms=algorithms, audience=audience, issuer=token_issuer(settings),
-                          options=options)
-    except jwt.MissingRequiredClaimError as exc:
-        if exc.claim not in ("aud", "iss"):
-            raise
-        payload = jwt.decode(token, public_key, algorithms=algorithms, options={**options, "verify_aud": False})
-        if "aud" in payload or "iss" in payload:  # half the claims: not a pre-1.22.1 token
-            raise
-        return payload
+    return jwt.decode(token, public_key, algorithms=algorithms, audience=audience, issuer=token_issuer(settings),
+                      options={**options, "require": ["exp", "iss", "aud"]})
 
 
 def decode_token(token: str, *, verify_exp: bool = True, settings: Settings | None = None,

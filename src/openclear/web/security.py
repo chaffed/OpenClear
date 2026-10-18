@@ -31,8 +31,8 @@ SSO_STATE_COOKIE_PATH = "/ui/login/sso"
 # Over HTTPS every cookie carries a prefix the browser enforces (ASVS 5.0 3.3.3): __Host- for
 # path-/ cookies (Secure, no Domain, so no sibling subdomain can set or overwrite them), and
 # __Secure- for the narrow-path ones, which __Host- doesn't allow. Plain HTTP (local
-# development) can't use either, so keeps the bare names. Until 1.23 the bare names are still
-# read, so an upgrade signs nobody out.
+# development) can't use either, so keeps the bare names. (1.22.1 also read the bare names over
+# HTTPS, so that upgrade signed nobody out; signing out still deletes them.)
 _NARROW_PATH_COOKIES = {"refresh_token", "mfa_token", "sso_state", "saml_state", "platform_session", "support_session",
                         "platform_pending"}
 
@@ -44,7 +44,7 @@ def cookie_name(base: str) -> str:
 
 
 def read_cookie(request: Request, base: str) -> str | None:
-    return request.cookies.get(cookie_name(base)) or request.cookies.get(base)
+    return request.cookies.get(cookie_name(base))
 
 
 def is_https_deployment() -> bool:

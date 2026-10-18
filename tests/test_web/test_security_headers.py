@@ -106,10 +106,10 @@ def test_cookie_names_carry_browser_enforced_prefixes_over_https(monkeypatch):
     cleared = response.headers.getlist("set-cookie")
     assert any(c.startswith("__Host-access_token=") for c in cleared) and any(c.startswith("access_token=") for c in cleared)
 
-    # Cookies from before the prefixes are still read, so an upgrade signs nobody out.
+    # Over HTTPS only the prefixed name counts (1.22.1's fallback to the bare name is gone).
     old = Request({"type": "http", "headers": [(b"cookie", b"access_token=old-session")]})
     new = Request({"type": "http", "headers": [(b"cookie", b"__Host-access_token=new; access_token=old")]})
-    assert security.read_cookie(old, "access_token") == "old-session"
+    assert security.read_cookie(old, "access_token") is None
     assert security.read_cookie(new, "access_token") == "new"
 
 
