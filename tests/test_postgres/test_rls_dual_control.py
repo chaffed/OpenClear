@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_T
 
 
 def _policy(**over) -> dict:
-    return {"values": {"password_min_length": 12, "password_require_uppercase": True, "password_require_lowercase": True,
+    return {"values": {"password_min_length": 16, "password_require_uppercase": True, "password_require_lowercase": True,
                        "password_require_number": True, "password_require_symbol": False, **over}}
 
 
