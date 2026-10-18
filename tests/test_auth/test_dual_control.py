@@ -199,7 +199,7 @@ def test_the_changes_page_and_api(client, db_session, tenant_factory):
 
 
 def test_the_evidence_export_lists_the_periods_changes(db_session, tenant_factory):
-    from datetime import date
+    from datetime import datetime, timezone
 
     from openclear.services import evidence_service
 
@@ -210,7 +210,7 @@ def test_the_evidence_export_lists_the_periods_changes(db_session, tenant_factor
                                        user_id=users["admin"].id)
     changes.decide(db_session, tenant.id, waiting.change.id, approve=True, user_id=second.id)
     db_session.commit()
-    today = date.today()
+    today = datetime.now(timezone.utc).date()  # changes are stamped in UTC; local today differs near midnight
     listed = evidence_service.build(db_session, tenant.id, start=today, end=today, generated_by_user_id=None)["change_control"]
     assert [(c["kind"], c["status"], c["requested_by"], c["decided_by"]) for c in listed] == \
         [("password_policy", "approved", users["admin"].email, second.email)]

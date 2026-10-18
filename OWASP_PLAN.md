@@ -284,5 +284,16 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   `docs/security/samm.md`. Found while writing them: account numbers aren't masked anywhere
   (11.7.2, with #14), and there's no in-app offboarding of a departing bank's data. Left in OW1:
   `docs/compliance/asvs.md`, published after OW3 (ADR 0002).
+- 2026-10-17: OW2 built. Hashed locks (`scripts/lock.sh`, uv, universal for Python 3.11+): the
+  image, the launcher, the Linux suite, CI and the docs site install only from them. Gates in
+  `.github/workflows/security.yml` (pip-audit with expiring waivers, a stale-lock check, Bandit
+  high, gitleaks) and `codeql.yml` (Python, JS/TS, C#); Actions pinned to SHAs, `permissions:`
+  everywhere, base images by digest; SBOM on release (`scripts/sbom.py`, with the vendored JS
+  manifest). Deviations: the image now carries every runtime extra without system libraries, so
+  one locked image works everywhere (`EXTRAS` adds only mssql/opencv, unlocked); Dependabot
+  can't update uv's lock files, so `lock-refresh.yml` opens the weekly Python PR instead
+  (Dependabot covers Actions, Docker and the SDKs). Full-history gitleaks scan: 91 hits, none
+  real (the public dev keys, library files in a Drive folder committed in Billing B1–B3, test
+  fixtures); allowlisted in `.gitleaks.toml` with reasons, nothing to rotate.
 
   Not started.

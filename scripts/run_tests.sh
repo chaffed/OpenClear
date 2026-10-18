@@ -43,9 +43,10 @@ case "$suite" in
     ;;
   linux)
     export DOCKER_HOST="${DOCKER_HOST:-unix://$HOME/.colima/default/docker.sock}"
-    git -C "$root" archive "$commit" | docker run --rm -i python:3.11-slim bash -c "
+    git -C "$root" archive "$commit" | docker run --rm -i python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce bash -c "
       mkdir /src && cd /src && tar x && apt-get update -qq >/dev/null && apt-get install -y -qq tesseract-ocr >/dev/null 2>&1
-      pip install -q -e '.[dev]' 2>&1 | grep -v notice | tail -3
+      pip install -q --require-hashes -r requirements/dev.txt 2>&1 | grep -v notice | tail -3
+      pip install -q --no-deps -e . 2>&1 | grep -v notice | tail -3
       python -m pytest -n $workers -p no:cacheprovider -q -ra" >> "$log" 2>&1
     ;;
   *)

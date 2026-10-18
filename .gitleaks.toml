@@ -1,0 +1,18 @@
+# Secret scanning (OWASP_PLAN.md OW-D7, OW-D8): gitleaks' default rules, minus paths whose
+# "secrets" are deliberate. Every allowlisted path says why; add nothing without a reason.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deliberately public or third-party example values"
+paths = [
+  # The checked-in development key pairs: public on purpose; production refuses to start
+  # with them (config.py::assert_production_safe).
+  '''^dev_keys/''',
+  # A Google Drive sync folder committed by mistake in the Billing B1–B3 commits (now in
+  # .gitignore): copies of library files and of dev_keys/. Checked 2026-10-17: no real secrets.
+  '''^\.tmp\.drive(upload|download)/''',
+  # Fake credentials in tests and SDK tests.
+  '''^tests/''',
+  '''^sdks/[^/]+/tests?/''',
+]

@@ -40,6 +40,11 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
   `CUSTOMER_SCOPE_MASKED_PERMISSIONS`.
 - API changes: run `scripts/export_openapi.py` and `scripts/generate_sdks.py`, then
   `tests/test_openapi_contract.py`.
+- Dependencies install only from the hashed locks. After changing `pyproject.toml` dependencies,
+  run `scripts/lock.sh` and commit `requirements/*.txt` (CI fails on a stale lock). Waive a
+  vulnerability only in `.pip-audit-waivers.toml`, with a reason and an expiry.
+- A new trust boundary, outside system or data flow: update `threat_model/openclear.py`, then
+  `python scripts/render_threat_model.py` (a test fails on a stale page).
 - New tables and columns go in the data dictionary (`templates/docs/admin/data-dictionary.html`);
   user-facing changes in `CHANGELOG.md` under "Unreleased".
 
@@ -48,7 +53,8 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
    rename CHANGELOG "Unreleased" to `## X.Y.Z — <date>`; note it in `MASTER_PLAN.md`.
 2. Fast-forward `main`, push, wait for CI: `gh run watch <id> --exit-status`.
 3. `git tag -a vX.Y.Z` and push it; `gh api repos/chaffed/OpenClear/releases --input <json>`
-   (`tag_name`, `name`, `body` from the CHANGELOG section).
+   (`tag_name`, `name`, `body` from the CHANGELOG section). Publishing the release attaches
+   the SBOM (`.github/workflows/release.yml`); check it's there.
 
 ## Sandbox deploy (openclear-sandbox on Fly; the only hosted instance)
 Pushing a locally built image fails, so use Fly's remote builder from a clean copy:

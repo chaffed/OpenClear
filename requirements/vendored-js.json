@@ -1,0 +1,21 @@
+{
+  "_comment": "JavaScript vendored into src/openclear/static/js/vendor/, for the SBOM (scripts/sbom.py). Update the version and sha256 when replacing a file; tests/test_compliance/test_sbom.py checks them.",
+  "components": [
+    {
+      "name": "mermaid",
+      "version": "11.16.0",
+      "purl": "pkg:npm/mermaid@11.16.0",
+      "license": "MIT",
+      "file": "mermaid.min.js",
+      "sha256": "74d7c46dabca328c2294733910a8aa1ed0c37451776e8d5295da38a2b758fb9b"
+    },
+    {
+      "name": "svg-pan-zoom",
+      "version": "3.6.2",
+      "purl": "pkg:npm/svg-pan-zoom@3.6.2",
+      "license": "BSD-2-Clause",
+      "file": "svg-pan-zoom.min.js",
+      "sha256": "9c8fc41b3359e699990766dd7a943595d234a80c880a90dfc14b920a273b99d8"
+    }
+  ]
+}

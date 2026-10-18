@@ -195,7 +195,8 @@ persistent local dev state, rather than one disposable folder):
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install --require-hashes -r requirements/dev.txt   # the hashed lock (scripts/lock.sh)
+pip install --no-deps -e .
 
 alembic upgrade head
 uvicorn openclear.main:app --reload
@@ -1031,8 +1032,10 @@ docker run -d \
 ```
 
 Point `OPENCLEAR_DATABASE_URL` at Postgres instead of the SQLite default the same way any
-other deployment would (see "Postgres" below) — rebuild with
-`--build-arg EXTRAS=.[postgres,pdf]` first so the driver's actually installed.
+other deployment would (see "Postgres" below); the image already includes the driver. The
+image installs only the hashed lock `requirements/runtime.txt` (every runtime extra that needs
+no system libraries). `--build-arg EXTRAS=mssql` or `EXTRAS=opencv` adds the two that do,
+unlocked.
 
 **Creating the first tenant** isn't a route this app exposes over HTTP on purpose (see
 "Users, security groups, and cross-tenant access" above) — for the production image, it's

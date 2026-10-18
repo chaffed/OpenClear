@@ -1,0 +1,8 @@
+# Waivers for the dependency gate (scripts/audit_dependencies.py, OWASP_PLAN.md OW-D8).
+# Each needs the vulnerability id (or an alias), why it doesn't apply or can't be fixed yet,
+# and an expiry date; an expired waiver fails CI. Example:
+#
+# [[waiver]]
+# id = "PYSEC-2026-0000"
+# reason = "Only reachable through X, which OpenClear doesn't use; fix awaits Y."
+# expires = 2026-12-01

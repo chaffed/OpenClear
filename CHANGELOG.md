@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Supply chain and security documentation (OWASP_PLAN.md OW1, OW2):
+
+- **Dependencies install only from hashed lock files** (`requirements/runtime.txt` for the image
+  and the launcher, `requirements/dev.txt` for development and CI), written by `scripts/lock.sh`.
+  The Docker image now includes every runtime extra that needs no system libraries (Postgres,
+  S3, Azure, Redis, SMS, cloud OCR, PDF), so one image works everywhere; `EXTRAS` now only adds
+  `mssql` or `opencv`, unlocked. Source installs: `pip install --require-hashes -r
+  requirements/dev.txt && pip install --no-deps -e .`
+- **CI gates:** known-vulnerable dependencies with a fix (`pip-audit`, with expiring waivers),
+  a stale lock, high-severity Bandit findings, and secrets (gitleaks) fail the build; CodeQL
+  analyses the server and SDKs. Actions are pinned to commits and base images to digests.
+- **An SBOM (CycloneDX) is attached to every release**, including the vendored JavaScript.
+- **Security documentation:** a risk profile and data classification, a threat model kept as
+  code (OWASP pytm), and a SAMM self-assessment, in `docs/security/`.
+
 ## 1.21.2 — 2026-10-17
 
 Security fix for people who belong to more than one organization:

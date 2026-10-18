@@ -76,6 +76,12 @@ dev = [
   "jsonschema>=4.21",
   # threat_model/openclear.py and scripts/render_threat_model.py (OWASP_PLAN.md OW-D12).
   "pytm>=1.4,<2",
+  # The security gates in CI (.github/workflows/security.yml; OWASP_PLAN.md OW2), pinned and
+  # hashed through requirements/dev.txt like everything else.
+  "pip-audit>=2.7",
+  "bandit[sarif]>=1.7",
+  "cyclonedx-bom>=4",
+  "uv>=0.5",
 ]
 
 [build-system]

@@ -1,0 +1,26 @@
+# Dependency updates (OWASP_PLAN.md OW-D10): weekly and grouped, one PR per ecosystem; security
+# updates come at once. Nothing merges itself: the local Postgres and Linux suites run first.
+# The server's Python locks (requirements/*.txt, written by uv) are refreshed by
+# .github/workflows/lock-refresh.yml instead; GitHub still raises alerts on them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}
+    groups: {actions: {patterns: ["*"]}}
+  - package-ecosystem: docker
+    directory: /
+    schedule: {interval: weekly}
+    groups: {docker: {patterns: ["*"]}}
+  - package-ecosystem: npm
+    directories: [/sdks/typescript, /sdks/embed]
+    schedule: {interval: weekly}
+    groups: {npm: {patterns: ["*"]}}
+  - package-ecosystem: nuget
+    directories: [/sdks/dotnet/src/OpenClear, /sdks/dotnet/tests/OpenClear.Tests]
+    schedule: {interval: weekly}
+    groups: {nuget: {patterns: ["*"]}}
+  - package-ecosystem: pip
+    directory: /sdks/python
+    schedule: {interval: weekly}
+    groups: {python-sdk: {patterns: ["*"]}}

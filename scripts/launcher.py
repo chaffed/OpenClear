@@ -65,7 +65,10 @@ def _is_running_under_venv() -> bool:
 def _pyproject_fingerprint() -> str:
     import hashlib
 
-    return hashlib.sha256((PROJECT_ROOT / "pyproject.toml").read_bytes()).hexdigest()
+    # The lock too: a re-lock (scripts/lock.sh) must reinstall even when pyproject.toml is unchanged.
+    return hashlib.sha256(
+        (PROJECT_ROOT / "pyproject.toml").read_bytes() + (PROJECT_ROOT / "requirements" / "runtime.txt").read_bytes()
+    ).hexdigest()
 
 
 def _create_venv_and_install() -> None:
@@ -95,7 +98,11 @@ def _create_venv_and_install() -> None:
         subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "--upgrade", "pip"], check=True)
 
     print("  Installing OpenClear and its dependencies (this is the slow part)...")
-    subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "-e", str(PROJECT_ROOT)], check=True)
+    # Only what the hashed lock names (OWASP_PLAN.md OW-D9), then OpenClear itself without
+    # letting pip resolve anything further.
+    lock = PROJECT_ROOT / "requirements" / "runtime.txt"
+    subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "--require-hashes", "-r", str(lock)], check=True)
+    subprocess.run([venv_python, "-m", "pip", "install", "--quiet", "--no-deps", "-e", str(PROJECT_ROOT)], check=True)
 
     VENV_MARKER.write_text(fingerprint)
     print("  Setup complete.\n")

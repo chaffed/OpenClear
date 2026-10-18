@@ -26,8 +26,6 @@ services:
   app:
     build:
       context: .
-      args:
-        EXTRAS: ".[postgres]"
     depends_on:
       postgres:
         condition: service_healthy

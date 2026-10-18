@@ -12,7 +12,7 @@
 # rate_limit.py's per-IP limiter and services/demo_tenant_service.py's idle-reset
 # tracking are both in-process state, not shared across replicas.
 
-FROM python:3.13-slim AS builder
+FROM python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f AS builder
 
 # gcc/libpq-dev: build-time deps for compiling the [postgres] extra's psycopg wheel, if
 # requested via the EXTRAS build arg below -- not needed at runtime, so this whole stage
@@ -23,21 +23,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY pyproject.toml .
+COPY requirements/ requirements/
 COPY src/ src/
 COPY migrations/ migrations/
 COPY alembic.ini .
 
-# Override to add extras, e.g. --build-arg EXTRAS=.[postgres,pdf,sms] -- defaults to the
-# base install plus PDF export (weasyprint), since the in-app documentation's "Download
-# PDF" button is a normal, expected feature, not an opt-in extra a typical deployment
-# would think to ask for.
-ARG EXTRAS=.[pdf]
+# Dependencies come only from the hashed lock (OWASP_PLAN.md OW-D9; scripts/lock.sh): every
+# runtime extra that needs no system libraries (PDF export, Postgres, S3, Azure, Redis, SMS,
+# cloud OCR), so one image works everywhere, and nothing is installed that the lock didn't
+# name and hash. EXTRAS adds what needs system libraries, unlocked, e.g.
+# --build-arg EXTRAS=mssql (with unixODBC) or EXTRAS=opencv.
+ARG EXTRAS=
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
-RUN pip install --no-cache-dir -e "${EXTRAS}"
+RUN pip install --no-cache-dir --require-hashes -r requirements/runtime.txt \
+    && pip install --no-cache-dir --no-deps -e . \
+    && if [ -n "${EXTRAS}" ]; then pip install --no-cache-dir -e ".[${EXTRAS}]"; fi
 
 
-FROM python:3.13-slim
+FROM python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
 
 # tesseract-ocr: the system binary pytesseract shells out to (ocr/tesseract_provider.py).
 # libpango/libcairo/libgdk-pixbuf: weasyprint's runtime deps for PDF export --
