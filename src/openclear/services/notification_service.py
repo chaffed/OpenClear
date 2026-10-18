@@ -34,7 +34,8 @@ from openclear.web.templates import templates
 # optional" reasoning most apps apply to account-security notices. Every other type (and
 # SMS for every type, including these) stays fully preference-controlled.
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
-                                 NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED})
+                                 NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
+                                 NotificationType.NEW_DEVICE_SIGN_IN})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -47,6 +48,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.INVITATION: "You're invited to OpenClear",
     NotificationType.PASSWORD_RESET_LINK: "Choose a new OpenClear password",
     NotificationType.SECURITY_KEY_CHANGED: "A security key was changed on your OpenClear sign-in",
+    NotificationType.NEW_DEVICE_SIGN_IN: "A new sign-in to your OpenClear account",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -396,6 +398,14 @@ def notify_security_key_changed(session: Session, user: User, *, added: bool, ni
         template_context={"added": added, "nickname": nickname, "bank_name": bank_name, "reset_by_admin": reset_by_admin},
         resource_type="user",
         resource_id=user.id,
+    )
+
+
+def notify_new_device(session: Session, user: User, *, browser: str, address: str, at, bank_name: str) -> None:
+    _queue(
+        session, tenant_id=None, recipient=user, notification_type=NotificationType.NEW_DEVICE_SIGN_IN,
+        template_context={"browser": browser, "address": address, "at": at.strftime("%Y-%m-%d %H:%M UTC"), "bank_name": bank_name},
+        resource_type="user", resource_id=user.id,
     )
 
 

@@ -38,9 +38,11 @@ from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.ach_transaction import AchTransactionType
 from openclear.domain.customer import Customer
 from openclear.domain.decision import DecisionOutcome
+from openclear.domain.email_change import EmailChange
 from openclear.domain.ml_model import MlModel
 from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
+from openclear.domain.user_device import UserDevice
 from openclear.ml.registry import activate_model
 from openclear.ml.train import InsufficientTrainingData, train_model
 from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ach_transaction
@@ -338,6 +340,15 @@ def _purge_tenant_files(session: Session, tenant_id: uuid.UUID) -> None:
         storage.delete(artifact_path)
 
 
+def delete_users(session: Session, condition) -> None:
+    """Deletes the people matching `condition`, with the rows keyed only by person (their
+    browsers and email changes), which the per-bank wipe doesn't reach."""
+    users = select(User.id).where(condition)
+    session.execute(delete(UserDevice).where(UserDevice.user_id.in_(users)))
+    session.execute(delete(EmailChange).where(EmailChange.user_id.in_(users)))
+    session.execute(delete(User).where(condition))
+
+
 def _wipe_tenant_children(session: Session, tenant_id: uuid.UUID) -> None:
     """Deletes every row belonging to tenant_id, across every tenant-scoped table --
     driven off Base.metadata (topologically sorted by every declared FK, reversed for a
@@ -368,7 +379,7 @@ def _wipe_tenant_children(session: Session, tenant_id: uuid.UUID) -> None:
     for table in reversed(Base.metadata.sorted_tables):
         if "tenant_id" in table.columns:
             session.execute(delete(table).where(table.c.tenant_id == tenant_id))
-    session.execute(delete(User).where(User.email.in_(DEMO_USER_EMAILS)))
+    delete_users(session, User.email.in_(DEMO_USER_EMAILS))
     session.flush()
 
 

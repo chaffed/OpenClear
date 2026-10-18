@@ -34,6 +34,8 @@ class NotificationType(str, enum.Enum):
     # web/routers/security_settings.py, api/v1/webauthn.py: a security key was added to or removed
     # from this person's sign-in. Always email: an unexpected one means someone else is in.
     SECURITY_KEY_CHANGED = "security_key_changed"
+    # services/device_service.py: a sign-in from a browser this person hasn't used before (OW-D30). Always email.
+    NEW_DEVICE_SIGN_IN = "new_device_sign_in"
     # services/customer_approval_service.py: the bank approved or rejected someone the
     # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
     CUSTOMER_USER_DECIDED = "customer_user_decided"

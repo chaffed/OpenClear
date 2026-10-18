@@ -37,6 +37,7 @@ router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 _PREFERENCE_TYPES = [
     t for t in NotificationType if t not in (NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INVITATION,
                                              NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
+                                             NotificationType.NEW_DEVICE_SIGN_IN,
                                              NotificationType.INACTIVITY_WARNING)
 ]
 

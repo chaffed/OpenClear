@@ -40,6 +40,7 @@ from openclear.services import (
     audit_log_service,
     customer_service,
     demo_tenant_service,
+    device_service,
     session_service,
     sso_service,
     user_service,
@@ -174,6 +175,7 @@ def login_submit(
     db.commit()
     response = RedirectResponse(next_path, status_code=303)
     set_session_cookies(response, tokens)
+    device_service.note_sign_in(db, request, response, user, bank_name=tenant.name)
     return response
 
 
@@ -251,6 +253,7 @@ def login_webauthn_options(
 
 @router.post("/login/webauthn/verify")
 def login_webauthn_verify(
+    request: Request,
     payload: AuthenticationVerifyRequest,
     next: str = "/ui/",
     db: Session = Depends(get_db),
@@ -269,6 +272,7 @@ def login_webauthn_verify(
     response = JSONResponse({"redirect": next_path})
     set_session_cookies(response, _session_tokens_from_mfa(ctx, user))
     clear_mfa_cookie(response)
+    device_service.note_sign_in(db, request, response, user, bank_name=ctx.tenant_name)
     return response
 
 
@@ -303,6 +307,7 @@ def login_webauthn_setup_options(
 
 @router.post("/login/webauthn/setup/verify")
 def login_webauthn_setup_verify(
+    request: Request,
     payload: RegistrationVerifyRequest,
     next: str = "/ui/",
     db: Session = Depends(get_db),
@@ -321,6 +326,7 @@ def login_webauthn_setup_verify(
     response = JSONResponse({"redirect": next_path})
     set_session_cookies(response, _session_tokens_from_mfa(ctx, user))
     clear_mfa_cookie(response)
+    device_service.note_sign_in(db, request, response, user, bank_name=ctx.tenant_name)
     return response
 
 
@@ -523,6 +529,7 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
     set_session_cookies(response, tokens)
     clear_sso_state_cookie(response)
     clear_saml_state_cookie(response)
+    device_service.note_sign_in(db, request, response, user, bank_name=login_tenant.name)
     return response
 
 

@@ -292,6 +292,7 @@ def test_a_customer_sign_on_sets_confinement(db_session, tenant_factory):
 
     class _Request:
         cookies: dict = {}
+        headers: dict = {}
 
     response = finish_sso_login(_Request(), db_session, s["tenant"].id, connection,
                                 OidcClaims(subject="sub-1", email=s["admin"].email, groups=["staff"]), "/ui/", lambda m: m)

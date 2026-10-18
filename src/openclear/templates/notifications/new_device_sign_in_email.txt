@@ -1,0 +1,5 @@
+Someone signed in to your OpenClear account at {{ bank_name }} from a browser you haven't used before:
+
+  {{ browser }}, from {{ address }}, at {{ at }}
+
+If this was you, there's nothing to do. If not, change your password, sign out everywhere (your Security page lists where you're signed in), and tell your administrator now.

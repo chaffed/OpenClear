@@ -91,7 +91,7 @@ def expire_due(session: Session, now: datetime | None = None) -> int:
     for tenant in due:
         demo_tenant_service._wipe_tenant_children(session, tenant.id)
         domain = _domain(tenant.slug)
-        session.execute(User.__table__.delete().where(User.email.like(f"%@{domain}")))
+        demo_tenant_service.delete_users(session, User.email.like(f"%@{domain}"))
         tenant.is_active = False
         session.commit()
     return len(due)
