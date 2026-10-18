@@ -104,7 +104,7 @@ def test_local_references_stay_readable_after_switching_to_azure(azure, tmp_path
     assert not storage.is_object_ref(str(old)) and storage.is_object_ref("azblob://c/k")
 
 
-def test_a_bulk_upload_imports_from_azure(azure, db_session, tenant_factory):
+def test_a_bulk_upload_imports_from_azure(db_session, tenant_factory, azure):  # azure last: the Postgres db_session rebuilds settings
     from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind, BulkUploadStatus
     from openclear.services import bulk_import_service
     from openclear.workers import jobs
