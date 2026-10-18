@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import base64
+import hashlib
+import hmac
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -14,19 +17,34 @@ from openclear.config import Settings, get_settings
 
 TokenType = Literal["access", "refresh", "mfa_pending"]
 
-# bcrypt's underlying algorithm silently truncates/ignores input past 72 bytes; cap it
-# explicitly so behavior is consistent rather than relying on the library's own limit.
-_MAX_PASSWORD_BYTES = 72
+# bcrypt only reads the first 72 bytes of its input, so a long password (or a 64-character one
+# in a script with multibyte letters) would be cut short. Since 1.22.1 the password is first
+# HMAC-SHA-256'd and base64-encoded (44 bytes), so every character counts (ASVS 5.0 6.2.8,
+# 6.2.9). The HMAC key isn't a secret: it separates these from plain SHA-256 hashes leaked
+# elsewhere, without a pepper whose loss would lock everyone out. Hashes from before carry no
+# prefix, verify the old way, and are replaced at the next successful sign-in.
+_V2 = "ocv2:"
+_PREHASH_KEY = b"openclear password prehash v2"
+_LEGACY_MAX_BYTES = 72
+
+
+def _prehash(plain_password: str) -> bytes:
+    return base64.b64encode(hmac.new(_PREHASH_KEY, plain_password.encode("utf-8"), hashlib.sha256).digest())
 
 
 def hash_password(plain_password: str) -> str:
-    password_bytes = plain_password.encode("utf-8")[:_MAX_PASSWORD_BYTES]
-    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("ascii")
+    return _V2 + bcrypt.hashpw(_prehash(plain_password), bcrypt.gensalt()).decode("ascii")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    password_bytes = plain_password.encode("utf-8")[:_MAX_PASSWORD_BYTES]
-    return bcrypt.checkpw(password_bytes, hashed_password.encode("ascii"))
+    if hashed_password.startswith(_V2):
+        return bcrypt.checkpw(_prehash(plain_password), hashed_password[len(_V2):].encode("ascii"))
+    return bcrypt.checkpw(plain_password.encode("utf-8")[:_LEGACY_MAX_BYTES], hashed_password.encode("ascii"))
+
+
+def password_needs_rehash(hashed_password: str) -> bool:
+    """A hash from before 1.22.1, to be replaced once its password has just verified."""
+    return not hashed_password.startswith(_V2)
 
 
 def create_token(

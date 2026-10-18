@@ -204,3 +204,36 @@ def test_the_api_answers_a_locked_account_like_a_wrong_password(client, db_sessi
                                                      "password": TenantFactory.PASSWORD})
     assert locked.status_code == unknown.status_code == 401
     assert locked.json() == unknown.json()
+
+
+# --- bcrypt's 72-byte limit (ASVS 6.2.8, 6.2.9) ---
+
+
+@pytest.mark.asvs("6.2.8")
+def test_every_character_of_a_long_password_counts():
+    from openclear.auth.security import verify_password
+
+    long = "correct horse battery staple " * 4  # 116 characters
+    hashed = hash_password(long)
+    assert verify_password(long, hashed)
+    assert not verify_password(long[:-1] + "X", hashed)  # past bcrypt's 72 bytes, still different
+    multibyte = "密码" * 32  # 64 characters, 192 bytes
+    assert not verify_password("密码" * 31 + "密", hash_password(multibyte))
+
+
+def test_an_old_hash_still_works_and_is_upgraded_at_sign_in(db_session, tenant_factory):
+    import bcrypt
+
+    from openclear.auth.security import password_needs_rehash
+
+    tenant, _account, users = tenant_factory.make(slug="pw-rehash")
+    admin = users["admin"]
+    admin.hashed_password = bcrypt.hashpw(TenantFactory.PASSWORD.encode(), bcrypt.gensalt()).decode()  # pre-1.22.1
+    db_session.commit()
+    assert password_needs_rehash(admin.hashed_password)
+
+    result = authenticate_password(db_session, tenant.slug, admin.email, TenantFactory.PASSWORD)
+
+    assert result.outcome == PasswordLoginOutcome.SUCCESS
+    assert admin.hashed_password.startswith("ocv2:")
+    assert authenticate_password(db_session, tenant.slug, admin.email, TenantFactory.PASSWORD).outcome == PasswordLoginOutcome.SUCCESS

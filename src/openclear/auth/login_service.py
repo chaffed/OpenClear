@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.db.tenancy import bind_session_to_tenant
-from openclear.auth.security import verify_password
+from openclear.auth.security import hash_password, password_needs_rehash, verify_password
 from openclear.auth.webauthn_service import user_has_webauthn_credentials
 from openclear.config import Settings, get_settings
 from openclear.domain.customer import Customer
@@ -159,6 +159,8 @@ def authenticate_password(
         session.flush()
         return failed("invalid_credentials", tenant.id, user)
 
+    if password_needs_rehash(user.hashed_password):
+        user.hashed_password = hash_password(password)  # upgrade a pre-1.22.1 hash while we hold the password
     # Correct password proves the brute force didn't work, regardless of whether the
     # login ultimately succeeds or hits SSO_REQUIRED below.
     if user.failed_login_attempts or user.locked_until is not None:
@@ -289,6 +291,8 @@ def authenticate_platform(session: Session, email: str, password: str, *, settin
         session.flush()
         return None
     user.failed_login_attempts, user.locked_until = 0, None
+    if password_needs_rehash(user.hashed_password):
+        user.hashed_password = hash_password(password)
     security_events.emit(session, "auth.login.succeeded", tenant_id=None, actor_type="user", actor_id=user.id,
                          actor_label=user.email, details={"method": "password", "where": "platform", "role": user.platform_role})
     session.flush()

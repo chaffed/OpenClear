@@ -225,7 +225,7 @@ several tenants and customers.</p>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>email</td><td>String(255)</td><td>no</td><td>UK</td><td>Globally unique — one identity per email across every tenant.</td></tr>
-<tr><td>hashed_password</td><td>String(255)</td><td>no</td><td></td><td>bcrypt hash; see auth/security.py.</td></tr>
+<tr><td>hashed_password</td><td>String(255)</td><td>no</td><td></td><td>bcrypt of an HMAC-SHA-256 of the password, prefixed <code>ocv2:</code>, so every character counts; a hash without the prefix (from before 1.22.1) is the plain bcrypt and is replaced at its next sign-in. See auth/security.py.</td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>last_login_at</td><td>Timestamp</td><td>yes</td><td></td><td>Updated on every completed login; powers stale-account review.</td></tr>
