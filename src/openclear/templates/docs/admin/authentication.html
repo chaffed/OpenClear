@@ -34,6 +34,14 @@ its metadata URL.</p>
     customer number, and their session is limited to that customer. The platform's own
     server can exchange a signed-in person's ID token for a token acting for them. To allow
     that, link its API client to the connection.</li>
+  <li><strong>Checking the provider used MFA.</strong> People who sign in through single sign-on
+    don't need an OpenClear security key: their identity provider is expected to require a second
+    factor. To have OpenClear check that rather than trust it, turn on <strong>Require the identity
+    provider to report MFA</strong> on the connection. A sign-in is then refused unless the provider
+    says MFA was used (OIDC <code>amr</code> containing <code>mfa</code>, or an <code>acr</code> or
+    SAML authentication context OpenClear recognises, such as <code>aal2</code> or Entra's
+    <code>multipleauthn</code>). If your provider uses its own values, such as a Keycloak level
+    <code>2</code>, list them on the connection.</li>
 </ul>
 
 <h2>Customers' own sign-on</h2>
@@ -67,6 +75,9 @@ customer's data, that customer. Copy the secret when it's shown: it's shown only
   secret instead</strong> goes back.</li>
   <li>Review your API clients alongside your users: the page shows when each was last
   used.</li>
+  <li><strong>API clients must sign with a key pair</strong>, at the top of the page, refuses
+  every client still using a secret. Turning it on applies at once; turning it off waits for a
+  second administrator.</li>
 </ul>
 
 <h2>Webhooks</h2>
@@ -82,6 +93,32 @@ when you create it (shown only once).</p>
   page shows each delivery and lets you send a failed one again, or send a test.</li>
   <li>The address must be a public <code>https://</code> one.</li>
 </ul>
+
+<h2>Required security keys</h2>
+<p>Under Settings → <strong>Required security keys</strong> you can require everyone who signs in
+with a password to also use a security key or passkey. A laptop's fingerprint reader or Windows
+Hello counts, as does a phone. People who sign in through your identity provider, or from online
+banking, aren't affected: those sign-ins are checked there.</p>
+<ul>
+  <li><strong>Grace period.</strong> When you turn it on, people without a key get a number of days
+    (14 unless you choose otherwise, at most 90) during which they can still sign in and see a
+    reminder with the days left. After it, they add a key as part of signing in.</li>
+  <li><strong>Customers.</strong> A customer can require keys for its own people even if you don't,
+    from its password policy page.</li>
+  <li><strong>Dual control.</strong> Turning it on, or shortening the grace period, applies at once.
+    Turning it off, or lengthening the grace period, waits for a second administrator.</li>
+  <li><strong>Lost keys.</strong> If someone loses their key, an administrator removes their keys
+    (Users → edit → <strong>Reset security keys</strong>, or People for a customer's own
+    administrators). First confirm it's really them, the way you would for a password reset, and
+    say how: it goes in the audit log. They're signed out everywhere, emailed, and add a new key
+    when they next sign in. If your only administrator loses their key, ask your service
+    provider: two of its operators must agree before they can reset it.</li>
+  <li><strong>Passwords.</strong> With a key required, a password is no longer the only factor, and
+    NIST allows an 8-character minimum. The password policy page says so; lowering the minimum
+    waits for a second administrator.</li>
+</ul>
+<p>The Controls page warns while keys aren't required, and while people are still in the grace
+period without one.</p>
 
 <h2>Account lockout</h2>
 <p>An account locks automatically after too many failed login attempts, as a brute-force

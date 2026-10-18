@@ -210,6 +210,23 @@ Use the `syslog()` source, which reads RFC 5424 with octet counting (RFC 5425); 
 expects newline-separated legacy syslog and would run messages together. For rsyslog, use
 `imtcp` with `StreamDriver.Mode="1"` and the `gtls` driver.
 
+## Everything OpenClear logs
+
+Every log OpenClear writes, and nothing else (ASVS 5.0 16.1.1, 16.2.3):
+
+| Stream | What's in it | Where it goes | Kept |
+|---|---|---|---|
+| Application log | Warnings, errors and job outcomes, with the request id, client IP, bank and person when there is one | Standard output: text, or JSON with `OPENCLEAR_LOG_FORMAT=json` (recommended in production) | By the service provider's log collector |
+| Access log | One line per request: method, path (never the query string), status, duration, request id, client IP | Standard output (`openclear.access` in JSON; uvicorn's own line in text) | By the log collector |
+| Security events | Sign-ins and their failures, lockouts, second factors, permission and settings changes, refusals, delivery and verification failures (the catalog above) | The `security_event` table, the pull API, and each destination set up here | `security_event_retention_days` (30) in the table; your SIEM keeps its copy |
+| Action log | Every change, with who, when, from where and the request id | The `audit_log_entry` table, chained and signed; archived to signed files | The bank's records policy; archives are files in storage |
+| Provider action log | The service provider's own actions (setting up banks, platform roles, keys, resets) | The `platform_action_log` table, chained and signed | As the action log |
+| Edge logs | Whatever the bank's WAF or CDN records | The edge provider | The bank's or service provider's choice; mask query strings there (`docs/guides/edge.md`) |
+
+Never in any of them: passwords, tokens, cookies, secrets, request bodies, query strings, or full
+account numbers in security events. With text logs, line breaks in values are escaped so a request
+can't forge a log line.
+
 ## What to alert on
 
 Suggested detections, as queries in plain terms. Adjust the thresholds to your bank.
