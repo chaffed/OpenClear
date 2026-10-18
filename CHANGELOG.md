@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.22.1 — 2026-10-18
 
 Security fixes from the ASVS assessment (OWASP_PLAN.md):
 
