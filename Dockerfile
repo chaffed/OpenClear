@@ -12,7 +12,7 @@
 # rate_limit.py's per-IP limiter and services/demo_tenant_service.py's idle-reset
 # tracking are both in-process state, not shared across replicas.
 
-FROM python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f AS builder
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS builder
 
 # gcc/libpq-dev: build-time deps for compiling the [postgres] extra's psycopg wheel, if
 # requested via the EXTRAS build arg below -- not needed at runtime, so this whole stage
@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir --require-hashes -r requirements/runtime.txt \
     && if [ -n "${EXTRAS}" ]; then pip install --no-cache-dir -e ".[${EXTRAS}]"; fi
 
 
-FROM python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
 
 # tesseract-ocr: the system binary pytesseract shells out to (ocr/tesseract_provider.py).
 # libpango/libcairo/libgdk-pixbuf: weasyprint's runtime deps for PDF export --
