@@ -31,6 +31,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('security_key_required_since', sa.DateTime(timezone=True), nullable=True))
     with op.batch_alter_table('sso_connection') as batch_op:
         batch_op.add_column(sa.Column('require_mfa_claim', sa.Boolean(), nullable=False, server_default='0'))
+        batch_op.add_column(sa.Column('mfa_values', sa.String(length=500), nullable=True))
     # Platform staff's keys and challenges belong to no bank (ADR 0005): no row-level security.
     op.create_table(
         'platform_webauthn_credential',
@@ -66,6 +67,7 @@ def downgrade() -> None:
     op.drop_table('platform_webauthn_challenge')
     op.drop_table('platform_webauthn_credential')
     with op.batch_alter_table('sso_connection') as batch_op:
+        batch_op.drop_column('mfa_values')
         batch_op.drop_column('require_mfa_claim')
     with op.batch_alter_table('customer') as batch_op:
         batch_op.drop_column('security_key_required_since')

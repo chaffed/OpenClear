@@ -52,6 +52,7 @@ class SamlAssertion:
     session_index: str | None = None
     in_response_to: str | None = None
     customer_number: str | None = None
+    authentication: tuple[str, ...] = ()  # the AuthnContextClassRef values
 
 
 # --- Keys ------------------------------------------------------------------------------
@@ -218,6 +219,7 @@ def process_response(connection: SsoConnection, base: str, post_data: dict, *, r
         assertion_id=auth.get_last_assertion_id() or "",
         expires_at=dt.datetime.fromtimestamp(expires, dt.timezone.utc) if expires else None,
         session_index=auth.get_session_index(), in_response_to=in_response_to,
+        authentication=tuple(str(c) for c in (auth.get_last_authn_contexts() or [])),
         customer_number=(str(attributes[connection.customer_claim][0]).strip() or None)
         if connection.customer_claim and attributes.get(connection.customer_claim) else None,
     )

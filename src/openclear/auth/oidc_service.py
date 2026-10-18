@@ -41,6 +41,9 @@ class OidcClaims:
     # The online banking sign-on profile (SsoConnection.customer_claim): which business
     # customer the person belongs to, by customer number.
     customer_number: str | None = None
+    # What the provider said about how the person authenticated: OIDC amr and acr values, or
+    # SAML AuthnContextClassRef (services/sso_service.py::mfa_reported).
+    authentication: tuple[str, ...] = ()
 
 
 def _http_client() -> httpx.Client:
@@ -206,7 +209,10 @@ def claims_to_identity(connection: SsoConnection, claims: dict[str, Any]) -> Oid
     customer_number = None
     if connection.customer_claim and claims.get(connection.customer_claim) is not None:
         customer_number = str(claims[connection.customer_claim]).strip() or None
-    return OidcClaims(email=email, subject=str(claims.get("sub", "")), groups=list(groups), customer_number=customer_number)
+    amr = claims.get("amr") or []
+    authentication = tuple(str(v) for v in ([amr] if isinstance(amr, str) else amr)) + ((str(claims["acr"]),) if claims.get("acr") else ())
+    return OidcClaims(email=email, subject=str(claims.get("sub", "")), groups=list(groups), customer_number=customer_number,
+                      authentication=authentication)
 
 
 BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout"

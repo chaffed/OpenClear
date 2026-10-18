@@ -41,6 +41,8 @@ class SsoForm:
     saml_email_attribute: str
     allow_idp_initiated: bool
     customer_claim: str
+    require_mfa_claim: bool = False
+    mfa_values: str = ""
 
     def to_input(self, customer_id: uuid.UUID | None) -> SsoConnectionInput:
         return SsoConnectionInput(
@@ -50,6 +52,7 @@ class SsoForm:
             saml_sso_url=self.saml_sso_url, saml_slo_url=self.saml_slo_url, saml_idp_certificate=self.saml_idp_certificate,
             saml_email_attribute=self.saml_email_attribute, allow_idp_initiated=self.allow_idp_initiated,
             customer_claim=self.customer_claim if customer_id is None else None,
+            require_mfa_claim=self.require_mfa_claim, mfa_values=self.mfa_values or None,
         )
 
 
@@ -68,10 +71,12 @@ def sso_form(
     saml_email_attribute: str = Form(""),
     allow_idp_initiated: bool = Form(False),
     customer_claim: str = Form(""),
+    require_mfa_claim: bool = Form(False),
+    mfa_values: str = Form(""),
 ) -> SsoForm:
     return SsoForm(
         provider, protocol, display_name, issuer, client_id, client_secret, groups_claim_name, auto_provision, saml_sso_url,
-        saml_slo_url, saml_idp_certificate, saml_email_attribute, allow_idp_initiated, customer_claim,
+        saml_slo_url, saml_idp_certificate, saml_email_attribute, allow_idp_initiated, customer_claim, require_mfa_claim, mfa_values,
     )
 
 

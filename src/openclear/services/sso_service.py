@@ -44,6 +44,8 @@ class SsoConnectionInput:
     saml_email_attribute: str | None = None
     allow_idp_initiated: bool = False
     customer_claim: str | None = None
+    require_mfa_claim: bool = False
+    mfa_values: str | None = None
 
 
 def _https_url(value: str | None, what: str, *, required: bool) -> str | None:
@@ -88,6 +90,8 @@ def _apply_input(session: Session, tenant_id: uuid.UUID, connection: SsoConnecti
     connection.groups_claim_name = data.groups_claim_name
     connection.auto_provision = data.auto_provision
     connection.allow_idp_initiated = data.allow_idp_initiated
+    connection.require_mfa_claim = data.require_mfa_claim
+    connection.mfa_values = ", ".join(v.strip() for v in (data.mfa_values or "").split(",") if v.strip())[:500] or None
     customer_claim = (data.customer_claim or "").strip() or None
     if customer_claim and data.customer_id is not None:
         raise ValueError("The online banking profile (customer claim) is for a bank-wide connection, not one customer's.")
@@ -220,7 +224,7 @@ def remove_group_mapping(session: Session, tenant_id: uuid.UUID, mapping_id: uui
 
 @dataclass(frozen=True, slots=True)
 class SsoLoginResult:
-    outcome: Literal["success", "not_authorized", "not_provisioned", "pending_approval", "identity_conflict"]
+    outcome: Literal["success", "not_authorized", "not_provisioned", "pending_approval", "identity_conflict", "mfa_not_reported"]
     user: User | None = None
     membership: TenantMembership | None = None
 
@@ -243,6 +247,13 @@ def _resolve_security_group_id(
 
 
 def complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoConnection, claims: OidcClaims) -> SsoLoginResult:
+    if connection.require_mfa_claim and not mfa_reported(connection, claims):
+        from openclear.services import security_events
+
+        security_events.emit(session, "auth.sso.failed", tenant_id=tenant_id, outcome="failure", reason="mfa_not_reported",
+                             actor_label=claims.email[:320],
+                             details={"connection": connection.display_name, "authentication": list(claims.authentication)[:10]})
+        return SsoLoginResult(outcome="mfa_not_reported")
     conflict = _identity_conflict(session, connection, claims)
     if conflict is not None:
         from openclear.services import security_events
@@ -254,6 +265,21 @@ def complete_sso_login(session: Session, tenant_id: uuid.UUID, connection: SsoCo
     if result.outcome == "success" and claims.subject:
         record_identity(session, tenant_id, connection, claims.subject, result.user)
     return result
+
+
+# Values that say MFA was used (OW-D25): RFC 8176's "mfa" amr, NIST assurance levels 2 and 3, and
+# the SAML authentication contexts the main providers send for MFA. A connection adds its own.
+MFA_EVIDENCE = frozenset({
+    "mfa", "aal2", "aal3", "http://idmanagement.gov/ns/assurance/aal/2", "http://idmanagement.gov/ns/assurance/aal/3",
+    "http://schemas.microsoft.com/claims/multipleauthn", "urn:oasis:names:tc:SAML:2.0:ac:classes:MultiFactor",
+    "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken", "http://schemas.openid.net/pape/policies/2007/06/multi-factor",
+    "phr", "phrh",
+})
+
+
+def mfa_reported(connection: SsoConnection, claims: OidcClaims) -> bool:
+    accepted = MFA_EVIDENCE | {v.strip() for v in (connection.mfa_values or "").split(",") if v.strip()}
+    return any(value in accepted for value in claims.authentication)
 
 
 def _identity_conflict(session: Session, connection: SsoConnection, claims: OidcClaims) -> str | None:

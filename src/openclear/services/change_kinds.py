@@ -607,7 +607,8 @@ register(Kind(
 ))
 
 _SSO_FIELDS = ("provider", "issuer", "client_id", "groups_claim_name", "auto_provision", "protocol", "saml_sso_url", "saml_slo_url",
-               "saml_idp_certificate", "saml_email_attribute", "allow_idp_initiated", "customer_claim")
+               "saml_idp_certificate", "saml_email_attribute", "allow_idp_initiated", "customer_claim", "require_mfa_claim",
+               "mfa_values")
 
 
 def _sso_public(values: dict) -> dict:
@@ -650,8 +651,11 @@ def _sso_apply(session, tenant_id, customer_id, payload, user_id) -> str:
 
 register(Kind(
     "sso_connection.update", "Single sign-on", "sensitive", _BANK_ADMIN, _sso_current, _sso_value,
-    # Only renaming it is harmless; anything else changes who can sign in, or how.
-    loosens=lambda before, after: {k: v for k, v in before.items() if k != "display_name"} != {k: v for k, v in after.items() if k != "display_name"},
+    # Only renaming it, or turning on the MFA check (OW-D25), is harmless; anything else changes who can
+    # sign in, or how.
+    loosens=lambda before, after: {k: v for k, v in before.items() if k not in ("display_name", "require_mfa_claim")}
+    != {k: v for k, v in after.items() if k not in ("display_name", "require_mfa_claim")}
+    or (bool(before.get("require_mfa_claim")) and not after.get("require_mfa_claim")),
     apply=_sso_apply, setting=lambda payload: f"sso:{payload['connection_id']}:config",
     describe=lambda before, after: f"Change how {after['display_name']} signs people in", action="sso_connection.update",
 ))

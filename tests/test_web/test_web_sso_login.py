@@ -442,3 +442,42 @@ def test_without_a_subject_only_the_email_is_used(db_session, tenant_factory):
     for _ in range(2):  # e.g. a SAML transient NameID: nothing to compare
         assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims("ana@acme.example.com", "")).outcome == "success"
         db_session.commit()
+
+
+# --- The provider must report MFA (OW-D25) ---
+
+
+def _claims_with(authentication):
+    from openclear.auth.oidc_service import OidcClaims
+
+    return OidcClaims(email="mfa@acme.example.com", subject="sub-mfa", groups=["openclear-users"], authentication=authentication)
+
+
+@pytest.mark.asvs("6.8.4")
+def test_a_connection_can_require_the_provider_to_report_mfa(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-mfa-claim")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    connection.require_mfa_claim = True
+    connection.mfa_values = "2, gold"
+    db_session.commit()
+
+    assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims_with(("pwd",))).outcome == "mfa_not_reported"
+    for evidence in (("pwd", "mfa"), ("aal2",), ("http://schemas.microsoft.com/claims/multipleauthn",), ("2",)):
+        result = sso_service.complete_sso_login(db_session, tenant.id, connection, _claims_with(evidence))
+        assert result.outcome == "success", evidence
+        db_session.commit()
+
+
+def test_without_the_switch_the_provider_is_trusted(db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="sso-mfa-off")
+    connection, _group = _make_mapped_connection(db_session, tenant)
+    assert sso_service.complete_sso_login(db_session, tenant.id, connection, _claims_with(())).outcome == "success"
+
+
+def test_turning_the_mfa_check_on_isn_t_a_loosening():
+    from openclear.services.change_kinds import get
+
+    kind = get("sso_connection.update")
+    before = {"issuer": "x", "display_name": "A", "require_mfa_claim": False}
+    assert not kind.loosens(before, {**before, "require_mfa_claim": True})
+    assert kind.loosens({**before, "require_mfa_claim": True}, before)

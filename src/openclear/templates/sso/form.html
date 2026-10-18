@@ -80,6 +80,16 @@
         Allow sign-in started at the identity provider (an OpenClear tile in its portal)
       </label>
     </fieldset>
+    <label>
+      <input type="checkbox" name="require_mfa_claim" value="true" {{ "checked" if connection and connection.require_mfa_claim else "" }}>
+      Require the identity provider to report MFA
+    </label>
+    <label>MFA values this provider uses (optional, comma-separated)
+      <input type="text" name="mfa_values" value="{{ (connection.mfa_values or '') if connection else '' }}" placeholder="e.g. 2, gold">
+      <small>A sign-in is refused unless the provider says MFA was used: OIDC <code>amr</code> with <code>mfa</code>, or an
+        <code>acr</code> / SAML authentication context that's a known MFA value (such as <code>aal2</code> or Entra's
+        <code>multipleauthn</code>) or one listed here (for example Keycloak's level <code>2</code>).</small>
+    </label>
     <label>Groups claim / attribute name
       <input type="text" name="groups_claim_name" value="{{ connection.groups_claim_name if connection else 'groups' }}" required>
     </label>
