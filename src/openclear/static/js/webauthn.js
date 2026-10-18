@@ -27,7 +27,7 @@ function getCookie(name) {
 }
 
 function csrfHeaders(extra) {
-  return Object.assign({ "X-CSRF-Token": getCookie("csrf_token") || "" }, extra || {});
+  return Object.assign({ "X-CSRF-Token": getCookie("__Host-csrf_token") || getCookie("csrf_token") || "" }, extra || {});
 }
 
 async function loginWebAuthn(nextPath, onError) {

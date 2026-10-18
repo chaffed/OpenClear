@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 
-from openclear.web.security import THEME_COOKIE_NAME, _secure_cookies, safe_next_path, verify_csrf
+from openclear.web.security import THEME_COOKIE_NAME, _secure_cookies, cookie_name, safe_next_path, verify_csrf
 
 router = APIRouter(prefix="/ui/theme", tags=["web-theme"])
 
@@ -26,7 +26,7 @@ def set_theme(
     response = RedirectResponse(safe_next_path(next), status_code=303)
     if theme in _VALID_THEMES:
         response.set_cookie(
-            THEME_COOKIE_NAME,
+            cookie_name(THEME_COOKIE_NAME),
             theme,
             httponly=True,
             secure=_secure_cookies(),
@@ -35,5 +35,5 @@ def set_theme(
             max_age=365 * 24 * 60 * 60,
         )
     else:
-        response.delete_cookie(THEME_COOKIE_NAME, path="/", secure=_secure_cookies(), samesite="lax")
+        response.delete_cookie(cookie_name(THEME_COOKIE_NAME), path="/", secure=_secure_cookies(), samesite="lax")
     return response

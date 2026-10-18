@@ -39,30 +39,32 @@ def create_token(user: User) -> str:
 
 
 def set_cookie(response, token: str) -> None:
-    from openclear.web.security import _secure_cookies
+    from openclear.web.security import _secure_cookies, cookie_name
 
-    response.set_cookie(COOKIE, token, httponly=True, secure=_secure_cookies(), samesite="strict",
+    response.set_cookie(cookie_name(COOKIE), token, httponly=True, secure=_secure_cookies(), samesite="strict",
                         max_age=int(LIFETIME.total_seconds()), path="/ui")
 
 
 def clear_cookie(response) -> None:
-    from openclear.web.security import _secure_cookies
+    from openclear.web.security import _secure_cookies, cookie_name
 
-    response.delete_cookie(COOKIE, path="/ui", secure=_secure_cookies(), samesite="strict")
+    response.delete_cookie(cookie_name(COOKIE), path="/ui", secure=_secure_cookies(), samesite="strict")
 
 
 def set_support_session(response, token: str, expires_at: datetime) -> None:
     """A support session replaces any bank session in this browser: its own access token,
     good until the grant ends, and no refresh token (it can't outlive the grant)."""
-    from openclear.web.security import ACCESS_COOKIE_NAME, _secure_cookies, clear_auth_cookies
+    from openclear.web.security import ACCESS_COOKIE_NAME, _secure_cookies, clear_auth_cookies, cookie_name
 
     clear_auth_cookies(response)
     max_age = max(0, int((expires_at - datetime.now(timezone.utc)).total_seconds()))
-    response.set_cookie(ACCESS_COOKIE_NAME, token, httponly=True, secure=_secure_cookies(), samesite="lax", path="/", max_age=max_age)
+    response.set_cookie(cookie_name(ACCESS_COOKIE_NAME), token, httponly=True, secure=_secure_cookies(), samesite="lax", path="/", max_age=max_age)
 
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    token = request.cookies.get(COOKIE)
+    from openclear.web.security import read_cookie
+
+    token = read_cookie(request, COOKIE)
     if not token:
         raise PlatformAuthRequired()
     try:

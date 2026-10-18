@@ -31,13 +31,14 @@ from openclear.auth.security import decode_token
 from openclear.db.session import get_db
 from openclear.services import session_service
 from openclear.web.security import (
-    ACCESS_COOKIE_NAME,
-    REFRESH_COOKIE_NAME,
     clear_auth_cookies,
-    was_embedded,
+    read_cookie,
     safe_next_path,
     set_session_cookies,
     verify_csrf_header,
+    was_embedded,
+    ACCESS_COOKIE_NAME,
+    REFRESH_COOKIE_NAME,
 )
 
 router = APIRouter(prefix="/ui/auth", tags=["web-session"])
@@ -48,7 +49,7 @@ _IDLE_GRACE = timedelta(minutes=2)
 
 
 def _idle_timeout_not_reached(request: Request) -> bool:
-    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    token = read_cookie(request, ACCESS_COOKIE_NAME)
     if not token:
         return False
     try:
@@ -61,7 +62,7 @@ def _idle_timeout_not_reached(request: Request) -> bool:
 def _continue_session(request: Request, db: Session):
     if not _idle_timeout_not_reached(request):
         raise session_service.RefreshFailed("Signed out after a period of inactivity")
-    tokens, _tenant = session_service.refresh_session(db, request.cookies.get(REFRESH_COOKIE_NAME) or "")
+    tokens, _tenant = session_service.refresh_session(db, read_cookie(request, REFRESH_COOKIE_NAME) or "")
     return tokens
 
 

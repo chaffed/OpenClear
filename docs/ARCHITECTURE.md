@@ -391,7 +391,7 @@ Files arrive through the UI, the API, or a watched **dropbox** directory
 The UI (`web/routers/`) calls the **service layer directly, in-process**. It never calls
 its own JSON API over HTTP. That avoids a second network hop, a second copy of every
 error-mapping path, and having to hold a bearer token in the browser. The two front ends
-use separate credentials: the UI reads an HttpOnly `access_token` cookie
+use separate credentials: the UI reads an HttpOnly `access_token` cookie (`__Host-access_token` over HTTPS)
 (`web/deps.py`), and the API reads the `Authorization` header (`auth/deps.py`). Neither
 accepts the other's.
 

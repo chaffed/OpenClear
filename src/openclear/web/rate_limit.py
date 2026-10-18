@@ -170,10 +170,10 @@ def principal_key(request: Request) -> str | None:
     import jwt
 
     from openclear.auth.security import decode_token
-    from openclear.web.security import ACCESS_COOKIE_NAME
+    from openclear.web.security import ACCESS_COOKIE_NAME, read_cookie
 
     header = request.headers.get("authorization", "")
-    token = header[7:].strip() if header.lower().startswith("bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
+    token = header[7:].strip() if header.lower().startswith("bearer ") else read_cookie(request, ACCESS_COOKIE_NAME)
     if not token or token.count(".") != 2:
         return None
     try:

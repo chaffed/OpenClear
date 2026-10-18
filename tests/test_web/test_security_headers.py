@@ -3,6 +3,7 @@
 
 import re
 
+import pytest
 from openclear.config import get_settings
 from tests.conftest import TenantFactory
 
@@ -85,3 +86,36 @@ def test_theme_selector_no_longer_uses_an_inline_handler(client):
     resp = client.get("/ui/login")
 
     assert "onchange=" not in resp.text
+
+
+@pytest.mark.asvs("3.3.3")
+def test_cookie_names_carry_browser_enforced_prefixes_over_https(monkeypatch):
+    from starlette.requests import Request
+    from starlette.responses import Response
+
+    from openclear.config import get_settings
+    from openclear.web import security
+
+    monkeypatch.setattr(get_settings(), "webauthn_origin", "https://openclear.bank.example")
+    assert security.cookie_name("access_token") == "__Host-access_token"
+    assert security.cookie_name("csrf_token") == "__Host-csrf_token"
+    assert security.cookie_name("refresh_token") == "__Secure-refresh_token"  # a narrow path: __Host- needs Path=/
+
+    response = Response()
+    security.clear_auth_cookies(response)
+    cleared = response.headers.getlist("set-cookie")
+    assert any(c.startswith("__Host-access_token=") for c in cleared) and any(c.startswith("access_token=") for c in cleared)
+
+    # Cookies from before the prefixes are still read, so an upgrade signs nobody out.
+    old = Request({"type": "http", "headers": [(b"cookie", b"access_token=old-session")]})
+    new = Request({"type": "http", "headers": [(b"cookie", b"__Host-access_token=new; access_token=old")]})
+    assert security.read_cookie(old, "access_token") == "old-session"
+    assert security.read_cookie(new, "access_token") == "new"
+
+
+def test_plain_http_development_keeps_bare_cookie_names(monkeypatch):
+    from openclear.config import get_settings
+    from openclear.web import security
+
+    monkeypatch.setattr(get_settings(), "webauthn_origin", "http://127.0.0.1:8000")
+    assert security.cookie_name("access_token") == "access_token"

@@ -13,12 +13,13 @@ from openclear.db.session import get_db
 from openclear.web.demo_guard import DEMO_LOCKED_MESSAGE, is_locked_in_demo
 from openclear.db.tenancy import TenantContext
 from openclear.web.security import (
-    ACCESS_COOKIE_NAME,
-    MFA_COOKIE_NAME,
-    LEGACY_POSPAY_THEME_COOKIE_NAME,
-    THEME_COOKIE_NAME,
+    read_cookie,
     read_or_generate_csrf_token,
     set_csrf_cookie_if_new,
+    ACCESS_COOKIE_NAME,
+    LEGACY_POSPAY_THEME_COOKIE_NAME,
+    MFA_COOKIE_NAME,
+    THEME_COOKIE_NAME,
 )
 from openclear.web.templates import templates
 
@@ -78,7 +79,7 @@ def _return_path(request: Request) -> str | None:
 
 
 def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantContext:
-    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    token = read_cookie(request, ACCESS_COOKIE_NAME)
     if not token:
         raise WebAuthRequired(next_path=_return_path(request))
     try:
@@ -121,7 +122,7 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
 def get_mfa_pending_web_context(request: Request, db: Session = Depends(get_db)) -> TenantContext:
     """For /ui/login/webauthn/* only — mirrors auth.get_mfa_pending_context but reads the
     mfa_token cookie instead of an Authorization header (see web/security.py)."""
-    token = request.cookies.get(MFA_COOKIE_NAME)
+    token = read_cookie(request, MFA_COOKIE_NAME)
     if not token:
         raise WebAuthRequired(next_path="/ui/login")
     try:
@@ -169,7 +170,7 @@ def render_template(
     never forgotten — the one thing every template needs, regardless of what page-specific
     data it also needs."""
     csrf_token = read_or_generate_csrf_token(request)
-    theme = request.cookies.get(THEME_COOKIE_NAME) or request.cookies.get(LEGACY_POSPAY_THEME_COOKIE_NAME)
+    theme = read_cookie(request, THEME_COOKIE_NAME) or request.cookies.get(LEGACY_POSPAY_THEME_COOKIE_NAME)
     context = {"ctx": ctx, "csrf_token": csrf_token, "theme": theme, **extra}
     response = templates.TemplateResponse(request, name, context, status_code=status_code)
     set_csrf_cookie_if_new(request, response, csrf_token)

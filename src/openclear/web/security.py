@@ -28,6 +28,24 @@ MFA_COOKIE_PATH = "/ui/login/webauthn"
 SSO_STATE_COOKIE_PATH = "/ui/login/sso"
 
 
+# Over HTTPS every cookie carries a prefix the browser enforces (ASVS 5.0 3.3.3): __Host- for
+# path-/ cookies (Secure, no Domain, so no sibling subdomain can set or overwrite them), and
+# __Secure- for the narrow-path ones, which __Host- doesn't allow. Plain HTTP (local
+# development) can't use either, so keeps the bare names. Until 1.23 the bare names are still
+# read, so an upgrade signs nobody out.
+_NARROW_PATH_COOKIES = {"refresh_token", "mfa_token", "sso_state", "saml_state", "platform_session", "support_session"}
+
+
+def cookie_name(base: str) -> str:
+    if not _secure_cookies():
+        return base
+    return ("__Secure-" if base in _NARROW_PATH_COOKIES else "__Host-") + base
+
+
+def read_cookie(request: Request, base: str) -> str | None:
+    return request.cookies.get(cookie_name(base)) or request.cookies.get(base)
+
+
 def is_https_deployment() -> bool:
     # Whether this deployment is actually served over HTTPS — local dev serves over plain
     # http://127.0.0.1, so this is tied to the configured origin's scheme rather than
@@ -86,7 +104,7 @@ def set_session_cookies(response: Response, tokens: SessionTokens) -> None:
     max_age = max(0, int((tokens.session_expires_at - datetime.now(timezone.utc)).total_seconds()))
     _set_cookie(
         response,
-        ACCESS_COOKIE_NAME,
+        cookie_name(ACCESS_COOKIE_NAME),
         tokens.access_token,
         httponly=True,
         secure=_secure_cookies(),
@@ -96,7 +114,7 @@ def set_session_cookies(response: Response, tokens: SessionTokens) -> None:
     )
     _set_cookie(
         response,
-        REFRESH_COOKIE_NAME,
+        cookie_name(REFRESH_COOKIE_NAME),
         tokens.refresh_token,
         httponly=True,
         secure=_secure_cookies(),
@@ -109,7 +127,7 @@ def set_session_cookies(response: Response, tokens: SessionTokens) -> None:
 def set_mfa_cookie(response: Response, token: str) -> None:
     settings = get_settings()
     response.set_cookie(
-        MFA_COOKIE_NAME,
+        cookie_name(MFA_COOKIE_NAME),
         token,
         httponly=True,
         secure=_secure_cookies(),
@@ -128,15 +146,18 @@ def clear_auth_cookies(response: Response, *, embed: bool = False) -> None:
     response.headers["Clear-Site-Data"] = CLEAR_SITE_DATA
     # Attributes here must match exactly what was used when the cookie was SET, or the
     # browser silently keeps it — the most common way a "logout" button does nothing.
-    response.delete_cookie(ACCESS_COOKIE_NAME, path="/", secure=_secure_cookies(), samesite="lax")
-    response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, secure=_secure_cookies(), samesite="strict")
+    response.delete_cookie(cookie_name(ACCESS_COOKIE_NAME), path="/", secure=_secure_cookies(), samesite="lax")
+    if _secure_cookies():  # and the names from before 1.22.1
+        response.delete_cookie(ACCESS_COOKIE_NAME, path="/", secure=True, samesite="lax")
+        response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, secure=True, samesite="strict")
+    response.delete_cookie(cookie_name(REFRESH_COOKIE_NAME), path=REFRESH_COOKIE_PATH, secure=_secure_cookies(), samesite="strict")
     if embed and _secure_cookies():  # a partitioned cookie is only cleared by a partitioned delete
-        _delete_cookie(response, ACCESS_COOKIE_NAME, path="/", secure=True, samesite="none", partitioned=True)
-        _delete_cookie(response, REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, secure=True, samesite="none", partitioned=True)
+        _delete_cookie(response, cookie_name(ACCESS_COOKIE_NAME), path="/", secure=True, samesite="none", partitioned=True)
+        _delete_cookie(response, cookie_name(REFRESH_COOKIE_NAME), path=REFRESH_COOKIE_PATH, secure=True, samesite="none", partitioned=True)
 
 
 def clear_mfa_cookie(response: Response) -> None:
-    response.delete_cookie(MFA_COOKIE_NAME, path=MFA_COOKIE_PATH, secure=_secure_cookies(), samesite="strict")
+    response.delete_cookie(cookie_name(MFA_COOKIE_NAME), path=MFA_COOKIE_PATH, secure=_secure_cookies(), samesite="strict")
 
 
 def set_sso_state_cookie(response: Response, token: str) -> None:
@@ -145,7 +166,7 @@ def set_sso_state_cookie(response: Response, token: str) -> None:
     # and this app has no server-side session store (see auth/security.py's
     # create_sso_state_token).
     response.set_cookie(
-        SSO_STATE_COOKIE_NAME,
+        cookie_name(SSO_STATE_COOKIE_NAME),
         token,
         httponly=True,
         secure=_secure_cookies(),
@@ -156,7 +177,7 @@ def set_sso_state_cookie(response: Response, token: str) -> None:
 
 
 def clear_sso_state_cookie(response: Response) -> None:
-    response.delete_cookie(SSO_STATE_COOKIE_NAME, path=SSO_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite="lax")
+    response.delete_cookie(cookie_name(SSO_STATE_COOKIE_NAME), path=SSO_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite="lax")
 
 
 SAML_STATE_COOKIE_NAME = "saml_state"
@@ -175,13 +196,13 @@ def set_saml_state_cookie(response: Response, token: str) -> None:
     go afterwards, and the RelayState it must come back with, signed. It binds the answer
     to the browser that asked, so someone else's SAML response can't be slipped into it."""
     response.set_cookie(
-        SAML_STATE_COOKIE_NAME, token, httponly=True, secure=_secure_cookies(), samesite=_saml_samesite(),
+        cookie_name(SAML_STATE_COOKIE_NAME), token, httponly=True, secure=_secure_cookies(), samesite=_saml_samesite(),
         path=SAML_STATE_COOKIE_PATH, max_age=10 * 60,
     )
 
 
 def clear_saml_state_cookie(response: Response) -> None:
-    response.delete_cookie(SAML_STATE_COOKIE_NAME, path=SAML_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite=_saml_samesite())
+    response.delete_cookie(cookie_name(SAML_STATE_COOKIE_NAME), path=SAML_STATE_COOKIE_PATH, secure=_secure_cookies(), samesite=_saml_samesite())
 
 
 # --- CSRF: double-submit cookie pattern ---
@@ -206,18 +227,18 @@ CSRF_HEADER_NAME = "X-CSRF-Token"
 
 
 def read_or_generate_csrf_token(request: Request) -> str:
-    return request.cookies.get(CSRF_COOKIE_NAME) or secrets.token_urlsafe(32)
+    return read_cookie(request, CSRF_COOKIE_NAME) or secrets.token_urlsafe(32)
 
 
 def set_csrf_cookie_if_new(request: Request, response: Response, token: str) -> None:
-    if request.cookies.get(CSRF_COOKIE_NAME) == token:
+    if request.cookies.get(cookie_name(CSRF_COOKIE_NAME)) == token:  # the current name: an old-named cookie gets renewed
         return  # already set to this value, nothing to do
     # A browser-session cookie (no max_age). It used to expire with the access token,
     # which meant a form left open past that (a long exception review) failed CSRF on
     # submit even though the session itself was still fine.
     _set_cookie(
         response,
-        CSRF_COOKIE_NAME,
+        cookie_name(CSRF_COOKIE_NAME),
         token,
         httponly=False,
         secure=_secure_cookies(),
@@ -238,7 +259,7 @@ class CsrfFailed(HTTPException):
 def verify_csrf(request: Request, csrf_token: str = Form("")) -> None:
     """Dependency for classic HTML-form /ui/* POST routes. Compares the submitted hidden
     field against the cookie value using a constant-time comparison."""
-    cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
+    cookie_value = read_cookie(request, CSRF_COOKIE_NAME)
     if not cookie_value or not csrf_token or not secrets.compare_digest(cookie_value, csrf_token):
         raise CsrfFailed()
 
@@ -247,7 +268,7 @@ def verify_csrf_header(request: Request) -> None:
     """Dependency for JSON/fetch-based /ui/* POST routes (WebAuthn options/verify,
     credential deletion) — same check, read from the X-CSRF-Token header instead of a
     form field since these routes take a JSON body."""
-    cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
+    cookie_value = read_cookie(request, CSRF_COOKIE_NAME)
     header_value = request.headers.get(CSRF_HEADER_NAME)
     if not cookie_value or not header_value or not secrets.compare_digest(cookie_value, header_value):
         raise CsrfFailed()
@@ -276,7 +297,7 @@ def was_embedded(request: Request) -> bool:
     from openclear.auth.security import decode_token
 
     for name in (ACCESS_COOKIE_NAME,):
-        token = request.cookies.get(name)
+        token = read_cookie(request, name)
         if token:
             try:
                 return bool(decode_token(token, verify_exp=False).get("emb"))

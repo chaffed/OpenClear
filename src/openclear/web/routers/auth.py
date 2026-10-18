@@ -47,11 +47,12 @@ from openclear.services import (
 from openclear.services.tenant_service import get_tenant_branding_by_slug
 from openclear.web.deps import WebNotFound, get_mfa_pending_web_context, render_template
 from openclear.web.security import (
-    ACCESS_COOKIE_NAME,
+    SSO_STATE_COOKIE_NAME,
     clear_auth_cookies,
     clear_mfa_cookie,
     clear_saml_state_cookie,
     clear_sso_state_cookie,
+    read_cookie,
     safe_next_path,
     set_mfa_cookie,
     set_saml_state_cookie,
@@ -59,6 +60,7 @@ from openclear.web.security import (
     set_sso_state_cookie,
     verify_csrf,
     verify_csrf_header,
+    ACCESS_COOKIE_NAME,
 )
 
 router = APIRouter(prefix="/ui", tags=["web-auth"])
@@ -179,7 +181,7 @@ def logout(request: Request, db: Session = Depends(get_db), _csrf: None = Depend
     # its session is revoked server-side (services/session_service.py), so a copy of
     # these cookies taken before logout stops working too — clearing cookies alone only
     # affects this browser.
-    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    token = read_cookie(request, ACCESS_COOKIE_NAME)
     claims: dict = {}
     if token:
         try:
@@ -418,7 +420,7 @@ def sso_callback(
     error: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    state_cookie = request.cookies.get("sso_state")
+    state_cookie = read_cookie(request, SSO_STATE_COOKIE_NAME)
 
     def _error_page(message: str) -> HTMLResponse:
         response = render_template(request, "auth/login.html", status_code=401, error=message)

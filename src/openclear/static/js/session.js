@@ -31,7 +31,7 @@
   const signOutButton = dialog.querySelector("[data-session-signout]");
 
   const csrfToken = () => {
-    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+    const match = document.cookie.match(/(?:^|;\s*)(?:__Host-)?csrf_token=([^;]+)/);  // __Host- over HTTPS
     return match ? decodeURIComponent(match[1]) : "";
   };
 
