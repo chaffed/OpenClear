@@ -17,6 +17,8 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - Full suites before merging to `main`, one at a time: `scripts/run_tests.sh sqlite`, then
   `scripts/run_tests.sh postgres <commit>` and `scripts/run_tests.sh linux <commit>`.
   Results are in `.openclear-run/test-logs/<suite>.log`.
+- Also before pushing, the security gates CI runs: `.venv/bin/bandit -r src -q --severity-level high`
+  and `.venv/bin/python scripts/audit_dependencies.py`.
 - Docker is Colima: `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`. Its containers don't
   restart on their own: `docker start pospay-pg-test oc-moov-ach oc-moov-icl`.
 - Postgres tests by hand: `OPENCLEAR_TEST_DATABASE_URL=postgresql+psycopg://pospay:pospay@localhost:55432/pospay_test`.

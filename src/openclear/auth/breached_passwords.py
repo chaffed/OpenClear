@@ -99,7 +99,8 @@ def _in_hibp(sha1_hex: str, timeout: float) -> bool | None:
 
 
 def is_breached(password: str) -> bool:
-    digest = hashlib.sha1(password.encode("utf-8")).digest()  # noqa: S324 - lookup key, not storage
+    # SHA-1 only because the lists are indexed by it (HIBP's format); it protects nothing here.
+    digest = hashlib.sha1(password.encode("utf-8"), usedforsecurity=False).digest()
     if _in_bundled(digest):
         return True
     settings = get_settings()
