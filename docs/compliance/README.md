@@ -15,6 +15,8 @@ for each point is.
   own control inventory. In OpenClear (Settings → CUECs) each is mapped to your control and
   attested each period: automated ones proposed from OpenClear's test history, and every
   accepted attestation signed
+- [OWASP ASVS 5.0](asvs.md): OpenClear against the Application Security Verification Standard, at
+  Level 2 and Level 3 for identity and money, each requirement with its status and evidence
 - [NIST CSF 2.0](csf.md): both inventories by CSF 2.0 subcategory, following NIST's own mapping
   from CSF 2.0 to SP 800-53. SOC 2 criteria come from AICPA's mapping, which each installation
   loads from its own copy ([Connecting your GRC tool](../guides/grc.md#soc-2))

@@ -47,6 +47,7 @@ PAGES = [
     ("docs/compliance/controls.md", "compliance/controls.md", "OpenClear's controls"),
     ("docs/compliance/cuecs.md", "compliance/cuecs.md", "User entity controls (CUECs)"),
     ("docs/compliance/csf.md", "compliance/csf.md", "NIST CSF 2.0"),
+    ("docs/compliance/asvs.md", "compliance/asvs.md", "OWASP ASVS 5.0"),
     ("docs/ARCHITECTURE.md", "reference/architecture.md", "Architecture"),
     ("CHANGELOG.md", "reference/changelog.md", "Changelog"),
     ("SDK_PLAN.md", "reference/sdk-plan.md", "SDK plan"),

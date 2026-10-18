@@ -45,6 +45,9 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - Dependencies install only from the hashed locks. After changing `pyproject.toml` dependencies,
   run `scripts/lock.sh` and commit `requirements/*.txt` (CI fails on a stale lock). Waive a
   vulnerability only in `.pip-audit-waivers.toml`, with a reason and an expiry.
+- A test that proves an ASVS 5.0 requirement gets `@pytest.mark.asvs("6.2.12")`. A requirement's
+  status changes in `docs/security/asvs-status.csv`; then `python scripts/asvs_crosswalk.py`
+  (a test fails on a stale `docs/compliance/asvs.md` or evidence that doesn't exist).
 - A new trust boundary, outside system or data flow: update `threat_model/openclear.py`, then
   `python scripts/render_threat_model.py` (a test fails on a stale page).
 - New tables and columns go in the data dictionary (`templates/docs/admin/data-dictionary.html`);
