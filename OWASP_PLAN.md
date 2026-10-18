@@ -200,6 +200,71 @@ The ASVS assessment (OW1) will add to this list.
 
   Platform staff are **never** exempt: their sign-in always requires a security key, whatever
   the banks' settings.
+- **OW-D23. Platform staff's security keys live in their own table,** `platform_webauthn_credential`,
+  read only by the platform pages and without row-level security (it holds no bank's data).
+  A bank's keys stay in `webauthn_credential`, whose policies are unchanged. New platform staff
+  register a key at their first sign-in ([ADR 0005](docs/adr/0005-platform-staff-keys-in-their-own-table.md)).
+- **OW-D24. The minimum password length stays a stored number** (OW-D16 as built in 1.22.0).
+  When a bank requires a security key, its password-policy page says NIST allows 8 characters
+  and offers to lower it; lowering is a loosening, under dual control.
+- **OW-D25. An SSO connection can require its provider to report MFA,** off by default: OIDC
+  `amr`/`acr`, SAML `AuthnContextClassRef`. A sign-in without it is refused. Turning it on is a
+  tightening (at once); off is a loosening (dual control). With it on, the exemption in
+  OW-D22 is verified rather than trusted.
+- **OW-D26. A bank can require API clients to sign with a key pair** (`private_key_jwt`). Clients
+  using a secret stop working until switched. DPoP and mTLS-bound tokens are not built: ASVS
+  10.3.5 and 10.4.14 are recorded as not met at Level 3, as no bank's core can send them today.
+
+### Recorded as not met at Level 3
+
+- **OW-D27. Adaptive controls** (8.1.3, 8.1.4, 8.2.4, 8.4.2): time, place, IP and device in
+  access decisions. OpenClear sits behind each bank's edge and identity provider, which are
+  better placed for them; required MFA and new-device emails (OW-D30) cover the main risk. A
+  per-bank IP allowlist can follow if a bank asks.
+- **OW-D28. Logging every read of sensitive data** (16.3.2 at Level 3): exports (already audited)
+  and check-image downloads are logged in the action log; other pages that show sensitive data
+  aren't, to keep the log useful. Partly met.
+
+### Sessions and identity (1.24.0)
+
+- **OW-D29. A table of active sessions:** started, last used (updated on refresh), browser (from
+  its user agent) and IP, kept 30 days after the session ends. A person sees and ends their own
+  sessions on Security; an admin sees a person's on their page; bank admins, and customer
+  admins for their customer, can "Sign out everyone" (a tightening: at once, audited).
+  Concurrent sessions stay unlimited, with the reason documented (ASVS 7.1.2, 7.4.5, 7.5.2).
+- **OW-D30. An email after every sign-in from a new device,** always sent. A device is a
+  long-lived random `__Host-device` cookie remembered against the person; the email names the
+  browser, IP and time (ASVS 6.3.5).
+- **OW-D31. An email address can change; the person is their UUID.** Email stays what people
+  type to sign in. It can change by four routes, each emailing both the old and new address
+  and raising `user.email.changed`
+  ([ADR 0006](docs/adr/0006-email-is-a-changeable-attribute.md)):
+  - the person, from Security, after a recent sign-in, confirmed by a link to the new address;
+  - an administrator, for someone only in their organization, also confirmed by the new address;
+  - the bank's directory (SCIM), applied directly;
+  - SSO: a known subject with a new email moves to it when the new domain is verified for
+    that bank or customer; otherwise refused, as in 1.22.1.
+- **OW-D32. A bank can verify its own email domains,** with the same TXT-record check customers
+  use (an entry with no customer is the bank's).
+- **OW-D33. "Move everyone to a new domain"** for a customer or bank renamed: a protected change,
+  only to a verified domain, skipping people who belong to other organizations (listed for their
+  own confirmation).
+
+### Files (1.25.0)
+
+- **OW-D34. Malware scanning: a CUEC plus two hooks.** The CUEC: the bank uses commercially
+  standard malware detection. The hooks, each optional:
+  - **ClamAV** (`clamd`): scans every upload; if it can't answer, the upload is refused.
+  - **VirusTotal: hash lookups only, never uploads,** since anything uploaded there is shared with
+    third parties ([ADR 0007](docs/adr/0007-virustotal-hash-lookups-only.md)). If it can't answer,
+    the upload is accepted, logged, and the hash re-checked later. Each can be set to refuse
+    instead.
+  - On a detection: the upload is refused (or, found later, the file is quarantined), with a
+    high-severity `file.malware_detected` event, an action-log entry, and an email to the
+    bank's admins.
+- **OW-D35. Account numbers stay out of URLs:** list filters take account ids; global search is a
+  POST whose results page doesn't carry the query; the edge guide says to mask query strings in
+  edge logs.
 
 ## Stages
 
@@ -211,12 +276,15 @@ Each stage is one merge to `main` with one run of the three suites, following
 | **OW1. Baseline** | Requirements; Design; Gap analysis | • Risk profile and data classification (account numbers, check images, PII, credentials, keys) in `docs/security/risk-profile.md`.<br>• ASVS 5.0 assessment (OW-D1, OW-D2), written to `docs/compliance/asvs.md` but not linked from the compliance index until OW3 (OW-D5). It comes with the first `asvs` marks and `scripts/asvs_crosswalk.py` (OW-D3, OW-D4).<br>• pytm threat model (OW-D12) covering each trust boundary: browser, embedding host, bank core API and SDK clients, IdP (OIDC/SAML), SCIM directory, edge, worker, file storage, payment-file ingestion (X9.37, NACHA, zip), ML artifacts, plugins, SIEM and webhook destinations, service provider and platform staff. Plus a LINDDUN GO pass.<br>• SAMM self-assessment for six practices (OW-D13) in `docs/security/samm.md`.<br>• GitHub private vulnerability reporting turned on, and `SECURITY.md` (OW-D6).<br>• **Output: the fix list**, as private advisories or `security` issues (OW-D5). | None | None |
 | **OW2. Pipeline** | Implementation; Operations (DevSecOps) | • Lock files (OW-D9), used by the Dockerfile, CI and the README.<br>• `pip-audit`, CodeQL, Bandit, gitleaks with their gates (OW-D7, OW-D8), plus an optional gitleaks pre-commit hook and a one-off scan of the full history.<br>• Dependabot (OW-D10).<br>• Actions pinned to SHAs; `permissions: contents: read` on each workflow; base images pinned by digest.<br>• CycloneDX SBOM on release (OW-D11), added to the release steps in CLAUDE.md. | None | A full-history gitleaks scan, once. Any real secret it finds gets rotated before the merge. |
 | **OW3a. Passwords and disclosure** | Digital identity; Operations | • Breached-password check (OW-D15).<br>• New defaults for new banks (OW-D16).<br>• Passwords checked at sign-in (OW-D17).<br>• `/.well-known/security.txt` from each service provider's configuration.<br>• The small, self-contained fixes from OW1's list. | `tenant.password_min_length` nullable (OW-D16) | None |
-| **OW3b. Required MFA** | Digital identity | • The bank and customer setting with dual control and its control check (OW-D18, OW-D19).<br>• Grace period and banner (OW-D20).<br>• Admin reset (OW-D21).<br>• Exemptions and their CUECs (OW-D22); platform staff sign-in always requires a security key.<br>• The rest of OW1's fix list.<br>• `asvs.md` linked from the compliance index (OW-D5). | The MFA settings (bank, customer, grace period, when it was turned on) | None |
-| **OW4. Verification** | Verification (WSTG, DAST, OSHP); Operations (CRS) | • ZAP baseline and active scans (OW-D8) in CI against the app in Docker, signed in as a bank admin and a customer user, from `openapi/openapi.json`.<br>• A WSTG checklist for changes that touch sign-in, sessions, permissions or uploads, in the PR template.<br>• `edge_check.py` gains a real-CRS mode: Coraza with CRS at paranoia levels 1 and 2 in a container, with the suite's legitimate traffic (X9.37 uploads, SAML posts, SCIM filters, webhook URLs, markdown) sent through it to prove the exclusions in `edge.md`.<br>• The first manual ZAP run against the sandbox. | None | CRS container, once in the stage, then in CI if it runs fast enough |
+| **OW3b. Required MFA (1.23.0)** | Digital identity | • The bank and customer setting with dual control and its control check (OW-D18, OW-D19).<br>• Grace period and banner (OW-D20).<br>• Admin reset (OW-D21).<br>• Exemptions and their CUECs (OW-D22); platform staff keys and required sign-in (OW-D23).<br>• The password-policy hint (OW-D24); the SSO MFA check (OW-D25); key-pair-only API clients (OW-D26).<br>• The 1.22.1 fallbacks removed (old cookie names, tokens without `iss`/`aud`).<br>• Documentation issues #3, #10, #15; `asvs.md` built and linked from the compliance index (OW-D5), with OW-D26–D28 as recorded Level 3 gaps. | The MFA settings (bank, customer, grace period, when it was turned on); `platform_webauthn_credential`; the SSO and API-client switches | Keycloak live check with an MFA claim |
+| **OW3c. Sessions and identity (1.24.0)** | Digital identity; Session management | • The sessions table and its pages (OW-D29).<br>• New-device emails (OW-D30).<br>• Email changes by all four routes (OW-D31).<br>• Bank email domains (OW-D32) and the domain move (OW-D33). | Sessions, devices, pending email changes, `customer_email_domain.customer_id` nullable | Keycloak: an email change at the provider |
+| **OW4. Files and verification (1.25.0)** | Verification (WSTG, DAST, OSHP); Operations (CRS); File handling | • ClamAV and VirusTotal hooks, quarantine and the CUEC (OW-D34).<br>• Account ids in URLs, search by POST (OW-D35); exports and image downloads in the action log (OW-D28).<br>• ZAP baseline and active scans (OW-D8) in CI against the app in Docker, signed in as a bank admin and a customer user, from `openapi/openapi.json`.<br>• A WSTG checklist for changes that touch sign-in, sessions, permissions or uploads, in the PR template.<br>• `edge_check.py` gains a real-CRS mode: Coraza with CRS at paranoia levels 1 and 2 in a container, with the suite's legitimate traffic (X9.37 uploads, SAML posts, SCIM filters, webhook URLs, markdown) sent through it to prove the exclusions in `edge.md`.<br>• The first manual ZAP run against the sandbox. | None | CRS container, once in the stage, then in CI if it runs fast enough |
 | **OW5. Keeping it up** | Culture; Metrics | • `.github/pull_request_template.md` with a security checklist: new trust boundary → update the threat model; new security behaviour → `asvs` mark; new dependency → a reason.<br>• A CLAUDE.md "Conventions that bite" entry for both.<br>• Release-time metrics (OW-D14) added to the release steps.<br>• "Writing a safe plugin" in `docs/PLUGINS.md`.<br>• Independent pentest added to `MASTER_PLAN.md`'s waiting list (OW-D2).<br>• SAMM re-scored a year after OW1. | None | None |
 
-Releases: **1.22.0** after OW3a (the password check and new defaults, `security.txt`), and
-**1.23.0** after OW3b and OW4 (required MFA). OW5 goes in whichever release follows.
+Releases: **1.22.0** after OW3a (the password check and new defaults, `security.txt`);
+**1.22.1** the assessment's `ready-for-agent` fixes; **1.23.0** OW3b (required MFA);
+**1.24.0** OW3c (sessions and identity); **1.25.0** OW4 (files and verification). OW5 goes in
+whichever release follows.
 
 ## Testing
 
@@ -312,3 +380,11 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   (Clear-Site-Data), #20 (SIEM TLS). #2 was done in 1.22.0.
 
   Not started.
+- 2026-10-18: OW3b and onward reviewed question by question (Q1–Q21). Decisions OW-D23–D35:
+  platform staff keys in their own table; password length stays stored, with a hint; an
+  optional SSO MFA check; key-pair-only API clients; adaptive controls and full read logging
+  recorded as not met at Level 3; a sessions table, new-device emails and changeable email
+  addresses (the UUID is the person; the user found the gap from a company rename); bank email
+  domains and a domain move; ClamAV and VirusTotal (hash-only) hooks with a malware CUEC;
+  account numbers out of URLs. Split into 1.23.0 (required MFA), 1.24.0 (sessions and identity)
+  and 1.25.0 (files and verification). ADRs 0005–0007.

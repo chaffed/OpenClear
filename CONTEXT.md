@@ -55,6 +55,18 @@ Removing all of a user's security keys so that they must register a new one at t
 sign-in.
 _Avoid_: MFA reset, unlock (which is for a password lockout)
 
+**Session**:
+One sign-in's lifetime on one browser or API client, from signing in to signing out or timing
+out; a person can have several at once.
+_Avoid_: login (for the period), token
+
+**Device**:
+A browser OpenClear has seen a person sign in from before, known by a long-lived cookie.
+
+**Verified domain**:
+An email domain a bank or customer has proved it owns, which lets OpenClear trust addresses
+there (provisioning people, moving them when their email changes).
+
 ### Settings changes
 
 **Protected change**:
