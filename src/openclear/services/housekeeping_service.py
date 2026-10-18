@@ -102,6 +102,16 @@ def run(session: Session) -> HousekeepingResult:
     if spent := _delete_in_batches(session, ClientAssertionUse, ClientAssertionUse.expires_at < now - timedelta(minutes=5)):
         result.deleted["client_assertion_ids"] = spent
 
+    # Sessions 30 days after they ended or ran out (OWASP_PLAN.md OW-D29; the sessions list).
+    from sqlalchemy import or_
+
+    from openclear.domain.login_session import LoginSession
+    from openclear.services.session_service import SESSION_ROWS_KEPT_DAYS
+
+    kept_from = now - timedelta(days=SESSION_ROWS_KEPT_DAYS)
+    if gone := _delete_in_batches(session, LoginSession, or_(LoginSession.ended_at < kept_from, LoginSession.expires_at < kept_from)):
+        result.deleted["login_sessions"] = gone
+
     # Vendor sandboxes past their lifetime (services/sandbox_service.py).
     from openclear.services import sandbox_service
 

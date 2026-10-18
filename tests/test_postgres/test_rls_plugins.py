@@ -24,6 +24,7 @@ DELIBERATELY_UNPROTECTED = {
     "security_event": "some events belong to no bank, and delivery reads every bank's (b9d1f3a5c7e0)",
     "support_access_grant": "a support person's own grants are listed across banks (f3b5d7f9b1c4)",
     "security_event_destination": "the installation's belongs to no bank, and delivery reads every bank's (d1f3b5d7f9a2)",
+    "email_change": "a person's own email change belongs to them, not a bank, and its signed-out confirmation page reads it by link (c3e5a7b9d1f2)",
 }
 
 

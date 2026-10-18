@@ -48,7 +48,25 @@
 </div>
 
 <div class="card">
-  <h2>Signed in somewhere else?</h2>
+  <h2>Where you're signed in</h2>
+  {% if sessions %}
+  <ul class="session-list">
+    {% for s in sessions %}
+    <li>
+      <strong>{{ describe_browser(s.user_agent) }}</strong>{% if s.id == ctx.session_id %} <span class="badge badge-ok">This one</span>{% endif %}<br>
+      <span class="hint">{{ s.ip_address or "Unknown address" }} · signed in
+        <time datetime="{{ s.started_at | iso_utc }}" data-local-time>{{ s.started_at.strftime("%Y-%m-%d %H:%M") }} UTC</time> · last used
+        <time datetime="{{ s.last_seen_at | iso_utc }}" data-local-time>{{ s.last_seen_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></span>
+      {% if s.id != ctx.session_id %}
+      <form method="post" action="/ui/security/sessions/{{ s.id }}/end" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">Sign out</button>
+      </form>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="hint">Only this session.</p>{% endif %}
+  <h3>Signed in somewhere else?</h3>
   <p>If you left OpenClear signed in on another computer, or think someone else may be using
     your account, sign out everywhere except here. Changing your password does this too.</p>
   <form method="post" action="/ui/security/sign-out-others"

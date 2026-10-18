@@ -243,6 +243,27 @@ def confirm_existing_user(
     return RedirectResponse(f"/ui/users?flash={quote_plus(('Access granted. ' + held) if held else 'Access granted.')}", status_code=303)
 
 
+@router.post("/sign-out-everyone")
+def sign_out_everyone(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    """Ends every session at this bank except the admin's own (ASVS 5.0 7.4.5). People's sessions
+    at other organizations are theirs and untouched. A tightening: applies at once."""
+    from openclear.services import session_service
+
+    members = {m.user_id for m in TenantMembershipRepository(db, ctx.tenant_id).list()}
+    ended = session_service.end_sessions(db, session_service.active_sessions(db, ctx.tenant_id, members), keep=ctx.session_id)
+    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="tenant.sessions.ended_all",
+                                    summary=f"Signed everyone out ({ended} sessions)", resource_type="tenant",
+                                    resource_id=ctx.tenant_id)
+    db.commit()
+    return RedirectResponse("/ui/users?flash=" + quote(f"Signed everyone out: {ended} sessions ended. You're still signed in."),
+                            status_code=303)
+
+
 @router.post("/{membership_id}/deactivate", dependencies=[Depends(_people_only)])
 def deactivate_user(
     membership_id: uuid.UUID,
@@ -676,9 +697,12 @@ def edit_user_form(
     groups = security_group_service.list_security_groups(db, ctx.tenant_id)
     customers = customer_service.list_customers(db, ctx.tenant_id)
     access = account_access_service.get_access(db, ctx.tenant_id, membership.id) if membership.customer_id else None
+    from openclear.services import session_service
+
     return render_template(
         request, "users/edit.html", ctx=ctx, membership=membership, member_user=member_user, groups=groups, customers=customers,
         account_access=account_access_service.describe(access) if access else None,
+        sessions=session_service.active_sessions(db, ctx.tenant_id, [member_user.id]), describe_browser=session_service.describe_browser,
     )
 
 

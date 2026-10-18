@@ -273,6 +273,19 @@ def person(request: Request, membership_id: uuid.UUID, db: Session = Depends(get
     return _person_page(request, db, ctx, membership_id)
 
 
+@router.post("/ui/people/sign-out-everyone")
+def sign_out_everyone(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
+                      _csrf: None = Depends(verify_csrf)) -> Response:
+    """A customer's administrator ends every session of the customer's people except their own."""
+    from openclear.services import session_service
+
+    members = {p.user.id for p in customer_people_service.list_people(db, ctx.tenant_id, ctx.customer_id)}
+    ended = session_service.end_sessions(db, session_service.active_sessions(db, ctx.tenant_id, members), keep=ctx.session_id)
+    _record(db, ctx, "customer_people.sessions.ended_all", f"Signed everyone out ({ended} sessions)")
+    db.commit()
+    return _back(f"Signed everyone out: {ended} sessions ended. You're still signed in.")
+
+
 @router.post("/ui/people/{membership_id}")
 async def update_person(request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db),
                         ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> Response:

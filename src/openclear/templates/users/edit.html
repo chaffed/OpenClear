@@ -39,6 +39,14 @@
     <p>{{ account_access }}. <a href="/ui/users/{{ membership.id }}/accounts">Choose accounts</a></p>
   </section>
   {% endif %}
+  <section class="card-section">
+    <h2>Sessions</h2>
+    {% if sessions %}
+    <ul>{% for s in sessions %}<li>{{ describe_browser(s.user_agent) }} from {{ s.ip_address or "an unknown address" }}, last used
+      <time datetime="{{ s.last_seen_at | iso_utc }}" data-local-time>{{ s.last_seen_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></li>{% endfor %}</ul>
+    <p class="hint">"Sign out everywhere" on the Users page ends them all.</p>
+    {% else %}<p class="hint">Not signed in at this bank.</p>{% endif %}
+  </section>
   {% if member_user.id != ctx.user_id %}
   <section class="card-section">
     <h2>Lost security key</h2>

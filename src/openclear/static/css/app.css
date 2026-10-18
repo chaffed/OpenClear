@@ -472,6 +472,8 @@ table.evidence tr.mismatch td, table.evidence tr.mismatch th { background: var(-
 pre, code { overflow-wrap: anywhere; }
 /* Long addresses and identifiers in table cells break rather than make a phone scroll sideways. */
 .wrap-anywhere { overflow-wrap: anywhere; }
+.session-list { list-style: none; padding: 0; }
+.session-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border, rgba(127,127,127,0.25)); overflow-wrap: anywhere; }
 @media (max-width: 1023.98px) {
   /* The root cause of the sideways scrolling: .page's `margin: 0 auto` stops a flex item
      from stretching to the column's width, so it grew to fit its widest table instead of

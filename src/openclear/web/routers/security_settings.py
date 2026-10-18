@@ -71,7 +71,27 @@ def security_settings(
     ctx: TenantContext = Depends(get_web_context),
 ) -> HTMLResponse:
     credentials = list_credentials(db, ctx.tenant_id, ctx.user_id)
-    return render_template(request, "security/webauthn.html", ctx=ctx, credentials=credentials)
+    sessions = session_service.active_sessions(db, ctx.tenant_id, [ctx.user_id])
+    return render_template(request, "security/webauthn.html", ctx=ctx, credentials=credentials, sessions=sessions,
+                           describe_browser=session_service.describe_browser)
+
+
+@router.post("/sessions/{session_id}/end")
+def end_session(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_web_context),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Signs out one of the person's own other sessions (ASVS 5.0 7.5.2)."""
+    mine = [s for s in session_service.active_sessions(db, ctx.tenant_id, [ctx.user_id]) if s.id == session_id]
+    if not mine or session_id == ctx.session_id:
+        return RedirectResponse(f"/ui/security?error={quote('That session has already ended, or is this one.')}", status_code=303)
+    session_service.end_sessions(db, mine)
+    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.session.ended",
+                                    summary="Signed out one of their other sessions", resource_type="user", resource_id=ctx.user_id)
+    db.commit()
+    return RedirectResponse(f"/ui/security?flash={quote('Signed out of that session.')}", status_code=303)
 
 
 def _render_password_form(

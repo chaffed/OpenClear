@@ -18,6 +18,11 @@
       <a href="/ui/people/invite" class="button">{{ icon("person_add") }}Invite</a>
       <a href="/ui/people/export.csv" class="button secondary not-phone">{{ icon("download") }}Export CSV</a>
       <a href="/ui/people/activity" class="button secondary">{{ icon("history") }}Activity</a>
+      <form method="post" action="/ui/people/sign-out-everyone" class="inline-form"
+            data-confirm="Sign all your people out of OpenClear? Every session but yours ends; they sign in again.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">Sign out everyone</button>
+      </form>
     </div>
   </div>
   {% if people %}

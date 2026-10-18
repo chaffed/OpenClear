@@ -23,6 +23,11 @@
       <a href="/ui/users/access" class="button secondary">{{ icon("person_add") }}Look up / grant multi-customer access</a>
       <a href="/ui/users/export.csv" class="button secondary not-phone">{{ icon("download") }}Export CSV</a>
       <a href="/ui/users/export.json" class="button secondary not-phone">{{ icon("download") }}Export JSON</a>
+      <form method="post" action="/ui/users/sign-out-everyone" class="inline-form"
+            data-confirm="Sign everyone at this bank out of OpenClear? Every session but yours ends; people sign in again.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="secondary">Sign out everyone</button>
+      </form>
     </div>
   </div>
   {% if page_obj.total_count > 0 %}

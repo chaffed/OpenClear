@@ -38,16 +38,17 @@ class UserInvitation(Base):
 
 
 class CustomerEmailDomain(Base):
-    """An email domain a customer says is its own, and whether it has proved it with a DNS
-    TXT record (services/customer_sign_on_service.py). A customer-managed sign-on connection
-    creates people automatically only for verified domains."""
+    """An email domain a customer, or the bank itself (customer_id null, since 1.24), says is its
+    own, and whether it has proved it with a DNS TXT record (services/customer_sign_on_service.py).
+    A customer-managed sign-on connection creates people automatically only for verified domains,
+    and SSO moves a person to a new email only within one (OWASP_PLAN.md OW-D31, OW-D32)."""
 
     __tablename__ = "customer_email_domain"
     __table_args__ = (UniqueConstraint("tenant_id", "domain"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
-    customer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("customer.id"), nullable=False, index=True)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("customer.id"), nullable=True, index=True)
     domain: Mapped[str] = mapped_column(String(253), nullable=False)
     verification_token: Mapped[str] = mapped_column(String(64), nullable=False)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

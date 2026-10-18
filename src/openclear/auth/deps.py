@@ -150,6 +150,12 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
 
     permissions = frozenset(group.permissions)
     security_key_due = _security_key_due(db, tenant_id, membership, payload) if expected_type == "access" else None
+    if expected_type == "access" and payload.get("sid"):
+        session_service.note_session(
+            db, session_id=uuid.UUID(payload["sid"]), tenant_id=tenant_id, user=user,
+            signed_in_with="embed" if payload.get("emb") else payload.get("am"),
+            expires_at=datetime.fromtimestamp(payload["sxp"], tz=timezone.utc) if payload.get("sxp") else None,
+        )
     customer_name: str | None = None
     customer_banner_message: str | None = None
     if customer_id is not None:
