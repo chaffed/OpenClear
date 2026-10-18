@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+Required security keys and the ASVS crosswalk (OWASP_PLAN.md OW3b):
+
+- **A bank can require a security key or passkey for password sign-ins** (Settings → Required
+  security keys), and a customer can for its own people. People without one get a grace period
+  (14 days unless set otherwise, at most 90) with a reminder, then add one as part of signing in.
+  SSO and online banking sign-ins aren't affected. Turning it off waits for a second admin.
+- **An administrator can reset a person's security keys** when they lose one, after saying how
+  they confirmed it's really them; the person is signed out and emailed. If a bank's only
+  administrator loses theirs, two of the service provider's operators can reset it.
+- **Platform staff always sign in with a security key**, registered at their first sign-in.
+- **An SSO connection can require its provider to report MFA**, refusing sign-ins that don't.
+- **A bank can require its API clients to sign with a key pair**, refusing secrets.
+- With a key required, the password policy page says NIST allows an 8-character minimum.
+- **Removed, as announced in 1.22.1:** the old cookie names over HTTPS, and tokens without an
+  issuer and audience. Anyone still signed in from before 1.22.1 signs in again.
+- **Documentation:** OpenClear against OWASP ASVS 5.0 (`docs/compliance/asvs.md`, every
+  requirement with its status and evidence), and `docs/security/` pages on authentication,
+  authorization, cryptography, and inputs and limits; a log inventory in the SIEM guide; two new
+  CUECs for second factors at the identity provider and in online banking.
+
 ## 1.22.1 — 2026-10-18
 
 Security fixes from the ASVS assessment (OWASP_PLAN.md):

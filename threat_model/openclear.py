@@ -174,9 +174,9 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
     Threat("OC-T05", "S", "Internet", "Password guessing and credential stuffing.",
            "Lockout, per-person and per-IP rate limits, the bank's password policy (15 characters for new banks), "
            "breached and context-word checks, passwords re-checked at sign-in, the same answer for unknown and "
-           "locked accounts, security keys.",
-           "OC-IA-01, OC-IA-02, OC-SC-06; auth/breached_passwords.py; ASVS 6.2.4, 6.2.12, 6.3.1, 6.3.8",
-           "Mitigated (required MFA: OWASP_PLAN.md OW3b)"),
+           "locked accounts, and security keys a bank or customer can require.",
+           "OC-IA-01, OC-IA-02, OC-SC-06; auth/breached_passwords.py; auth/security_key_policy.py; ASVS 6.2.4, 6.2.12, 6.3.3, 6.3.8",
+           "Mitigated"),
     Threat("OC-T06", "S", "Internet", "A stolen session cookie is replayed.",
            "HttpOnly, Secure, SameSite cookies; idle and absolute timeouts; server-side revocation; token version bump "
            "on password change.",
@@ -209,8 +209,8 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "The address is checked on the connection itself, so DNS rebinding doesn't get past it.",
            "OC-SC-07; auth/outbound_http.py; ASVS 1.3.6", "Mitigated"),
     Threat("OC-T14", "E", "Service provider", "Platform staff read or change a bank's data.",
-           "Support access only through a time-limited grant the bank makes; two people at the service provider for "
-           "provider actions; the provider's own signed log.",
+           "Support access only through a time-limited grant the bank makes; platform sign-in always needs a security "
+           "key; two people at the service provider for provider actions; the provider's own signed log.",
            "OC-AC-08, OC-AC-13; ADR 0004", "Mitigated"),
     Threat("OC-T15", "E", "Installation", "A plugin misbehaves or is malicious.",
            "Plugins are installed and enabled by the service provider and each bank; they run in process, so they are "

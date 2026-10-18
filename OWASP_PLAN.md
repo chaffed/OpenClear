@@ -388,3 +388,9 @@ whichever release follows.
   domains and a domain move; ClamAV and VirusTotal (hash-only) hooks with a malware CUEC;
   account numbers out of URLs. Split into 1.23.0 (required MFA), 1.24.0 (sessions and identity)
   and 1.25.0 (files and verification). ADRs 0005–0007.
+- 2026-10-18: OW3b built on `ow3b`: required security keys (bank and customer, grace period,
+  banner, dual control, `security_key_required` check), the admin key reset with an identity note
+  and the platform reset of a bank's only admin, platform staff keys (own tables, always
+  required), the SSO MFA check, key-pair-only API clients, the password hint, the 1.22.1
+  fallbacks removed, CUECs B-IA-2(2)-02/-03, the security documentation (#3, #10, #15) and
+  `docs/compliance/asvs.md` with `scripts/asvs_crosswalk.py`.
