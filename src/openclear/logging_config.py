@@ -5,7 +5,9 @@
 object with the time (UTC, ISO 8601), level, logger and message, and, during a request, its
 id, the client IP, the bank and who's signed in (web/request_context.py). A container log
 collector (Splunk's OpenTelemetry Collector, Fluent Bit, Datadog, CloudWatch) can then
-search on them. Text (the default) is unchanged.
+search on them. In text (the default), control characters in a message are escaped, so a value
+from a request (an email typed at sign-in, a path) can't forge a log line (ASVS 5.0 16.4.1);
+JSON escapes them anyway. Production should use JSON (config.assert_production_safe warns).
 
 Never logged: request bodies, query strings, tokens, cookies, passwords."""
 
@@ -15,6 +17,35 @@ import sys
 from datetime import datetime, timezone
 
 _HANDLER_NAME = "openclear-json"
+_CONTROL = {c: f"\\x{c:02x}" for c in range(32) if c != 9} | {10: "\\n", 13: "\\r", 127: "\\x7f"}
+
+
+def escape_control_characters(text: str) -> str:
+    """Line breaks and other control characters (tabs aside) as visible escapes."""
+    return text.translate(_CONTROL)
+
+
+def _install_escaping_record_factory() -> None:
+    """Every log record, wherever it's logged and whichever handler writes it, gets its message
+    escaped once, at creation. Tracebacks (exc_info) are formatted separately and keep their
+    lines."""
+    factory = logging.getLogRecordFactory()
+    if getattr(factory, "_openclear_escaping", False):
+        return
+
+    def escaping_factory(*args, **kwargs):
+        record = factory(*args, **kwargs)
+        try:
+            message = record.getMessage()
+        except Exception:  # a malformed format string: leave it for the handler to report
+            return record
+        escaped = escape_control_characters(message)
+        if escaped != message:
+            record.msg, record.args = escaped, None
+        return record
+
+    escaping_factory._openclear_escaping = True
+    logging.setLogRecordFactory(escaping_factory)
 
 
 class JsonFormatter(logging.Formatter):
@@ -56,6 +87,7 @@ def configure(settings=None) -> None:
         logging.getLogger(name).setLevel(logging.WARNING)
     access = logging.getLogger("openclear.access")
     if settings.log_format != "json":
+        _install_escaping_record_factory()
         # uvicorn already writes an access line per request in text mode.
         access.setLevel(logging.WARNING)
         return

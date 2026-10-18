@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import logging
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -615,6 +616,11 @@ def assert_production_safe(settings: Settings) -> None:
     # Local import to avoid a cycle: ocr/factory.py (which does real provider
     # construction) imports this module, so this module can only import the small,
     # dependency-free constant from ocr/base.py, not factory.py itself.
+    if settings.log_format != "json":
+        logging.getLogger(__name__).warning(
+            "OPENCLEAR_LOG_FORMAT is text in production: use json so log collectors can parse every field "
+            "(text lines are escaped against injection, but harder to search)."
+        )
     from openclear.ocr.base import UNIMPLEMENTED_PROVIDERS
 
     if settings.ocr_provider in UNIMPLEMENTED_PROVIDERS:

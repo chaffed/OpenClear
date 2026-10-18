@@ -157,3 +157,20 @@ def test_json_logs_carry_the_request(client, tenant_factory, settings, monkeypat
     assert access and access[-1]["http"]["status"] == 200 and access[-1]["bank"] == "ctx-logs"
     assert access[-1]["request"]["id"] and access[-1]["client"]["ip"]
     assert not any("do-not-log" in json.dumps(line) for line in lines), [l["logger"] for l in lines if "do-not-log" in json.dumps(l)]
+
+
+@pytest.mark.asvs("16.4.1")
+def test_text_logs_escape_line_breaks_so_input_cant_forge_a_line(caplog):
+    import logging
+
+    from openclear import logging_config
+
+    original = logging.getLogRecordFactory()
+    try:
+        logging_config._install_escaping_record_factory()
+        with caplog.at_level(logging.WARNING, logger="openclear.test"):
+            logging.getLogger("openclear.test").warning("Sign-in failed for %s", "x@example.com\n2026-10-18 INFO admin signed in")
+        assert caplog.records[-1].getMessage() == "Sign-in failed for x@example.com\\n2026-10-18 INFO admin signed in"
+        assert "\n" not in caplog.text.strip()
+    finally:
+        logging.setLogRecordFactory(original)
