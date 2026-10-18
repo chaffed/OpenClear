@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -530,6 +531,13 @@ class Settings(BaseSettings):
     # doesn't forward the original scheme/host correctly — same class of caveat as
     # webauthn_origin. None (default) derives it from the live request instead.
     public_base_url: str | None = None
+    # /.well-known/security.txt (RFC 9116; OWASP_PLAN.md OW3a): how to report a vulnerability in
+    # this installation. Contact is one or more URIs, comma-separated ("mailto:security@bank.example,
+    # https://bank.example/security"); without one the file isn't served. Expires defaults to a
+    # year from today; set a date to make it go stale on purpose if the contact isn't reviewed.
+    security_txt_contact: str | None = None
+    security_txt_expires: date | None = None
+    security_txt_policy: str | None = None
 
 
 @lru_cache

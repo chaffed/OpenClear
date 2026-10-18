@@ -172,9 +172,11 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "OC-IA-03, OC-IA-05; services/sso_service.py; SECURITY_REVIEW.md R2; ASVS 6.8.1",
            "Partly (matching by subject: issue #6)"),
     Threat("OC-T05", "S", "Internet", "Password guessing and credential stuffing.",
-           "Lockout, per-person and per-IP rate limits, the bank's password policy, security keys; breached-password "
-           "checks planned.",
-           "OC-IA-01, OC-IA-02, OC-SC-06; OWASP_PLAN.md OW3a; ASVS 6.2.12, 6.3.1", "Partly (OW3a)"),
+           "Lockout, per-person and per-IP rate limits, the bank's password policy (15 characters for new banks), "
+           "breached and context-word checks, passwords re-checked at sign-in, the same answer for unknown and "
+           "locked accounts, security keys.",
+           "OC-IA-01, OC-IA-02, OC-SC-06; auth/breached_passwords.py; ASVS 6.2.4, 6.2.12, 6.3.1, 6.3.8",
+           "Mitigated (required MFA: OWASP_PLAN.md OW3b)"),
     Threat("OC-T06", "S", "Internet", "A stolen session cookie is replayed.",
            "HttpOnly, Secure, SameSite cookies; idle and absolute timeouts; server-side revocation; token version bump "
            "on password change.",

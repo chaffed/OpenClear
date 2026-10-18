@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+Passwords, resets and security keys (OWASP_PLAN.md OW3a):
+
+- **Breached and guessable passwords are refused.** Every new password is checked against the
+  100,000 most common breached passwords (bundled, stored only as hash prefixes). An
+  installation can add Have I Been Pwned's full downloadable list (`breached_password_file`,
+  searched in place) or its range API (`breached_password_hibp`). Passwords also can't contain
+  OpenClear, the bank's or customer's name, or the person's email address.
+- **New banks require 15 characters.** Existing banks keep their setting.
+- **Passwords are re-checked at sign-in.** Someone whose password is now too short, or has
+  appeared in a breach, signs in but must choose a new one before going further
+  (`auth.password.weak` security event).
+- **An administrator's password reset now emails the person a one-time link** to choose a new
+  password, valid for 24 hours (`password_reset_link_hours`). The administrator no longer sees
+  a temporary password. The old password stops working at once. Resetting needs email to be
+  configured.
+- **Adding or removing a security key needs a sign-in within the last 10 minutes**
+  (`recent_sign_in_minutes`), on the web and the API, and the person is always emailed about
+  it. Both are now audited (`auth.mfa.added`, `auth.mfa.removed`).
+- **Sign-in gives the same answer for a wrong password, an unknown email and a locked
+  account**, and takes the same time. **API change:** `POST /api/v1/auth/login` answers a
+  locked account with `401` (it was `423`). The account's owner is still emailed when it locks.
+- **`/.well-known/security.txt`** is served once `security_txt_contact` is set.
+- **`SECURITY.md`** says how to report a vulnerability in OpenClear (GitHub private reporting).
+
 Supply chain and security documentation (OWASP_PLAN.md OW1, OW2):
 
 - **Dependencies install only from hashed lock files** (`requirements/runtime.txt` for the image

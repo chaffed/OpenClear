@@ -514,6 +514,26 @@ def create_app() -> FastAPI:
                                 headers={"Retry-After": "30", "Cache-Control": "no-store"})
         return {"status": "ok"}
 
+    @app.get("/.well-known/security.txt", include_in_schema=False)
+    def security_txt():
+        """RFC 9116: where to report a vulnerability in this installation (Settings.security_txt_*).
+        Not served until the service provider names a contact."""
+        from datetime import date, datetime, time, timedelta, timezone
+
+        settings = get_settings()
+        contacts = [c.strip() for c in (settings.security_txt_contact or "").split(",") if c.strip()]
+        if not contacts:
+            return PlainTextResponse("Not found", status_code=404)
+        expires = settings.security_txt_expires or date.today() + timedelta(days=365)
+        lines = [f"Contact: {c}" for c in contacts]
+        lines.append(f"Expires: {datetime.combine(expires, time(), tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
+        if settings.security_txt_policy:
+            lines.append(f"Policy: {settings.security_txt_policy}")
+        if settings.public_base_url:
+            lines.append(f"Canonical: {settings.public_base_url.rstrip('/')}/.well-known/security.txt")
+        lines.append("Preferred-Languages: en")
+        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; charset=utf-8")
+
     return app
 
 

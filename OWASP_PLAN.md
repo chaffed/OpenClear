@@ -295,5 +295,15 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   (Dependabot covers Actions, Docker and the SDKs). Full-history gitleaks scan: 91 hits, none
   real (the public dev keys, library files in a Drive folder committed in Billing B1–B3, test
   fixtures); allowlisted in `.gitleaks.toml` with reasons, nothing to rotate.
+- 2026-10-18: OW3a built on `ow3a`. Breached passwords (bundled NCSC top 100,000 as SHA-1
+  prefixes; optional HIBP download file searched in place, or the range API) and context words;
+  15 characters for new banks (OW-D16 simplified: stored, not worked out, until OW3b adds the
+  MFA setting it would depend on); passwords re-checked at sign-in. The three private
+  advisories: sign-in spends a password check for unknown and locked accounts and answers them
+  alike (F-4; API 423 → 401); an administrator's reset emails a one-time link (F-3,
+  `password_reset` table with RLS; refused without email); key changes need a sign-in within 10
+  minutes, are audited and emailed (F-2; new `auth` session claim). `security.txt` and
+  `SECURITY.md`. Found on the way: a broad `data/` rule in .gitignore hid the bundled list;
+  the security-headers middleware overwrote pages' `no-referrer`.
 
   Not started.
