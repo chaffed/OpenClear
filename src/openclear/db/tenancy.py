@@ -55,6 +55,9 @@ class TenantContext:
     signed_in_with: str | None = None
     # When the person last authenticated (epoch seconds; the token's `auth` claim), or None.
     authenticated_at: int | None = None
+    # While a required security key's grace period runs and this person has none: when it ends
+    # (auth/deps.py::_security_key_due), for base.html's banner.
+    security_key_due: datetime | None = None
 
     # Per-tenant session-length override (services/tenant_service.py::set_session_timeouts)
     # — None means "use config.Settings.jwt_access/refresh_token_expire_minutes", the same

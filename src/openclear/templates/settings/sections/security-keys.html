@@ -1,0 +1,17 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Everyone who signs in with a password must also use a security key or passkey (a
+  laptop's fingerprint reader or a phone counts). People who sign in through your identity
+  provider, or from online banking, aren't affected: those sign-ins are checked there. A customer
+  can require keys for its own people even if you don't.</p>
+<form method="post" action="/ui/settings/security-keys">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label><input type="checkbox" name="require_security_key" value="true" {{ "checked" if require_security_key else "" }}>
+    Require a security key or passkey for password sign-ins</label>
+  <label>Grace period (days)
+    <input type="number" name="security_key_grace_days" min="0" max="{{ max_grace_days }}" value="{{ security_key_grace_days }}" required style="max-width:8em;">
+  </label>
+  <p class="hint">During the grace period, people without a key can still sign in and see a reminder; after it,
+    they add one as part of signing in.{% if security_key_required_since %} Required since
+    {{ security_key_required_since.strftime("%Y-%m-%d") }}.{% endif %}</p>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

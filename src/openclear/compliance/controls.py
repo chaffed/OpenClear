@@ -154,7 +154,7 @@ CONTROLS: tuple[OcControl, ...] = (
       "Settings → Password policy; Settings → Lockout and inactive accounts"),
     C("OC-IA-02", "Security keys and passkeys",
       "People sign in with a FIDO2 security key or passkey as a second factor, which a bank or customer can require.",
-      ("IA-2(1)", "IA-2(2)", "IA-2(8)"), "preventive", "configurable", ("admin_mfa", "staff_mfa", "customer_mfa"),
+      ("IA-2(1)", "IA-2(2)", "IA-2(8)"), "preventive", "configurable", ("admin_mfa", "staff_mfa", "customer_mfa", "security_key_required"),
       ("B-IA-2(1)-01", "B-IA-2(2)-01", "C-IA-2-01", "B-IA-8-01"), "My security; Settings → Password policy"),
     C("OC-IA-03", "Single sign-on and SCIM",
       "A bank, or a customer the bank allows, signs its people in through its own identity provider (OIDC or SAML), and can "

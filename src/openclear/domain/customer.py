@@ -33,6 +33,10 @@ class Customer(Base):
     # makes sense set False once this customer has at least one active SsoConnection
     # (enforced in services/sso_service.py).
     password_login_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # This customer requires security keys even if its bank doesn't (OW-D18); the bank's grace
+    # period applies, counted from here.
+    require_security_key: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    security_key_required_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Self-service (CUSTOMER_ADMIN_PLAN.md): the bank lets the customer's own administrators
     # manage its people (customer_user:manage) and its sign-on (customer_sso:manage). Off
     # until the bank turns them on; turning one off suspends it at once.

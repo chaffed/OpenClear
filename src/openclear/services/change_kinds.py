@@ -292,6 +292,31 @@ register(Kind(
     action="tenant.update_password_policy",
 ))
 
+def _security_keys_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services.tenant_service import InvalidTenantSettingsInput, set_security_key_requirement
+
+    v = payload_values(payload)
+    try:
+        set_security_key_requirement(session, tenant_id, required=bool(v["require_security_key"]),
+                                     grace_days=int(v["security_key_grace_days"]))
+    except InvalidTenantSettingsInput as exc:
+        raise ChangeError(str(exc)) from None
+    return ("Security keys required for password sign-ins" if v["require_security_key"]
+            else "Security keys no longer required")
+
+
+register(Kind(
+    "security_keys", "Required security keys", "protection", _BANK_ADMIN,
+    tenant_fields("require_security_key", "security_key_grace_days"), payload_values,
+    # Turning it off, or giving people longer, weakens it; turning it on or shortening applies at once.
+    loosens=lambda before, after: (before["require_security_key"] and not after["require_security_key"])
+    or (after["require_security_key"] and after["security_key_grace_days"] > before["security_key_grace_days"]),
+    apply=_security_keys_apply,
+    describe=lambda before, after: "Stop requiring security keys" if not after["require_security_key"]
+    else "Give people longer to add a security key",
+    action="tenant.update_security_keys",
+))
+
 register(Kind(
     "attest_second_person", "Second person on attestations", "protection", "compliance:manage", tenant_fields("attest_second_person"),
     payload_values, loosens=turned_off("attest_second_person"), apply=_set_tenant(),
@@ -863,6 +888,27 @@ register(Kind(
     lambda s, t, c, p: {"enabled": bool(_customer_row(s, t, c).password_login_enabled)}, lambda payload: {"enabled": True},
     loosens=lambda before, after: after["enabled"] and not before["enabled"], apply=_customer_sign_in_apply, scope="customer",
     describe=lambda before, after: "Let our people sign in with passwords again", action="customer_sign_on.password_sign_in",
+))
+
+def _customer_security_keys_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from datetime import datetime, timezone
+
+    customer = _customer_row(session, tenant_id, customer_id)
+    on = bool(payload_values(payload)["require_security_key"])
+    if on and not customer.require_security_key:
+        customer.security_key_required_since = datetime.now(timezone.utc)
+    if not on:
+        customer.security_key_required_since = None
+    customer.require_security_key = on
+    session.flush()
+    return "Security keys required for our people" if on else "Security keys no longer required for our people"
+
+
+register(Kind(
+    "customer.security_keys", "Required security keys", "protection", "customer_sso:manage",
+    lambda s, t, c, p: {"require_security_key": bool(_customer_row(s, t, c).require_security_key)}, payload_values,
+    loosens=turned_off("require_security_key"), apply=_customer_security_keys_apply, scope="customer",
+    describe=lambda before, after: "Stop requiring security keys for our people", action="customer.update_security_keys",
 ))
 
 _CUSTOMER_PASSWORD = ("password_min_length", "password_require_uppercase", "password_require_lowercase", "password_require_number",

@@ -5,6 +5,7 @@ import io
 import re
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
@@ -266,6 +267,27 @@ def set_data_export_timeout(session: Session, tenant_id: uuid.UUID, *, timeout_s
     if tenant is None:
         return None
     tenant.data_export_timeout_seconds = timeout_seconds
+    session.flush()
+    return tenant
+
+
+MAX_SECURITY_KEY_GRACE_DAYS = 90
+
+
+def set_security_key_requirement(session: Session, tenant_id: uuid.UUID, *, required: bool, grace_days: int) -> Tenant | None:
+    """Require a security key for password sign-ins (OWASP_PLAN.md OW-D18, OW-D20). Turning it on
+    starts the grace period now; changing only the grace days keeps the start."""
+    if not 0 <= grace_days <= MAX_SECURITY_KEY_GRACE_DAYS:
+        raise InvalidTenantSettingsInput(f"The grace period must be between 0 and {MAX_SECURITY_KEY_GRACE_DAYS} days")
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    if required and not tenant.require_security_key:
+        tenant.security_key_required_since = datetime.now(timezone.utc)
+    if not required:
+        tenant.security_key_required_since = None
+    tenant.require_security_key = required
+    tenant.security_key_grace_days = grace_days
     session.flush()
     return tenant
 

@@ -139,6 +139,13 @@
         visitors out are turned off.</p>
       {% endif %}
       {% include "partials/_flash.html" %}
+      {% if ctx and ctx.security_key_due %}
+      {# A required security key's grace period (auth/security_key_policy.py): after it, signing in needs one. #}
+      {% set days_left = ((ctx.security_key_due - now_utc()).total_seconds() / 86400) | round(0, "ceil") | int %}
+      <p class="flash flash-warn" role="status" data-security-key-due>Your organization requires a security key or passkey.
+        Add one by {{ ctx.security_key_due.strftime("%B %-d") }} ({{ days_left }} day{{ "" if days_left == 1 else "s" }} left), or you'll be
+        asked to add one when you sign in. <a href="/ui/security">Add a security key</a></p>
+      {% endif %}
       {% include "partials/_banner.html" %}
       {% set has_help = self.help_body()|trim %}
       <div class="page-controls">

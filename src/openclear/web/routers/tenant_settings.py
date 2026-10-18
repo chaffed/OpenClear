@@ -22,6 +22,7 @@ from openclear.repositories.bulk_upload_file_repo import BulkUploadFileRepositor
 from openclear.services import audit_log_service, change_request_service, reminder_service
 from openclear.services.siem import delivery, formats, senders
 from openclear.services.tenant_service import (
+    MAX_SECURITY_KEY_GRACE_DAYS,
     InvalidTenantSettingsInput,
     set_data_export_timeout,
     set_messages,
@@ -45,6 +46,7 @@ SECTIONS = {
     "contact": "Contact info",
     "messages": "Messages",
     "password-policy": "Password policy",
+    "security-keys": "Required security keys",
     "access-rules": "Lockout and inactive accounts",
     "timeouts": "Timeouts",
     "dual-control": "Dual control",
@@ -60,7 +62,7 @@ SECTIONS = {
 
 # Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
 SECTION_KINDS = {
-    "password-policy": ("password_policy",), "access-rules": ("access_rules",), "dual-control": ("dual_control", "approval_switches"),
+    "password-policy": ("password_policy",), "security-keys": ("security_keys",), "access-rules": ("access_rules",), "dual-control": ("dual_control", "approval_switches"),
     "customer-approval": ("customer_approval",), "embedding": ("embedding",), "decision-files": ("decision_files",),
     "security-events": ("security_event_forwarding",),
 }
@@ -124,6 +126,10 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         return {"login_message": tenant.login_message or "", "banner_message": tenant.banner_message or ""}
     if key == "password-policy":
         return _password_policy_kwargs(tenant)
+    if key == "security-keys":
+        return {"require_security_key": tenant.require_security_key, "security_key_grace_days": tenant.security_key_grace_days,
+                "security_key_required_since": tenant.security_key_required_since,
+                "max_grace_days": MAX_SECURITY_KEY_GRACE_DAYS}
     if key == "access-rules":
         return _access_rules_kwargs(tenant)
     if key == "timeouts":
@@ -588,6 +594,23 @@ def update_password_policy(
         return render_section(request, db, ctx, "password-policy", error="Minimum password length must be at least 1", **values)
     return _change(request, db, ctx, "password_policy", {"values": values}, key="password-policy",
                    record=("tenant.update_password_policy", f"Updated password policy (min length: {min_length})"), error_overrides=values)
+
+
+@router.post("/security-keys")
+def update_security_keys(
+    request: Request,
+    require_security_key: bool = Form(False),
+    security_key_grace_days: int = Form(14),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    values = {"require_security_key": require_security_key, "security_key_grace_days": security_key_grace_days}
+    return _change(request, db, ctx, "security_keys", {"values": values}, key="security-keys",
+                   record=("tenant.update_security_keys",
+                           f"Security keys {'required' if require_security_key else 'not required'} for password sign-ins "
+                           f"(grace period {security_key_grace_days} days)"),
+                   error_overrides={**values, "max_grace_days": MAX_SECURITY_KEY_GRACE_DAYS})
 
 
 @router.post("/access-rules")

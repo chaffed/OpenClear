@@ -88,6 +88,9 @@ class SsoConnection(Base):
     scim_token_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     auto_provision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Refuse a sign-in unless the provider says MFA was used (OIDC amr/acr, SAML
+    # AuthnContextClassRef): OW-D25, so the SSO exemption from required keys is checked.
+    require_mfa_claim: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Who set it up: "bank", or "customer" (its own administrators, CUSTOMER_ADMIN_PLAN.md).
     # A customer-managed connection auto-provisions only emails in the customer's verified
     # domains (domain/customer_admin.py::CustomerEmailDomain).

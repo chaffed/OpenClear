@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from openclear.auth.login_service import scope_allows_password_login
+from openclear.auth.security_key_policy import requirement
 from openclear.auth.security import create_session_tokens, create_token
 from openclear.auth.webauthn_service import user_has_webauthn_credentials
 from openclear.db.session import get_db
@@ -48,7 +49,7 @@ def switch_refusal(db: Session, ctx: TenantContext, target) -> str | None:
             return _SIGN_IN_THERE
     else:
         return _SIGN_IN_THERE
-    if target.membership.require_webauthn:
+    if requirement(db, target.tenant, target.membership).enforced:
         # Only a key already registered there: registering one from a session that came
         # from somewhere else would let a stolen session cookie add its own key.
         with acting_as_tenant(db, target.tenant.id):  # Postgres RLS: keys belong to the target bank
@@ -109,7 +110,7 @@ def switch_tenant(
 
     user = db.get(User, ctx.user_id)
 
-    if target.membership.require_webauthn:
+    if requirement(db, target.tenant, target.membership).enforced:
         mfa_token = create_token(
             user_id=ctx.user_id,
             tenant_id=target.tenant.id,

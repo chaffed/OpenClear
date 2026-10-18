@@ -80,6 +80,14 @@ class Tenant(Base):
     # enforced in services/sso_service.py, not here, to keep this a plain column like
     # every other tenant-level toggle.
     password_login_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Required security keys (OWASP_PLAN.md OW-D18–D20; auth/security_key_policy.py): everyone who
+    # signs in here with a password must also use a security key, after a grace period counted
+    # from when it was turned on. A customer can turn it on for itself as well.
+    require_security_key: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    security_key_grace_days: Mapped[int] = mapped_column(Integer, nullable=False, default=14, server_default="14")
+    security_key_required_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # API clients must authenticate with a signed assertion (private_key_jwt), not a secret (OW-D26).
+    api_clients_key_pair_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     stale_date_threshold_days: Mapped[int] = mapped_column(Integer, nullable=False, default=180)
     # Nullable = "use the app's global default" (config.Settings.jwt_access/refresh_
     # token_expire_minutes) — see auth/security.py::create_token and

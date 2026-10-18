@@ -146,6 +146,32 @@ def staff_mfa(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("staff_mfa", title, PASS, f"All {len(deciders)} staff who decide or change data have a security key or passkey.", evidence)
 
 
+def security_key_required(session: Session, tenant_id: uuid.UUID) -> Control:
+    """OW-D18: the bank requires a security key for password sign-ins, and it's in force."""
+    from openclear.auth.security_key_policy import requirement
+    from openclear.domain.tenant import Tenant
+
+    tenant = session.get(Tenant, tenant_id)
+    title = "A security key is required"
+    evidence = {"required": tenant.require_security_key, "grace_days": tenant.security_key_grace_days,
+                "required_since": tenant.security_key_required_since.isoformat() if tenant.security_key_required_since else None}
+    if not tenant.password_login_enabled:
+        return Control("security_key_required", title, PASS, "Password sign-in is off: your staff sign in through your identity provider.",
+                       evidence)
+    if not tenant.require_security_key:
+        return Control("security_key_required", title, WARN,
+                       "Password sign-ins don't require a security key or passkey (Settings → Required security keys).", evidence)
+    people = _people(session, tenant_id, customers=None)
+    keys = _with_second_factor(session, tenant_id, {u.id for u, _m, _p in people})
+    waiting = sorted(u.email for u, m, _p in people if u.id not in keys and requirement(session, tenant, m).required
+                     and not requirement(session, tenant, m).enforced)
+    evidence["in_grace_without_a_key"] = waiting[:LIST_LIMIT]
+    if waiting:
+        return Control("security_key_required", title, WARN,
+                       f"Required; {len(waiting)} people are still in the grace period without a security key.", evidence)
+    return Control("security_key_required", title, PASS, "Required for every password sign-in.", evidence)
+
+
 def customer_mfa(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.domain.customer import Customer
 

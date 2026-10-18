@@ -54,6 +54,24 @@ def _pending_approval_count(db: Session, tenant_id: uuid.UUID, customer_id: uuid
     return db.execute(stmt).scalar_one()
 
 
+def _security_key_due(db: Session, tenant_id: uuid.UUID, membership: TenantMembership, payload: dict) -> datetime | None:
+    """When a password user without a key must have registered one, while they're in the grace
+    period (auth/security_key_policy.py), for the banner. SSO and embedded sessions are exempt."""
+    if payload.get("am") != "password":
+        return None
+    from openclear.auth.security_key_policy import requirement
+    from openclear.auth.webauthn_service import user_has_webauthn_credentials
+    from openclear.domain.tenant import Tenant
+
+    tenant = db.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    required = requirement(db, tenant, membership)
+    if not required.required or required.enforced or required.grace_ends is None:
+        return None
+    return None if user_has_webauthn_credentials(db, tenant_id, membership.user_id) else required.grace_ends
+
+
 def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> TenantContext:
     """Shared by every auth channel that needs to turn a raw JWT string into a
     TenantContext: the JSON API's Authorization-header dependencies below, and
@@ -131,6 +149,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         raise AccessRevoked("Tenant no longer exists")
 
     permissions = frozenset(group.permissions)
+    security_key_due = _security_key_due(db, tenant_id, membership, payload) if expected_type == "access" else None
     customer_name: str | None = None
     customer_banner_message: str | None = None
     if customer_id is not None:
@@ -192,6 +211,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
         confined=bool(payload.get("cfd")),
         signed_in_with=payload.get("am"),
+        security_key_due=security_key_due,
         authenticated_at=payload.get("auth"),
     )
     # Who this request is for, for logs, rate limits and security events (web/request_context.py).

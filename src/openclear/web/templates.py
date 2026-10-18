@@ -50,6 +50,15 @@ def _can(ctx: TenantContext | None, permission: str) -> bool:
 templates.env.globals["can"] = _can
 
 
+def _now_utc():
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc)
+
+
+templates.env.globals["now_utc"] = _now_utc
+
+
 def _format_metrics(metrics: dict | None) -> str:
     """Exposed to every template as `format_metrics(m.metrics_json)` — renders an ML
     model's metrics dict (precision/recall/auc from ml/train.py, or {"error": ...} for a

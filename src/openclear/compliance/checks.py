@@ -104,6 +104,7 @@ def _registry() -> tuple[Check, ...]:
         Check("decision_delivery", "Decision files delivered and acknowledged", c.decision_delivery),
         Check("outside_services", "Outside services reviewed", c.outside_services, schedule="nightly"),
         Check("password_policy", "Password policy meets your standard", c.password_policy),
+        Check("security_key_required", "A security key is required", c.security_key_required),
         Check("key_age", "Keys rotated on schedule", c.key_age, schedule="nightly"),
         # Deviations themselves (last, so it sees the others' deviations from this round).
         Check("control_response", "Deviations dealt with", c.control_response),
@@ -134,5 +135,5 @@ KEYS = (
     "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_signed", "evidence_export",
     "dual_control", "two_person_changes", "change_impact_replay", "support_access_review", "customer_decision_timeliness",
     "scheduled_jobs", "transport_security", "platform_staff", "software_currency", "installation_settings", "provider_log", "second_approver", "sensitive_settings_protected", "access_review", "customer_access_review", "file_reconciliation",
-    "decision_delivery", "outside_services", "password_policy", "key_age", "control_response",
+    "decision_delivery", "outside_services", "password_policy", "security_key_required", "key_age", "control_response",
 )

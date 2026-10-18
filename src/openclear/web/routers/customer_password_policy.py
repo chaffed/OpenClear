@@ -44,6 +44,8 @@ def _render_form(request: Request, db: Session, ctx: TenantContext, customer_id:
         customer_require_lowercase=customer.password_require_lowercase,
         customer_require_number=customer.password_require_number,
         customer_require_symbol=customer.password_require_symbol,
+        tenant_requires_security_key=tenant.require_security_key,
+        customer_requires_security_key=customer.require_security_key,
         error=error, status_code=status_code, back_url="/ui/sign-on" if ctx.customer_id else f"/ui/customers/{customer_id}",
     )
 
@@ -98,5 +100,42 @@ def update_password_policy(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_password_policy",
         summary="Updated customer password policy", resource_type="customer", resource_id=customer_id,
     )
+    db.commit()
+    return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash=Updated.", status_code=303)
+
+
+@router.post("/security-keys")
+def update_security_keys(
+    request: Request,
+    customer_id: uuid.UUID,
+    require_security_key: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(_allowed),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """The customer requires security keys for its own people (OWASP_PLAN.md OW-D18): on applies at
+    once; off waits for a second person."""
+    from urllib.parse import quote
+
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    _get_customer_or_404(db, ctx.tenant_id, customer_id, ctx)
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "customer.security_keys", {"values": {"require_security_key": require_security_key}},
+            tenant_id=ctx.tenant_id, customer_id=customer_id, user_id=ctx.user_id)
+    except ValueError as exc:
+        db.rollback()
+        return _render_form(request, db, ctx, customer_id, error=str(exc), status_code=422)
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}", status_code=303)
+    if outcome.summary != "Nothing changed.":
+        audit_log_service.record_action(
+            db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_security_keys",
+            summary=f"Security keys {'required' if require_security_key else 'not required'} for the customer's people",
+            resource_type="customer", resource_id=customer_id,
+        )
     db.commit()
     return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash=Updated.", status_code=303)

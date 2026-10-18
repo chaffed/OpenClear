@@ -49,6 +49,7 @@ from openclear.domain import (  # noqa: F401
     platform_action_entry,
     platform_api_key,
     platform_log_verification,
+    platform_webauthn,
     revoked_session,
     security_event,
     security_event_destination,

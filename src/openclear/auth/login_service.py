@@ -205,8 +205,11 @@ def authenticate_password(
     )
 
     has_key = user_has_webauthn_credentials(session, tenant.id, user.id)
-    mfa_required = has_key or membership.require_webauthn
-    needs_webauthn_enrollment = membership.require_webauthn and not has_key
+    from openclear.auth.security_key_policy import requirement
+
+    enforced = requirement(session, tenant, membership).enforced  # the membership's, bank's or customer's (OW-D18)
+    mfa_required = has_key or enforced
+    needs_webauthn_enrollment = enforced and not has_key
     identity = AuthenticatedIdentity(
         user=user,
         tenant=tenant,
