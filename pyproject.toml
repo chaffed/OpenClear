@@ -74,6 +74,8 @@ dev = [
   "fakeredis[lua]>=2.20",
   # tests/test_compliance/test_oscal.py: OSCAL documents against NIST's published JSON schemas.
   "jsonschema>=4.21",
+  # threat_model/openclear.py and scripts/render_threat_model.py (OWASP_PLAN.md OW-D12).
+  "pytm>=1.4,<2",
 ]
 
 [build-system]

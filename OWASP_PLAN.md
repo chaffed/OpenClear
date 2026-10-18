@@ -277,5 +277,12 @@ Releases: **1.22.0** after OW3a (the password check and new defaults, `security.
   The last batch (V1–V5, V12–V15) found nothing high-severity; issues #11–#15. One more
   decision for OW3b: malware scanning of uploads. OW1 still to do: risk profile, threat
   model, SAMM, and building `docs/compliance/asvs.md` from the working notes.
+- 2026-10-17: OW1 documents: `docs/security/risk-profile.md` (data classification and protection
+  by level, ASVS 14.1), the threat model as code (`threat_model/openclear.py`, rendered by
+  `scripts/render_threat_model.py`, 22 OpenClear-specific threats plus pytm's library and a
+  LINDDUN GO pass; `tests/test_compliance/test_threat_model.py` fails when it's stale), and
+  `docs/security/samm.md`. Found while writing them: account numbers aren't masked anywhere
+  (11.7.2, with #14), and there's no in-app offboarding of a departing bank's data. Left in OW1:
+  `docs/compliance/asvs.md`, published after OW3 (ADR 0002).
 
   Not started.
