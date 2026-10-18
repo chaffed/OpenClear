@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -454,25 +453,12 @@ def change_own_password(
     return user
 
 
-def _generate_temporary_password(policy: PasswordPolicy | None) -> str:
-    """Random, and always satisfies `policy` (one character from every class, then
-    filled out to at least 16 or the policy's own minimum). Ambiguous look-alike
-    characters (0/O, 1/l/I) are left out since an admin reads this aloud or retypes it."""
-    lower, upper, digits, symbols = "abcdefghijkmnpqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "!@#$%*-_+?"
-    length = max(16, policy.min_length if policy else 0)
-    chars = [secrets.choice(lower), secrets.choice(upper), secrets.choice(digits), secrets.choice(symbols)]
-    alphabet = lower + upper + digits + symbols
-    chars += [secrets.choice(alphabet) for _ in range(length - len(chars))]
-    secrets.SystemRandom().shuffle(chars)
-    return "".join(chars)
-
-
 def admin_reset_password(
-    session: Session, tenant_id: uuid.UUID, membership_id: uuid.UUID, *, actor_user_id: uuid.UUID
-) -> tuple[User, str]:
-    """Replaces the user's password with a one-time temporary one (returned, for the admin
-    to hand over — never stored in plain text or logged) and forces a change at next
-    sign-in. Resolved via a membership in the caller's own tenant, like unlock_user.
+    session: Session, tenant_id: uuid.UUID, membership_id: uuid.UUID, *, actor_user_id: uuid.UUID, base_url: str
+) -> User:
+    """Resets the user's password by emailing them a one-time link
+    (services/password_reset_service.py); the administrator never sees or chooses the new
+    password (ASVS 5.0 6.4.6). Resolved via a membership in the caller's own tenant, like unlock_user.
 
     Refused when the user also holds an active membership in any OTHER organization: a
     User's password is global, so otherwise one bank's admin could take over that
@@ -498,14 +484,13 @@ def admin_reset_password(
             "They must change it themselves from Security → Change password."
         )
 
-    temporary_password = _generate_temporary_password(password_policy_for_user(session, user.id))
-    user.hashed_password = hash_password(temporary_password)
-    user.must_change_password = True
-    user.failed_login_attempts = 0
-    user.locked_until = None
-    session_service.revoke_all_sessions(session, user)
-    notification_service.notify_password_changed(session, user, reset_by_admin=True)
-    return user, temporary_password
+    from openclear.services import password_reset_service
+
+    try:
+        password_reset_service.start(session, tenant, user, requested_by_user_id=actor_user_id, base_url=base_url)
+    except password_reset_service.ResetError as exc:
+        raise PasswordChangeError(str(exc)) from None
+    return user
 
 
 def update_membership(

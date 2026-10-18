@@ -364,15 +364,15 @@ def sign_out(request: Request, membership_id: uuid.UUID, db: Session = Depends(g
 def reset_password(request: Request, membership_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                    _csrf: None = Depends(verify_csrf)) -> Response:
     out = _action(request, db, ctx, membership_id,
-                  lambda: customer_people_service.reset_password(db, ctx.tenant_id, ctx.customer_id, membership_id, actor_user_id=ctx.user_id),
-                  "customer_people.reset_password", "Reset the password of {email}")
+                  lambda: customer_people_service.reset_password(
+                      db, ctx.tenant_id, ctx.customer_id, membership_id, actor_user_id=ctx.user_id,
+                      base_url=get_settings().public_base_url or str(request.base_url)),
+                  "customer_people.reset_password", "Reset the password of {email} (one-time link emailed)")
     if isinstance(out, Response):
         return out
-    (user, temporary), _person = out
-    response = render_template(request, "users/reset_password_result.html", ctx=ctx, email=user.email, temporary_password=temporary,
-                               back_url="/ui/people")
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    user, _person = out
+    return _back(f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once "
+                 f"and expires in {get_settings().password_reset_link_hours} hours.")
 
 
 # --- Accepting an invitation (no sign-in: the link is the credential) ---------------------------

@@ -33,7 +33,8 @@ from openclear.web.templates import templates
 # user needs to know regardless of what they've configured, same "security mail isn't
 # optional" reasoning most apps apply to account-security notices. Every other type (and
 # SMS for every type, including these) stays fully preference-controlled.
-_ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING})
+_ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
+                                 NotificationType.PASSWORD_RESET_LINK})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -44,6 +45,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.PASSWORD_CHANGED: "Your OpenClear password was changed",
     NotificationType.DEADLINE_REMINDER: "Items to decide before the cutoff",
     NotificationType.INVITATION: "You're invited to OpenClear",
+    NotificationType.PASSWORD_RESET_LINK: "Choose a new OpenClear password",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -362,6 +364,25 @@ def notify_password_changed(session: Session, user: User, *, reset_by_admin: boo
         resource_type="user",
         resource_id=user.id,
     )
+
+
+def email_configured() -> bool:
+    """Whether email can actually be sent: a message that can't be delivered only fails later,
+    in the worker, so anything that relies on email (a reset link) checks this first."""
+    settings = get_settings()
+    return settings.email_provider != "smtp" or bool(settings.smtp_host)
+
+
+def notify_password_reset_link(session: Session, user: User, *, link: str, hours: int, bank_name: str) -> None:
+    session.add(Notification(
+        tenant_id=None, recipient_user_id=user.id, notification_type=NotificationType.PASSWORD_RESET_LINK,
+        channel=NotificationChannel.EMAIL, destination=user.email,
+        subject=_EMAIL_SUBJECTS[NotificationType.PASSWORD_RESET_LINK],
+        body=_render_body(NotificationType.PASSWORD_RESET_LINK, NotificationChannel.EMAIL,
+                          {"link": link, "hours": hours, "bank_name": bank_name}),
+        resource_type="user", resource_id=user.id,
+    ))
+    session.flush()
 
 
 def notify_invitation(

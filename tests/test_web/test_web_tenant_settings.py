@@ -324,7 +324,7 @@ def test_update_password_policy_via_web(client, db_session, tenant_factory):
     resp = client.post(
         "/ui/settings/password-policy",
         data={
-            "csrf_token": csrf, "min_length": "12", "require_uppercase": "true", "require_number": "true",
+            "csrf_token": csrf, "min_length": "16", "require_uppercase": "true", "require_number": "true",
         },
         follow_redirects=False,
     )
@@ -334,7 +334,7 @@ def test_update_password_policy_via_web(client, db_session, tenant_factory):
     from openclear.domain.tenant import Tenant
 
     updated = db_session.get(Tenant, tenant.id)
-    assert updated.password_min_length == 12
+    assert updated.password_min_length == 16
     assert updated.password_require_uppercase is True
     assert updated.password_require_number is True
     assert updated.password_require_lowercase is False

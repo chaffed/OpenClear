@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.password_policy import describe as describe_password_policy
 from openclear.auth.password_policy import effective_policy
 from openclear.bulk_import.tabular import TabularParseError, parse_tabular_file
+from openclear.config import get_settings
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadKind
@@ -371,13 +372,13 @@ def reset_password(
     ctx: TenantContext = Depends(require_web_permission("user:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> Response:
-    """Issues a one-time temporary password — see services/user_service.py::
-    admin_reset_password for who can and can't be reset from here. Rendered directly as
-    this POST's response (never a redirect) so the temporary password never appears in a
-    URL, browser history, or a re-fetchable page; no-store keeps it out of the cache."""
+    """Emails the person a one-time link to choose a new password — see
+    services/user_service.py::admin_reset_password for who can and can't be reset from here.
+    The administrator never sees a password (ASVS 5.0 6.4.6)."""
     try:
-        user, temporary_password = user_service.admin_reset_password(
-            db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id
+        user = user_service.admin_reset_password(
+            db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id,
+            base_url=get_settings().public_base_url or str(request.base_url),
         )
     except user_service.PasswordChangeError as exc:
         return RedirectResponse("/ui/users?error=" + quote(str(exc)), status_code=303)
@@ -387,16 +388,15 @@ def reset_password(
         actor_user_id=ctx.user_id,
         channel="web",
         action="user.password_reset",
-        summary=f"Reset password for {user.email} (temporary password issued; change required at next sign-in)",
+        summary=f"Reset password for {user.email} (one-time link emailed; old password no longer works)",
         resource_type="user",
         resource_id=user.id,
     )
     db.commit()
-    response = render_template(
-        request, "users/reset_password_result.html", ctx=ctx, email=user.email, temporary_password=temporary_password
-    )
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    hours = get_settings().password_reset_link_hours
+    return RedirectResponse("/ui/users?flash=" + quote(
+        f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once and "
+        f"expires in {hours} hours."), status_code=303)
 
 
 @router.get("/bulk")

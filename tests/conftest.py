@@ -305,3 +305,11 @@ def approve_provider_changes(session: Session) -> None:
     for change in change_request_service.pending(session, None):
         change_request_service.decide(session, None, change.id, approve=True, user_id=approver.id)
     session.commit()
+
+
+@pytest.fixture
+def email_configured(monkeypatch):
+    """Email counts as set up (notification_service.email_configured), for flows that refuse
+    without it, such as an administrator's password reset link. Nothing is actually sent:
+    notifications are only queued in tests."""
+    monkeypatch.setattr(get_settings(), "smtp_host", "smtp.example.com")

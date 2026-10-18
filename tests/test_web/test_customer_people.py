@@ -8,6 +8,7 @@ guardrail that keeps them inside their own customer."""
 import re
 import uuid
 
+import pytest
 from sqlalchemy import select
 
 from openclear.domain.notification import Notification, NotificationType
@@ -15,6 +16,8 @@ from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.services import account_service, customer_service, security_group_service, user_service
 from tests.conftest import TenantFactory
+
+pytestmark = pytest.mark.usefixtures("email_configured")  # admin password resets email a link
 
 
 def _setup(db_session, tenant_factory, slug="cp", *, self_manages=True):
@@ -178,7 +181,7 @@ def test_whole_identity_actions_only_for_people_who_belong_here_alone(client, db
     shared_m = _membership(db_session, s["tenant"], shared, s["customer"])
 
     reset = client.post(f"/ui/people/{alone_m.id}/reset-password", data={"csrf_token": csrf})
-    assert reset.status_code == 200 and "Temporary password issued" in reset.text and reset.headers["cache-control"] == "no-store"
+    assert reset.status_code == 200 and "emailed a link to choose a new one" in reset.text
     for action in ("reset-password", "unlock", "sign-out"):
         refused = client.post(f"/ui/people/{shared_m.id}/{action}", data={"csrf_token": csrf})
         assert refused.status_code == 422 and "another organization" in refused.text, action

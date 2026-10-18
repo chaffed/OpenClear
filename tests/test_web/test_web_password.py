@@ -7,6 +7,7 @@ services/user_service.py::change_own_password / admin_reset_password."""
 
 import re
 
+import pytest
 from fastapi.testclient import TestClient
 
 from openclear.auth.password_policy import PasswordPolicy, validate_password
@@ -17,6 +18,8 @@ from openclear.domain.user import User
 from openclear.services import customer_service, security_group_service, user_service
 from openclear.services.security_group_service import SecurityGroupInput
 from tests.conftest import TenantFactory
+
+pytestmark = pytest.mark.usefixtures("email_configured")  # admin password resets email a link
 
 NEW_PASSWORD = "Brand-new-password-42"
 
@@ -56,8 +59,17 @@ def _reset(client, membership_id):
     )
 
 
-def _temporary_password(resp) -> str:
-    return re.search(r'id="temporary-password"[^>]*>([^<]+)<', resp.text).group(1)
+def _reset_link(db_session, user) -> str:
+    """The one-time link the reset emailed, as a path."""
+    note = db_session.query(Notification).filter_by(recipient_user_id=user.id,
+                                                    notification_type=NotificationType.PASSWORD_RESET_LINK).one()
+    return re.search(r"(/ui/password-reset/\S+)", note.body).group(1)
+
+
+def _choose(client, path, password, confirm=None):
+    client.get(path)
+    return client.post(path, data={"password": password, "password_confirm": confirm or password,
+                                   "csrf_token": client.cookies.get("csrf_token")}, follow_redirects=False)
 
 
 # --- Self-service change ---
@@ -199,51 +211,58 @@ def test_password_service_also_refuses_the_demo_organization(db_session, tenant_
 # --- Admin reset ---
 
 
-def test_admin_reset_issues_temporary_password_and_forces_change(client, db_session, tenant_factory):
+@pytest.mark.asvs("6.4.6")
+def test_admin_reset_emails_a_one_time_link_the_admin_never_sees(client, db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="pw-reset-flow")
     viewer = users["viewer"]
     _login(client, tenant.slug, users["admin"].email)
 
     resp = _reset(client, _membership(db_session, viewer, tenant).id)
 
-    assert resp.status_code == 200
-    assert resp.headers["cache-control"] == "no-store"
-    temporary = _temporary_password(resp)
+    assert resp.status_code == 303 and "emailed%20a%20link" in resp.headers["location"]
     assert db_session.query(AuditLogEntry).filter_by(tenant_id=tenant.id, action="user.password_reset").count() == 1
-    assert temporary not in "".join(e.summary for e in db_session.query(AuditLogEntry).all())
+    link = _reset_link(db_session, viewer)
+    assert link.split("/")[-1] not in client.get("/ui/users").text  # nothing about the link on the admin's pages
 
     user_client = TestClient(client.app)
-    assert not _logged_in(_login(user_client, tenant.slug, viewer.email))  # old password no longer works
-    assert _logged_in(_login(user_client, tenant.slug, viewer.email, temporary))
+    assert not _logged_in(_login(user_client, tenant.slug, viewer.email))  # the old password no longer works
+    page = user_client.get(link)
+    assert page.status_code == 200 and viewer.email in page.text
+    assert page.headers["cache-control"] == "no-store" and page.headers["referrer-policy"] == "no-referrer"
 
-    # Every page except the change form redirects there until the password is changed.
-    blocked = user_client.get("/ui/exceptions", follow_redirects=False)
-    assert blocked.status_code == 303
-    assert blocked.headers["location"].startswith("/ui/security/password")
-    form = user_client.get("/ui/security/password")
-    assert form.status_code == 200
-    assert "An administrator reset your password" in form.text
-    assert 'href="/ui/exceptions"' not in form.text  # nav links hidden: they'd only bounce back here
-    assert 'action="/ui/logout"' in form.text
+    weak = _choose(user_client, link, "Password1")
+    assert weak.status_code == 422 and "at least" in weak.text
+    done = _choose(user_client, link, NEW_PASSWORD)
+    assert done.status_code == 303 and done.headers["location"].startswith(f"/ui/login/{tenant.slug}")
+    assert _logged_in(_login(user_client, tenant.slug, viewer.email, NEW_PASSWORD))
+    assert db_session.query(AuditLogEntry).filter_by(tenant_id=tenant.id, action="user.password_reset_completed").count() == 1
 
-    done = _change(user_client, temporary, NEW_PASSWORD)
-    assert done.status_code == 303
-    assert done.headers["location"].startswith("/ui/?")
-    assert user_client.get("/ui/exceptions", follow_redirects=False).status_code == 200
+    again = TestClient(client.app).get(link)
+    assert "can&#39;t be used" in again.text or "can't be used" in again.text  # works once
 
 
-def test_temporary_password_cannot_be_used_on_the_api(client, db_session, tenant_factory):
-    tenant, _account, users = tenant_factory.make(slug="pw-reset-api")
+@pytest.mark.asvs("6.4.1")
+def test_a_reset_link_expires_and_a_newer_one_replaces_it(client, db_session, tenant_factory):
+    from datetime import datetime, timedelta, timezone
+
+    from openclear.domain.password_reset import PasswordReset
+
+    tenant, _account, users = tenant_factory.make(slug="pw-reset-expiry")
     viewer = users["viewer"]
     _login(client, tenant.slug, users["admin"].email)
-    temporary = _temporary_password(_reset(client, _membership(db_session, viewer, tenant).id))
+    _reset(client, _membership(db_session, viewer, tenant).id)
+    first = _reset_link(db_session, viewer)
+    db_session.query(Notification).filter_by(recipient_user_id=viewer.id,
+                                             notification_type=NotificationType.PASSWORD_RESET_LINK).delete()
+    db_session.commit()
+    _reset(client, _membership(db_session, viewer, tenant).id)
+    second = _reset_link(db_session, viewer)
 
-    login = client.post("/api/v1/auth/login", json={"tenant_slug": tenant.slug, "email": viewer.email, "password": temporary})
-    token = login.json()["access_token"]
-    resp = client.get("/api/v1/exceptions", headers={"Authorization": f"Bearer {token}"})
-
-    assert resp.status_code == 403
-    assert "Password change required" in resp.json()["detail"]
+    assert "can" in TestClient(client.app).get(first).text.split("<h1>")[1][:30]  # replaced: "This link can't be used"
+    row = db_session.query(PasswordReset).filter_by(user_id=viewer.id).one()
+    row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db_session.commit()
+    assert _choose(TestClient(client.app), second, NEW_PASSWORD).status_code == 410
 
 
 def test_admin_reset_also_clears_a_lockout(client, db_session, tenant_factory):
@@ -256,9 +275,24 @@ def test_admin_reset_also_clears_a_lockout(client, db_session, tenant_factory):
     db_session.commit()
     _login(client, tenant.slug, users["admin"].email)
 
-    temporary = _temporary_password(_reset(client, _membership(db_session, viewer, tenant).id))
+    _reset(client, _membership(db_session, viewer, tenant).id)
+    user_client = TestClient(client.app)
+    _choose(user_client, _reset_link(db_session, viewer), NEW_PASSWORD)
 
-    assert _logged_in(_login(TestClient(client.app), tenant.slug, viewer.email, temporary))
+    assert _logged_in(_login(user_client, tenant.slug, viewer.email, NEW_PASSWORD))
+
+
+def test_a_reset_needs_email_to_be_set_up(client, db_session, tenant_factory, monkeypatch):
+    from openclear.config import get_settings
+
+    tenant, _account, users = tenant_factory.make(slug="pw-reset-no-email")
+    monkeypatch.setattr(get_settings(), "smtp_host", None)
+    _login(client, tenant.slug, users["admin"].email)
+
+    resp = _reset(client, _membership(db_session, users["viewer"], tenant).id)
+
+    assert "Email%20isn" in resp.headers["location"] or "Email+isn" in resp.headers["location"]
+    assert _logged_in(_login(TestClient(client.app), tenant.slug, users["viewer"].email))  # nothing changed
 
 
 def test_admin_cannot_reset_user_who_belongs_to_another_organization(client, db_session, tenant_factory):
@@ -327,13 +361,3 @@ def test_customer_scoped_admin_cannot_reset_passwords(client, db_session, tenant
     assert _reset(client, _membership(db_session, users["viewer"], tenant).id).status_code == 403
 
 
-def test_generated_temporary_password_satisfies_a_strict_policy():
-    from openclear.services.user_service import _generate_temporary_password
-
-    policy = PasswordPolicy(min_length=24, require_uppercase=True, require_lowercase=True, require_number=True, require_symbol=True)
-    passwords = {_generate_temporary_password(policy) for _ in range(50)}
-
-    assert len(passwords) == 50
-    for password in passwords:
-        validate_password(password, policy)
-        assert len(password) >= 24

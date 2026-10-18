@@ -124,13 +124,17 @@ belong to.</p>
 administrator with the Manage users permission can use <strong>Reset password</strong> on
 <a href="/ui/users">Users</a>:</p>
 <ul>
-  <li>OpenClear shows a one-time temporary password. It's shown once and never again, so hand it
-    over in person or by phone, not by email.</li>
-  <li>The user's old password stops working and they're signed out everywhere. When they
-    sign in with the temporary password, they go straight to the Change password page until
-    they choose a new one. Until then, the temporary password can't be used with the API.</li>
-  <li>Resetting also clears any lockout.</li>
+  <li>OpenClear emails the person a link to choose a new password. It works once and expires
+    after 24 hours. You never see or choose their password, so nobody else ever knows it.</li>
+  <li>The user's old password stops working at once and they're signed out everywhere.</li>
+  <li>Resetting also clears any lockout. Resetting again replaces an unused link.</li>
+  <li>The reset needs email to be set up for your installation; without it, OpenClear says so
+    and changes nothing.</li>
 </ul>
+<p>When someone signs in with a password that is now too short for your rules, or that has
+appeared in a data breach somewhere, they go straight to the Change password page until they
+choose a new one. New passwords are checked the same way, and can't contain OpenClear, your
+organization's or customer's name, or the person's email address.</p>
 <p>An administrator can't reset a password for someone who also belongs to another
 organization, because the password is shared across all of them. That person must change it
 themselves. Administrators change their own password from Security, not from Users.</p>

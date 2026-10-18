@@ -67,3 +67,25 @@ def test_a_customer_administrator_under_rls(rls_client, db_session, tenant_facto
                                                    "password": "A-much-better-passw0rd!", "csrf_token": rls_client.cookies.get("csrf_token"),
                                                    "next": "/ui/"}, follow_redirects=False)
     assert signed_in.status_code == 303
+
+
+def test_a_reset_link_works_under_rls(rls_client, db_session, tenant_factory, email_configured):
+    """The reset page is signed out: it binds to the bank named in the link
+    (services/password_reset_service.py::open_reset), as invitations do."""
+    tenant, _account, users = tenant_factory.make(slug="rls-reset-link")
+    viewer = users["viewer"]
+    membership = next(m for m in user_service.list_memberships_for_user(db_session, viewer.id)).membership
+
+    csrf = _web_login(rls_client, tenant.slug, users["admin"].email)
+    sent = rls_client.post(f"/ui/users/{membership.id}/reset-password", data={"csrf_token": csrf}, follow_redirects=False)
+    assert sent.status_code == 303 and "emailed" in sent.headers["location"]
+    db_session.expire_all()
+    note = db_session.execute(select(Notification).where(
+        Notification.notification_type == NotificationType.PASSWORD_RESET_LINK, Notification.recipient_user_id == viewer.id)).scalars().one()
+    link = re.search(r"(/ui/password-reset/\S+)", note.body).group(1)
+
+    rls_client.cookies.clear()
+    assert "Choose a new password" in rls_client.get(link).text
+    done = rls_client.post(link, data={"csrf_token": rls_client.cookies.get("csrf_token"), "password": "A-much-better-passw0rd!",
+                                       "password_confirm": "A-much-better-passw0rd!"}, follow_redirects=False)
+    assert done.status_code == 303, done.text[:300]

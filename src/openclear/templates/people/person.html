@@ -54,7 +54,7 @@
   </form>
   {% endif %}
   <form method="post" action="/ui/people/{{ person.membership.id }}/reset-password" class="inline-form"
-        data-confirm="Reset the password for {{ person.user.email }}? Their current password stops working and you'll see a one-time temporary password to give them.">
+        data-confirm="Reset the password for {{ person.user.email }}? Their current password stops working and they'll be emailed a link to choose a new one.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="secondary">Reset password</button>
   </form>

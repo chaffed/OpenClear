@@ -101,7 +101,7 @@ def test_login_locks_after_max_failed_attempts_and_blocks_correct_password(clien
             },
         )
     assert resp.status_code == 401
-    assert "too many failed attempts" in resp.text.lower()
+    assert "an account is locked" in resp.text.lower()  # the same answer as a wrong password (ASVS 6.3.8)
 
     resp = client.post(
         "/ui/login",
@@ -115,7 +115,7 @@ def test_login_locks_after_max_failed_attempts_and_blocks_correct_password(clien
         follow_redirects=False,
     )
     assert resp.status_code == 401
-    assert "too many failed attempts" in resp.text.lower()
+    assert "an account is locked" in resp.text.lower()  # the same answer as a wrong password (ASVS 6.3.8)
 
 
 def test_login_missing_csrf_token_rejected(client, tenant_factory):

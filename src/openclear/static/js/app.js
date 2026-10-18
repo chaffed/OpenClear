@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initQueuePane();
 
   // A button with data-copy-target="<element id>" copies that element's text (e.g. the
-  // one-time temporary password on users/reset_password_result.html) and briefly
+  // one-time details on platform/provisioned.html) and briefly
   // confirms. Clipboard access can be refused (permissions, non-HTTPS origin), in which
   // case the text is still selectable by hand.
   document.querySelectorAll("[data-copy-target]").forEach((button) => {

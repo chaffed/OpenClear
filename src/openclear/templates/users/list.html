@@ -62,7 +62,7 @@
             <button type="submit" class="link-button">Sign out everywhere</button>
           </form>
           <form method="post" action="/ui/users/{{ row.membership.id }}/reset-password" class="inline-form"
-                data-confirm="Reset the password for {{ row.user.email }}? Their current password will stop working and you'll be shown a one-time temporary password to give them.">
+                data-confirm="Reset the password for {{ row.user.email }}? Their current password will stop working and they'll be emailed a link to choose a new one.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="link-button">Reset password</button>
           </form>

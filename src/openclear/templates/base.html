@@ -57,7 +57,7 @@
       <div class="sidenav-panel" id="sidenav-panel">
       <button type="button" class="nav-close" data-nav-close aria-label="Close navigation menu">{{ icon("close") }}</button>
       {% if ctx.customer_id %}<p class="customer-scope-badge">Scoped to <strong>{{ ctx.customer_name }}</strong></p>{% endif %}
-      {# While an admin-issued temporary password must be replaced, every other page just
+      {# While a password must be replaced (too short or breached, auth/login_service.py), every other page just
          redirects back to the change form (web/deps.py), so don't offer links to them. #}
       {% if not ctx.must_change_password %}
       <form method="get" action="/ui/search" role="search" class="nav-search">

@@ -359,6 +359,22 @@ person chooses a password, someone who already uses OpenClear confirms with thei
 </tbody>
 </table>
 
+<h3>password_reset</h3>
+<p>The one-time link an administrator's password reset emails to the person. The administrator
+never sees or chooses the new password; the person's old password stops working when the reset
+starts. A newer reset replaces an unused link.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id, indexed</td><td>The bank whose administrator reset it; row-level security applies.</td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id, indexed</td><td>Whose password.</td></tr>
+<tr><td>token_hash</td><td>String(64)</td><td>no</td><td>unique</td><td>SHA-256 of the link's secret; the link itself is only in the email.</td></tr>
+<tr><td>requested_by_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td>The administrator who reset it.</td></tr>
+<tr><td>created_at / expires_at / used_at</td><td>Timestamp</td><td>varies</td><td></td><td>The link expires after <code>password_reset_link_hours</code> (24 by default) and works once.</td></tr>
+</tbody>
+</table>
+
 <h3>customer_email_domain</h3>
 <p>An email domain a customer says is its own, verified by a DNS TXT record
 (<code>openclear-verification=&lt;token&gt;</code>). A customer-managed sign-on connection creates people only in verified domains.</p>

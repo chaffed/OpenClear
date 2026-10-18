@@ -169,6 +169,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "customer_sign_on.password_sign_in": "settings.changed",
     "user.password_change": "auth.password.changed",
     "user.password_reset": "auth.password.reset",
+    "user.password_reset_completed": "auth.password.changed",
     "user.sign_out_everywhere": "auth.session.revoked",
     "user.sign_out_other_sessions": "auth.session.revoked",
     "user.login_sso": "auth.sso.succeeded",

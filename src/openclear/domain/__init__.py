@@ -44,6 +44,7 @@ from openclear.domain import (  # noqa: F401
     ml_model,
     notification,
     paid_item,
+    password_reset,
     payment_network,
     platform_action_entry,
     platform_api_key,

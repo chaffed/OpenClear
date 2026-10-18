@@ -374,13 +374,14 @@ def unlock(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membe
 
 
 def reset_password(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, membership_id: uuid.UUID,
-                   *, actor_user_id: uuid.UUID) -> tuple[User, str]:
-    """A temporary password, shown once to the administrator; they must change it at sign-in."""
+                   *, actor_user_id: uuid.UUID, base_url: str) -> User:
+    """Emails the person a one-time link to choose a new password (services/password_reset_service.py)."""
     from openclear.services import user_service
 
     _whole_identity(session, tenant_id, customer_id, membership_id)
     try:
-        return user_service.admin_reset_password(session, tenant_id, membership_id, actor_user_id=actor_user_id)
+        return user_service.admin_reset_password(session, tenant_id, membership_id, actor_user_id=actor_user_id,
+                                                 base_url=base_url)
     except user_service.PasswordChangeError as exc:
         raise PeopleError(str(exc)) from None
 

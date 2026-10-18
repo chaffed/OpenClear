@@ -6,6 +6,7 @@ services/session_service.py, web/routers/session.py, and auth/security.py::
 create_session_tokens (FIX_PLAN.md Phase 3)."""
 
 import uuid
+import pytest
 from datetime import datetime, timedelta, timezone
 
 import webauthn
@@ -20,6 +21,8 @@ from openclear.services import customer_service, security_group_service, user_se
 from openclear.services.security_group_service import SecurityGroupInput
 from tests.conftest import TenantFactory, login_headers
 from tests.test_auth.webauthn_helpers import FakeAuthenticator
+
+pytestmark = pytest.mark.usefixtures("email_configured")  # admin password resets email a link
 
 
 def _login(client, tenant_slug, email, password=TenantFactory.PASSWORD):

@@ -63,11 +63,11 @@ def test_manual_reset_requires_admin_permission(client, db_session, monkeypatch)
 
     viewer_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Viewer")
     viewer = user_service.create_user_with_membership(
-        db_session, tenant.id, email="viewer@riversidebank.example.com", password="ViewerPass123!",
+        db_session, tenant.id, email="viewer@riversidebank.example.com", password="Reads-only-at-the-bank-7",
         security_group_id=viewer_group.id,
     )
     db_session.commit()
-    _login(client, tenant.slug, viewer.email, "ViewerPass123!")
+    _login(client, tenant.slug, viewer.email, "Reads-only-at-the-bank-7")
 
     resp = client.post("/ui/admin/demo/reset", data={"csrf_token": _csrf(client)}, follow_redirects=False)
     assert resp.status_code == 403

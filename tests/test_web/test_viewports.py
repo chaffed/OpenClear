@@ -332,7 +332,7 @@ def _seed(client, db_session, tenant_factory):
     admins = next(g for g in security_group_service.list_security_groups(db_session, tenant.id) if g.name == "Admin")
     pat = user_service.create_user_with_membership(db_session, tenant.id, email="pat@riverside.example.com", password=TenantFactory.PASSWORD,
                                                    security_group_id=admins.id)
-    policy = {"password_min_length": 12, "password_require_uppercase": True, "password_require_lowercase": True,
+    policy = {"password_min_length": 16, "password_require_uppercase": True, "password_require_lowercase": True,
               "password_require_number": True, "password_require_symbol": False}
     change_request_service.request_or_apply(db_session, "password_policy", {"values": policy}, tenant_id=tenant.id, user_id=pat.id)
     change_request_service.request_or_apply(db_session, "password_policy", {"values": {**policy, "password_min_length": 10}},

@@ -145,6 +145,9 @@ class Settings(BaseSettings):
     breached_password_file: str | None = None
     breached_password_hibp: bool = False
     breached_password_hibp_timeout_seconds: float = 3.0
+    # How long the link an administrator's password reset emails stays usable
+    # (services/password_reset_service.py).
+    password_reset_link_hours: int = 24
 
     # WebAuthn/FIDO2 — rp_id must be a domain the browser considers the current origin's
     # registrable domain (no scheme/port); origin must be the exact scheme+host(+port).

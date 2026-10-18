@@ -148,11 +148,11 @@ def test_outside_services_and_standards(client, db_session, tenant_factory, monk
     csrf = web_login(client, tenant.slug, users["admin"].email)
     assert "Email delivery" in client.get("/ui/settings/outside-services").text
     client.post("/ui/settings/outside-services", data={"csrf_token": csrf, "service_key": "email", "note": "SOC 2 report read"})
-    client.post("/ui/settings/standards", data={"csrf_token": csrf, "standard_password_min_length": "12", "key_rotation_days": "3650"})
+    client.post("/ui/settings/standards", data={"csrf_token": csrf, "standard_password_min_length": "20", "key_rotation_days": "3650"})
     db_session.expire_all()
     assert control_checks.outside_services(db_session, tenant.id).status == "PASS"
-    assert control_checks.password_policy(db_session, tenant.id).status == "FAIL"  # 8 in force, standard 12
-    tenant.password_min_length = 12
+    assert control_checks.password_policy(db_session, tenant.id).status == "FAIL"  # 15 in force, standard 20
+    tenant.password_min_length = 20
     db_session.commit()
     assert control_checks.password_policy(db_session, tenant.id).status == "PASS"
     assert control_checks.key_age(db_session, tenant.id).status == "PASS"

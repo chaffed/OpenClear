@@ -72,7 +72,9 @@ def apply_security_headers(request: Request, response: Response) -> None:
     # It can't name an origin, so an embedded page relies on frame-ancestors alone.
     if frame_ancestor is None:
         response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # A page carrying a secret in its URL (an invitation or reset link) sets no-referrer itself.
+    if response.headers.get("referrer-policy") != "no-referrer":
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=(), "
         "publickey-credentials-get=(self), publickey-credentials-create=(self)"
