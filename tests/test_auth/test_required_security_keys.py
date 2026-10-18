@@ -180,3 +180,11 @@ def test_a_customer_admin_resets_only_their_own_people(client, db_session, tenan
     refused = client.post(f"/ui/people/{outsider.id}/reset-security-keys",
                           data={"csrf_token": csrf, "identity_check": "Called them on file"})
     assert refused.status_code in (404, 422)
+
+
+def test_the_password_policy_page_says_8_is_allowed_with_keys_required(client, db_session, tenant_factory):
+    tenant, _account, users = tenant_factory.make(slug="key-req-hint")
+    _browser_as(client, tenant, users["admin"])
+    assert "data-key-length-hint" not in client.get("/ui/settings/password-policy").text
+    _require(db_session, tenant)
+    assert "data-key-length-hint" in client.get("/ui/settings/password-policy").text

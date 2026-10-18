@@ -33,6 +33,14 @@ def _error(code: str, description: str, status_code: int) -> JSONResponse:
     return JSONResponse({"error": code, "error_description": description}, status_code=status_code, headers=headers)
 
 
+def _key_pairs_only(db: Session, client) -> bool:
+    """The bank requires API clients to authenticate with a signed assertion (OWASP_PLAN.md OW-D26)."""
+    from openclear.domain.tenant import Tenant
+
+    tenant = db.get(Tenant, client.tenant_id)
+    return bool(tenant and tenant.api_clients_key_pair_only)
+
+
 def _basic_credentials(request: Request) -> tuple[str, str] | None:
     header = request.headers.get("authorization", "")
     if not header.lower().startswith("basic "):
@@ -103,6 +111,9 @@ def token(
         if basic is not None:
             client_id, client_secret = basic
         client = api_client_service.authenticate(db, client_id or "", client_secret or "")
+        if client is not None and _key_pairs_only(db, client):
+            db.rollback()
+            return _error("invalid_client", "This bank requires API clients to sign with a key pair (private_key_jwt), not a secret.", 401)
     if client is None:
         db.rollback()
         # Sampled per client id and source, so a flood of bad secrets is one event a minute.

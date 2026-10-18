@@ -41,7 +41,43 @@ def _secret_page(request: Request, ctx: TenantContext, issued, *, rotated: bool,
 @router.get("")
 def list_api_clients(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)) -> HTMLResponse:
     clients = [api_client_service.describe(db, c) for c in api_client_service.list_clients(db, ctx.tenant_id)]
-    return render_template(request, "admin/api_clients.html", ctx=ctx, clients=clients)
+    from openclear.domain.tenant import Tenant
+
+    tenant = db.get(Tenant, ctx.tenant_id)
+    return render_template(request, "admin/api_clients.html", ctx=ctx, clients=clients,
+                           key_pairs_only=bool(tenant and tenant.api_clients_key_pair_only))
+
+
+@router.post("/key-pairs-only")
+def update_key_pairs_only(
+    request: Request,
+    key_pairs_only: bool = Form(False),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> Response:
+    """Require API clients to sign with a key pair (OW-D26): on at once, off after a second admin."""
+    from urllib.parse import quote
+
+    from openclear.services import audit_log_service, change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "api_key_pairs_only", {"values": {"api_clients_key_pair_only": key_pairs_only}}, tenant_id=ctx.tenant_id,
+            user_id=ctx.user_id)
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return RedirectResponse("/ui/admin/api-clients?error=" + quote(str(exc)), status_code=303)
+    if outcome.waiting:
+        db.commit()
+        return RedirectResponse("/ui/admin/api-clients?flash=" + quote(waiting_message(outcome)), status_code=303)
+    if outcome.summary != "Nothing changed.":
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
+                                        action="tenant.update_api_key_pairs_only",
+                                        summary=f"API clients {'must' if key_pairs_only else 'needn’t'} sign with a key pair")
+    db.commit()
+    return RedirectResponse("/ui/admin/api-clients?flash=Updated.", status_code=303)
 
 
 @router.get("/new")

@@ -248,6 +248,7 @@ def _password_policy_kwargs(tenant: Tenant) -> dict:
         "password_require_lowercase": tenant.password_require_lowercase,
         "password_require_number": tenant.password_require_number,
         "password_require_symbol": tenant.password_require_symbol,
+        "security_key_required": tenant.require_security_key,
     }
 
 

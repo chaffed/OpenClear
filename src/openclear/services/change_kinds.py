@@ -318,6 +318,13 @@ register(Kind(
 ))
 
 register(Kind(
+    "api_key_pairs_only", "API clients sign with key pairs", "protection", _BANK_ADMIN,
+    tenant_fields("api_clients_key_pair_only"), payload_values, loosens=turned_off("api_clients_key_pair_only"),
+    apply=_set_tenant(), action="tenant.update_api_key_pairs_only",
+    describe=lambda before, after: "Let API clients sign in with a secret again",
+))
+
+register(Kind(
     "attest_second_person", "Second person on attestations", "protection", "compliance:manage", tenant_fields("attest_second_person"),
     payload_values, loosens=turned_off("attest_second_person"), apply=_set_tenant(),
     describe=lambda before, after: f"Turn {'on' if after['attest_second_person'] else 'off'} the second person on attestations",

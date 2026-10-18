@@ -406,3 +406,24 @@ def test_the_admin_page_switches_a_client_to_a_key_pair_and_back(client, db_sess
     assert _assert_token(client, _assertion(private, issued.client.client_id)).status_code == 401
     db_session.expire_all()
     assert api_client_service.get_client(db_session, tenant.id, issued.client.id).public_key_pem is None
+
+
+@pytest.mark.asvs("10.4.16")
+def test_a_bank_can_require_key_pairs(client, db_session, tenant_factory):
+    from openclear.services import change_request_service
+
+    tenant, _account, users = tenant_factory.make(slug="apic-key-pairs-only")
+    secret_client = _client(db_session, tenant, name="Old secret client")
+    keyed, private = _key_client(db_session, tenant)
+    on = change_request_service.request_or_apply(db_session, "api_key_pairs_only", {"values": {"api_clients_key_pair_only": True}},
+                                                 tenant_id=tenant.id, user_id=users["admin"].id)
+    db_session.commit()
+    assert on.applied
+
+    refused = _token(client, secret_client.client.client_id, secret_client.secret)
+    assert refused.status_code == 401 and "key pair" in refused.json()["error_description"]
+    assert _assert_token(client, _assertion(private, keyed.client.client_id)).status_code == 200
+
+    off = change_request_service.request_or_apply(db_session, "api_key_pairs_only", {"values": {"api_clients_key_pair_only": False}},
+                                                  tenant_id=tenant.id, user_id=users["admin"].id)
+    assert not off.applied  # a loosening waits for a second admin

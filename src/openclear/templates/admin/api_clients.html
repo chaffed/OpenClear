@@ -31,6 +31,15 @@
     <h1>API clients</h1>
     <a href="{{ base }}/new" class="button">{{ icon("add") }}New API client</a>
   </div>
+  {% if not for_customer and can(ctx, "tenant:manage") %}
+  <form method="post" action="/ui/admin/api-clients/key-pairs-only" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="key_pairs_only" value="true" {{ "checked" if key_pairs_only else "" }}>
+      API clients must sign with a key pair (no secrets)</label>
+    <button type="submit" class="secondary">{{ icon("save") }}Save</button>
+  </form>
+  {% if key_pairs_only %}<p class="hint">Clients that use a secret can't sign in until they're switched to a key pair.</p>{% endif %}
+  {% endif %}
   {% if clients %}
   {% set columns = [
     {"key": "name", "label": "Name", "role": "primary"},
