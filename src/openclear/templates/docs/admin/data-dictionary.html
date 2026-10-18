@@ -143,6 +143,10 @@ erDiagram
 <tr><td>customer_changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>A customer's own sensitive changes (sign-on, its API clients, a new administrator) wait for a second person at that customer, or at the bank when the customer has nobody else. A customer's changes_need_approval turns it on for that customer alone.</td></tr>
 <tr><td>sod_mode</td><td>String(10)</td><td>no</td><td></td><td>Segregation of duties: warn (the default: breaches are allowed and logged as sod.violation) or enforce (refused, and still logged). Enforce is refused while any security group combines conflicting duties.</td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>False once SSO is required bank-wide, hiding the password form on login.</td></tr>
+<tr><td>require_security_key</td><td>Boolean</td><td>no</td><td></td><td>Password sign-ins need a security key or passkey too, after the grace period.</td></tr>
+<tr><td>security_key_grace_days</td><td>Integer</td><td>no</td><td></td><td>Days after it's turned on during which people without a key can still sign in, with a reminder (default 14, at most 90).</td></tr>
+<tr><td>security_key_required_since</td><td>Timestamp</td><td>yes</td><td></td><td>When the requirement was turned on.</td></tr>
+<tr><td>api_clients_key_pair_only</td><td>Boolean</td><td>no</td><td></td><td>API clients must sign in with a key pair (<code>private_key_jwt</code>), not a secret.</td></tr>
 <tr><td>stale_date_threshold_days</td><td>Integer</td><td>no</td><td></td><td>Days after which an outstanding issued item is considered stale.</td></tr>
 <tr><td>access_token_expire_minutes</td><td>Integer</td><td>yes</td><td></td><td>Overrides the platform-default access token lifetime; null = use the default.</td></tr>
 <tr><td>refresh_token_expire_minutes</td><td>Integer</td><td>yes</td><td></td><td>Overrides the platform-default refresh token lifetime; null = use the default.</td></tr>
@@ -184,6 +188,8 @@ transactional record.</p>
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
 <tr><td>is_active</td><td>Boolean</td><td>no</td><td></td><td></td></tr>
 <tr><td>password_login_enabled</td><td>Boolean</td><td>no</td><td></td><td>Independent of the tenant's own flag — this customer's own SSO enforcement.</td></tr>
+<tr><td>require_security_key</td><td>Boolean</td><td>no</td><td></td><td>This customer requires a security key for its people's password sign-ins, even if its bank doesn't.</td></tr>
+<tr><td>security_key_required_since</td><td>Timestamp</td><td>yes</td><td></td><td>When it was turned on; the bank's grace period counts from here.</td></tr>
 <tr><td>self_manages_users / self_manages_sso</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators manage its people / its sign-on (customer_user:manage, customer_sso:manage).</td></tr>
 <tr><td>self_manages_api_clients</td><td>Boolean</td><td>no</td><td></td><td>The bank lets the customer's own administrators make API clients for its own systems (customer_api_client:manage). Turning it off stops them managing clients; those made keep working until revoked.</td></tr>
 <tr><td>approve_users</td><td>Boolean</td><td>yes</td><td></td><td>Whether new people this customer's side adds wait for the bank's approval: null follows the bank (tenant.approve_customer_users), true or false overrides it.</td></tr>
@@ -439,6 +445,8 @@ one customer.</p>
 <tr><td>saml_email_attribute</td><td>String(200)</td><td>yes</td><td></td><td>SAML: the attribute carrying the email; null means the NameID.</td></tr>
 <tr><td>saml_sp_certificate / saml_sp_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: OpenClear's own key pair for this connection, generated when it's created; the key is encrypted.</td></tr>
 <tr><td>allow_idp_initiated</td><td>Boolean</td><td>no</td><td></td><td>Accept sign-in started at the identity provider (SAML). Off by default.</td></tr>
+<tr><td>require_mfa_claim</td><td>Boolean</td><td>no</td><td></td><td>Refuse a sign-in unless the provider reports MFA (OIDC <code>amr</code>/<code>acr</code>, SAML authentication context). Off by default.</td></tr>
+<tr><td>mfa_values</td><td>String(500)</td><td>yes</td><td></td><td>Extra acr / authentication-context values this provider uses for MFA, comma-separated.</td></tr>
 <tr><td>scim_token_hash / scim_token_created_at</td><td>String(64) / Timestamp</td><td>yes</td><td></td><td>SCIM provisioning: the SHA-256 of the directory's bearer token (shown once). Null = SCIM off.</td></tr>
 <tr><td>auto_provision</td><td>Boolean</td><td>no</td><td></td><td>Create an OpenClear account automatically on first sign-in.</td></tr>
 <tr><td>managed_by</td><td>String(10)</td><td>no</td><td></td><td><code>bank</code> or <code>customer</code> (set up by the customer's own administrators; creates people only in its verified email domains).</td></tr>
@@ -1527,6 +1535,21 @@ audit_log_entry chains onto <code>through_entry_hash</code>.</p>
 <tr><td>archive_sha256 / archive_signature</td><td>String</td><td>no</td><td></td><td>The file's fingerprint and its ECDSA signature (file-signing key), checked by "Verify".</td></tr>
 <tr><td>oldest_occurred_at / newest_occurred_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>platform_webauthn_credential / platform_webauthn_challenge</h3>
+<p>Platform staff's security keys and the one-time challenges for registering and using them. Platform sign-in always
+needs one. They belong to no bank, so they're kept apart from <code>webauthn_credential</code> and have no row-level
+security.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>user_id</td><td>UUID</td><td>no</td><td>FK → user.id, indexed</td><td>The platform staff member.</td></tr>
+<tr><td>credential_id / public_key / sign_count / transports / nickname</td><td>varies</td><td>varies</td><td>credential_id unique</td><td>The key, as in <code>webauthn_credential</code> (credentials only).</td></tr>
+<tr><td>challenge / purpose / expires_at</td><td>varies</td><td>no</td><td></td><td>A registration or sign-in challenge, used once, valid five minutes (challenges only).</td></tr>
+<tr><td>created_at / last_used_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
 </tbody>
 </table>
 

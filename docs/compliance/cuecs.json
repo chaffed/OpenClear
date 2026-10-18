@@ -336,6 +336,66 @@
       "withdrawn": false
     },
     {
+      "id": "B-IA-2(2)-02",
+      "party": "bank",
+      "nist": "IA-2(2)",
+      "nist_title": "Multi-factor Authentication to Non-privileged Accounts",
+      "oscal_id": "ia-2.2",
+      "related": [
+        "IA-2",
+        "IA-8"
+      ],
+      "title": "Second factor at the identity provider",
+      "statement": "Have the bank's identity provider (and any customer's the bank allows) require a second factor for everyone who signs in to OpenClear through it.",
+      "complements": "People who sign in through single sign-on are exempt from OpenClear's own security-key requirement, which relies on this; a connection can be set to refuse a sign-in the provider doesn't report as multi-factor.",
+      "evidence": "assisted",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
+      "where": "Settings \u2192 Sign-on (Require the identity provider to report MFA)",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IA-2(2)-03",
+      "party": "bank",
+      "nist": "IA-2(2)",
+      "nist_title": "Multi-factor Authentication to Non-privileged Accounts",
+      "oscal_id": "ia-2.2",
+      "related": [
+        "IA-2",
+        "IA-8"
+      ],
+      "title": "Second factor in online banking",
+      "statement": "Have the online banking site that shows OpenClear inside its pages sign its users in with a second factor.",
+      "complements": "An embedded session is started by the online banking site for a user it has already signed in, so it's exempt from OpenClear's own security-key requirement.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.AA-01",
+          "title": "Identities and credentials for authorized users, services, and hardware are managed by the organization"
+        },
+        {
+          "id": "PR.AA-03",
+          "title": "Users, services, and hardware are authenticated"
+        }
+      ],
+      "where": "Settings \u2192 Embedding in online banking",
+      "withdrawn": false
+    },
+    {
       "id": "B-IA-5(1)-01",
       "party": "bank",
       "nist": "IA-5(1)",

@@ -242,6 +242,17 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear supports FIDO2 security keys and passkeys, and SSO-only sign-in per bank.",
          "automated", "staff_mfa", "Continuous",
          "Users → Export; Settings → Sign-on", related=("IA-2",)),
+    Cuec("B-IA-2(2)-02", "bank", "IA-2(2)", "Second factor at the identity provider",
+         "Have the bank's identity provider (and any customer's the bank allows) require a second factor for everyone who "
+         "signs in to OpenClear through it.",
+         "People who sign in through single sign-on are exempt from OpenClear's own security-key requirement, which relies on "
+         "this; a connection can be set to refuse a sign-in the provider doesn't report as multi-factor.",
+         "assisted", None, "Yearly", "Settings → Sign-on (Require the identity provider to report MFA)", related=("IA-2", "IA-8")),
+    Cuec("B-IA-2(2)-03", "bank", "IA-2(2)", "Second factor in online banking",
+         "Have the online banking site that shows OpenClear inside its pages sign its users in with a second factor.",
+         "An embedded session is started by the online banking site for a user it has already signed in, so it's exempt from "
+         "OpenClear's own security-key requirement.",
+         "attested", None, "Yearly", "Settings → Embedding in online banking", related=("IA-2", "IA-8")),
     Cuec("B-IA-5(1)-01", "bank", "IA-5(1)", "Set the password policy",
          "When password sign-in is on, set the password policy (length, character rules, lockout) to the bank's own standard.",
          "OpenClear enforces the bank's password policy and locks an account after repeated failures.",

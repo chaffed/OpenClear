@@ -78,9 +78,9 @@ NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23
 
 | Subcategory | OpenClear controls | CUECs |
 |---|---|---|
-| **PR.AA-01** Identities and credentials for authorized users, services, and hardware are managed by the organization | OC-AC-02, OC-IA-01, OC-IA-02, OC-IA-03, OC-IA-04, OC-IA-05 | B-AC-2-01, B-AC-2(1)-01, B-IA-2(1)-01, B-IA-2(2)-01, B-IA-5(1)-01, B-IA-5-01, B-AC-2-02, B-IA-8-01, C-AC-2-01, C-AC-2-02, C-AC-2(1)-01, C-IA-2-01, C-IA-5-01 |
+| **PR.AA-01** Identities and credentials for authorized users, services, and hardware are managed by the organization | OC-AC-02, OC-IA-01, OC-IA-02, OC-IA-03, OC-IA-04, OC-IA-05 | B-AC-2-01, B-AC-2(1)-01, B-IA-2(1)-01, B-IA-2(2)-01, B-IA-2(2)-02, B-IA-2(2)-03, B-IA-5(1)-01, B-IA-5-01, B-AC-2-02, B-IA-8-01, C-AC-2-01, C-AC-2-02, C-AC-2(1)-01, C-IA-2-01, C-IA-5-01 |
 | **PR.AA-02** Identities are proofed and bound to credentials based on the context of interactions | — | B-IA-12-01 |
-| **PR.AA-03** Users, services, and hardware are authenticated | OC-AC-10, OC-IA-01, OC-IA-02, OC-IA-03, OC-IA-04, OC-IA-05, OC-SC-06 | B-IA-2(1)-01, B-IA-2(2)-01, B-IA-5(1)-01, B-IA-5-01, B-IA-8-01, C-IA-2-01, C-IA-5-01 |
+| **PR.AA-03** Users, services, and hardware are authenticated | OC-AC-10, OC-IA-01, OC-IA-02, OC-IA-03, OC-IA-04, OC-IA-05, OC-SC-06 | B-IA-2(1)-01, B-IA-2(2)-01, B-IA-2(2)-02, B-IA-2(2)-03, B-IA-5(1)-01, B-IA-5-01, B-IA-8-01, C-IA-2-01, C-IA-5-01 |
 | **PR.AA-04** Identity assertions are protected, conveyed, and verified | — | — |
 | **PR.AA-05** Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties | OC-AC-01, OC-AC-02, OC-AC-03, OC-AC-04, OC-AC-05, OC-AC-06, OC-AC-07, OC-AC-08, OC-AC-09, OC-AC-12, OC-AC-13, OC-IA-03 | B-AC-2-01, B-AC-2(1)-01, B-AC-6(7)-01, B-AC-6-01, B-AC-5-01, B-AC-3(2)-01, B-AC-2-02, C-AC-2-01, C-AC-2-02, C-AC-2(1)-01, C-AC-6(7)-01, C-AC-5-01, C-AC-3-01, H-AC-6(5)-01 |
 | **PR.AA-06** Physical access to assets is managed, monitored, and enforced commensurate with risk | — | — |
