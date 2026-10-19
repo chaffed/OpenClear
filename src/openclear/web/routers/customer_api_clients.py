@@ -22,6 +22,7 @@ from openclear.services import api_client_service, audit_log_service, customer_p
 from openclear.services.api_client_service import ApiClientError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 BASE = "/ui/api-clients"
 router = APIRouter(prefix=BASE, tags=["web-customer-api-clients"])
@@ -131,7 +132,7 @@ def revoke(api_client_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantC
     client = api_client_service.revoke(db, ctx.tenant_id, _client(db, ctx, api_client_id).id)
     _record(db, ctx, "api_client.revoke", f"Revoked API client {client.name}", client)
     db.commit()
-    return RedirectResponse(f"{BASE}?flash=API+client+revoked.", status_code=303)
+    return see_other(f"{BASE}?flash=API+client+revoked.")
 
 
 @router.get("/{api_client_id}/key")
@@ -157,7 +158,7 @@ async def set_key_pair(request: Request, api_client_id: uuid.UUID, db: Session =
                                public_key_pem=public_key_pem, error=str(exc), status_code=422, base_path=BASE)
     _record(db, ctx, "api_client.rotate_secret", f"API client {client.name} now signs in with a key pair; its secret no longer works", client)
     db.commit()
-    return RedirectResponse(f"{BASE}?flash=" + quote(f"{client.name} now signs in with its key pair."), status_code=303)
+    return see_other(f"{BASE}?flash=" + quote(f"{client.name} now signs in with its key pair."))
 
 
 @router.post("/{api_client_id}/use-secret")

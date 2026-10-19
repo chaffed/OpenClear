@@ -29,6 +29,7 @@ from openclear.domain.sso_connection import SsoProtocol
 from openclear.services import audit_log_service, session_service, sso_service
 from openclear.web.deps import WebNotFound
 from openclear.web.security import safe_next_path
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/sso/oidc", tags=["web-oidc"], include_in_schema=False)
 logger = logging.getLogger(__name__)
@@ -95,5 +96,5 @@ def initiate_login(
     params = {"tenant_id": str(tenant_id), "next": next_path}
     if login_hint:
         params["login_hint"] = login_hint
-    return RedirectResponse(f"/ui/login/sso/{connection.id}/start?{urlencode(params)}", status_code=303)
+    return see_other(f"/ui/login/sso/{connection.id}/start?{urlencode(params)}")
 

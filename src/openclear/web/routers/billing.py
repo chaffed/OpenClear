@@ -30,6 +30,7 @@ from openclear.services.billing.reports import statements_to_csv
 from openclear.services.billing.statements import build_statements
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/billing", tags=["web-billing"])
 
@@ -91,7 +92,7 @@ def billing_overview(
 ) -> HTMLResponse:
     period, billing_period = _parse(period)
     if ctx.customer_id is not None:
-        return RedirectResponse(f"/ui/billing/statement?period={period}", status_code=303)
+        return see_other(f"/ui/billing/statement?period={period}")
     versions = finalized_versions(db, ctx.tenant_id, billing_period)
     view = view or ("finalized" if versions else "live")
     statements = _load(db, ctx, billing_period, view)
@@ -119,7 +120,7 @@ def finalize(
     total = sum((s.net_total for s in statements), Decimal("0.00"))
     _audit(db, ctx, "billing.period.finalize", f"Finalized billing for {period} (version {version}, {len(statements)} statements, {total} due)", "tenant", ctx.tenant_id)
     db.commit()
-    return RedirectResponse(f"/ui/billing?period={period}&view=finalized&flash=Billing+for+{period}+finalized.", status_code=303)
+    return see_other(f"/ui/billing?period={period}&view=finalized&flash=Billing+for+{period}+finalized.")
 
 
 def _download(content, media_type: str, filename: str) -> Response:
@@ -149,7 +150,7 @@ def export(
     period, billing_period = _parse(period)
     statements = load_finalized(db, ctx.tenant_id, billing_period)
     if not statements:
-        return RedirectResponse(f"/ui/billing?period={period}&error=Finalize+{period}+before+exporting+it.", status_code=303)
+        return see_other(f"/ui/billing?period={period}&error=Finalize+{period}+before+exporting+it.")
     if name == "analysis-feed.csv":
         return _download(analysis_feed_csv(statements), "text/csv", f"analysis-feed-{period}.csv")
     if name == "hard-charge-postings.csv":
@@ -272,7 +273,7 @@ def add_starter(db: Session = Depends(get_db), ctx: TenantContext = Depends(requ
     if added:
         _audit(db, ctx, "billing.fee_item.starter", f"Added {len(added)} starter fees", "billing_fee_item", None)
     db.commit()
-    return RedirectResponse(f"/ui/billing/fees?flash=Added+{len(added)}+fees.+Set+their+prices+and+AFP+codes.", status_code=303)
+    return see_other(f"/ui/billing/fees?flash=Added+{len(added)}+fees.+Set+their+prices+and+AFP+codes.")
 
 
 def _fee_form(request, ctx, fee=None, values=None, error=None, status_code=200):
@@ -347,7 +348,7 @@ async def save_fee(
         return _fee_form(request, ctx, fee, values=form, error=str(exc), status_code=422)
     _audit(db, ctx, action, summary, "billing_fee_item", fee.id)
     db.commit()
-    return RedirectResponse("/ui/billing/fees?flash=Fee+saved.", status_code=303)
+    return see_other("/ui/billing/fees?flash=Fee+saved.")
 
 
 # --- The bank's billing settings ----------------------------------------------------------
@@ -392,7 +393,7 @@ def save_settings(
     _audit(db, ctx, "billing.settings.update",
            f"Billing defaults: customers {customer_default_billing_method.value}, bank-wide {bank_billing_method.value}", "tenant", ctx.tenant_id)
     db.commit()
-    return RedirectResponse("/ui/billing/settings?flash=Billing+settings+saved.", status_code=303)
+    return see_other("/ui/billing/settings?flash=Billing+settings+saved.")
 
 
 # --- A customer's billing terms ----------------------------------------------------------------
@@ -455,4 +456,4 @@ async def save_customer_terms(
         return _terms_page(request, db, ctx, customer, error=str(exc), status_code=422)
     _audit(db, ctx, "billing.customer_terms.update", f"Customer billed by {terms.billing_method.value}", "customer", customer_id)
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/billing?flash=Billing+terms+saved.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/billing?flash=Billing+terms+saved.")

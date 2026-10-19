@@ -17,6 +17,7 @@ from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, embed_service, user_service
 from openclear.web.deps import render_template
 from openclear.web.security import CLEAR_SITE_DATA, set_session_cookies
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/embed", tags=["web-embed"])
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ def launch(request: Request, code: str = "", db: Session = Depends(get_db)) -> R
         summary=f"Signed in inside online banking ({launch_row.parent_origin})", resource_type="user", resource_id=user.id,
     )
     db.commit()
-    response = RedirectResponse(launch_row.path, status_code=303)
+    response = see_other(launch_row.path)
     set_session_cookies(response, tokens)
     return response
 

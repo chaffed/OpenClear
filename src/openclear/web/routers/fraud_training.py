@@ -30,6 +30,7 @@ from openclear.services.fraud_training_service import (
 )
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/ml-training/fraud-examples", tags=["web-fraud-training"])
 
@@ -106,7 +107,7 @@ def submit_check(
         )
     except (FraudTrainingError, ValueError, InvalidOperation) as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}")
 
     audit_log_service.record_action(
         db,
@@ -119,7 +120,7 @@ def submit_check(
         resource_id=exception_item.id,
     )
     db.commit()
-    return RedirectResponse("/ui/ml-training/fraud-examples?flash=Fraud+training+example+submitted.", status_code=303)
+    return see_other("/ui/ml-training/fraud-examples?flash=Fraud+training+example+submitted.")
 
 
 @router.post("/ach")
@@ -167,7 +168,7 @@ def submit_ach(
         )
     except (FraudTrainingError, ValueError, InvalidOperation) as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}")
 
     audit_log_service.record_action(
         db,
@@ -180,7 +181,7 @@ def submit_ach(
         resource_id=exception_item.id,
     )
     db.commit()
-    return RedirectResponse("/ui/ml-training/fraud-examples?flash=Fraud+training+example+submitted.", status_code=303)
+    return see_other("/ui/ml-training/fraud-examples?flash=Fraud+training+example+submitted.")
 
 
 @router.get("/check/bulk")
@@ -340,10 +341,10 @@ def retract(
         exception_item = retract_fraud_example(db, ctx.tenant_id, ctx, exception_id)
     except FraudTrainingError as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/ml-training/fraud-examples?error={quote(str(exc))}")
     if exception_item is None:
         db.commit()
-        return RedirectResponse(f"/ui/ml-training/fraud-examples?error={quote('Not found.')}", status_code=303)
+        return see_other(f"/ui/ml-training/fraud-examples?error={quote('Not found.')}")
 
     audit_log_service.record_action(
         db,
@@ -356,4 +357,4 @@ def retract(
         resource_id=exception_item.id,
     )
     db.commit()
-    return RedirectResponse("/ui/ml-training/fraud-examples?flash=Training+example+retracted.", status_code=303)
+    return see_other("/ui/ml-training/fraud-examples?flash=Training+example+retracted.")

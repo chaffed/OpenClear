@@ -19,6 +19,7 @@ from openclear.web.deps import WebForbidden, WebNotFound, render_template, requi
 from openclear.web.security import verify_csrf
 from openclear.workers import jobs
 from openclear.workers.job_handlers import RUN_DATA_EXPORT
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-data-export"])
 
@@ -111,12 +112,9 @@ def start_bank_export(
 ) -> RedirectResponse:
     _require_bank_wide_session(ctx)
     if not confirm:
-        return RedirectResponse(
-            "/ui/settings/data-export?error=" + quote("Please check the confirmation box to start an export."),
-            status_code=303,
-        )
+        return see_other("/ui/settings/data-export?error=" + quote("Please check the confirmation box to start an export."))
     _start_job(db, background_tasks, ctx, customer_id=None)
-    return RedirectResponse("/ui/settings/data-export?flash=Export+started.", status_code=303)
+    return see_other("/ui/settings/data-export?flash=Export+started.")
 
 
 @router.get("/ui/settings/data-export/{job_id}/download")
@@ -167,12 +165,9 @@ def start_customer_export(
 ) -> RedirectResponse:
     _get_customer_or_404(db, ctx, customer_id)
     if not confirm:
-        return RedirectResponse(
-            f"/ui/customers/{customer_id}/data-export?error=" + quote("Please check the confirmation box to start an export."),
-            status_code=303,
-        )
+        return see_other(f"/ui/customers/{customer_id}/data-export?error=" + quote("Please check the confirmation box to start an export."))
     _start_job(db, background_tasks, ctx, customer_id=customer_id)
-    return RedirectResponse(f"/ui/customers/{customer_id}/data-export?flash=Export+started.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/data-export?flash=Export+started.")
 
 
 @router.get("/ui/customers/{customer_id}/data-export/{job_id}/download")

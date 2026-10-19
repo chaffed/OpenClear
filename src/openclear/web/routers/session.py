@@ -40,6 +40,7 @@ from openclear.web.security import (
     ACCESS_COOKIE_NAME,
     REFRESH_COOKIE_NAME,
 )
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/auth", tags=["web-session"])
 
@@ -92,9 +93,9 @@ def resume(request: Request, next: str | None = None, db: Session = Depends(get_
     except session_service.RefreshFailed:
         embedded = was_embedded(request)
         login_url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
-        response = RedirectResponse("/ui/embed/ended" if embedded else login_url, status_code=303)
+        response = see_other("/ui/embed/ended" if embedded else login_url)
         clear_auth_cookies(response, embed=embedded)
         return response
-    response = RedirectResponse(next_path, status_code=303)
+    response = see_other(next_path)
     set_session_cookies(response, tokens)
     return response

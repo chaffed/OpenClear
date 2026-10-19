@@ -16,6 +16,7 @@ from openclear import storage
 from openclear.services import audit_archive_service, audit_log_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/audit-log", tags=["web-audit-log"])
 
@@ -64,7 +65,7 @@ def verify_audit_log(
         started = long_runs.start_verification(db, ctx.tenant_id, user_id=ctx.user_id)
         db.commit()
         jobs_queued(db.get_bind())
-        return RedirectResponse(f"/ui/audit-log/verify?run={started.id}", status_code=303)
+        return see_other(f"/ui/audit-log/verify?run={started.id}")
     shown = long_runs.get_run(db, ctx.tenant_id, run, long_runs.VERIFICATION)
     if shown is None:
         raise WebNotFound()

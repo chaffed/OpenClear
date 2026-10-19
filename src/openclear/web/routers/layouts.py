@@ -25,6 +25,7 @@ from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.services import audit_log_service, bulk_upload_file_service, customer_service, import_layout_service
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/layouts", tags=["web-layouts"])
 _PERMISSION = "issued_item:write"
@@ -219,7 +220,7 @@ async def _submitted(request: Request, db: Session, ctx: TenantContext, layout) 
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="import_layout.save",
         summary=f"{'Changed' if layout else 'Added'} the issue-file layout {saved.name!r}", resource_type="import_layout", resource_id=saved.id)
     db.commit()
-    return RedirectResponse(f"/ui/layouts?flash={quote('Layout saved.')}", status_code=303)
+    return see_other(f"/ui/layouts?flash={quote('Layout saved.')}")
 
 
 @router.post("")
@@ -243,4 +244,4 @@ def delete_layout(layout_id: uuid.UUID, db: Session = Depends(get_db), ctx: Tena
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="import_layout.delete",
                                     summary=f"Deleted the issue-file layout {name!r}", resource_type="import_layout", resource_id=layout_id)
     db.commit()
-    return RedirectResponse(f"/ui/layouts?flash={quote('Layout deleted. Uploads that used it keep their copy.')}", status_code=303)
+    return see_other(f"/ui/layouts?flash={quote('Layout deleted. Uploads that used it keep their copy.')}")

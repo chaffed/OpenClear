@@ -14,6 +14,7 @@ from openclear.domain.bulk_upload_file import BulkUploadKind, BulkUploadStatus
 from openclear.services import bulk_import_service
 from openclear.web.deps import render_template
 from openclear.workers.jobs import jobs_queued
+from openclear.web.redirects import see_other
 
 
 def start_import(
@@ -46,4 +47,4 @@ def start_import(
         return render_template(request, form_template, ctx=ctx, status_code=422, upload_record=record,
                                **{error_field: record.error, **(extra_context or {})})
     jobs_queued(db.get_bind())
-    return RedirectResponse(f"/ui/bulk-uploads/{record.id}", status_code=303)
+    return see_other(f"/ui/bulk-uploads/{record.id}")

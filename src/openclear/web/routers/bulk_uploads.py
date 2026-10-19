@@ -18,6 +18,7 @@ from openclear.services import bulk_import_service, bulk_upload_file_service, bu
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template
 from openclear.web.security import verify_csrf
 from openclear.workers.jobs import jobs_queued
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/bulk-uploads", tags=["web-bulk-uploads"])
 
@@ -96,7 +97,7 @@ def other_format_upload(
     if record.status.value == "rejected":
         return render_template(request, "bulk_uploads/other_format.html", ctx=ctx, formats=formats, status_code=422, error=record.error)
     jobs_queued(db.get_bind())
-    return RedirectResponse(f"/ui/bulk-uploads/{record.id}", status_code=303)
+    return see_other(f"/ui/bulk-uploads/{record.id}")
 
 
 @router.get("/{upload_id}")
@@ -135,10 +136,10 @@ def fix_rows_form(request: Request, upload_id: uuid.UUID, db: Session = Depends(
     """The failed rows, each editable, with its error beside the field at fault (UX_PLAN.md U2)."""
     record = _get_authorized_record(db, ctx, upload_id)
     if not bulk_import_service.correctable(record):
-        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}", status_code=303)
+        return see_other(f"/ui/bulk-uploads/{upload_id}")
     rows = bulk_import_service.open_failures(db, record)
     if not rows:
-        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}?flash={quote('Every failed row is fixed.')}", status_code=303)
+        return see_other(f"/ui/bulk-uploads/{upload_id}?flash={quote('Every failed row is fixed.')}")
     return render_template(request, "bulk_uploads/fix.html", ctx=ctx, record=record, rows=rows,
                            remaining=(record.failed_count or 0) - sum(1 for c in bulk_import_service.corrections(db, record) if c.success))
 
@@ -149,7 +150,7 @@ async def fix_rows(request: Request, upload_id: uuid.UUID, db: Session = Depends
     """Imports the rows ticked for import, as edited; each is recorded as a fix of this upload."""
     record = _get_authorized_record(db, ctx, upload_id)
     if not bulk_import_service.correctable(record):
-        return RedirectResponse(f"/ui/bulk-uploads/{upload_id}", status_code=303)
+        return see_other(f"/ui/bulk-uploads/{upload_id}")
     form = await request.form()
     chosen = {int(v) for v in form.getlist("fix") if str(v).isdigit()}
     edits: dict[int, dict[str, str]] = {index: {} for index in chosen}
@@ -161,7 +162,7 @@ async def fix_rows(request: Request, upload_id: uuid.UUID, db: Session = Depends
     fixed, still = bulk_import_service.apply_corrections(db, record, edits, user_id=ctx.user_id, channel="web")
     db.commit()
     message = f"{fixed} row{'s' if fixed != 1 else ''} imported." + (f" {still} still need{'s' if still == 1 else ''} fixing." if still else "")
-    return RedirectResponse(f"/ui/bulk-uploads/{upload_id}/fix?flash={quote(message)}", status_code=303)
+    return see_other(f"/ui/bulk-uploads/{upload_id}/fix?flash={quote(message)}")
 
 
 @router.get("/{upload_id}/results.csv")
@@ -204,10 +205,7 @@ def bulk_upload_back_out(
     )
     if results is None:
         db.rollback()
-        return RedirectResponse(
-            f"/ui/bulk-uploads/{upload_id}?error={quote('Nothing to back out — this upload has already been backed out, or nothing it created was tracked.')}",
-            status_code=303,
-        )
+        return see_other(f"/ui/bulk-uploads/{upload_id}?error={quote('Nothing to back out — this upload has already been backed out, or nothing it created was tracked.')}")
     return render_template(
         request,
         "bulk_result.html",

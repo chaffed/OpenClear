@@ -12,6 +12,7 @@ from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, customer_service
 from openclear.web.deps import WebNotFound, render_template, require_any_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/password-policy", tags=["web-customer-password-policy"])
 # The bank (customer:manage), or the customer's own administrators for their own customer
@@ -94,14 +95,14 @@ def update_password_policy(
         from openclear.web.routers.tenant_settings import waiting_message
 
         db.commit()
-        return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}", status_code=303)
+        return see_other(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}")
 
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_password_policy",
         summary="Updated customer password policy", resource_type="customer", resource_id=customer_id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash=Updated.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/password-policy?flash=Updated.")
 
 
 @router.post("/security-keys")
@@ -130,7 +131,7 @@ def update_security_keys(
         return _render_form(request, db, ctx, customer_id, error=str(exc), status_code=422)
     if outcome.waiting:
         db.commit()
-        return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}", status_code=303)
+        return see_other(f"/ui/customers/{customer_id}/password-policy?flash={quote(waiting_message(outcome))}")
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(
             db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_security_keys",
@@ -138,4 +139,4 @@ def update_security_keys(
             resource_type="customer", resource_id=customer_id,
         )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/password-policy?flash=Updated.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/password-policy?flash=Updated.")

@@ -18,6 +18,7 @@ from openclear.repositories.issued_item_repo import IssuedItemRepository
 from openclear.repositories.stop_payment_repo import StopPaymentRepository
 from openclear.services import exception_service, security_group_service, wizard_service
 from openclear.web.deps import get_web_context, render_template
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui", tags=["web-dashboard"])
 
@@ -59,7 +60,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContex
             and ({"exception:decide", "exception:recommend"} & set(ctx.permissions))):
         from fastapi.responses import RedirectResponse
 
-        return RedirectResponse("/ui/exceptions", status_code=303)
+        return see_other("/ui/exceptions")
     # Only bank-wide admins can act on the bank wizard's steps, and customer-scoped
     # sessions don't have a single tenant-wide "getting started" state to show anyway.
     show_getting_started = (

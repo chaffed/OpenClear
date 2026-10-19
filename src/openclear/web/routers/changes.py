@@ -17,6 +17,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, change_request_service, security_group_service
 from openclear.web.deps import render_template, require_any_web_permission, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-changes"])
 
@@ -49,7 +50,7 @@ def decide_change(change_id: uuid.UUID, verdict: str, reason: str = Form(""), db
                   ctx: TenantContext = Depends(require_any_web_permission(*_SEES_CHANGES)),
                   _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     if verdict not in ("approve", "reject", "withdraw"):
-        return RedirectResponse("/ui/admin/changes", status_code=303)
+        return see_other("/ui/admin/changes")
     try:
         if verdict == "withdraw":
             change_request_service.withdraw(db, ctx.tenant_id, change_id, user_id=ctx.user_id)
@@ -57,10 +58,10 @@ def decide_change(change_id: uuid.UUID, verdict: str, reason: str = Form(""), db
             change_request_service.decide(db, ctx.tenant_id, change_id, approve=verdict == "approve", user_id=ctx.user_id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/admin/changes?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/admin/changes?error={quote(str(exc))}")
     db.commit()
     done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
-    return RedirectResponse(f"/ui/admin/changes?flash={quote(done)}", status_code=303)
+    return see_other(f"/ui/admin/changes?flash={quote(done)}")
 
 
 @router.get("/ui/settings/segregation-of-duties")
@@ -79,18 +80,18 @@ def set_sod_mode(mode: str = Form(...), db: Session = Depends(get_db),
     from openclear.web.routers.tenant_settings import waiting_message
 
     if mode not in ("warn", "enforce"):
-        return RedirectResponse(f"/ui/settings/segregation-of-duties?error={quote('Mode is warn or enforce.')}", status_code=303)
+        return see_other(f"/ui/settings/segregation-of-duties?error={quote('Mode is warn or enforce.')}")
     try:
         outcome = change_request_service.request_or_apply(db, "sod_mode", {"values": {"sod_mode": mode}}, tenant_id=ctx.tenant_id,
                                                           user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/settings/segregation-of-duties?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/settings/segregation-of-duties?error={quote(str(exc))}")
     if outcome.waiting:
         db.commit()
-        return RedirectResponse(f"/ui/settings/segregation-of-duties?flash={quote(waiting_message(outcome))}", status_code=303)
+        return see_other(f"/ui/settings/segregation-of-duties?flash={quote(waiting_message(outcome))}")
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="tenant.update_sod_mode",
                                         summary=f"Segregation of duties set to {mode}", resource_type="tenant", resource_id=ctx.tenant_id)
     db.commit()
-    return RedirectResponse("/ui/settings/segregation-of-duties?flash=Saved.", status_code=303)
+    return see_other("/ui/settings/segregation-of-duties?flash=Saved.")

@@ -20,6 +20,7 @@ from openclear.services import operator_service, support_access_service
 from openclear.web import platform_session
 from openclear.web.deps import render_template
 from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/platform", tags=["web-platform"])
 
@@ -40,14 +41,14 @@ def login(request: Request, email: str = Form(...), password: str = Form(...), d
     from openclear.auth import platform_webauthn_service
 
     step = "key" if platform_webauthn_service.credentials(db, user.id) else "key/setup"
-    response = RedirectResponse(f"/ui/platform/login/{step}", status_code=303)
+    response = see_other(f"/ui/platform/login/{step}")
     platform_session.set_pending_cookie(response, platform_session.create_pending_token(user))
     return response
 
 
 def _key_page(request: Request, db: Session, template: str) -> HTMLResponse:
     if platform_session.pending_user(request, db) is None:
-        return RedirectResponse("/ui/platform/login", status_code=303)
+        return see_other("/ui/platform/login")
     return render_template(request, template)
 
 
@@ -147,7 +148,7 @@ async def key_setup_verify(request: Request, db: Session = Depends(get_db), _csr
 
 @router.post("/logout")
 def logout(_csrf: None = Depends(verify_csrf)) -> RedirectResponse:
-    response = RedirectResponse("/ui/platform/login", status_code=303)
+    response = see_other("/ui/platform/login")
     platform_session.clear_cookie(response)
     return response
 
@@ -183,7 +184,7 @@ def reset_admin_key_form(request: Request, tenant_id: uuid.UUID, db: Session = D
                          _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     bank = operator_service.tenant_by_id(db, tenant_id)
     if bank is None:
-        return RedirectResponse("/ui/platform", status_code=303)
+        return see_other("/ui/platform")
     return render_template(request, "platform/reset_admin_key.html", bank=bank)
 
 
@@ -198,7 +199,7 @@ def reset_admin_key(request: Request, tenant_id: uuid.UUID, email: str = Form(..
 
     bank = operator_service.tenant_by_id(db, tenant_id)
     if bank is None:
-        return RedirectResponse("/ui/platform", status_code=303)
+        return see_other("/ui/platform")
     error = None
     if len(identity_check.strip()) < 10:
         error = "Say how you confirmed it's really them, for example a call to a number the bank gave you."
@@ -213,8 +214,7 @@ def reset_admin_key(request: Request, tenant_id: uuid.UUID, email: str = Form(..
         tenant_id=None, user_id=user.id, summary=f"Reset the security keys of {email.strip()} at {bank.name}. "
                                                  f"Identity confirmed by: {identity_check.strip()[:300]}")
     db.commit()
-    return RedirectResponse("/ui/platform/changes?flash=" + quote("Another operator resets them by approving it under Changes."),
-                            status_code=303)
+    return see_other("/ui/platform/changes?flash=" + quote("Another operator resets them by approving it under Changes."))
 
 
 @router.get("/host-attestations")
@@ -250,7 +250,7 @@ def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), en
     from openclear.services import attestation_service
 
     if get_settings().host_cuecs_attested_by != "platform":
-        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote("Each bank attests the host's CUECs on this installation."), status_code=303)
+        return see_other("/ui/platform/host-attestations?flash=" + quote("Each bank attests the host's CUECs on this installation."))
     from openclear.services import platform_log_service
 
     try:
@@ -259,13 +259,12 @@ def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), en
     except (attestation_service.AttestationError, ValueError) as exc:
         db.rollback()
         message = str(exc) if isinstance(exc, attestation_service.AttestationError) else "Choose the period's dates."
-        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(message), status_code=303)
+        return see_other("/ui/platform/host-attestations?flash=" + quote(message))
     platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.prepare",
                                 summary=f"Prepared {cuec_id} for {made.period_start} to {made.period_end}: {made.result}",
                                 resource_type="cuec_attestation", resource_id=made.id)
     db.commit()
-    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} prepared: someone else accepts and signs it."),
-                            status_code=303)
+    return see_other("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} prepared: someone else accepts and signs it."))
 
 
 @router.post("/host-attestations/{attestation_id}/accept")
@@ -278,17 +277,17 @@ def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get
 
     attestation = db.get(CuecAttestation, attestation_id)
     if attestation is None or attestation.tenant_id is not None:
-        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote("No such host attestation."), status_code=303)
+        return see_other("/ui/platform/host-attestations?flash=" + quote("No such host attestation."))
     try:
         attestation_service.accept_installation(db, attestation, user_id=user.id)
     except attestation_service.AttestationError as exc:
         db.rollback()
-        return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(str(exc)), status_code=303)
+        return see_other("/ui/platform/host-attestations?flash=" + quote(str(exc)))
     platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.accept",
                                 summary=f"Accepted and signed {attestation.cuec_id} for {attestation.period_start} to {attestation.period_end}",
                                 resource_type="cuec_attestation", resource_id=attestation.id)
     db.commit()
-    return RedirectResponse("/ui/platform/host-attestations?flash=" + quote(f"{attestation.cuec_id} accepted and signed."), status_code=303)
+    return see_other("/ui/platform/host-attestations?flash=" + quote(f"{attestation.cuec_id} accepted and signed."))
 
 
 @router.get("/banks/new")
@@ -323,7 +322,7 @@ def create_bank(request: Request, name: str = Form(...), slug: str = Form(...), 
     db.commit()
     note = ("Nobody else can approve it, so it's set up in 24 hours unless you withdraw it." if outcome.change and outcome.change.applies_at
             else "Another operator sets it up by approving it under Changes.")
-    return RedirectResponse(f"/ui/platform/changes?flash={quote(note)}", status_code=303)
+    return see_other(f"/ui/platform/changes?flash={quote(note)}")
 
 
 @router.get("/changes")
@@ -352,7 +351,7 @@ def acknowledge_settings(db: Session = Depends(get_db), user: User = Depends(pla
 
     names = installation_settings.acknowledge(db, user_id=user.id)
     db.commit()
-    return RedirectResponse(f"/ui/platform/changes?flash={quote('Acknowledged: ' + (', '.join(names) or 'no change'))}", status_code=303)
+    return see_other(f"/ui/platform/changes?flash={quote('Acknowledged: ' + (', '.join(names) or 'no change'))}")
 
 
 @router.post("/changes/{change_id}/{verdict}")
@@ -361,7 +360,7 @@ def decide_change(request: Request, change_id: uuid.UUID, verdict: str, reason: 
     from openclear.services import change_request_service
 
     if verdict not in ("approve", "reject", "withdraw"):
-        return RedirectResponse("/ui/platform/changes", status_code=303)
+        return see_other("/ui/platform/changes")
     try:
         if verdict == "withdraw":
             change_request_service.withdraw(db, None, change_id, user_id=user.id)
@@ -369,14 +368,14 @@ def decide_change(request: Request, change_id: uuid.UUID, verdict: str, reason: 
             change_request_service.decide(db, None, change_id, approve=verdict == "approve", user_id=user.id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/platform/changes?flash={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/platform/changes?flash={quote(str(exc))}")
     provisioned = db.info.pop("provisioned", None)
     db.commit()
     if provisioned:
         tenant, password, admin_email = provisioned
         return render_template(request, "platform/provisioned.html", tenant=tenant, admin_email=admin_email, password=password)
     done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
-    return RedirectResponse(f"/ui/platform/changes?flash={quote(done)}", status_code=303)
+    return see_other(f"/ui/platform/changes?flash={quote(done)}")
 
 
 @router.post("/support/{grant_id}/start")
@@ -390,12 +389,12 @@ def start_support(grant_id: uuid.UUID, db: Session = Depends(get_db), user: User
         grant = support_access_service.start(db, grant_id, user=user)
     except support_access_service.SupportAccessError as exc:
         db.commit()
-        return RedirectResponse(f"/ui/platform?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/platform?error={quote(str(exc))}")
     db.commit()
     expires_at = support_access_service._aware(grant.expires_at)
     token = create_token(user_id=user.id, tenant_id=grant.tenant_id, security_group_id=uuid.UUID(int=0), token_type="access",
                          token_version=user.token_version, expires_at=expires_at, support_grant_id=grant.id)
-    response = RedirectResponse("/ui/", status_code=303)
+    response = see_other("/ui/")
     platform_session.set_support_session(response, token, expires_at)
     return response
 
@@ -403,6 +402,6 @@ def start_support(grant_id: uuid.UUID, db: Session = Depends(get_db), user: User
 @router.post("/support/end")
 def end_support(_csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     """Leaves the bank: the support session's cookie goes; the grant stays as it is."""
-    response = RedirectResponse("/ui/platform", status_code=303)
+    response = see_other("/ui/platform")
     clear_auth_cookies(response)
     return response

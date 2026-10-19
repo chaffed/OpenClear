@@ -21,6 +21,7 @@ from openclear.services.customer_sign_on_service import SignOnError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.routers.sso_settings import SsoForm, _saml_urls, _scim_base, sso_form
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/sign-on", tags=["web-sign-on"])
 _manage = require_web_permission("customer_sso:manage")
@@ -34,7 +35,7 @@ def _record(db: Session, ctx: TenantContext, action: str, summary: str) -> None:
 
 
 def _back(message: str, *, error: bool = False, to: str = _BASE) -> RedirectResponse:
-    return RedirectResponse(f"{to}?{'error' if error else 'flash'}=" + quote(message), status_code=303)
+    return see_other(f"{to}?{'error' if error else 'flash'}=" + quote(message))
 
 
 def _test_url(ctx: TenantContext, connection_id: uuid.UUID) -> str:

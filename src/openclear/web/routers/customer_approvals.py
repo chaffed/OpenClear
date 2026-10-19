@@ -17,6 +17,7 @@ from openclear.services import audit_log_service, customer_approval_service
 from openclear.services.customer_approval_service import ApprovalError
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/approvals/customer-users", tags=["web-customer-approvals"])
 _manage = require_web_permission("customer:manage")
@@ -31,7 +32,7 @@ def _bank_only(ctx: TenantContext = Depends(_manage)) -> TenantContext:
 
 
 def _back(message: str) -> RedirectResponse:
-    return RedirectResponse("/ui/approvals/customer-users?flash=" + quote(message), status_code=303)
+    return see_other("/ui/approvals/customer-users?flash=" + quote(message))
 
 
 @router.get("")

@@ -20,6 +20,7 @@ from openclear.services import exception_service
 from openclear.web import list_search
 from openclear.web.deps import get_web_context, render_template
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-search"])
 PER_SECTION = 10
@@ -29,7 +30,7 @@ PER_SECTION = 10
 async def list_search_post(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context),
                            _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     """A list's filters, with an account number turned into account ids (ASVS 5.0 14.2.1)."""
-    return RedirectResponse(list_search.resolve_and_redirect(await request.form(), db, ctx), status_code=303)
+    return see_other(list_search.resolve_and_redirect(await request.form(), db, ctx))
 
 
 @router.get("/ui/search")

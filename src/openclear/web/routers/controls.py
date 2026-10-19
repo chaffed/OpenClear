@@ -15,6 +15,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import controls_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-controls"])
 
@@ -76,12 +77,12 @@ def export_evidence(start: date = Form(...), end: date = Form(...), format: str 
             return export_response(db, ctx, start, end, fmt, "web")
         run = long_runs.start_evidence_export(db, ctx.tenant_id, start=start, end=end, fmt=fmt, user_id=ctx.user_id, channel="web")
     except HTTPException as exc:
-        return RedirectResponse(f"/ui/admin/controls?error={quote(str(exc.detail))}", status_code=303)
+        return see_other(f"/ui/admin/controls?error={quote(str(exc.detail))}")
     except evidence_service.EvidenceError as exc:
-        return RedirectResponse(f"/ui/admin/controls?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/admin/controls?error={quote(str(exc))}")
     db.commit()
     jobs_queued(db.get_bind())
-    return RedirectResponse(f"/ui/admin/controls?export={run.id}", status_code=303)
+    return see_other(f"/ui/admin/controls?export={run.id}")
 
 
 @router.get("/ui/admin/controls/evidence/{run_id}")

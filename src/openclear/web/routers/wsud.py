@@ -13,6 +13,7 @@ from openclear.services import audit_log_service, customer_service, wsud_service
 from openclear.web.client_ip import get_client_ip
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-wsud"])
 
@@ -107,7 +108,7 @@ def wsud_sign_submit(
         resource_id=statement.id,
     )
     db.commit()
-    return RedirectResponse("/ui/wsud?flash=Statement+signed.", status_code=303)
+    return see_other("/ui/wsud?flash=Statement+signed.")
 
 
 # --- Bank-wide oversight: view a customer's signed statements. ---

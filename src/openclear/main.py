@@ -27,6 +27,7 @@ from openclear.auth.sod import SodViolation
 from openclear.web import rate_limit
 from openclear.web.router import web_router
 from openclear.web.security_headers import apply_security_headers, new_csp_nonce
+from openclear.web.redirects import see_other
 
 _STATIC_DIR = Path(__file__).parent / "static"
 _DOCS_SCREENSHOTS_DIR = Path(__file__).parent.parent.parent / "docs" / "screenshots"
@@ -386,15 +387,15 @@ def create_app() -> FastAPI:
 
         next_path = safe_next_path(exc.next_path)
         if exc.try_resume:
-            return RedirectResponse(f"/ui/auth/resume?next={quote(next_path)}", status_code=status.HTTP_303_SEE_OTHER)
+            return see_other(f"/ui/auth/resume?next={quote(next_path)}")
         if was_embedded(request):  # a frame can't show the login page; tell its parent instead
-            return RedirectResponse("/ui/embed/ended", status_code=status.HTTP_303_SEE_OTHER)
+            return see_other("/ui/embed/ended")
         url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
-        return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+        return see_other(url)
 
     @app.exception_handler(WebPasswordChangeRequired)
     def _handle_web_password_change_required(request: Request, exc: WebPasswordChangeRequired) -> RedirectResponse:
-        return RedirectResponse(f"{PASSWORD_CHANGE_PATH}?required=1", status_code=status.HTTP_303_SEE_OTHER)
+        return see_other(f"{PASSWORD_CHANGE_PATH}?required=1")
 
     @app.exception_handler(SodViolation)
     def _handle_sod_violation(request: Request, exc: SodViolation):
@@ -411,7 +412,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(PlatformAuthRequired)
     def _handle_platform_auth_required(request: Request, exc: PlatformAuthRequired) -> RedirectResponse:
-        return RedirectResponse("/ui/platform/login", status_code=status.HTTP_303_SEE_OTHER)
+        return see_other("/ui/platform/login")
 
     @app.exception_handler(PlatformForbidden)
     def _handle_platform_forbidden(request: Request, exc: PlatformForbidden):
@@ -517,7 +518,7 @@ def create_app() -> FastAPI:
     def front_door():
         """The bare address goes somewhere useful: on the developer sandbox, its sign-up page;
         anywhere else, the app (which asks to sign in first)."""
-        return RedirectResponse("/ui/sandbox" if get_settings().sandbox_signup_enabled else "/ui/", status_code=status.HTTP_303_SEE_OTHER)
+        return see_other("/ui/sandbox" if get_settings().sandbox_signup_enabled else "/ui/")
 
     @app.get("/health")
     def health(db: Session = Depends(get_db)):

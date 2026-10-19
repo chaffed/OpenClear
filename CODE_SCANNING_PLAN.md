@@ -93,3 +93,7 @@ After CS3 the open count should be zero, with every dismissal explained in its a
   ours (`web/security.py::token_shaped`); `email_change_service.looks_like_email` replaces both
   email regexes; the TypeScript SDK's two regexes replaced by plain string handling; the
   returns file's `assert` is a real check; `zap_scan.py` no longer opens its folder to everyone.
+- 2026-10-19: CS2 on `cs1`: `web/redirects.py` (`see_other`, `to_identity_provider`); all 264
+  `RedirectResponse(...)` calls rewritten by an AST script; `tests/test_web/test_redirects.py`
+  fails on any new one. Whether CodeQL takes the helper as a barrier shows on the first PR run;
+  otherwise the 86 alerts are dismissed pointing at it.

@@ -22,6 +22,7 @@ from openclear.services import attestation_service, audit_log_service
 from openclear.services.attestation_service import AttestationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/compliance", tags=["web-cuecs"])
 _read = require_web_permission("compliance:read")
@@ -32,7 +33,7 @@ BASE = "/ui/compliance/cuecs"
 
 
 def _back(path: str, message: str) -> RedirectResponse:
-    return RedirectResponse(f"{path}?flash={quote(message)}", status_code=303)
+    return see_other(f"{path}?flash={quote(message)}")
 
 
 def _record(db: Session, ctx: TenantContext, action: str, summary: str, resource_type: str, resource_id) -> None:

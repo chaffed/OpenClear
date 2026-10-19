@@ -18,6 +18,7 @@ from openclear.domain.user import User
 from openclear.services import session_service, user_service
 from openclear.web.deps import get_web_context, render_template
 from openclear.web.security import set_mfa_cookie, set_session_cookies, verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/switch-tenant", tags=["web-tenant-switch"])
 
@@ -103,10 +104,10 @@ def switch_tenant(
         (m for m in user_service.list_memberships_for_user(db, ctx.user_id) if m.membership.id == membership_id), None
     )
     if target is None:
-        return RedirectResponse("/ui/switch-tenant?error=Not+a+member+of+that+organization.", status_code=303)
+        return see_other("/ui/switch-tenant?error=Not+a+member+of+that+organization.")
     refusal = switch_refusal(db, ctx, target)
     if refusal is not None:
-        return RedirectResponse("/ui/switch-tenant?error=" + quote(refusal), status_code=303)
+        return see_other("/ui/switch-tenant?error=" + quote(refusal))
 
     user = db.get(User, ctx.user_id)
 
@@ -122,7 +123,7 @@ def switch_tenant(
             authenticated_at=ctx.authenticated_at,
         )
         # switch_refusal has already made sure a key is registered there.
-        response = RedirectResponse(f"/ui/login/webauthn?next={quote('/ui/')}", status_code=303)
+        response = see_other(f"/ui/login/webauthn?next={quote('/ui/')}")
         set_mfa_cookie(response, mfa_token)
         return response
 
@@ -143,6 +144,6 @@ def switch_tenant(
         signed_in_with=ctx.signed_in_with,
         authenticated_at=ctx.authenticated_at,  # a switch isn't a new sign-in
     )
-    response = RedirectResponse("/ui/", status_code=303)
+    response = see_other("/ui/")
     set_session_cookies(response, tokens)
     return response

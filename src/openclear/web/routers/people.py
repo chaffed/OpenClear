@@ -24,6 +24,7 @@ from openclear.services.customer_people_service import PeopleError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.rate_limit import rate_limit
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-people"])
 _manage = require_web_permission("customer_user:manage")
@@ -42,7 +43,7 @@ def _accounts(db: Session, ctx: TenantContext) -> list[Account]:
 
 
 def _back(message: str) -> RedirectResponse:
-    return RedirectResponse("/ui/people?flash=" + quote(message), status_code=303)
+    return see_other("/ui/people?flash=" + quote(message))
 
 
 def _ids(values: list) -> list[uuid.UUID]:
@@ -460,5 +461,4 @@ def accept(request: Request, token: str, password: str = Form(""), password_conf
     db.commit()
     message = (f"Thanks. {opened.tenant.name} approves new people first: you can sign in once they have."
                if membership.pending_approval_at else "You're in. Sign in to continue.")
-    return RedirectResponse(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}?flash=" + quote(message),
-                            status_code=303)
+    return see_other(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}?flash=" + quote(message))

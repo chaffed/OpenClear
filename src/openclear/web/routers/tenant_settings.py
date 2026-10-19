@@ -34,6 +34,7 @@ from openclear.services.tenant_service import (
 from openclear.web import control_panel
 from openclear.web.deps import WebForbidden, get_web_context, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/settings", tags=["web-tenant-settings"])
 
@@ -73,7 +74,7 @@ def _saved(request: Request, message: str = "Settings updated.", key: str | None
     gets the message as JSON instead."""
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"saved": True, "message": message, "key": key})
-    return RedirectResponse(f"/ui/settings?flash={quote(message)}" + (f"&from={key}" if key else ""), status_code=303)
+    return see_other(f"/ui/settings?flash={quote(message)}" + (f"&from={key}" if key else ""))
 
 
 # --- The panel -----------------------------------------------------------------------------------
