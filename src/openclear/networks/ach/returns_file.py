@@ -139,5 +139,6 @@ def write(feed: list[dict], settings: dict[str, str], *, now: datetime | None = 
     )
     lines += ["9" * 94] * (blocks * 10 - records)
     for line in lines:
-        assert len(line) == 94, (len(line), line)
+        if len(line) != 94:  # a check, not an assert: asserts vanish under python -O
+            raise ValueError(f"A NACHA record must be 94 characters, not {len(line)}")
     return ("\n".join(lines) + "\n").encode("ascii")

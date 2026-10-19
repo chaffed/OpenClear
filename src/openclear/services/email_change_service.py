@@ -9,7 +9,6 @@ directly (apply_change). Every route ends in apply_change, which emails both the
 new address and records `user.email.changed`."""
 
 import hashlib
-import re
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -24,7 +23,16 @@ from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 
 CONFIRM_HOURS = 24
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def looks_like_email(email: str) -> bool:
+    """name@domain.tld, with no spaces: checked by splitting rather than a regex, which took
+    time in proportion to the square of the length (CODE_SCANNING_PLAN.md CS1)."""
+    if not email or len(email) > 320 or any(ch.isspace() for ch in email) or email.count("@") != 1:
+        return False
+    local, domain = email.split("@")
+    labels = domain.split(".")
+    return bool(local) and len(labels) >= 2 and labels[0] != "" and labels[-1] != ""
 
 
 class EmailChangeError(ValueError):
@@ -41,7 +49,7 @@ def _hash(token: str) -> str:
 
 def normalize(email: str) -> str:
     email = (email or "").strip().lower()
-    if len(email) > 320 or not _EMAIL.match(email):
+    if not looks_like_email(email):
         raise EmailChangeError("Enter an email address such as name@example.com.")
     return email
 

@@ -16,7 +16,6 @@ permission mask in auth/deps.py). The guardrails:
 - the customer's last administrator can't be removed or demoted here; the bank can."""
 
 import hashlib
-import re
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -38,7 +37,6 @@ from openclear.services import account_access_service, session_service
 
 ADMIN_PERMISSION = "customer_user:manage"
 INVITATION_DAYS = 7
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class PeopleError(ValueError):
@@ -175,7 +173,9 @@ def invite(
     email replaces an unused one."""
     customer = _customer(session, tenant_id, customer_id)
     email = (email or "").strip()
-    if not _EMAIL.match(email):
+    from openclear.services.email_change_service import looks_like_email
+
+    if not looks_like_email(email):
         raise PeopleError("Enter an email address.")
     _offered_group(session, tenant_id, security_group_id)
     chosen = _validate_accounts(session, tenant_id, customer_id, all_accounts, account_ids or [])

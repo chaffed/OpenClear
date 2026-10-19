@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import re
 import secrets
 from urllib.parse import urlsplit
 from datetime import datetime, timezone
@@ -227,8 +228,19 @@ def clear_saml_state_cookie(response: Response) -> None:
 CSRF_HEADER_NAME = "X-CSRF-Token"
 
 
+_TOKEN_SHAPE = re.compile(r"[A-Za-z0-9_-]{43}")
+
+
+def token_shaped(value: str | None) -> bool:
+    """Whether a cookie's value looks like one of ours (secrets.token_urlsafe(32)): only such a
+    value is ever set again, so what a browser sends can't put anything else in a Set-Cookie
+    header (CODE_SCANNING_PLAN.md CS1)."""
+    return bool(value) and _TOKEN_SHAPE.fullmatch(value) is not None
+
+
 def read_or_generate_csrf_token(request: Request) -> str:
-    return read_cookie(request, CSRF_COOKIE_NAME) or secrets.token_urlsafe(32)
+    token = read_cookie(request, CSRF_COOKIE_NAME)
+    return token if token_shaped(token) else secrets.token_urlsafe(32)
 
 
 def set_csrf_cookie_if_new(request: Request, response: Response, token: str) -> None:

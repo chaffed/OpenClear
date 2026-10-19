@@ -119,7 +119,6 @@ def main() -> int:
     args = parser.parse_args()
     target = (args.target or args.sign_in_url).rstrip("/")
     WORK.mkdir(exist_ok=True)
-    os.chmod(WORK, 0o777)
     reports = []
     for label, email in USERS.items():
         cookie = sign_in(args.sign_in_url.rstrip("/"), email, args.password)

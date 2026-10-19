@@ -93,7 +93,9 @@ export class OpenClear implements Transport {
   constructor(options: OpenClearOptions) {
     if (options.clientId && !options.clientSecret) throw new Error("clientSecret is needed with clientId.");
     this.options = options;
-    this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+    let base = options.baseUrl;
+    while (base.endsWith("/")) base = base.slice(0, -1);  // no regex: /\/+$/ backtracks on long input
+    this.baseUrl = base;
     this.maxRetries = options.maxRetries ?? 3;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.token = { value: options.accessToken, expiresAt: options.accessToken ? Infinity : 0, fixed: Boolean(options.accessToken) };
@@ -334,8 +336,12 @@ export interface OpenClear extends Omit<GeneratedAreas, "decisionFeed"> {}
 export function nextLink(header: string | null): string | undefined {
   if (!header) return undefined;
   for (const part of header.split(",")) {
-    const match = /<([^>]+)>\s*;\s*rel="?next"?/.exec(part);
-    if (match) return match[1];
+    // Split rather than one regex, which backtracks on a long header (CODE_SCANNING_PLAN.md CS1).
+    const [target, ...params] = part.split(";");
+    const url = target.trim();
+    if (url.startsWith("<") && url.endsWith(">") && params.some((p) => p.trim().replace(/"/g, "") === "rel=next")) {
+      return url.slice(1, -1);
+    }
   }
   return undefined;
 }

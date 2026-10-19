@@ -88,3 +88,8 @@ After CS3 the open count should be zero, with every dismissal explained in its a
   attestation and bulk-upload names; tests through the web as a customer's user and through the
   API, which fail on the old code. Draft advisory GHSA-55j4-4cj6-8j2f (high, CWE-22, 1.19.0 to
   1.25.0, fixed in 1.25.1).
+- 2026-10-19: CS1 on `cs1`: WebAuthn failures answer with fixed text and log the library's
+  (bank and platform); the device and CSRF cookies are set again only from a value shaped like
+  ours (`web/security.py::token_shaped`); `email_change_service.looks_like_email` replaces both
+  email regexes; the TypeScript SDK's two regexes replaced by plain string handling; the
+  returns file's `assert` is a real check; `zap_scan.py` no longer opens its folder to everyone.

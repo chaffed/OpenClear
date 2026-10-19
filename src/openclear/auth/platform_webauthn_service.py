@@ -4,6 +4,7 @@
 auth/webauthn_service.py, on platform_webauthn_credential and platform_webauthn_challenge,
 which belong to no bank. Platform sign-in always needs one (web/routers/platform.py)."""
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -17,6 +18,9 @@ from openclear.auth.webauthn_service import WebauthnError
 from openclear.config import get_settings
 from openclear.domain.platform_webauthn import PlatformWebauthnChallenge, PlatformWebauthnCredential
 from openclear.domain.user import User
+
+
+logger = logging.getLogger(__name__)
 
 _CHALLENGE_TTL_MINUTES = 5
 
@@ -70,7 +74,9 @@ def complete_registration(session: Session, user: User, credential: str | dict[s
                                                          expected_rp_id=settings.webauthn_rp_id,
                                                          expected_origin=settings.webauthn_origin)
     except Exception as exc:
-        raise WebauthnError(f"Registration verification failed: {exc}") from exc
+        # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
+        logger.info("WebAuthn registration failed: %s", exc)
+        raise WebauthnError("Registration verification failed: the security key's response didn't check out. Try again.") from exc
     row = PlatformWebauthnCredential(user_id=user.id, credential_id=verified.credential_id, public_key=verified.credential_public_key,
                                      sign_count=verified.sign_count, nickname=nickname)
     session.add(row)
@@ -106,7 +112,9 @@ def complete_authentication(session: Session, user: User, credential: str | dict
                 expected_origin=settings.webauthn_origin, credential_public_key=row.public_key,
                 credential_current_sign_count=row.sign_count)
         except Exception as exc:
-            raise WebauthnError(f"Security key verification failed: {exc}") from exc
+            # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
+            logger.info("WebAuthn security key failed: %s", exc)
+            raise WebauthnError("Security key verification failed: the security key's response didn't check out. Try again.") from exc
     except WebauthnError:
         security_events.emit_detached("auth.mfa.failed", tenant_id=None, outcome="failure", reason="platform", **actor)
         raise
