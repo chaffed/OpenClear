@@ -32,3 +32,4 @@ data/
 
 # ASVS assessment working notes: kept out of the public repo until fixed (docs/adr/0002)
 /security-findings/
+.zap/

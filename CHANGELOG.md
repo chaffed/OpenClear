@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+Files and verification (OWASP_PLAN.md OW4):
+
+- **Malware scanning of uploads**, optional, off until the service provider turns it on. ClamAV
+  scans every file uploaded through the web, the API or the drop folder; VirusTotal is asked
+  about each file's SHA-256 (never sent the file). Malware is refused, or quarantined if found
+  later, with a high-severity `file.malware_detected` security event, an action-log entry and an
+  email to the bank's administrators. New settings: `OPENCLEAR_MALWARE_CLAMD_ADDRESS`,
+  `OPENCLEAR_MALWARE_VIRUSTOTAL_API_KEY` and their `_ON_ERROR` choices. A new CUEC (B-SI-3-01):
+  the bank's own malware detection.
+- **Account numbers stay out of URLs.** A list's search is posted, and its address carries the
+  matching accounts' ids instead of the number typed; the search box in the header is posted
+  too. Old links with `?q=` still work.
+- **Check-image views are in the action log**, once per person, image and side an hour.
+- **Verification:** an OWASP ZAP baseline scan on every change (signed in as a bank
+  administrator and a customer user), a weekly active scan, the WAF exclusions proven against the
+  OWASP Core Rule Set at paranoia levels 1 and 2 (`scripts/edge_check.py --crs`,
+  `docs/guides/crs/openclear-exclusions.conf`), and a security checklist in the pull request
+  template.
+
 ## 1.24.0 — 2026-10-18
 
 Sessions and identity (OWASP_PLAN.md OW3c):

@@ -80,6 +80,23 @@ the WAF as a whole. Start every new rule in log-only mode for two weeks, then en
 | `/ui/admin/webhooks*`, `/ui/admin/sso*`, `/ui/settings/embedding`, `/ui/settings/security-events` | URLs, OIDC issuers, certificates | SSRF and "URL in parameter" rules |
 | `/api/v1/oauth/token`, `/api/v1/embed/launch` | Client secrets and tokens in bodies | Credential-stuffing heuristics (rate-limit these instead; see section 7) |
 
+With the OWASP Core Rule Set itself (ModSecurity or Coraza, or an edge that runs CRS 4), use
+[`crs/openclear-exclusions.conf`](crs/openclear-exclusions.conf): each exclusion is limited to a
+path and, where it can be, one field. At paranoia levels 1 and 2 these rules fire on legitimate
+OpenClear traffic without it:
+
+| Rule | Level | On |
+|---|---|---|
+| 911100 (method not allowed) | 1 | SCIM and API `PUT`, `PATCH`, `DELETE` |
+| 941xxx (XSS), 942xxx (SQL), 932200, 931130 | 1–2 | Markdown in messages and banners |
+| 942120 (SQL operator characters) | 2 | `SAMLResponse` |
+| 931130 (remote file inclusion) | 2 | Webhook, identity provider and embedding URLs |
+
+`python scripts/edge_check.py http://<openclear> --crs --network <docker network>` proves it:
+it runs CRS in Docker at both levels with the exclusions, sends the same legitimate requests as
+the edge check, and checks an attack is still stopped (`--no-exclusions` shows what fires
+without them). CI runs it on every change.
+
 **Cloudflare:** in the WAF, add an exception (a "Skip" rule) on the Cloudflare Managed Ruleset and
 the OWASP Core Ruleset, matching these paths, and skipping only the rule IDs your log-only
 period showed firing. Keep "File upload" and malware scanning on if you use them; they read the

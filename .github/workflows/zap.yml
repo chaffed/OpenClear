@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Chaffed
+
+# OWASP ZAP against OpenClear running in Docker, signed in as a bank administrator and a
+# customer user (scripts/zap_seed.py, scripts/zap_scan.py; OWASP_PLAN.md OW-D8).
+# - baseline: every pull request and push to main. Spider and passive rules; fails on an alert
+#   of medium risk or worse that zap-rules.tsv doesn't waive.
+# - active: weekly, and by hand before a release. Never fails; opens an issue when it finds
+#   something, naming medium findings and only counting high ones (SECURITY.md).
+name: ZAP
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:5ccfff9a411743ab2615136a2edd7416bec9ce41572fa94e935df38c14adb2b6  # stable
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Run OpenClear in Docker
+        run: |
+          docker network create zapnet
+          docker build -q -t openclear:zap .
+          # Development mode: the checked-in dev keys, plain HTTP. HTTPS-only findings (HSTS, Secure
+          # cookies) are checked against the sandbox by scripts/edge_check.py instead.
+          docker run -d --name openclear-zap --network zapnet -p 8000:8000 \
+            -e OPENCLEAR_ENVIRONMENT=development -e OPENCLEAR_DATABASE_URL=sqlite:////tmp/zap.db openclear:zap
+          for i in $(seq 1 60); do curl -fs http://localhost:8000/health && break; sleep 2; done
+
+      - name: Seed the scanned bank
+        run: |
+          password=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))")
+          echo "::add-mask::$password"
+          echo "ZAP_PASSWORD=$password" >> "$GITHUB_ENV"
+          docker exec -i -e ZAP_PASSWORD="$password" openclear-zap python - < scripts/zap_seed.py
+
+      - name: Baseline scan
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: python3 scripts/zap_scan.py --network zapnet --target http://openclear-zap:8000
+
+      - name: Active scan
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: python3 scripts/zap_scan.py --network zapnet --target http://openclear-zap:8000 --active --minutes 5 --summary zap-summary.md
+
+      - name: Open an issue for what the active scan found
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && hashFiles('zap-summary.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue create --title "ZAP active scan: findings ($(date -u +%Y-%m-%d))" --body-file zap-summary.md --label needs-triage
+
+  crs:
+    # The WAF exclusions in docs/guides/crs/openclear-exclusions.conf, against the real OWASP Core
+    # Rule Set at paranoia levels 1 and 2 (scripts/edge_check.py --crs; docs/guides/edge.md).
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/dev.txt
+
+      - name: Install OpenClear from the hashed lock
+        run: |
+          pip install --require-hashes -r requirements/dev.txt
+          pip install --no-deps -e .
+
+      - name: Run OpenClear in Docker
+        run: |
+          docker network create crsnet
+          docker build -q -t openclear:crs .
+          docker run -d --name openclear-crs --network crsnet -p 8000:8000 \
+            -e OPENCLEAR_ENVIRONMENT=development -e OPENCLEAR_DATABASE_URL=sqlite:////tmp/crs.db openclear:crs
+          for i in $(seq 1 60); do curl -fs http://localhost:8000/health && break; sleep 2; done
+
+      - name: Legitimate traffic through CRS
+        run: python scripts/edge_check.py http://openclear-crs:8000 --crs --network crsnet

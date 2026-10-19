@@ -445,6 +445,24 @@ administrator; a newer request replaces an older one.</p>
 </tbody>
 </table>
 
+<h3>malware_recheck</h3>
+<p>An upload VirusTotal couldn't give a verdict on when it arrived, checked again every hour until it answers or
+<code>malware_recheck_days</code> pass (1.25). Only the file's hash and name. No row-level security: the worker
+checks every bank's, and no page reads it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>yes</td><td>FK → tenant.id, indexed</td><td>The bank it was uploaded to.</td></tr>
+<tr><td>sha256</td><td>String(64)</td><td>no</td><td>indexed</td><td>The file's SHA-256, the only thing sent to VirusTotal.</td></tr>
+<tr><td>filename</td><td>String(300)</td><td>no</td><td></td><td></td></tr>
+<tr><td>uploaded_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>created_at / next_check_at / resolved_at</td><td>Timestamp</td><td>varies</td><td></td><td></td></tr>
+<tr><td>attempts</td><td>Integer</td><td>no</td><td></td><td></td></tr>
+<tr><td>verdict</td><td>String(20)</td><td>yes</td><td></td><td>clean, malicious or gave_up.</td></tr>
+</tbody>
+</table>
+
 <h3>membership_account</h3>
 <p>An account a customer membership may see, when it isn't for all of the customer's accounts
 (per-account access; db/account_scope.py).</p>
@@ -1153,6 +1171,7 @@ erDiagram
 <tr><td>uploaded_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>uploaded_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>backed_out_at / backed_out_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>quarantined_at</td><td>Timestamp</td><td>yes</td><td></td><td>Found to be malware after it was accepted (1.25): never processed or downloaded again.</td></tr>
 <tr><td>control_item_count / control_total</td><td>Integer / Numeric(16,2)</td><td>yes</td><td></td><td>An X9.37 or NACHA file's items and total as its control records declare them.</td></tr>
 <tr><td>loaded_item_count / loaded_total</td><td>Integer / Numeric(16,2)</td><td>yes</td><td></td><td>What was loaded from it; less when rows were refused (the file_reconciliation check).</td></tr>
 </tbody>

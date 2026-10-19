@@ -93,8 +93,7 @@
       <tr>
         <td>
           {{ row.network_code }}
-          <form id="{{ form_id }}" method="post" action="/ui/admin/customers/{{ customer.id }}/disposition"></form>
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" form="{{ form_id }}">
+          <form id="{{ form_id }}" method="post" action="/ui/admin/customers/{{ customer.id }}/disposition"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"></form>
           <input type="hidden" name="network_code" value="{{ row.network_code }}" form="{{ form_id }}">
         </td>
         <td>
