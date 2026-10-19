@@ -3,17 +3,21 @@
 {% from "_macros/bottom_sheet.html" import sheet_trigger %}
 
 {% macro search_form(action, search, number_label="Check number", date_label="Date", q_hint="Check number, payee or amount", hidden={}) %}
-<form method="get" action="{{ action }}" class="list-search" role="search">
+{# Posted, so an account number typed never reaches a URL: /ui/list-search turns it into account ids
+   and redirects back here (web/list_search.py::resolve_and_redirect; ASVS 14.2.1). #}
+<form method="post" action="/ui/list-search" class="list-search" role="search">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="list" value="{{ action }}">
   {% for name, value in hidden.items() %}{% if value %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endif %}{% endfor %}
   {% if search.get("sort") %}<input type="hidden" name="sort" value="{{ search.get('sort') }}"><input type="hidden" name="dir" value="{{ search.get('dir') }}">{% endif %}
   <div class="list-search-main">
     <label>Search <input type="search" name="q" value="{{ search.get('q') }}" placeholder="{{ q_hint }}"></label>
     <button type="submit">{{ icon("search") }}Search</button>
     {{ sheet_trigger("list-search-more", "More filters", "tune") }}
-    {% if search.active %}<a class="button secondary" href="{{ action }}?{{ search.query_string(q=None, number=None, amount_min=None, amount_max=None, date_from=None, date_to=None, account=None, page=None) }}">Clear</a>{% endif %}
+    {% if search.active %}<a class="button secondary" href="{{ action }}?{{ search.query_string(q=None, number=None, amount_min=None, amount_max=None, date_from=None, date_to=None, account_id=None, page=None) }}">Clear</a>{% endif %}
   </div>
   {# On phones, a bottom sheet (_macros/bottom_sheet.html). #}
-  <details class="list-search-more" id="list-search-more" data-sheet="phone" data-sheet-title="More filters" {{ "open" if search.get("number") or search.get("amount_min") or search.get("amount_max") or search.get("date_from") or search.get("date_to") or search.get("account") else "" }}>
+  <details class="list-search-more" id="list-search-more" data-sheet="phone" data-sheet-title="More filters" {{ "open" if search.get("number") or search.get("amount_min") or search.get("amount_max") or search.get("date_from") or search.get("date_to") or search.get("account_id") else "" }}>
     <summary>More filters</summary>
     <div class="list-search-grid">
       <label>{{ number_label }} <input type="text" name="number" value="{{ search.get('number') }}"></label>
@@ -21,7 +25,7 @@
       <label>Amount to <input type="text" inputmode="decimal" name="amount_max" value="{{ search.get('amount_max') }}"></label>
       <label>{{ date_label }} from <input type="date" name="date_from" value="{{ search.get('date_from') }}"></label>
       <label>{{ date_label }} to <input type="date" name="date_to" value="{{ search.get('date_to') }}"></label>
-      <label>Account number <input type="text" name="account" value="{{ search.get('account') }}"></label>
+      <label>Account number <input type="text" name="account" value="{{ search.account_label }}" autocomplete="off"></label>
     </div>
     <p class="sheet-only"><button type="submit">{{ icon("search") }}Show results</button></p>
   </details>

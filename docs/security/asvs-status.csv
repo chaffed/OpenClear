@@ -245,7 +245,7 @@ V13.4.4,Met,src/openclear/main.py,
 V13.4.5,Met,src/openclear/main.py,
 V14.1.1,Met,docs/security/risk-profile.md,
 V14.1.2,Met,docs/security/risk-profile.md,
-V14.2.1,Partly,src/openclear/web/routers/,Account numbers can appear in list filters and search URLs; fixed in 1.25 (OW-D35).
+V14.2.1,Met,src/openclear/web/list_search.py; docs/guides/edge.md,"Searches are posted; list filters carry account ids, not numbers; the access log records paths only, and the edge guide says to drop query strings (OW-D35)."
 V14.2.2,Met,src/openclear/web/security_headers.py,
 V14.2.3,Met,src/openclear/web/security_headers.py,
 V14.2.4,Met,src/openclear/web/security_headers.py,

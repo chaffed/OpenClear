@@ -7,8 +7,8 @@ may see. Each section links on to its full list with the same search."""
 
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
@@ -19,14 +19,34 @@ from openclear.repositories.paid_item_repo import PaidItemRepository
 from openclear.services import exception_service
 from openclear.web import list_search
 from openclear.web.deps import get_web_context, render_template
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-search"])
 PER_SECTION = 10
 
 
+@router.post("/ui/list-search")
+async def list_search_post(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context),
+                           _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """A list's filters, with an account number turned into account ids (ASVS 5.0 14.2.1)."""
+    return RedirectResponse(list_search.resolve_and_redirect(await request.form(), db, ctx), status_code=303)
+
+
 @router.get("/ui/search")
-def search_everywhere(request: Request, q: str = "", db: Session = Depends(get_db),
-                      ctx: TenantContext = Depends(get_web_context)) -> HTMLResponse:
+def search_page(request: Request, q: str = "", db: Session = Depends(get_db),
+                ctx: TenantContext = Depends(get_web_context)) -> HTMLResponse:
+    """Old links with ?q= still work; the header's box posts, so new searches stay out of URLs."""
+    return _search(request, q, db, ctx)
+
+
+@router.post("/ui/search")
+def search_everywhere(request: Request, q: str = Form(""), db: Session = Depends(get_db),
+                      ctx: TenantContext = Depends(get_web_context), _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """Posted (OWASP_PLAN.md OW-D35): what's typed, perhaps an account number, never reaches a URL."""
+    return _search(request, q, db, ctx)
+
+
+def _search(request: Request, q: str, db: Session, ctx: TenantContext) -> HTMLResponse:
     q = q.strip()[:100]
     search = list_search.Search({"q": q})
     sections = []

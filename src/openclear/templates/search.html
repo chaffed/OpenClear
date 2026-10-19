@@ -9,7 +9,8 @@
 {% block content %}
 <div class="card">
   <h1>Search</h1>
-  <form method="get" action="/ui/search" role="search" class="list-search-main">
+  <form method="post" action="/ui/search" role="search" class="list-search-main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Search for <input type="search" name="q" value="{{ q }}" placeholder="Check or trace number, name or amount" autofocus></label>
     <button type="submit">Search</button>
   </form>

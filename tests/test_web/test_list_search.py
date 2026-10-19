@@ -9,6 +9,8 @@ import io
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from sqlalchemy import select
 
 from openclear.domain.audit_log_entry import AuditLogEntry
@@ -38,6 +40,7 @@ def _many_checks(db_session, tenant, account, users):
     db_session.commit()
 
 
+@pytest.mark.asvs("14.2.1")
 def test_search_finds_items_on_any_page(client, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="list-search")
     _many_checks(db_session, tenant, account, users)
@@ -51,8 +54,15 @@ def test_search_finds_items_on_any_page(client, db_session, tenant_factory):
     assert ">1012</a>" in client.get("/ui/issued-items?q=22.00").text  # an amount
     ranged = client.get("/ui/issued-items?amount_min=20&amount_max=24.50").text
     assert "Showing 1–5 of 5" in ranged
-    by_account = client.get(f"/ui/issued-items?account={account.account_number}&status=outstanding").text
-    assert "of 60" in by_account
+    # An account number is posted and becomes the account's id in the URL (ASVS 14.2.1).
+    posted = client.post("/ui/list-search", data={"list": "/ui/issued-items", "account": account.account_number,
+                                                  "status": "outstanding", "csrf_token": client.cookies.get("csrf_token")},
+                         follow_redirects=False)
+    assert account.account_number not in posted.headers["location"] and f"account_id={account.id}" in posted.headers["location"]
+    by_account = client.get(posted.headers["location"]).text
+    assert f'name="csrf_token" value="{client.cookies.get("csrf_token")}"' in by_account  # the form can post again
+    assert "of 60" in by_account and f'value="{account.account_number}"' in by_account
+    assert "Nothing matches" in client.get("/ui/issued-items?account_id=none").text
     nothing = client.get("/ui/issued-items?q=nope-not-here").text
     assert "Nothing matches these filters" in nothing
 

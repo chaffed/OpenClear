@@ -154,6 +154,12 @@ BREACH-style attacks, and edges handle it better.)
   the same id.
 - If the bank's SIEM takes edge logs, the same request id ties them to OpenClear's security
   events (see the [SIEM guide](siem.md)).
+- **Log paths without their query strings, or with them masked.** OpenClear keeps account
+  numbers out of URLs (searches are posted; list filters carry account ids), but a link
+  someone makes by hand, or an old bookmark, can still carry a search term. Cloudflare: Logpush
+  without `ClientRequestURI` (use `ClientRequestPath`), or a Logpush filter that drops the
+  query. Akamai: DataStream's "Query string" field off. OpenClear's own access log records
+  only the path.
 
 ## 9. The edge check
 
@@ -187,6 +193,7 @@ edge's WAF, bot or caching rules.
 - [ ] Rocket Loader, email obfuscation, Zaraz, RUM injection and "Add security headers" off.
 - [ ] No "cache everything" on `/ui` or `/api`; POST retries off; edge rate limits on sign-in and token endpoints.
 - [ ] Origin error pages pointing at `static/errors/`.
+- [ ] Edge logs record paths without query strings.
 - [ ] Settings → Controls → "Edge network set up" passes.
 - [ ] `scripts/edge_check.py` passes.
 

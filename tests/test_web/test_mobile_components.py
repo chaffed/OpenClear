@@ -55,10 +55,12 @@ def browser_page(client):
     def serve(route):
         request = route.request
         # A redirect isn't routed back through here, so a script's fetch (the exception pane's
-        # forms) gets the page it leads to straight away, as a browser's fetch would.
+        # forms) gets the page it leads to straight away, as a browser's fetch would; so does a
+        # list's posted search, whose redirect Chromium won't take from a fulfilled route.
         response = client.request(request.method, request.url.replace("http://testserver", ""),
                                   headers={k: v for k, v in request.headers.items() if k.lower() != "cookie"},
-                                  content=request.post_data_buffer, follow_redirects=request.resource_type == "fetch")
+                                  content=request.post_data_buffer,
+                                  follow_redirects=request.resource_type == "fetch" or request.url.endswith("/ui/list-search"))
         route.fulfill(status=response.status_code, headers=dict(response.headers), body=response.content)
 
     errors: list[str] = []
@@ -141,7 +143,8 @@ def test_more_filters_is_a_bottom_sheet_on_phones(client, tenant_factory, browse
     trigger.click()
     number.fill("1234")
     sheet.get_by_role("button", name="Show results").click()
-    page.wait_for_url("**number=1234**")
+    page.wait_for_load_state()
+    assert page.locator("form.list-search input[name='number']").input_value() == "1234"  # the list, filtered
     # Back on the page with a filter set: the sheet still starts closed, the filter is kept.
     assert not page.locator("dialog.bottom-sheet").is_visible()
     trigger.click()

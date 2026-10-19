@@ -23,7 +23,12 @@ from urllib.parse import urlencode
 from sqlalchemy import or_, select
 from starlette.requests import Request
 
-FIELDS = ("q", "number", "amount_min", "amount_max", "date_from", "date_to", "account", "sort", "dir")
+# Accounts are filtered by id, never by number: an account number in a URL reaches access logs,
+# browser history and Referer headers (ASVS 5.0 14.2.1; OWASP_PLAN.md OW-D35). The form posts the
+# number typed to /ui/list-search, which turns it into ids (resolve_and_redirect).
+FIELDS = ("q", "number", "amount_min", "amount_max", "date_from", "date_to", "account_id", "sort", "dir")
+LISTS = ("/ui/issued-items", "/ui/paid-items", "/ui/ach/transactions", "/ui/exceptions")
+MAX_ACCOUNTS = 20
 EXPORT_LIMIT = 100_000
 _MONEY = re.compile(r"^\$?\s*([0-9][0-9,]*)(\.[0-9]{1,2})?$")
 
@@ -50,6 +55,20 @@ class Search:
     """What the person asked for, as typed (for refilling the form) and as parsed."""
 
     values: dict[str, str] = field(default_factory=dict)
+    # The account numbers behind account_id, to refill the form (page_or_export); never in a URL.
+    account_label: str = ""
+
+    @property
+    def account_ids(self) -> list:
+        import uuid
+
+        out = []
+        for part in self.get("account_id").split(","):
+            try:
+                out.append(uuid.UUID(part.strip()))
+            except ValueError:
+                continue
+        return out[:MAX_ACCOUNTS]
 
     def get(self, name: str) -> str:
         return self.values.get(name, "")
@@ -80,7 +99,9 @@ class Search:
 
 
 def parse(request: Request, extra: tuple[str, ...] = ()) -> Search:
-    return Search({name: request.query_params.get(name, "").strip()[:100] for name in FIELDS + extra})
+    values = {name: request.query_params.get(name, "").strip()[:100] for name in FIELDS + extra if name != "account_id"}
+    values["account_id"] = ",".join(v.strip() for v in request.query_params.getlist("account_id") if v.strip())[:40 * MAX_ACCOUNTS]
+    return Search(values)
 
 
 @dataclass
@@ -105,10 +126,11 @@ class Spec:
         return [*order, self.tie_breaker] if self.tie_breaker is not None else order
 
 
-def _account_ids(number: str):
-    from openclear.domain.account import Account
-
-    return select(Account.id).where(or_(Account.account_number == number, Account.account_number.ilike(f"%{number}%")))
+def _accounts(column, s: Search) -> list:
+    """account_id given: only those accounts (none at all if none of them is a real id)."""
+    if not s.get("account_id"):
+        return []
+    return [column.in_(s.account_ids)]
 
 
 def _range(column, search: Search, low: str, high: str, parse_fn) -> list:
@@ -129,8 +151,7 @@ def issued_items_spec() -> Spec:
         out = _range(I.amount, s, "amount_min", "amount_max", parse_amount) + _range(I.issue_date, s, "date_from", "date_to", _date)
         if s.get("number"):
             out.append(I.check_number == s.get("number"))
-        if s.get("account"):
-            out.append(I.account_id.in_(_account_ids(s.get("account"))))
+        out += _accounts(I.account_id, s)
         if q := s.get("q"):
             amount = parse_amount(q)
             out.append(or_(I.check_number == q, I.payee_name.ilike(f"%{q}%"), *([I.amount == amount] if amount is not None else [])))
@@ -152,8 +173,7 @@ def paid_items_spec() -> Spec:
                + _range(P.presented_date, s, "date_from", "date_to", _date))
         if s.get("number"):
             out.append(P.check_number == s.get("number"))
-        if s.get("account"):
-            out.append(P.account_id.in_(_account_ids(s.get("account"))))
+        out += _accounts(P.account_id, s)
         if q := s.get("q"):
             amount = parse_amount(q)
             out.append(or_(P.check_number == q, *([P.presented_amount == amount] if amount is not None else [])))
@@ -175,8 +195,7 @@ def ach_transactions_spec() -> Spec:
         out = _range(T.amount, s, "amount_min", "amount_max", parse_amount) + _range(T.effective_date, s, "date_from", "date_to", _date)
         if s.get("number"):
             out.append(T.trace_number == s.get("number"))
-        if s.get("account"):
-            out.append(T.account_id.in_(_account_ids(s.get("account"))))
+        out += _accounts(T.account_id, s)
         if q := s.get("q"):
             amount = parse_amount(q)
             out.append(or_(T.trace_number == q, T.originator_id == q, T.originator_name.ilike(f"%{q}%"),
@@ -209,9 +228,8 @@ def exceptions_spec() -> Spec:
                                                         ("date_from", "date_to", _date, P.presented_date, T.effective_date)):
             checks += _range(check_col, s, low, high, parse_fn)
             ach += _range(ach_col, s, low, high, parse_fn)
-        if s.get("account"):
-            checks.append(P.account_id.in_(_account_ids(s.get("account"))))
-            ach.append(T.account_id.in_(_account_ids(s.get("account"))))
+        checks += _accounts(P.account_id, s)
+        ach += _accounts(T.account_id, s)
         if q := s.get("q"):
             amount = parse_amount(q)
             checks.append(or_(P.check_number == q, *([P.presented_amount == amount] if amount is not None else [])))
@@ -263,6 +281,11 @@ def page_or_export(*, request: Request, db, ctx, search: Search, spec: Spec, pag
     from openclear.web.pagination import paginate
 
     where, order = spec.where(search), spec.order_by(search)
+    if search.account_ids:
+        from openclear.repositories.account_repo import AccountRepository
+
+        accounts = AccountRepository(db, ctx.tenant_id, ctx.customer_id).get_many(search.account_ids)
+        search.account_label = ", ".join(sorted(a.account_number for a in accounts))
     if request.query_params.get("export") == "csv":
         from openclear.services import audit_log_service
 
@@ -276,3 +299,24 @@ def page_or_export(*, request: Request, db, ctx, search: Search, spec: Spec, pag
         return Response(to_csv(rows, spec.export_columns), media_type="text/csv; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{list_name}.csv"'})
     return paginate(page=page, count_fn=lambda: count(where=where), list_fn=lambda **kw: fetch(where=where, order_by=order, **kw))
+
+
+def resolve_and_redirect(form, db, ctx) -> str:
+    """The list form's POST (/ui/list-search): the same filters as a query string for the list,
+    with an account number typed turned into the ids of the accounts it matches, within what
+    the person may see. Returns where to go."""
+    from openclear.domain.account import Account
+    from openclear.repositories.account_repo import AccountRepository
+
+    target = str(form.get("list") or "")
+    if target not in LISTS:
+        target = LISTS[0]
+    query = [(k, str(v).strip()[:100]) for k, v in form.multi_items()
+             if k not in ("list", "account", "account_id", "csrf_token") and str(v).strip()]
+    number = str(form.get("account") or "").strip()[:40]
+    if number:
+        repo = AccountRepository(db, ctx.tenant_id, ctx.customer_id)
+        matches = repo.list(where=[or_(Account.account_number == number, Account.account_number.ilike(f"%{number}%"))],
+                            order_by=[Account.account_number], limit=MAX_ACCOUNTS)
+        query += [("account_id", str(a.id)) for a in matches] or [("account_id", "none")]
+    return f"{target}?{urlencode(query)}" if query else target

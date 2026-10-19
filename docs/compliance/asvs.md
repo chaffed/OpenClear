@@ -11,8 +11,8 @@ OpenClear measured against the [OWASP Application Security Verification Standard
 
 | Status | Requirements |
 |---|---|
-| Met | 213 |
-| Partly | 9 |
+| Met | 214 |
+| Partly | 8 |
 | Not met | 5 |
 | Service provider's (CUEC) | 15 |
 | Not applicable | 41 |
@@ -335,7 +335,7 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 |---|---|---|---|---|
 | **V14.1.1** Verify that all sensitive data created and processed by the application has been identified and classified into protection levels. This includes data that is… | 2 | Met | `docs/security/risk-profile.md` |  |
 | **V14.1.2** Verify that all sensitive data protection levels have a documented set of protection requirements. This must include (but not be limited to) requirements rel… | 2 | Met | `docs/security/risk-profile.md` |  |
-| **V14.2.1** Verify that sensitive data is only sent to the server in the HTTP message body or header fields, and that the URL and query string do not contain sensitive i… | 1 | Partly | `src/openclear/web/routers/` | Account numbers can appear in list filters and search URLs; fixed in 1.25 (OW-D35). |
+| **V14.2.1** Verify that sensitive data is only sent to the server in the HTTP message body or header fields, and that the URL and query string do not contain sensitive i… | 1 | Met | `src/openclear/web/list_search.py`, `docs/guides/edge.md`, `test_search_finds_items_on_any_page` | Searches are posted; list filters carry account ids, not numbers; the access log records paths only, and the edge guide says to drop query strings (OW-D35). |
 | **V14.2.2** Verify that the application prevents sensitive data from being cached in server components, such as load balancers and application caches, or ensures that th… | 2 | Met | `src/openclear/web/security_headers.py` |  |
 | **V14.2.3** Verify that defined sensitive data is not sent to untrusted parties (e.g., user trackers) to prevent unwanted collection of data outside of the application's… | 2 | Met | `src/openclear/web/security_headers.py` |  |
 | **V14.2.4** Verify that controls around sensitive data related to encryption, integrity verification, retention, how the data is to be logged, access controls around sen… | 2 | Met | `src/openclear/web/security_headers.py` |  |

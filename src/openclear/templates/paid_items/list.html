@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
-{% import "_macros/list_search.html" as ls %}
+{% import "_macros/list_search.html" as ls with context %}
 {% from "_macros/icon.html" import icon %}
 {% block title %}Paid Items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About paid items{% endblock %}

@@ -60,7 +60,8 @@
       {# While a password must be replaced (too short or breached, auth/login_service.py), every other page just
          redirects back to the change form (web/deps.py), so don't offer links to them. #}
       {% if not ctx.must_change_password %}
-      <form method="get" action="/ui/search" role="search" class="nav-search">
+      <form method="post" action="/ui/search" role="search" class="nav-search">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label class="visually-hidden" for="nav-search-input">Search checks, ACH and exceptions</label>
         <input id="nav-search-input" type="search" name="q" placeholder="Search…" autocomplete="off">
       </form>
