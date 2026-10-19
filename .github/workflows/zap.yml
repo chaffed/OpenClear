@@ -66,7 +66,8 @@ jobs:
         if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && hashFiles('zap-summary.md') != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh issue create --title "ZAP active scan: findings ($(date -u +%Y-%m-%d))" --body-file zap-summary.md --label needs-triage
+        run: |
+          gh issue create --title "ZAP active scan: findings ($(date -u +%Y-%m-%d))" --body-file zap-summary.md --label needs-triage
 
   crs:
     # The WAF exclusions in docs/guides/crs/openclear-exclusions.conf, against the real OWASP Core
