@@ -92,3 +92,13 @@ def test_footer_contact_line_disappears_after_clearing_all_fields(client, db_ses
     # now-empty contact line does.
     assert "app-footer" in resp.text
     assert "help@footer-clear.example.com" not in resp.text
+
+
+def test_the_license_page_without_the_file(client, monkeypatch, tmp_path):
+    """The Docker image once left LICENSE out and the page answered 500 (found by ZAP, 1.25)."""
+    from openclear.web.routers import license as license_router
+
+    assert "GNU AFFERO GENERAL PUBLIC LICENSE" in client.get("/ui/license").text
+    monkeypatch.setattr(license_router, "_LICENSE_PATH", tmp_path / "missing")
+    page = client.get("/ui/license")
+    assert page.status_code == 200 and "gnu.org/licenses/agpl-3.0.html" in page.text

@@ -18,4 +18,6 @@ _LICENSE_PATH = Path(__file__).resolve().parents[4] / "LICENSE"
 
 @router.get("/license")
 def view_license(request: Request) -> HTMLResponse:
-    return render_template(request, "license.html", ctx=None, license_text=_LICENSE_PATH.read_text())
+    # Found missing from the Docker image by the first ZAP scan (1.25): never a 500 for it.
+    license_text = _LICENSE_PATH.read_text() if _LICENSE_PATH.is_file() else None
+    return render_template(request, "license.html", ctx=None, license_text=license_text)

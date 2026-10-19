@@ -62,6 +62,8 @@ COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 COPY src/ src/
 COPY migrations/ migrations/
 COPY alembic.ini .
+# The license page (web/routers/license.py) serves this file.
+COPY LICENSE .
 # dev_keys/ is already public (checked into this repo's git history) -- copying it in
 # doesn't newly expose anything, and it's what lets `docker compose up` (see
 # docker-compose.yml, a local Postgres-testing convenience, not this image's normal

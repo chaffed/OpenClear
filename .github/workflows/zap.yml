@@ -43,6 +43,9 @@ jobs:
           docker run -d --name openclear-zap --network zapnet -p 8000:8000 \
             -e OPENCLEAR_ENVIRONMENT=development -e OPENCLEAR_DATABASE_URL=sqlite:////tmp/zap.db openclear:zap
           for i in $(seq 1 60); do curl -fs http://localhost:8000/health && break; sleep 2; done
+          # Pages that read files from the image (the license once wasn't copied in).
+          curl -fs -o /dev/null http://localhost:8000/ui/license
+          curl -fs -o /dev/null http://localhost:8000/ui/login
 
       - name: Seed the scanned bank
         run: |
