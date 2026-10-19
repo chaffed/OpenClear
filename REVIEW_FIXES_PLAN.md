@@ -100,3 +100,14 @@ checks run (CLAUDE.md). Before merging: the three suites, Bandit and the depende
 - 2026-10-19: Plan written from the code review of `v1.25.0...HEAD` (Standards and Spec axes).
   Findings F1–F15 checked against the code; F10 confirmed by reading
   `tests/test_compliance/test_attestation_files.py:69`.
+- 2026-10-19: RF1–RF5 built on `rf-review-fixes`. RF1: `see_other(path, **query)`; 300 call
+  sites rewritten by an AST script (the 217 that quoted a message, then the 81 that wrote one
+  pre-encoded, so there's one way to write a redirect), the eight wrappers gone, `safe_next_path`
+  on `is_local`, SAML sign-out split, the stronger guard test; 26 tests that expected `%20` or an
+  unencoded `next=/ui/...` updated. Every source file still parses on Python 3.11. RF2:
+  `webauthn_service.refused`; `looks_like_email` in `services/email_address.py` (not `domain/`,
+  which holds only models; RF-D7 amended). RF3: the API test as a customer's user; every area;
+  the symlink test, which fails with `LocalStorage`'s resolve check switched off. RF4: drafts
+  counted (checked against GitHub's API); CLAUDE.md release steps. RF5: CS-D7's as-built note,
+  the OW5 row, `.github/rulesets/main.json` refreshed from GitHub (two pull-request defaults it
+  had added) and committed; CHANGELOG "Unreleased".
