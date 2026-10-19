@@ -48,6 +48,9 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - A test that proves an ASVS 5.0 requirement gets `@pytest.mark.asvs("6.2.12")`. A requirement's
   status changes in `docs/security/asvs-status.csv`; then `python scripts/asvs_crosswalk.py`
   (a test fails on a stale `docs/compliance/asvs.md` or evidence that doesn't exist).
+- A new dependency needs a reason, in the commit and the PR (`.github/pull_request_template.md`
+  has the security checklist): what it's for, why not the standard library or one we already
+  have, and that it's maintained.
 - A new trust boundary, outside system or data flow: update `threat_model/openclear.py`, then
   `python scripts/render_threat_model.py` (a test fails on a stale page).
 - New tables and columns go in the data dictionary (`templates/docs/admin/data-dictionary.html`);
@@ -55,11 +58,13 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 
 ## Release (version X.Y.Z)
 1. Bump `pyproject.toml`; add `"X.Y.Z": "<head revision>"` to `migrations/version_history.py`;
-   rename CHANGELOG "Unreleased" to `## X.Y.Z — <date>`; note it in `MASTER_PLAN.md`.
+   rename CHANGELOG "Unreleased" to `## X.Y.Z — <date>`; note it in `MASTER_PLAN.md`;
+   `python scripts/release_metrics.py X.Y.Z` (rewrites `docs/compliance/security-metrics.md`).
 2. Fast-forward `main`, push, wait for CI: `gh run watch <id> --exit-status`.
 3. `git tag -a vX.Y.Z` and push it; `gh api repos/chaffed/OpenClear/releases --input <json>`
-   (`tag_name`, `name`, `body` from the CHANGELOG section). Publishing the release attaches
-   the SBOM (`.github/workflows/release.yml`); check it's there.
+   (`tag_name`, `name`, `body` from the CHANGELOG section followed by
+   `python scripts/release_metrics.py X.Y.Z --notes`). Publishing the release attaches the SBOM
+   (`.github/workflows/release.yml`); check it's there.
 
 ## Sandbox deploy (openclear-sandbox on Fly; the only hosted instance)
 Pushing a locally built image fails, so use Fly's remote builder from a clean copy:

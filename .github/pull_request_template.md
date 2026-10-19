@@ -8,6 +8,10 @@
 - [ ] `CHANGELOG.md` under "Unreleased", for anything a user would notice.
 - [ ] New tables or columns in the data dictionary; a new table with `tenant_id` has its RLS policy.
 - [ ] A new outside system, trust boundary or data flow is in `threat_model/openclear.py`.
+- [ ] New security behaviour has a test marked `@pytest.mark.asvs("x.y.z")`, and its status in `docs/security/asvs-status.csv`.
+- [ ] A new dependency: what it's for, why not one we already have or the standard library, and that it's maintained:
+
+<!-- New dependencies, one line each, or "none". -->
 
 ## Security (OWASP WSTG)
 

@@ -44,6 +44,7 @@ PAGES = [
     ("docs/compliance/nacha.md", "compliance/nacha.md", "Nacha Operating Rules"),
     ("docs/compliance/sr-11-7.md", "compliance/sr-11-7.md", "Model risk (SR 11-7)"),
     ("docs/compliance/tprm.md", "compliance/tprm.md", "Third-party risk"),
+    ("docs/compliance/security-metrics.md", "compliance/security-metrics.md", "Security metrics"),
     ("docs/compliance/controls.md", "compliance/controls.md", "OpenClear's controls"),
     ("docs/compliance/cuecs.md", "compliance/cuecs.md", "User entity controls (CUECs)"),
     ("docs/compliance/csf.md", "compliance/csf.md", "NIST CSF 2.0"),
@@ -80,9 +81,11 @@ NAV = """nav:
       - Nacha Operating Rules: compliance/nacha.md
       - Model risk (SR 11-7): compliance/sr-11-7.md
       - Third-party risk: compliance/tprm.md
+      - Security metrics: compliance/security-metrics.md
       - OpenClear's controls: compliance/controls.md
       - User entity controls (CUECs): compliance/cuecs.md
       - NIST CSF 2.0: compliance/csf.md
+      - OWASP ASVS 5.0: compliance/asvs.md
   - Reference:
       - Architecture: reference/architecture.md
       - Changelog: reference/changelog.md

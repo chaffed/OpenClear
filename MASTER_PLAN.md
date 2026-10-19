@@ -9,7 +9,7 @@ area is tested as few times as possible:
 Each plan keeps its own phases, decisions and progress log. This plan says which of their
 waves are built together, in what order, and how each is tested.
 
-**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md); M9 (1.14.0) adds control-status events, per-account access, key-pair API clients and Azure storage. Waiting for a first client (who'd also fund them): user-testing sessions, a real Cloudflare zone to confirm M7, and publishing the SDKs to package registries.**
+**Status: complete. Every stage is built and released (1.10.0 M1–M3, 1.11.0 M4–M5, 1.12.0 M6–M7); 1.13.0 added reporting through each bank's own BI platform (docs/guides/bi.md); M9 (1.14.0) adds control-status events, per-account access, key-pair API clients and Azure storage. Waiting for a first client (who'd also fund them): user-testing sessions, a real Cloudflare zone to confirm M7, publishing the SDKs to package registries, and an independent penetration test (OWASP_PLAN.md OW-D2; its report then joins the TPRM pack). Due by date: the OWASP SAMM re-score by 2027-10-17 (docs/security/samm.md).**
 
 ## How testing is kept down
 

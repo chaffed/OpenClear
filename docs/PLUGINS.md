@@ -189,6 +189,44 @@ A skipped plugin leaves nothing registered. It's reported under Settings → Plu
 
 Test a plugin against OpenClear's own test fixtures. [tests/test_auth/test_plugins_bank_choices.py](../tests/test_auth/test_plugins_bank_choices.py) does this for the example plugin. It loads the plugin through a fake entry point, uploads a file, and reads a decision file. [tests/test_web/test_plugin_slots.py](../tests/test_web/test_plugin_slots.py) does the same for its page additions, including a slot that fails, one that's slow and one that returns unsafe HTML.
 
+## Writing a safe plugin
+
+A plugin runs with OpenClear's own access, so a mistake in it is a mistake in OpenClear. The
+rules OpenClear's own code follows (the [ASVS crosswalk](compliance/asvs.md) shows where each is
+proven) apply to it:
+
+- **Stay inside the bank and the person.** Read through the session you're given
+  (`context.session`, `Depends(database)`): it's bound to the person's bank and, for a customer's
+  person, their customer and accounts, and on Postgres row-level security enforces that. Never
+  open a session of your own, and never look up a row by an id from a URL or form without that
+  scope (fetch it through the session, or `get_exception`), or one bank's person can read another's.
+- **Check permissions and CSRF on your routes.** Every route takes
+  `require_web_permission(...)` for the narrowest permission that fits, and every form post
+  `Depends(verify_csrf)`. A route that changes something calls `record_action` before it commits,
+  so it's in the bank's action log.
+- **Keep sensitive values out of URLs and logs.** No account numbers, tokens or secrets in a
+  path or query string (they reach access logs and browser history), and none in log lines or
+  `record_action` summaries. Mask account numbers you show to the last four digits where the full
+  number isn't needed.
+- **Keep secrets encrypted.** A vendor's API key or password goes in the database through
+  `openclear.auth.crypto.encrypt_secret`, never in plain text, and is shown to no one after it's set.
+- **Call outside services safely.** Use `openclear.auth.outbound_http.public_only_client(timeout=...)`
+  for HTTP: it refuses private and internal addresses (so a URL a bank types can't reach your
+  network) and checks TLS; always pass a timeout. Treat what comes back as untrusted.
+- **Parse files defensively.** An import format gets a file someone uploaded: limit how much you
+  read, refuse what you can't parse rather than guessing, and parse XML with external entities
+  and network access turned off. OpenClear has already checked the upload for malware when a
+  scanner is configured; a file your plugin fetches itself, check with
+  `openclear.services.malware_service.check_bytes`.
+- **Show only cleaned HTML.** A slot's HTML is cleaned for you; a page of your own
+  (`render_page`) escapes what you put in it only if you build it with Jinja or `html.escape`, so
+  do. No inline scripts: the Content Security Policy blocks them.
+- **Pin your dependencies.** Publish your plugin with its own dependencies pinned, and keep them
+  current: the operator's installation inherits their vulnerabilities.
+- **Test the refusals.** Besides what your plugin does, test that another bank's person, a
+  customer's person and someone without the permission are refused, as
+  [test_plugin_slots.py](../tests/test_web/test_plugin_slots.py) does.
+
 ## Trust and licensing
 
 A plugin runs inside OpenClear with its full access to every bank's data, so only install plugins you trust as much as OpenClear itself.

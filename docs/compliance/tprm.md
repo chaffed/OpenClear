@@ -30,8 +30,10 @@ verify it.
 | What it does | Positive pay for checks and ACH. It matches presented items against what the bank's customers issued or authorized, raises exceptions, and records pay/return decisions with optional machine-learning recommendations. |
 | Source and licence | Open source, AGPL-3.0. The full source, history and tests are public. |
 | Releases and changes | Versioned releases with a changelog, database migrations that upgrade and downgrade, and an API that changes only additively. |
-| Testing before release | About 1,400 automated tests on SQLite, Postgres and Linux. |
-| Security review | `SECURITY_REVIEW.md`: findings and their fixes. |
+| Testing before release | About 2,000 automated tests on SQLite, Postgres and Linux; CodeQL, Bandit, gitleaks, `pip-audit` and an OWASP ZAP baseline scan on every change; a weekly ZAP active scan. |
+| Security review | Measured against OWASP ASVS 5.0 ([crosswalk](asvs.md)); a [threat model](../security/threat-model.md); `SECURITY_REVIEW.md` and published advisories with their fixes. An independent penetration test is planned. |
+| Security metrics | [Each release's](security-metrics.md): ASVS coverage, advisories fixed, dependency age, and its SBOM (CycloneDX). |
+| Vulnerability reports | [SECURITY.md](../../SECURITY.md): private reporting, and fix time frames by severity. |
 
 ### Information security
 
@@ -50,7 +52,7 @@ verify it.
 |---|---|
 | Data held | Accounts and customers; issued checks, presented items and check images; ACH transactions and authorizations; exceptions and decisions; users and memberships; the action log. |
 | Where it's held | Wherever the bank or its host runs the database and file storage. OpenClear sends nothing to its authors. |
-| Optional outside services | Each is off unless configured: email and SMS providers for notifications; cloud OCR for check images; S3-compatible storage; identity providers for SSO; webhooks to the bank's own systems. Each one the bank turns on is a relationship to assess. |
+| Optional outside services | Each is off unless configured: email and SMS providers for notifications; cloud OCR for check images; S3-compatible storage; identity providers for SSO; webhooks to the bank's own systems; malware scanning (ClamAV, and VirusTotal, which is sent only file hashes). Each one the bank turns on is a relationship to assess ([all of them](../security/data-and-limits.md#outside-connections)). |
 | Model data sharing | The shared scoring model learns from labelled decisions pooled across banks. Who acknowledged the pooling disclosure, and when, is recorded. A bank can move to a bank-only model trained on its own decisions (after its first 90 days). |
 
 ### Resilience, incidents and exit
@@ -68,4 +70,4 @@ verify it.
 - Turn on the daily anomaly-capture test.
 - Take an evidence export each quarter, or each exam cycle, and keep it with the bank's
   third-party file. It is signed, so it can be checked later.
-- Review the changelog before each upgrade.
+- Review the changelog, and the release's security metrics, before each upgrade.

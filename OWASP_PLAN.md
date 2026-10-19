@@ -416,3 +416,10 @@ whichever release follows.
   WSTG checklist in the PR template. The first ZAP runs (local active, sandbox passive) found
   the license page's 500 in the Docker image, and a CSRF token ZAP couldn't see through `form=`;
   `style-src 'unsafe-inline'` waived with its reason. ASVS 14.2.1 Met; 5.4.3 evidence added.
+- 2026-10-19: 1.25.0 released (OW4). OW5 built on `ow5`: `scripts/release_metrics.py` (ASVS
+  coverage, advisories fixed, dependency age, SBOM) writing `docs/compliance/security-metrics.md`
+  for the TPRM pack and a section for each release's notes, in CLAUDE.md's release steps; the PR
+  template's asvs-mark and new-dependency lines, with the CLAUDE.md convention; "Writing a safe
+  plugin" in `docs/PLUGINS.md`; the penetration test and the SAMM re-score (by 2027-10-17) on
+  MASTER_PLAN.md's waiting list; the TPRM pack updated (testing, ASVS, metrics, SECURITY.md,
+  malware scanning). The plan is complete.
