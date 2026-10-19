@@ -83,3 +83,8 @@ After CS3 the open count should be zero, with every dismissal explained in its a
 
 - 2026-10-19: Plan written from the 157 open alerts. The path traversal (CS0) found and
   reproduced while reviewing `py/path-injection`.
+- 2026-10-19: CS0 built on `cs0`: `storage.safe_key` on every write (all backends, plugins
+  included) and a resolve-and-contain check in `LocalStorage`; `storage.safe_name` for the
+  attestation and bulk-upload names; tests through the web as a customer's user and through the
+  API, which fail on the old code. Draft advisory GHSA-55j4-4cj6-8j2f (high, CWE-22, 1.19.0 to
+  1.25.0, fixed in 1.25.1).

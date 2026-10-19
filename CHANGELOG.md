@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Security (high, [GHSA-55j4-4cj6-8j2f](https://github.com/chaffed/OpenClear/security/advisories/GHSA-55j4-4cj6-8j2f)):**
+  an attestation's evidence file whose name contained `../` was written outside the storage
+  folder, with local file storage. Anyone who may attest could do it, including a business
+  customer's administrator. Storage now refuses any key that isn't a plain path inside its area,
+  for every kind of file, and uploaded names keep only their last part. Affects 1.19.0 to 1.25.0.
+
 ## 1.25.0 — 2026-10-19
 
 Files and verification (OWASP_PLAN.md OW4):

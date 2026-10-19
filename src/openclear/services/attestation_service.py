@@ -173,7 +173,9 @@ def store_files(tenant_id: uuid.UUID, uploads: list[tuple[str, bytes]]) -> list[
 
     files = []
     for name, data in uploads:
-        name = (name or "evidence")[-200:]
+        # Only the name's last part, in the key: a name with ../ once wrote outside the storage
+        # folder (CODE_SCANNING_PLAN.md CS0).
+        name = storage.safe_name(name, "evidence")
         ref = storage.put("audit_archives", f"{tenant_id}/attestations/{uuid.uuid4().hex}-{name}", data, read_only=True)
         files.append({"name": name, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data), "storage_ref": ref})
     return files
