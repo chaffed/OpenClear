@@ -89,3 +89,29 @@ def test_a_reset_link_works_under_rls(rls_client, db_session, tenant_factory, em
     done = rls_client.post(link, data={"csrf_token": rls_client.cookies.get("csrf_token"), "password": "A-much-better-passw0rd!",
                                        "password_confirm": "A-much-better-passw0rd!"}, follow_redirects=False)
     assert done.status_code == 303, done.text[:300]
+
+
+def test_an_email_change_link_works_under_rls(rls_client, db_session, tenant_factory):
+    """The confirmation page is signed out too: it binds to the bank that asked
+    (services/email_change_service.py::open_change), for the change's action-log entry."""
+    from openclear.domain.user import User
+
+    tenant, _account, users = tenant_factory.make(slug="rls-email-change")
+    viewer = users["viewer"]
+    membership = next(m for m in user_service.list_memberships_for_user(db_session, viewer.id)).membership
+
+    csrf = _web_login(rls_client, tenant.slug, users["admin"].email)
+    sent = rls_client.post(f"/ui/users/{membership.id}/email", data={"new_email": "viewer@renamed.example.com", "csrf_token": csrf},
+                           follow_redirects=False)
+    assert "flash=" in sent.headers["location"], sent.headers["location"]
+    db_session.expire_all()
+    note = db_session.execute(select(Notification).where(
+        Notification.notification_type == NotificationType.EMAIL_CHANGE_CONFIRM, Notification.recipient_user_id == viewer.id)).scalars().one()
+    link = re.search(r"(/ui/email-change/\S+)", note.body).group(1)
+
+    rls_client.cookies.clear()
+    rls_client.get(link)
+    done = rls_client.post(link, data={"csrf_token": rls_client.cookies.get("csrf_token")})
+    assert "Your address has changed" in done.text, done.text[:300]
+    db_session.expire_all()
+    assert db_session.get(User, viewer.id).email == "viewer@renamed.example.com"
