@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -15,6 +16,9 @@ from openclear.domain.user import User
 from openclear.domain.webauthn_challenge import WebauthnChallenge, WebauthnChallengePurpose
 from openclear.domain.webauthn_credential import WebauthnCredential
 from openclear.repositories.webauthn_credential_repo import WebauthnCredentialRepository
+
+
+logger = logging.getLogger(__name__)
 
 _CHALLENGE_TTL_MINUTES = 5
 
@@ -102,7 +106,9 @@ def complete_registration(
             expected_origin=settings.webauthn_origin,
         )
     except Exception as exc:  # webauthn raises its own exception hierarchy; normalize to WebauthnError
-        raise WebauthnError(f"Registration verification failed: {exc}") from exc
+        # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
+        logger.info("WebAuthn registration failed: %s", exc)
+        raise WebauthnError("Registration verification failed: the security key's response didn't check out. Try again.") from exc
 
     repo = WebauthnCredentialRepository(session, tenant_id)
     credential_row = WebauthnCredential(
@@ -185,7 +191,9 @@ def _complete_authentication(
             credential_current_sign_count=credential_row.sign_count,
         )
     except Exception as exc:
-        raise WebauthnError(f"Authentication verification failed: {exc}") from exc
+        # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
+        logger.info("WebAuthn authentication failed: %s", exc)
+        raise WebauthnError("Authentication verification failed: the security key's response didn't check out. Try again.") from exc
 
     # Sign-count regression is the standard signal a credential was cloned — reject it
     # rather than silently accepting, even though we already verified the signature.

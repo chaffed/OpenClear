@@ -32,10 +32,11 @@ def note_sign_in(db: Session, request: Request, response, user: User, *, bank_na
     it was new."""
     from openclear.services import notification_service, session_service
     from openclear.web import request_context
-    from openclear.web.security import _secure_cookies, cookie_name, read_cookie
+    from openclear.web.security import _secure_cookies, cookie_name, read_cookie, token_shaped
 
     now = datetime.now(timezone.utc)
-    token = read_cookie(request, COOKIE) or secrets.token_urlsafe(32)
+    token = read_cookie(request, COOKIE)
+    token = token if token_shaped(token) else secrets.token_urlsafe(32)
     device_hash = _hash(token)
     context = request_context.current()
     user_agent = (context.user_agent if context else None) or (request.headers.get("user-agent") or "")[:300] or None
