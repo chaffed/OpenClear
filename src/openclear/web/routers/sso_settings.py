@@ -4,7 +4,6 @@
 import secrets
 import uuid
 from dataclasses import dataclass
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -18,8 +17,8 @@ from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service, customer_service, customer_sign_on_service, security_group_service, sso_service
 from openclear.services.sso_service import SsoConnectionInput
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-sso"])
 
@@ -133,12 +132,6 @@ def list_bank_connections(
 
 # The bank's own email domains (OWASP_PLAN.md OW-D32): the customers' check, with no customer.
 
-def _domain_back(message: str, *, error: bool = False) -> RedirectResponse:
-    from urllib.parse import quote
-
-    return see_other(f"/ui/admin/sso?{'error' if error else 'flash'}=" + quote(message))
-
-
 def _domain_action(db: Session, ctx: TenantContext, action: str, summary: str) -> None:
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action=action, summary=summary,
                                      resource_type="tenant", resource_id=ctx.tenant_id)
@@ -151,10 +144,10 @@ def add_bank_domain(domain: str = Form(""), db: Session = Depends(get_db),
         row = customer_sign_on_service.add_domain(db, ctx.tenant_id, None, domain)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return _domain_back(str(exc), error=True)
+        return see_other("/ui/admin/sso", error=str(exc))
     _domain_action(db, ctx, "sso.domain_added", f"Added the email domain {row.domain}")
     db.commit()
-    return _domain_back(f"Added {row.domain}. Publish its TXT record, then press Verify.")
+    return see_other("/ui/admin/sso", flash=f"Added {row.domain}. Publish its TXT record, then press Verify.")
 
 
 @router.post("/ui/admin/sso/domains/move")
@@ -174,9 +167,9 @@ def move_bank_domain(request: Request, from_domain: str = Form(""), to_domain: s
             summary=f"Move everyone at {payload['from_domain']} to {payload['to_domain']}")
     except ValueError as exc:
         db.rollback()
-        return _domain_back(str(exc), error=True)
+        return see_other("/ui/admin/sso", error=str(exc))
     db.commit()
-    return _domain_back(outcome.summary if outcome.applied else waiting_message(outcome))
+    return see_other("/ui/admin/sso", flash=outcome.summary if outcome.applied else waiting_message(outcome))
 
 
 @router.post("/ui/admin/sso/domains/{domain_id}/verify")
@@ -186,10 +179,10 @@ def verify_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
         row = customer_sign_on_service.verify_domain(db, ctx.tenant_id, None, domain_id)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return _domain_back(str(exc), error=True)
+        return see_other("/ui/admin/sso", error=str(exc))
     _domain_action(db, ctx, "sso.domain_verified", f"Verified the email domain {row.domain}")
     db.commit()
-    return _domain_back(f"{row.domain} is verified.")
+    return see_other("/ui/admin/sso", flash=f"{row.domain} is verified.")
 
 
 @router.post("/ui/admin/sso/domains/{domain_id}/delete")
@@ -199,10 +192,10 @@ def remove_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
         name = customer_sign_on_service.remove_domain(db, ctx.tenant_id, None, domain_id)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return _domain_back(str(exc), error=True)
+        return see_other("/ui/admin/sso", error=str(exc))
     _domain_action(db, ctx, "sso.domain_removed", f"Removed the email domain {name}")
     db.commit()
-    return _domain_back(f"Removed {name}.")
+    return see_other("/ui/admin/sso", flash=f"Removed {name}.")
 
 
 @router.get("/ui/admin/sso/new")
@@ -265,14 +258,14 @@ def create_bank_connection(
         outcome, error = _sso_change(db, ctx, "sso_connection.activate", {"connection_id": str(connection.id)},
                                      summary=f"Turn on the new sign-on connection {connection.display_name}")
         if error:
-            return see_other(f"/ui/admin/sso?error={quote(error)}")
+            return see_other("/ui/admin/sso", error=error)
         note = f"Connection created, off for now. {waiting_message(outcome)}"
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.create",
         summary=f"Added SSO connection {connection.display_name!r}", resource_type="sso_connection", resource_id=connection.id,
     )
     db.commit()
-    return see_other(f"/ui/admin/sso/{connection.id}/edit?flash={quote(note)}")
+    return see_other(f"/ui/admin/sso/{connection.id}/edit", flash=note)
 
 
 @router.post("/ui/admin/sso/password-login")
@@ -292,15 +285,15 @@ def set_bank_password_login(
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/admin/sso?error={quote(str(exc))}")
+        return see_other("/ui/admin/sso", error=str(exc))
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/admin/sso?flash={quote(waiting_message(outcome))}")
+        return see_other("/ui/admin/sso", flash=waiting_message(outcome))
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso.password_login",
                                         summary=outcome.summary, resource_type="tenant", resource_id=ctx.tenant_id)
     db.commit()
-    return see_other("/ui/admin/sso?flash=Updated.")
+    return see_other("/ui/admin/sso", flash="Updated.")
 
 
 @router.get("/ui/admin/sso/{connection_id}/edit")
@@ -339,20 +332,20 @@ def update_bank_connection(
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except (UnsafeUrlError, ValueError) as exc:
         savepoint.rollback()
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?error=" + quote(str(exc)))
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=str(exc))
     savepoint.rollback()
     outcome, error = _sso_change(db, ctx, "sso_connection.update", _input_payload(data, connection_id))
     if error:
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?error=" + quote(error))
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=error)
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?flash={quote(waiting_message(outcome))}")
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", flash=waiting_message(outcome))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.update",
         summary="Updated SSO connection", resource_type="sso_connection", resource_id=connection_id,
     )
     db.commit()
-    return see_other(f"/ui/admin/sso/{connection_id}/edit?flash=Saved.")
+    return see_other(f"/ui/admin/sso/{connection_id}/edit", flash="Saved.")
 
 
 @router.post("/ui/admin/sso/{connection_id}/deactivate")
@@ -363,7 +356,7 @@ def deactivate_bank_connection(
     if sso_service.deactivate_connection(db, ctx.tenant_id, connection_id) is None:
         raise WebNotFound()
     db.commit()
-    return see_other("/ui/admin/sso?flash=Connection+deactivated.")
+    return see_other("/ui/admin/sso", flash="Connection deactivated.")
 
 
 @router.post("/ui/admin/sso/{connection_id}/reactivate")
@@ -379,9 +372,9 @@ def reactivate_bank_connection(
     outcome, error = _sso_change(db, ctx, "sso_connection.activate", {"connection_id": str(connection_id)},
                                  summary=f"Turn on the sign-on connection {connection.display_name}")
     if error:
-        return see_other(f"/ui/admin/sso?error={quote(error)}")
+        return see_other("/ui/admin/sso", error=error)
     db.commit()
-    return see_other(f"/ui/admin/sso?flash={quote(waiting_message(outcome) if outcome.waiting else 'Connection reactivated.')}")
+    return see_other("/ui/admin/sso", flash=waiting_message(outcome) if outcome.waiting else 'Connection reactivated.')
 
 
 @router.post("/ui/admin/sso/{connection_id}/mappings")
@@ -401,14 +394,14 @@ def add_bank_group_mapping(
                                                                "security_group_id": str(security_group_id), "priority": priority},
                                  summary=f"Give people in {external_group.strip()} the group {group.name if group else 'chosen'}")
     if error:
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?error={quote(error)}")
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=error)
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?flash={quote(waiting_message(outcome))}")
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", flash=waiting_message(outcome))
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.mapping",
                                     summary=outcome.summary, resource_type="sso_connection", resource_id=connection_id)
     db.commit()
-    return see_other(f"/ui/admin/sso/{connection_id}/edit?flash=Mapping+added.")
+    return see_other(f"/ui/admin/sso/{connection_id}/edit", flash="Mapping added.")
 
 
 @router.post("/ui/admin/sso/{connection_id}/mappings/{mapping_id}/delete")
@@ -418,7 +411,7 @@ def remove_bank_group_mapping(
 ) -> RedirectResponse:
     sso_service.remove_group_mapping(db, ctx.tenant_id, mapping_id)
     db.commit()
-    return see_other(f"/ui/admin/sso/{connection_id}/edit?flash=Mapping+removed.")
+    return see_other(f"/ui/admin/sso/{connection_id}/edit", flash="Mapping removed.")
 
 
 # --- Per-customer: /ui/customers/{customer_id}/sso/* (customer:manage) ---
@@ -483,7 +476,7 @@ def create_customer_connection(
         resource_type="sso_connection", resource_id=connection.id,
     )
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso/{connection.id}/edit?flash=Connection+created.+Add+a+group+mapping+below.")
+    return see_other(f"/ui/customers/{customer_id}/sso/{connection.id}/edit", flash="Connection created. Add a group mapping below.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/password-login")
@@ -499,9 +492,9 @@ def set_customer_password_login(
         sso_service.set_customer_password_login_enabled(db, ctx.tenant_id, customer_id, enabled=not require_sso)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso?error={quote(str(exc))}")
+        return see_other(f"/ui/customers/{customer_id}/sso", error=str(exc))
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso?flash=Updated.")
+    return see_other(f"/ui/customers/{customer_id}/sso", flash="Updated.")
 
 
 @router.get("/ui/customers/{customer_id}/sso/{connection_id}/edit")
@@ -541,13 +534,13 @@ def update_customer_connection(
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except UnsafeUrlError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?error=" + quote(str(exc)))
+        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=str(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.update",
         summary=f"Updated SSO connection for customer {customer.name}", resource_type="sso_connection", resource_id=connection_id,
     )
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=Saved.")
+    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="Saved.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/deactivate")
@@ -560,7 +553,7 @@ def deactivate_customer_connection(
     if connection is None or connection.customer_id != customer_id:
         raise WebNotFound()
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso?flash=Connection+deactivated.")
+    return see_other(f"/ui/customers/{customer_id}/sso", flash="Connection deactivated.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/reactivate")
@@ -573,7 +566,7 @@ def reactivate_customer_connection(
     if connection is None or connection.customer_id != customer_id:
         raise WebNotFound()
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso?flash=Connection+reactivated.")
+    return see_other(f"/ui/customers/{customer_id}/sso", flash="Connection reactivated.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/mappings")
@@ -594,9 +587,9 @@ def add_customer_group_mapping(
         )
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?error={quote(str(exc))}")
+        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=str(exc))
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=Mapping+added.")
+    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="Mapping added.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/mappings/{mapping_id}/delete")
@@ -607,7 +600,7 @@ def remove_customer_group_mapping(
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
     sso_service.remove_group_mapping(db, ctx.tenant_id, mapping_id)
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=Mapping+removed.")
+    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="Mapping removed.")
 
 
 # --- SCIM tokens (services/scim_service.py) ---
@@ -660,7 +653,7 @@ def generate_bank_scim_token(
     outcome, error = _sso_change(db, ctx, "scim_token.set", {"connection_id": str(connection.id), "token_hash": scim_service._hash(token)},
                                  summary=f"Let a directory provision people through {connection.display_name}")
     if error:
-        return see_other(f"/ui/admin/sso/{connection_id}/edit?error={quote(error)}")
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=error)
     db.commit()
     return _scim_page(request, db, ctx, connection, "/ui/admin/sso", token, waiting=outcome.change)
 
@@ -674,7 +667,7 @@ def revoke_bank_scim_token(
     if connection is None or connection.customer_id is not None:
         raise WebNotFound()
     _scim_change(db, ctx, connection, issue=False)
-    return see_other(f"/ui/admin/sso/{connection_id}/edit?flash=SCIM+turned+off.")
+    return see_other(f"/ui/admin/sso/{connection_id}/edit", flash="SCIM turned off.")
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/scim-token")
@@ -700,4 +693,4 @@ def revoke_customer_scim_token(
     if connection is None or connection.customer_id != customer_id:
         raise WebNotFound()
     _scim_change(db, ctx, connection, issue=False)
-    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit?flash=SCIM+turned+off.")
+    return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="SCIM turned off.")

@@ -126,7 +126,7 @@ def test_the_pages(client, db_session, tenant_factory):
     db_session.expire_all()
     manual = db_session.execute(select(CuecAttestation).where(CuecAttestation.cuec_id == "B-RA-3-01")).scalar_one()
     assert manual.files[0]["name"] == "minutes.pdf" and manual.status == "prepared"
-    assert "Say%20why" in client.post(f"/ui/compliance/attestations/{manual.id}/reject", data={"csrf_token": csrf, "reason": ""},
+    assert "Say+why" in client.post(f"/ui/compliance/attestations/{manual.id}/reject", data={"csrf_token": csrf, "reason": ""},
                                       follow_redirects=False).headers["location"]
     client.post(f"/ui/compliance/attestations/{manual.id}/accept", data={"csrf_token": csrf})
     signed = client.get(f"/ui/compliance/attestations/{manual.id}.json")

@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,8 +16,8 @@ from openclear.services import account_service, audit_log_service, issued_item_s
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/issued-items", tags=["web-issued-items"])
 
@@ -121,7 +120,7 @@ def create_issued_item(
             status_code=422,
         )
 
-    return see_other("/ui/issued-items?flash=Issued+item+created.")
+    return see_other("/ui/issued-items", flash="Issued item created.")
 
 
 # NOTE: /bulk must be registered before /{item_id} below — FastAPI matches path patterns
@@ -197,7 +196,7 @@ def void_issued_item(
     item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, reason, scoped_customer_id=ctx.customer_id)
     if item is None:
         db.commit()
-        return see_other(f"/ui/issued-items?error={quote('Issued item not found.')}")
+        return see_other("/ui/issued-items", error='Issued item not found.')
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -209,4 +208,4 @@ def void_issued_item(
         resource_id=item.id,
     )
     db.commit()
-    return see_other(f"/ui/issued-items/{item_id}?flash=Issued+item+voided.")
+    return see_other(f"/ui/issued-items/{item_id}", flash="Issued item voided.")

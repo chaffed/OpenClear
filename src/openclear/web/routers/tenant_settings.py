@@ -6,10 +6,9 @@ settings. Each setting has its own URL, /ui/settings/<key>: a plain page, or wit
 ?partial=1 just the form, which the panel shows in a modal (static/js/control-panel.js).
 Saving redirects to the panel with a message; an error shows the setting again with it."""
 
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -33,8 +32,8 @@ from openclear.services.tenant_service import (
 )
 from openclear.web import control_panel
 from openclear.web.deps import WebForbidden, get_web_context, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/settings", tags=["web-tenant-settings"])
 
@@ -74,7 +73,7 @@ def _saved(request: Request, message: str = "Settings updated.", key: str | None
     gets the message as JSON instead."""
     if request.headers.get("x-requested-with") == "fetch":
         return JSONResponse({"saved": True, "message": message, "key": key})
-    return see_other(f"/ui/settings?flash={quote(message)}" + (f"&from={key}" if key else ""))
+    return see_other("/ui/settings", flash=message, **{"from": key or None})
 
 
 # --- The panel -----------------------------------------------------------------------------------

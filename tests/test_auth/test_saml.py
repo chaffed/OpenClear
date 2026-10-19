@@ -227,3 +227,15 @@ def test_single_logout_ends_the_persons_sessions(client, db_session, tenant_fact
     db_session.refresh(user)
     assert user.token_version == version + 1
     assert client.get("/ui/", follow_redirects=False).status_code in (302, 303)  # signed out here too
+
+
+def test_single_logout_without_an_answer_address_lands_on_our_sign_in(client, db_session, tenant_factory, idp, monkeypatch):
+    """When the identity provider gives no address to answer at, sign-out stays on this site
+    (REVIEW_FIXES_PLAN.md RF-D4): only an identity provider's own URL leaves it."""
+    from openclear.auth import saml_service
+
+    tenant, _account, _users = tenant_factory.make(slug="saml-slo-local")
+    connection = _connection(db_session, tenant, idp)
+    monkeypatch.setattr(saml_service, "process_logout_request", lambda *a, **k: (None, None))
+    answer = client.get(urlsplit(_urls(connection)["slo"]).path, params={"SAMLRequest": "x"}, follow_redirects=False)
+    assert answer.status_code == 303 and answer.headers["location"] == "/ui/login"

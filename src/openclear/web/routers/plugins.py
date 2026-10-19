@@ -4,7 +4,6 @@
 """Settings → Plugins (PLUGIN_PLAN.md): what's loaded, from where and what each provides, and
 which plugin import formats and decision layouts this bank has turned on."""
 
-from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -15,8 +14,8 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, change_request_service, plugin_service
 from openclear.web.deps import render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/admin/plugins", tags=["web-plugins"])
 _manage = require_web_permission("admin:manage")
@@ -58,14 +57,14 @@ async def set_choice(
                 summary=f"Turn {'on' if enabled else 'off'} the matching rule {name}")
         except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return see_other(f"/ui/admin/plugins?flash={quote_plus(str(exc))}")
+            return see_other("/ui/admin/plugins", flash=str(exc))
         db.commit()
-        return see_other("/ui/admin/plugins?flash=" + quote_plus(_waiting(outcome)))
+        return see_other("/ui/admin/plugins", flash=_waiting(outcome))
     try:
         changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id, config=config)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/admin/plugins?flash={quote_plus(str(exc))}")
+        return see_other("/ui/admin/plugins", flash=str(exc))
     if changed:
         audit_log_service.record_action(
             db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="plugin.enable" if enabled else "plugin.disable",
@@ -74,4 +73,4 @@ async def set_choice(
             resource_type="tenant_extension", metadata={"point": point, "name": name},
         )
     db.commit()
-    return see_other(f"/ui/admin/plugins?flash={'Turned+on' if enabled else 'Turned+off'}.")
+    return see_other("/ui/admin/plugins", flash="Turned on." if enabled else "Turned off.")

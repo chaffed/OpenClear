@@ -5,7 +5,6 @@ import csv
 import io
 import json
 import uuid
-from urllib.parse import quote, quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -34,8 +33,8 @@ from openclear.services import (
 )
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/users", tags=["web-users"])
 
@@ -184,10 +183,10 @@ def create_user(
             resource_id=created_user.id if created_user else None,
         )
         db.commit()
-        return see_other(f"/ui/users?flash={quote_plus(('User created. ' + held) if held else 'User created.')}")
+        return see_other("/ui/users", flash=('User created. ' + held) if held else 'User created.')
     if result.outcome == "already_member":
         db.rollback()
-        return see_other("/ui/users?flash=That+person+already+has+access+to+this+organization.")
+        return see_other("/ui/users", flash="That person already has access to this organization.")
     if result.outcome == "needs_confirmation":
         db.rollback()
         group = security_group_service.get_security_group(db, ctx.tenant_id, security_group_id)
@@ -227,7 +226,7 @@ def confirm_existing_user(
     )
     if membership is None:
         db.rollback()
-        return see_other("/ui/users?error=That+user+no+longer+exists.")
+        return see_other("/ui/users", error="That user no longer exists.")
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -241,7 +240,7 @@ def confirm_existing_user(
     held = access_changes.message(access_changes.hold_new(db, ctx.tenant_id, access_changes.made_since(db, ctx.tenant_id, before),
                                                           user_id=ctx.user_id))
     db.commit()
-    return see_other(f"/ui/users?flash={quote_plus(('Access granted. ' + held) if held else 'Access granted.')}")
+    return see_other("/ui/users", flash=('Access granted. ' + held) if held else 'Access granted.')
 
 
 @router.post("/sign-out-everyone")
@@ -261,7 +260,7 @@ def sign_out_everyone(
                                     summary=f"Signed everyone out ({ended} sessions)", resource_type="tenant",
                                     resource_id=ctx.tenant_id)
     db.commit()
-    return see_other("/ui/users?flash=" + quote(f"Signed everyone out: {ended} sessions ended. You're still signed in."))
+    return see_other("/ui/users", flash=f"Signed everyone out: {ended} sessions ended. You're still signed in.")
 
 
 @router.post("/{membership_id}/deactivate", dependencies=[Depends(_people_only)])
@@ -286,8 +285,8 @@ def deactivate_user(
         )
     db.commit()
     if membership is None:
-        return see_other("/ui/users?error=User+not+found.")
-    return see_other("/ui/users?flash=Access+removed.")
+        return see_other("/ui/users", error="User not found.")
+    return see_other("/ui/users", flash="Access removed.")
 
 
 @router.post("/{membership_id}/reactivate", dependencies=[Depends(_people_only)])
@@ -301,7 +300,7 @@ def reactivate_user(
         # Giving access back waits for a second person who manages users (DUAL_CONTROL_PLAN.md).
         membership = TenantMembershipRepository(db, ctx.tenant_id).get(membership_id)
         if membership is None:
-            return see_other("/ui/users?error=User+not+found.")
+            return see_other("/ui/users", error="User not found.")
         from openclear.services import change_request_service
 
         try:
@@ -310,9 +309,9 @@ def reactivate_user(
                 summary=f"Restore access for {UserRepository(db).get(membership.user_id).email}")
         except ValueError as exc:
             db.rollback()
-            return see_other(f"/ui/users?error={quote_plus(str(exc))}")
+            return see_other("/ui/users", error=str(exc))
         db.commit()
-        return see_other(f"/ui/users?flash={quote_plus(access_changes.message([outcome]) or 'Access restored.')}")
+        return see_other("/ui/users", flash=access_changes.message([outcome]) or 'Access restored.')
     membership = user_service.reactivate_membership(db, ctx.tenant_id, membership_id)
     if membership is not None:
         actor = UserRepository(db).get(membership.user_id)
@@ -328,8 +327,8 @@ def reactivate_user(
         )
     db.commit()
     if membership is None:
-        return see_other("/ui/users?error=User+not+found.")
-    return see_other("/ui/users?flash=Access+restored.")
+        return see_other("/ui/users", error="User not found.")
+    return see_other("/ui/users", flash="Access restored.")
 
 
 @router.post("/{membership_id}/unlock", dependencies=[Depends(_people_only)])
@@ -355,8 +354,8 @@ def unlock_user(
         )
     db.commit()
     if unlocked is None:
-        return see_other("/ui/users?error=User+not+found.")
-    return see_other("/ui/users?flash=Account+unlocked.")
+        return see_other("/ui/users", error="User not found.")
+    return see_other("/ui/users", flash="Account unlocked.")
 
 
 @router.post("/{membership_id}/sign-out", dependencies=[Depends(_people_only)])
@@ -370,7 +369,7 @@ def sign_out_everywhere(
     services/user_service.py::admin_sign_out_everywhere."""
     user = user_service.admin_sign_out_everywhere(db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id)
     if user is None:
-        return see_other("/ui/users?error=User+not+found.")
+        return see_other("/ui/users", error="User not found.")
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -382,7 +381,7 @@ def sign_out_everywhere(
         resource_id=user.id,
     )
     db.commit()
-    return see_other("/ui/users?flash=" + quote(f"{user.email} has been signed out everywhere."))
+    return see_other("/ui/users", flash=f"{user.email} has been signed out everywhere.")
 
 
 @router.post("/{membership_id}/reset-security-keys", dependencies=[Depends(_people_only)])
@@ -399,15 +398,14 @@ def reset_security_keys(
         user, removed = user_service.admin_reset_security_keys(db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id,
                                                                identity_check=identity_check)
     except user_service.PasswordChangeError as exc:
-        return see_other(f"/ui/users/{membership_id}/edit?error=" + quote(str(exc)))
+        return see_other(f"/ui/users/{membership_id}/edit", error=str(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.security_key_reset",
         summary=f"Reset the security keys of {user.email} ({removed} removed). Identity confirmed by: {identity_check.strip()[:300]}",
         resource_type="user", resource_id=user.id,
     )
     db.commit()
-    return see_other("/ui/users?flash=" + quote(
-        f"{user.email}'s security keys were removed. They'll add a new one when they next sign in."))
+    return see_other("/ui/users", flash=f"{user.email}'s security keys were removed. They'll add a new one when they next sign in.")
 
 
 @router.post("/{membership_id}/reset-password", dependencies=[Depends(_people_only)])
@@ -427,7 +425,7 @@ def reset_password(
             base_url=get_settings().public_base_url or str(request.base_url),
         )
     except user_service.PasswordChangeError as exc:
-        return see_other("/ui/users?error=" + quote(str(exc)))
+        return see_other("/ui/users", error=str(exc))
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -440,9 +438,8 @@ def reset_password(
     )
     db.commit()
     hours = get_settings().password_reset_link_hours
-    return see_other("/ui/users?flash=" + quote(
-        f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once and "
-        f"expires in {hours} hours."))
+    return see_other("/ui/users", flash=f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once and "
+        f"expires in {hours} hours.")
 
 
 @router.get("/bulk")
@@ -701,10 +698,9 @@ def change_email(
             base_url=get_settings().public_base_url or str(request.base_url))
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return see_other(f"/ui/users/{membership_id}/edit?error=" + quote(str(exc)))
+        return see_other(f"/ui/users/{membership_id}/edit", error=str(exc))
     db.commit()
-    return see_other(f"/ui/users/{membership_id}/edit?flash=" + quote(
-        f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened."))
+    return see_other(f"/ui/users/{membership_id}/edit", flash=f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
 
 
 @router.get("/{membership_id}/edit", dependencies=[Depends(_people_only)])
@@ -775,7 +771,7 @@ async def save_account_access(
                                     "account_ids": [str(a) for a in account_ids]}, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
         if outcome.waiting:
             db.commit()
-            return see_other(f"/ui/users?flash={quote_plus(access_changes.message([outcome]))}")
+            return see_other("/ui/users", flash=access_changes.message([outcome]))
         access = account_access_service.get_access(db, ctx.tenant_id, membership_id)
     except (account_access_service.AccountAccessError, ValueError) as exc:
         db.rollback()
@@ -794,7 +790,7 @@ async def save_account_access(
         resource_type="user", resource_id=access.membership.user_id,
     )
     db.commit()
-    return see_other("/ui/users?flash=" + quote("Account access saved."))
+    return see_other("/ui/users", flash="Account access saved.")
 
 
 @router.post("/{membership_id}", dependencies=[Depends(_people_only)])
@@ -838,7 +834,7 @@ def update_user(
 
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/users?flash={quote_plus(access_changes.message([outcome]))}")
+        return see_other("/ui/users", flash=access_changes.message([outcome]))
     actor = UserRepository(db).get(membership.user_id)
     audit_log_service.record_action(
         db,
@@ -851,4 +847,4 @@ def update_user(
         resource_id=membership.user_id,
     )
     db.commit()
-    return see_other("/ui/users?flash=Entitlements+updated.")
+    return see_other("/ui/users", flash="Entitlements updated.")

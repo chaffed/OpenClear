@@ -2,10 +2,11 @@
 # Copyright (C) 2026 Chaffed
 """Every redirect the web pages make (CODE_SCANNING_PLAN.md CS2).
 
-- `see_other(url)`: to a page of this site. The URL must be a local path (`/ui/...`, with a
-  query): anything with a scheme or a host, `//`, a backslash or a control character is refused
-  and goes to the dashboard instead, so no route can be made into an open redirect, whatever
-  it builds the path from.
+- `see_other(path, **query)`: to a page of this site. The path must be local (`/ui/...`, which
+  may carry a fixed query): anything with a scheme or a host, `//`, a backslash or a control
+  character is refused and goes to the dashboard instead, so no route can be made into an open
+  redirect, whatever it builds the path from. The keyword arguments are the query
+  (`flash=`, `error=`, `next=`), encoded here; `None` leaves a parameter out.
 - `to_identity_provider(url)`: the three redirects that leave the site on purpose, to a bank's
   own identity provider (OIDC sign-in, SAML sign-in and sign-out). Their URLs come from the
   provider's configuration, never from the request.
@@ -13,7 +14,7 @@
 A test (tests/test_web/test_redirects.py) fails if a route builds a RedirectResponse itself."""
 
 import logging
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from fastapi.responses import RedirectResponse
 
@@ -21,9 +22,10 @@ logger = logging.getLogger(__name__)
 FALLBACK = "/ui/"
 
 
-def is_local(url: str) -> bool:
-    """A path on this site: starts with one slash, no scheme or host, no backslash or control
-    characters (browsers read `/\\evil.example` as `//evil.example`)."""
+def is_local(url: str | None) -> bool:
+    """A path on this site, so never an open redirect: a single leading slash (`//host` is
+    protocol-relative to another site), no scheme or host, and no backslash or control character
+    (browsers read `/\\evil.example` as `//evil.example`, and strip tabs and newlines first)."""
     if not url or not url.startswith("/") or url.startswith("//") or "\\" in url:
         return False
     if any(ord(ch) < 32 or ord(ch) == 127 for ch in url):
@@ -32,14 +34,17 @@ def is_local(url: str) -> bool:
     return not parts.scheme and not parts.netloc
 
 
-def see_other(url: str, status_code: int = 303, headers: dict | None = None) -> RedirectResponse:
-    if not is_local(url):
-        # Not the URL itself: it can carry what someone typed (CODE_SCANNING_PLAN.md CS2).
+def see_other(path: str, /, **query: object) -> RedirectResponse:
+    if not is_local(path):
+        # Not the path itself: it can carry what someone typed (CODE_SCANNING_PLAN.md CS2).
         logger.warning("Refused a redirect that isn't a local path")
-        url = FALLBACK
-    return RedirectResponse(url, status_code=status_code, headers=headers)
+        path, query = FALLBACK, {}
+    params = {key: value for key, value in query.items() if value is not None}
+    if params:
+        path += ("&" if "?" in path else "?") + urlencode(params)
+    return RedirectResponse(path, status_code=303)
 
 
-def to_identity_provider(url: str, status_code: int = 303) -> RedirectResponse:
+def to_identity_provider(url: str) -> RedirectResponse:
     """To the bank's own identity provider, at a URL from the connection's configuration."""
-    return RedirectResponse(url, status_code=status_code)
+    return RedirectResponse(url, status_code=303)

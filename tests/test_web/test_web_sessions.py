@@ -337,7 +337,7 @@ def test_idle_session_cannot_be_renewed(client, db_session, tenant_factory):
     page = client.get("/ui/exceptions", follow_redirects=False)
     assert page.headers["location"].startswith("/ui/auth/resume")
     resume = client.get(page.headers["location"], follow_redirects=False)
-    assert resume.headers["location"] == "/ui/login?next=/ui/exceptions"
+    assert resume.headers["location"] == "/ui/login?next=%2Fui%2Fexceptions"
     # The page script's background renewal is refused too.
     assert _refresh(background).status_code == 401
 
@@ -353,7 +353,7 @@ def test_recently_expired_page_request_resumes_where_the_user_was(client, db_ses
 
     page = client.get("/ui/exceptions?status=open", follow_redirects=False)
     assert page.status_code == 303
-    assert page.headers["location"] == "/ui/auth/resume?next=/ui/exceptions%3Fstatus%3Dopen"
+    assert page.headers["location"] == "/ui/auth/resume?next=%2Fui%2Fexceptions%3Fstatus%3Dopen"
 
     resume = client.get(page.headers["location"], follow_redirects=False)
     assert resume.status_code == 303
@@ -377,7 +377,7 @@ def test_expired_form_post_returns_to_the_form_page_not_the_post_url(client, db_
         follow_redirects=False,
     )
 
-    assert resp.headers["location"] == "/ui/auth/resume?next=/ui/security%3Ftab%3Dkeys"
+    assert resp.headers["location"] == "/ui/auth/resume?next=%2Fui%2Fsecurity%3Ftab%3Dkeys"
 
 
 def test_cross_site_referer_is_never_used_as_the_return_page(client, db_session, tenant_factory):
@@ -396,7 +396,7 @@ def test_cross_site_referer_is_never_used_as_the_return_page(client, db_session,
         follow_redirects=False,
     )
 
-    assert resp.headers["location"] == "/ui/auth/resume?next=/ui/"
+    assert resp.headers["location"] == "/ui/auth/resume?next=%2Fui%2F"
 
 
 # --- Pages, cookies, settings ---

@@ -52,7 +52,7 @@ def test_pay_needs_no_reason_and_return_needs_one_from_the_list(client, db_sessi
 
     missing = client.post(f"/ui/exceptions/{returned.id}/decide", data={"csrf_token": csrf, "outcome": "return"},
                           follow_redirects=False)
-    assert "Choose%20why" in missing.headers["location"]
+    assert "Choose+why" in missing.headers["location"]
     altered = _reason(db_session, tenant, "Altered or fictitious item")
     client.post(f"/ui/exceptions/{returned.id}/decide",
                 data={"csrf_token": csrf, "outcome": "return", "return_reason_id": str(altered.id), "notes": "called the vendor"})
@@ -67,10 +67,10 @@ def test_several_at_once_follow_the_rules_for_each(client, db_session, tenant_fa
 
     paid = client.post("/ui/exceptions/bulk", data={"csrf_token": csrf, "outcome": "pay",
                                                     "exception_ids": [str(items[0].id), str(items[1].id)]}, follow_redirects=False)
-    assert "Paid%202%20items" in paid.headers["location"]
+    assert "Paid+2+items" in paid.headers["location"]
     no_reason = client.post("/ui/exceptions/bulk", data={"csrf_token": csrf, "outcome": "return",
                                                          "exception_ids": [str(items[2].id)]}, follow_redirects=False)
-    assert "couldn" in no_reason.headers["location"] and "choose%20why" in no_reason.headers["location"]
+    assert "couldn" in no_reason.headers["location"] and "choose+why" in no_reason.headers["location"]
     stop = _reason(db_session, tenant, "Stop payment")
     client.post("/ui/exceptions/bulk", data={"csrf_token": csrf, "outcome": "return", "check_return_reason_id": str(stop.id),
                                              "exception_ids": [str(items[2].id), str(items[3].id), str(items[0].id)]})

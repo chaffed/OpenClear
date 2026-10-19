@@ -15,8 +15,8 @@ from openclear.services import ach_return_reason_service, audit_log_service
 from openclear.services.ach_return_reason_service import AchReturnReasonInput, InvalidAchReturnReasonInput
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/ach-return-reasons", tags=["web-ach-return-reasons"])
 
@@ -68,7 +68,7 @@ def create_ach_return_reason(
         summary=f"Added ACH return reason {reason.reason_text!r}", resource_type="ach_return_reason", resource_id=reason.id,
     )
     db.commit()
-    return see_other("/ui/ach-return-reasons?flash=Return+reason+created.")
+    return see_other("/ui/ach-return-reasons", flash="Return reason created.")
 
 
 @router.get("/{reason_id}/edit")
@@ -116,7 +116,7 @@ def update_ach_return_reason(
         summary=f"Updated ACH return reason {reason.reason_text!r}", resource_type="ach_return_reason", resource_id=reason.id,
     )
     db.commit()
-    return see_other("/ui/ach-return-reasons?flash=Return+reason+updated.")
+    return see_other("/ui/ach-return-reasons", flash="Return reason updated.")
 
 
 @router.post("/{reason_id}/deactivate")
@@ -134,8 +134,8 @@ def deactivate_ach_return_reason(
         )
     db.commit()
     if reason is None:
-        return see_other("/ui/ach-return-reasons?error=Return+reason+not+found.")
-    return see_other("/ui/ach-return-reasons?flash=Return+reason+deactivated.")
+        return see_other("/ui/ach-return-reasons", error="Return reason not found.")
+    return see_other("/ui/ach-return-reasons", flash="Return reason deactivated.")
 
 
 @router.post("/{reason_id}/reactivate")
@@ -153,5 +153,5 @@ def reactivate_ach_return_reason(
         )
     db.commit()
     if reason is None:
-        return see_other("/ui/ach-return-reasons?error=Return+reason+not+found.")
-    return see_other("/ui/ach-return-reasons?flash=Return+reason+reactivated.")
+        return see_other("/ui/ach-return-reasons", error="Return reason not found.")
+    return see_other("/ui/ach-return-reasons", flash="Return reason reactivated.")

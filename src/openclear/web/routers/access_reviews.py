@@ -6,7 +6,6 @@ membership (user:manage), or a self-managing customer's of its own people (custo
 The same pages serve both; each sees only its own reviews."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,8 +16,8 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import access_review_service, audit_log_service
 from openclear.services.access_review_service import ReviewError
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_any_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/access-reviews", tags=["web-access-reviews"])
 BASE = "/ui/access-reviews"
@@ -43,10 +42,6 @@ def _review(db: Session, ctx: TenantContext, review_id: uuid.UUID):
     return found
 
 
-def _back(path: str, message: str) -> RedirectResponse:
-    return see_other(f"{path}?flash={quote(message)}")
-
-
 @router.get("")
 def list_reviews(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(_reviewer)) -> HTMLResponse:
     return render_template(request, "access_reviews/list.html", ctx=ctx,
@@ -60,7 +55,7 @@ def start_review(db: Session = Depends(get_db), ctx: TenantContext = Depends(_re
         review = access_review_service.start(db, ctx.tenant_id, ctx.customer_id, user_id=ctx.user_id)
     except ReviewError as exc:
         db.rollback()
-        return _back(BASE, str(exc))
+        return see_other(BASE, flash=str(exc))
     _record(db, ctx, "access_review.started", f"Started an access review of {review.item_count} memberships"
             + (f" at {ctx.customer_name}" if ctx.customer_id else ""), review)
     db.commit()
@@ -83,7 +78,7 @@ def decide(review_id: uuid.UUID, item_id: uuid.UUID, decision: str = Form(""), n
         item = access_review_service.decide(db, review, item_id, decision, note=note, user_id=ctx.user_id)
     except ReviewError as exc:
         db.rollback()
-        return _back(path, str(exc))
+        return see_other(path, flash=str(exc))
     if item.decision == "removed":
         _record(db, ctx, "access_review.removed", f"Removed {item.who}'s access ({item.role}, {item.scope}) in an access review", review,
                 {"membership_id": str(item.membership_id)})
@@ -93,6 +88,6 @@ def decide(review_id: uuid.UUID, item_id: uuid.UUID, decision: str = Form(""), n
                 f"Completed an access review of {review.item_count} memberships: {counts['confirmed']} confirmed, {counts['changed']} changed, "
                 f"{counts['removed']} removed", review, {"decisions_sha256": review.decisions_sha256})
         db.commit()
-        return _back(path, "Review complete: every membership decided.")
+        return see_other(path, flash="Review complete: every membership decided.")
     db.commit()
-    return _back(path, {"confirmed": "Confirmed.", "changed": "Marked changed.", "removed": "Access removed."}[item.decision])
+    return see_other(path, flash={"confirmed": "Confirmed.", "changed": "Marked changed.", "removed": "Access removed."}[item.decision])

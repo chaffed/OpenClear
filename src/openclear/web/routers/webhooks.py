@@ -14,9 +14,9 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, webhook_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
+from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
 from openclear.workers.jobs import jobs_queued
-from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/admin/webhooks", tags=["web-webhooks"])
 _manage = require_web_permission("api_client:manage")
@@ -114,7 +114,6 @@ async def update_webhook(
         "url": form.get("url", ""), "description": form.get("description", ""), "event_types": form.getlist("event_types"),
         "is_active": form.get("is_active") == "true",
     }
-    from urllib.parse import quote
 
     from openclear.services import change_request_service
     from openclear.web.routers.tenant_settings import waiting_message
@@ -127,10 +126,10 @@ async def update_webhook(
         return _form(request, ctx, endpoint=endpoint, values=values, error=str(exc), status_code=422)
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/admin/webhooks/{endpoint_id}?flash={quote(waiting_message(outcome))}")
+        return see_other(f"/ui/admin/webhooks/{endpoint_id}", flash=waiting_message(outcome))
     _audit(db, ctx, "webhook.update", f"Changed webhook {values['url']}", endpoint_id)
     db.commit()
-    return see_other(f"/ui/admin/webhooks/{endpoint_id}?flash=Saved.")
+    return see_other(f"/ui/admin/webhooks/{endpoint_id}", flash="Saved.")
 
 
 @router.post("/{endpoint_id}/rotate")
@@ -155,7 +154,7 @@ def test_webhook(endpoint_id: uuid.UUID, db: Session = Depends(get_db), ctx: Ten
         raise WebNotFound() from None
     db.commit()
     jobs_queued(db.get_bind())
-    return see_other(f"/ui/admin/webhooks/{endpoint_id}?flash=Test+event+sent.")
+    return see_other(f"/ui/admin/webhooks/{endpoint_id}", flash="Test event sent.")
 
 
 @router.post("/{endpoint_id}/deliveries/{delivery_id}/replay")
@@ -170,4 +169,4 @@ def replay_delivery(
     _audit(db, ctx, "webhook.replay", "Replayed a webhook delivery", endpoint_id)
     db.commit()
     jobs_queued(db.get_bind())
-    return see_other(f"/ui/admin/webhooks/{endpoint_id}?flash=Sending+again.")
+    return see_other(f"/ui/admin/webhooks/{endpoint_id}", flash="Sending again.")

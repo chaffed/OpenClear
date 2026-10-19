@@ -5,7 +5,6 @@
 segregation-of-duties setting (auth/sod.py)."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,8 +15,8 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, change_request_service, security_group_service
 from openclear.web.deps import render_template, require_any_web_permission, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-changes"])
 
@@ -58,10 +57,10 @@ def decide_change(change_id: uuid.UUID, verdict: str, reason: str = Form(""), db
             change_request_service.decide(db, ctx.tenant_id, change_id, approve=verdict == "approve", user_id=ctx.user_id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other(f"/ui/admin/changes?error={quote(str(exc))}")
+        return see_other("/ui/admin/changes", error=str(exc))
     db.commit()
     done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
-    return see_other(f"/ui/admin/changes?flash={quote(done)}")
+    return see_other("/ui/admin/changes", flash=done)
 
 
 @router.get("/ui/settings/segregation-of-duties")
@@ -80,18 +79,18 @@ def set_sod_mode(mode: str = Form(...), db: Session = Depends(get_db),
     from openclear.web.routers.tenant_settings import waiting_message
 
     if mode not in ("warn", "enforce"):
-        return see_other(f"/ui/settings/segregation-of-duties?error={quote('Mode is warn or enforce.')}")
+        return see_other("/ui/settings/segregation-of-duties", error='Mode is warn or enforce.')
     try:
         outcome = change_request_service.request_or_apply(db, "sod_mode", {"values": {"sod_mode": mode}}, tenant_id=ctx.tenant_id,
                                                           user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/settings/segregation-of-duties?error={quote(str(exc))}")
+        return see_other("/ui/settings/segregation-of-duties", error=str(exc))
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/settings/segregation-of-duties?flash={quote(waiting_message(outcome))}")
+        return see_other("/ui/settings/segregation-of-duties", flash=waiting_message(outcome))
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="tenant.update_sod_mode",
                                         summary=f"Segregation of duties set to {mode}", resource_type="tenant", resource_id=ctx.tenant_id)
     db.commit()
-    return see_other("/ui/settings/segregation-of-duties?flash=Saved.")
+    return see_other("/ui/settings/segregation-of-duties", flash="Saved.")

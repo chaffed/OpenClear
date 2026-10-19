@@ -6,7 +6,6 @@ a bank-only model, and its acknowledgement of how the shared model uses its data
 (services/tenant_ml_service.py, FIX_PLAN.md Phase 5). tenant:manage only; locked in the
 public demo (web/demo_guard.py). Every change is audit-logged."""
 
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -19,8 +18,8 @@ from openclear.domain.tenant import MlModelSource, Tenant
 from openclear.domain.user import User
 from openclear.services import audit_log_service, tenant_ml_service
 from openclear.web.deps import render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/settings/fraud-model", tags=["web-fraud-model"])
 _PAGE = "/ui/settings/fraud-model"
@@ -70,16 +69,16 @@ def switch_to_bank_only(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     if not confirm:
-        return see_other(f"{_PAGE}?error=" + quote("Please confirm you understand what switching does."))
+        return see_other(_PAGE, error="Please confirm you understand what switching does.")
     try:
         seeded = tenant_ml_service.switch_to_bank_only(db, ctx.tenant_id, actor_user_id=ctx.user_id)
     except tenant_ml_service.SwitchNotAllowed as exc:
         db.rollback()
-        return see_other(f"{_PAGE}?error=" + quote(str(exc)))
+        return see_other(_PAGE, error=str(exc))
     copied = ", ".join(m.network_code for m in seeded) or "none (no shared model was active yet)"
     _audit(db, ctx, "tenant.ml_source_change", f"Switched to a bank-only fraud-scoring model (copied from shared: {copied})")
     db.commit()
-    return see_other(f"{_PAGE}?flash=" + quote("Switched to a bank-only model. It starts as a copy of the shared model."))
+    return see_other(_PAGE, flash="Switched to a bank-only model. It starts as a copy of the shared model.")
 
 
 @router.post("/switch-to-shared")
@@ -93,20 +92,20 @@ def switch_to_shared(
     from openclear.web.routers.tenant_settings import waiting_message
 
     if not consent:
-        return see_other(f"{_PAGE}?error=" + quote("Please confirm you've read how the shared model uses your data."))
+        return see_other(_PAGE, error="Please confirm you've read how the shared model uses your data.")
     try:
         # Pooling the bank's decisions waits for a second admin when the bank asks (DUAL_CONTROL_PLAN.md).
         outcome = change_request_service.request_or_apply(db, "ml.switch_to_shared", {"consented_by": str(ctx.user_id)},
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except (tenant_ml_service.SwitchNotAllowed, ValueError) as exc:
         db.rollback()
-        return see_other(f"{_PAGE}?error=" + quote(str(exc)))
+        return see_other(_PAGE, error=str(exc))
     if outcome.waiting:
         db.commit()
-        return see_other(f"{_PAGE}?flash=" + quote(waiting_message(outcome)))
+        return see_other(_PAGE, flash=waiting_message(outcome))
     _audit(db, ctx, "tenant.ml_source_change", "Switched to the shared fraud-scoring model and acknowledged the data-pooling disclosure")
     db.commit()
-    return see_other(f"{_PAGE}?flash=" + quote("Switched to the shared model."))
+    return see_other(_PAGE, flash="Switched to the shared model.")
 
 
 @router.post("/consent")
@@ -117,8 +116,8 @@ def acknowledge_shared_pooling(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     if not consent:
-        return see_other(f"{_PAGE}?error=" + quote("Please tick the box to acknowledge it."))
+        return see_other(_PAGE, error="Please tick the box to acknowledge it.")
     tenant_ml_service.record_shared_consent(db, ctx.tenant_id, actor_user_id=ctx.user_id)
     _audit(db, ctx, "tenant.ml_shared_consent", "Acknowledged how the shared fraud-scoring model uses this organization's data")
     db.commit()
-    return see_other(f"{_PAGE}?flash=" + quote("Acknowledgement recorded."))
+    return see_other(_PAGE, flash="Acknowledgement recorded.")

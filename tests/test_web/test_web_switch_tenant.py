@@ -96,7 +96,7 @@ def test_switch_tenant_to_require_webauthn_target_with_no_key_is_refused(client,
     )
     assert resp.status_code == 303
     assert resp.headers["location"].startswith("/ui/switch-tenant?error=")
-    assert "security%20key" in resp.headers["location"]
+    assert "security+key" in resp.headers["location"]
     assert "mfa_token" not in resp.cookies
     assert "access_token" not in resp.cookies
 

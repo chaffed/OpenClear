@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
-from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,8 +16,8 @@ from openclear.repositories.security_group_repo import SecurityGroupRepository
 from openclear.services import audit_log_service, security_group_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/security-groups", tags=["web-security-groups"])
 
@@ -79,7 +78,7 @@ def _save(request: Request, db: Session, ctx: TenantContext, group, name: str, p
         return _form_with_error(request, ctx, group, name, permissions, error=str(exc))
     if outcome.waiting:
         db.commit()
-        return see_other(f"/ui/security-groups?flash={quote_plus(waiting_message(outcome))}")
+        return see_other("/ui/security-groups", flash=waiting_message(outcome))
     saved = security_group_service.get_security_group_by_name(db, ctx.tenant_id, name)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="security_group.update" if group else "security_group.create",
@@ -88,7 +87,7 @@ def _save(request: Request, db: Session, ctx: TenantContext, group, name: str, p
                                                        f"{', offered to customers' if saved.offered_to_customers else ''})"),
         resource_type="security_group", resource_id=saved.id if saved else None)
     db.commit()
-    return see_other(f"/ui/security-groups?flash=Security+group+{done}.")
+    return see_other("/ui/security-groups", flash=f"Security group {done}.")
 
 
 @router.get("/new")
@@ -143,7 +142,7 @@ def update_security_group(
 ) -> RedirectResponse:
     group = security_group_service.get_security_group(db, ctx.tenant_id, group_id)
     if group is None:
-        return see_other("/ui/security-groups?error=Security+group+not+found.")
+        return see_other("/ui/security-groups", error="Security group not found.")
     if refused := _sod_refusal(request, db, ctx, group, name, permissions):
         return refused
     return _save(request, db, ctx, group, name, permissions, offered_to_customers, "updated")
