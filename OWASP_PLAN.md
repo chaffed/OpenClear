@@ -403,3 +403,16 @@ whichever release follows.
   to a new domain" as an always-approved protected change, with a confirmation link for people
   who belong elsewhere (OW-D33). Found on the way: demo and sandbox wipes didn't delete rows
   keyed only by person (now `demo_tenant_service.delete_users`).
+- 2026-10-18: 1.24.0 released (OW3c).
+- 2026-10-19: OW4 built on `ow4`: malware scanning (OW-D34) as an app-wide FastAPI dependency
+  over every multipart upload plus the drop folder, ClamAV by INSTREAM and VirusTotal by hash,
+  an hourly re-check that quarantines, CUEC B-SI-3-01; account numbers out of URLs (OW-D35, #14:
+  list searches posted to `/ui/list-search`, which redirects with account ids; header search
+  posted; the edge guide drops query strings from logs); check-image views logged once an hour
+  (OW-D28); ZAP baseline in CI and a weekly active scan (`scripts/zap_scan.py`,
+  `zap-rules.tsv`), signed in as a bank admin and a customer user of a seeded bank; the CRS
+  exclusions in `docs/guides/crs/` proven at paranoia 1 and 2 by `edge_check.py --crs` (the
+  official ModSecurity image rather than Coraza: the same CRS, and a maintained container); the
+  WSTG checklist in the PR template. The first ZAP runs (local active, sandbox passive) found
+  the license page's 500 in the Docker image, and a CSRF token ZAP couldn't see through `form=`;
+  `style-src 'unsafe-inline'` waived with its reason. ASVS 14.2.1 Met; 5.4.3 evidence added.

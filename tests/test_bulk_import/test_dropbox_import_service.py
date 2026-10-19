@@ -432,3 +432,23 @@ def test_tenant_slug_path_traversal_is_refused(db_session, tenant_factory, monke
     assert results == []
     assert (escaped_inbox / "escaped.csv").exists()
     assert IssuedItemRepository(db_session, tenant.id).list() == []
+
+
+def test_malware_in_the_drop_folder_is_refused(db_session, tenant_factory, monkeypatch, tmp_path):
+    """The drop folder doesn't come through HTTP, so it's scanned here (OWASP_PLAN.md OW-D34)."""
+    from tests.test_web.test_malware import EICAR, FakeClamd
+
+    root = _configure_dropbox(monkeypatch, tmp_path)
+    clamd = FakeClamd()
+    monkeypatch.setattr(get_settings(), "malware_clamd_address", clamd.address)
+    try:
+        tenant, account, _users = tenant_factory.make(slug="dropbox-malware")
+        path = _drop(root, tenant.slug, "issued_items", "bad.csv", _issued_items_csv([(account.account_number, "9001", "1.00")]) + EICAR)
+
+        results = dropbox_import_service.scan_and_import_tenant(db_session, tenant)
+    finally:
+        clamd.close()
+
+    assert results[0].outcome == "failed" and "malware" in results[0].error
+    assert not path.exists() and (root / tenant.slug / "issued_items" / "failed" / "bad.csv").exists()
+    assert BulkUploadFileRepository(db_session, tenant.id).list() == []
