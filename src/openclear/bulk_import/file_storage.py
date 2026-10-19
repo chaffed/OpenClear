@@ -2,14 +2,13 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
-from pathlib import Path
 from typing import BinaryIO
 
 from openclear import storage
 
 
 def _key(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str) -> str:
-    return f"{tenant_id}/{upload_id}_{Path(filename).name or 'upload'}"
+    return f"{tenant_id}/{upload_id}_{storage.safe_name(filename, 'upload')}"
 
 
 def save_uploaded_file(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str, data: bytes) -> str:
@@ -23,7 +22,7 @@ def save_uploaded_file(tenant_id: uuid.UUID, upload_id: uuid.UUID, filename: str
     signature in bulk_import/signing.py, re-checked against a fresh read of this file on
     demand).
 
-    `Path(filename).name` strips any directory components (e.g. `../../etc/passwd` ->
+    `storage.safe_name(filename)` keeps only the last part (e.g. `../../etc/passwd` ->
     `passwd`) before it's embedded in the path — a client-supplied filename with no
     sanitization here previously reached the path construction directly; that traversal
     attempt didn't actually escape the storage directory (pathlib's write_bytes doesn't

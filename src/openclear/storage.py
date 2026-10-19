@@ -52,12 +52,39 @@ AREAS = {
 }
 
 
+class UnsafeKey(ValueError):
+    """A key that would land outside its area: refused, whatever the backend."""
+
+
+def safe_key(key: str) -> str:
+    """The key, if it's a relative path of plain names: no `..` or `.`, no empty segments, no
+    leading slash, backslash or control character. Every write checks it (CODE_SCANNING_PLAN.md
+    CS0): a key built from an uploaded file's name once reached the disk unchecked."""
+    parts = key.split("/")
+    if (not key or key.startswith("/") or "\\" in key or any(ord(ch) < 32 for ch in key)
+            or any(part in ("", ".", "..") for part in parts)):
+        raise UnsafeKey(f"Refused a storage key that isn't a plain relative path: {key!r}")
+    return key
+
+
+def safe_name(name: str | None, default: str = "file") -> str:
+    """An uploaded file's name, fit to end a storage key: its last part only, without
+    control characters, at most 200 characters."""
+    name = "".join(ch for ch in (name or "") if ord(ch) >= 32).replace("\\", "/").rsplit("/", 1)[-1].strip()
+    return (name if name not in ("", ".", "..") else default)[-200:]
+
+
 class LocalStorage:
     """Files under each area's directory. References are absolute-or-relative paths, as
     the settings give them."""
 
     def _path(self, area: str, key: str) -> Path:
-        path = Path(getattr(get_settings(), AREAS[area])) / key
+        root = Path(getattr(get_settings(), AREAS[area]))
+        path = root / safe_key(key)
+        # The stored reference stays as the settings give it (relative or not); the check uses
+        # the resolved paths, so a symlink or anything safe_key missed can't leave the area.
+        if not path.resolve().is_relative_to(root.resolve()):
+            raise UnsafeKey(f"Refused a storage key outside its area: {key!r}")
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -380,16 +407,16 @@ def is_object_ref(ref: str) -> bool:
 
 
 def put(area: str, key: str, data: bytes, *, read_only: bool = False) -> str:
-    return backend().put(area, key, data, read_only=read_only)
+    return backend().put(area, safe_key(key), data, read_only=read_only)
 
 
 def put_file(area: str, key: str, source: Path, *, read_only: bool = False) -> str:
-    return backend().put_file(area, key, source, read_only=read_only)
+    return backend().put_file(area, safe_key(key), source, read_only=read_only)
 
 
 def put_stream(area: str, key: str, stream: BinaryIO, *, read_only: bool = False) -> tuple[str, int, bytes]:
     """Stores a file-like object in pieces. Returns (reference, size, SHA-256 digest)."""
-    return backend().put_stream(area, key, stream, read_only=read_only)
+    return backend().put_stream(area, safe_key(key), stream, read_only=read_only)
 
 
 def read(ref: str) -> bytes:
