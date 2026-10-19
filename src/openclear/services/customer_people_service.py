@@ -34,6 +34,7 @@ from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.services import account_access_service, session_service
+from openclear.services.email_address import looks_like_email
 
 ADMIN_PERMISSION = "customer_user:manage"
 INVITATION_DAYS = 7
@@ -173,8 +174,6 @@ def invite(
     email replaces an unused one."""
     customer = _customer(session, tenant_id, customer_id)
     email = (email or "").strip()
-    from openclear.services.email_change_service import looks_like_email
-
     if not looks_like_email(email):
         raise PeopleError("Enter an email address.")
     _offered_group(session, tenant_id, security_group_id)

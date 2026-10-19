@@ -21,18 +21,9 @@ from openclear.domain.email_change import EmailChange
 from openclear.domain.notification import NotificationType
 from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
+from openclear.services.email_address import looks_like_email
 
 CONFIRM_HOURS = 24
-
-
-def looks_like_email(email: str) -> bool:
-    """name@domain.tld, with no spaces: checked by splitting rather than a regex, which took
-    time in proportion to the square of the length (CODE_SCANNING_PLAN.md CS1)."""
-    if not email or len(email) > 320 or any(ch.isspace() for ch in email) or email.count("@") != 1:
-        return False
-    local, domain = email.split("@")
-    labels = domain.split(".")
-    return bool(local) and len(labels) >= 2 and labels[0] != "" and labels[-1] != ""
 
 
 class EmailChangeError(ValueError):

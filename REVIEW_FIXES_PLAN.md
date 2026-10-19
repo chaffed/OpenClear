@@ -60,10 +60,10 @@ wrong order. It ships in the next minor release.
   (`f"{step} failed: the security key's response didn't check out. Try again."`). All four sites
   call `raise refused("Registration verification", exc) from exc`, and so on. The platform service
   already imports `WebauthnError` from there.
-- **RF-D7. `looks_like_email` moves to `domain/email_address.py`**, a small module of its own.
+- **RF-D7. `looks_like_email` moves to `services/email_address.py`**, a small module of its own.
   It's a rule about an email address, not part of the email-change flow. Both services import
-  it at the top of the file. `email_change_service` keeps no re-export, since nothing outside
-  the two services uses it.
+  it at the top of the file, and `email_change_service` doesn't re-export it, since nothing
+  else uses it. (The plan first said `domain/`, but that package holds only ORM models.)
 - **RF-D8. Metrics count the release's draft advisories too.** `advisories()` asks for
   `state=draft` and `state=published`, so step 1 already sees the advisory the release fixes.
   The metrics file names it, and it reaches `main` with the fix, minutes before the release.
