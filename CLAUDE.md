@@ -19,6 +19,9 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
   Results are in `.openclear-run/test-logs/<suite>.log`.
 - Also before pushing, the security gates CI runs: `.venv/bin/bandit -r src -q --severity-level high`
   and `.venv/bin/python scripts/audit_dependencies.py`.
+- CodeQL fails while `main` (or a PR) has an open high or critical alert: fix it, or dismiss it
+  on GitHub with the reason. Bandit's medium findings need `# nosec Bxxx` with the reason on the
+  line above. Release work goes through a pull request, so the ruleset's checks run on it.
 - Docker is Colima: `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`. Its containers don't
   restart on their own: `docker start pospay-pg-test oc-moov-ach oc-moov-icl`.
 - Postgres tests by hand: `OPENCLEAR_TEST_DATABASE_URL=postgresql+psycopg://pospay:pospay@localhost:55432/pospay_test`.
@@ -35,6 +38,9 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - Under RLS a bank's session sees only its own memberships: any "does this person belong elsewhere?"
   check goes through `db/tenancy.py::memberships_elsewhere`.
 - FastAPI matches routes in registration order: literal paths before `/{id}` paths.
+- Redirects: `web/redirects.py::see_other(path)` (a local path only), never `RedirectResponse`
+  (a test fails). File storage keys from anything a person typed or uploaded go through
+  `storage.safe_name`; every key is checked by `storage.safe_key`.
 - `render_template(request, name, ...)`: never pass a `name=` keyword.
 - An audited action: `audit_log_service.record_action(...)` before `db.commit()`. If it's a security
   event, map it in `services/security_events.py` (`AUDIT_EVENTS`, `CATALOG`).

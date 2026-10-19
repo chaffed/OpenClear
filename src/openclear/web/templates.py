@@ -225,7 +225,8 @@ def _render_markdown(text: str | None) -> Markup:
         url_schemes=_MARKDOWN_ALLOWED_URL_SCHEMES, attribute_filter=_markdown_attribute_filter,
         link_rel="noopener noreferrer nofollow",
     )
-    return Markup(clean_html)
+    # B704: nh3 has just cleaned it to the allowlist above
+    return Markup(clean_html)  # nosec B704
 
 
 templates.env.filters["render_markdown"] = _render_markdown
@@ -343,7 +344,8 @@ def _slot(context, name: str, **values) -> Markup:
         return Markup("")
     html = templates.env.get_template("plugins/_slot.html").render(
         kind=ui_slots.SLOTS[name], slot=name, items=rendered, csrf_token=context.get("csrf_token"), sheet_id=f"plugin-slot-{next(_slot_ids)}")
-    return Markup(html)
+    # B704: rendered by an autoescaping template from slot HTML nh3 already cleaned
+    return Markup(html)  # nosec B704
 
 
 def _plugin_pages(context) -> list:

@@ -97,3 +97,9 @@ After CS3 the open count should be zero, with every dismissal explained in its a
   `RedirectResponse(...)` calls rewritten by an AST script; `tests/test_web/test_redirects.py`
   fails on any new one. Whether CodeQL takes the helper as a barrier shows on the first PR run;
   otherwise the 86 alerts are dismissed pointing at it.
+- 2026-10-19: CS3 and CS4 on `cs1`: Bandit's SARIF at medium and up, `nosec` with reasons for
+  B704 and B610 (Bandit then finds nothing at medium); the CodeQL workflow fails on an open
+  high or critical alert for its language (`.rule.severity == "error"` was dropped from the
+  filter: CodeQL marks medium security queries as errors too); CLAUDE.md and OWASP_PLAN.md
+  (OW-D8a). Left for after the push: dismissing the false positives with reasons, and checking
+  which path-injection alerts CodeQL still reports behind the new check.
