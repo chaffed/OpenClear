@@ -7,6 +7,13 @@
   folder, with local file storage. Anyone who may attest could do it, including a business
   customer's administrator. Storage now refuses any key that isn't a plain path inside its area,
   for every kind of file, and uploaded names keep only their last part. Affects 1.19.0 to 1.25.0.
+- A security key that fails to register or sign in now says so plainly; the technical detail
+  goes to the server's log instead of the page.
+- Every redirect goes through one check that keeps it on the site (the three to a bank's own
+  identity provider excepted), and cookies are only ever set again with values shaped like
+  OpenClear's own.
+- Code scanning: the open alerts resolved (`CODE_SCANNING_PLAN.md`), Bandit's findings uploaded
+  from medium severity, and CodeQL now fails the build on an open high or critical alert.
 
 ## 1.25.0 — 2026-10-19
 
