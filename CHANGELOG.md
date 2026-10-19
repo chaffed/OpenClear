@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.25.1 — 2026-10-19
 
 - **Security (high, [GHSA-55j4-4cj6-8j2f](https://github.com/chaffed/OpenClear/security/advisories/GHSA-55j4-4cj6-8j2f)):**
   an attestation's evidence file whose name contained `../` was written outside the storage
