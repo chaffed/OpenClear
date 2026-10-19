@@ -182,6 +182,28 @@ def _image_media_type(data: bytes) -> str:
     return {"PNG": "image/png", "JPEG": "image/jpeg", "TIFF": "image/tiff"}.get(detected or "", "application/octet-stream")
 
 
+def _record_view(db: Session, ctx: TenantContext, image_id: uuid.UUID, side: str) -> None:
+    """A check image is sensitive data read (ASVS 5.0 16.3.2; OWASP_PLAN.md OW-D28): logged in the
+    action log, once per person, image and side an hour, since every page showing the check
+    loads it."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from openclear.domain.audit_log_entry import AuditLogEntry
+
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent = db.execute(select(AuditLogEntry.id).where(
+        AuditLogEntry.tenant_id == ctx.tenant_id, AuditLogEntry.resource_id == image_id, AuditLogEntry.action == "check_image.viewed",
+        AuditLogEntry.actor_user_id == ctx.user_id, AuditLogEntry.occurred_at >= since,
+        AuditLogEntry.metadata_json["side"].as_string() == side).limit(1)).first()
+    if recent is None:
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="check_image.viewed",
+                                        summary=f"Viewed the {side} of a check image", resource_type="check_image",
+                                        resource_id=image_id, metadata={"side": side})
+        db.commit()
+
+
 @router.get("/{check_image_id}/front")
 def download_front_image(
     check_image_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("check_image:read"))
@@ -190,6 +212,7 @@ def download_front_image(
     if image is None:
         raise WebNotFound()
     data = read_image(image.front_image_path)
+    _record_view(db, ctx, image.id, "front")
     return Response(content=data, media_type=_image_media_type(data))
 
 
@@ -201,4 +224,5 @@ def download_back_image(
     if image is None or image.back_image_path is None:
         raise WebNotFound()
     data = read_image(image.back_image_path)
+    _record_view(db, ctx, image.id, "back")
     return Response(content=data, media_type=_image_media_type(data))

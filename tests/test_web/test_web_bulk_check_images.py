@@ -206,3 +206,11 @@ def test_check_image_download_routes_serve_normalized_png(client, db_session, te
     back_resp = client.get(f"/ui/check-images/{image.id}/back")
     assert back_resp.status_code == 200
     assert back_resp.headers["content-type"] == "image/png"
+
+    # Each view is in the action log, once an hour per person and side (ASVS 16.3.2).
+    client.get(f"/ui/check-images/{image.id}/front")
+    from openclear.domain.audit_log_entry import AuditLogEntry
+
+    db_session.expire_all()
+    views = db_session.query(AuditLogEntry).filter(AuditLogEntry.action == "check_image.viewed", AuditLogEntry.resource_id == image.id).all()
+    assert sorted(v.metadata_json["side"] for v in views) == ["back", "front"]

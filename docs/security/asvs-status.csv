@@ -272,7 +272,7 @@ V16.2.3,Met,src/openclear/services/security_events.py; src/openclear/logging_con
 V16.2.4,Met,src/openclear/services/security_events.py; src/openclear/logging_config.py,
 V16.2.5,Met,src/openclear/services/security_events.py; src/openclear/logging_config.py,
 V16.3.1,Met,src/openclear/services/security_events.py,
-V16.3.2,Partly,src/openclear/services/security_events.py,"Denials are logged; Level 3 wants every sensitive read (exports and image downloads planned for 1.25, OW-D28)."
+V16.3.2,Partly,src/openclear/services/security_events.py; src/openclear/web/routers/check_images.py,"Denials, exports and check-image views are logged; other pages that show sensitive data aren't, to keep the log useful (OW-D28)."
 V16.3.3,Met,src/openclear/services/security_events.py,
 V16.3.4,Met,src/openclear/services/security_events.py,
 V16.4.1,Met,src/openclear/services/audit_log_service.py; src/openclear/logging_config.py,
