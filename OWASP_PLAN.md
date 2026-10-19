@@ -118,6 +118,10 @@ The ASVS assessment (OW1) will add to this list.
   | ZAP baseline (passive, every PR) | new medium findings or worse | waived in `zap-rules.tsv` with a reason |
   | ZAP active scan (weekly and before releases) | never blocks | opens issues, or advisories under OW-D5 |
 
+- **OW-D8a. Added 2026-10-19 (CODE_SCANNING_PLAN.md CS4):** the CodeQL workflow itself fails while
+  the ref has an open high or critical alert, since the maintainer's direct pushes skip the
+  ruleset's check; Bandit uploads medium and above. Found after a high path-injection alert sat
+  open and turned out to be a real vulnerability (GHSA-55j4-4cj6-8j2f).
 - **OW-D9. Lock files with hashes, for every installer.** `uv pip compile --generate-hashes
   --python-platform linux` writes `requirements/{base,dev,extras}.txt` from `pyproject.toml`
   (uv builds the Linux lock from macOS; installers need only pip). The Dockerfile, CI and the

@@ -260,13 +260,15 @@ def _cell(value: Any) -> Any:
 
 def to_csv(rows, columns: list[tuple[str, Callable[[Any], Any]]], extra: Callable[[Any], dict] | None = None) -> str:
     out = io.StringIO()
-    names = [name for name, _ in columns] + (list(extra(rows[0]).keys()) if extra and rows else [])
+    # B610: our own callable, not Django's QuerySet.extra
+    names = [name for name, _ in columns] + (list(extra(rows[0]).keys()) if extra and rows else [])  # nosec B610
     writer = csv.writer(out)
     writer.writerow(names)
     for row in rows:
         values = [_cell(getter(row)) for _, getter in columns]
         if extra:
-            values += [_cell(v) for v in extra(row).values()]
+            # B610: our own callable, not Django's QuerySet.extra
+            values += [_cell(v) for v in extra(row).values()]  # nosec B610
         writer.writerow(values)
     return out.getvalue()
 
