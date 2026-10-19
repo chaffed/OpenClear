@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.24.0 — 2026-10-18
 
 Sessions and identity (OWASP_PLAN.md OW3c):
 
