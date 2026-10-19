@@ -5,7 +5,7 @@
 For OpenClear 1.25.1, released 2026-10-19: part of the due-diligence pack ([third-party risk](tprm.md)). Each release's notes on GitHub carry the same figures for that release.
 
 - **ASVS 5.0:** 214 of 242 applicable requirements met (88%), 8 partly, 5 not met, 15 the service provider's ([crosswalk](https://github.com/chaffed/OpenClear/blob/main/docs/compliance/asvs.md)).
-- **Advisories fixed:** none.
+- **Advisories fixed:** GHSA-55j4-4cj6-8j2f (high): Attestation evidence file names can write files outside the storage folder.
 - **Dependencies:** 109 pinned at runtime; their releases' median age is 51 days; 21 are over a year old; 6 have a newer release (Dependabot and the weekly lock refresh propose them; one with a known vulnerability fails the build).
 - **SBOM:** [openclear-1.25.1.cdx.json](https://github.com/chaffed/OpenClear/releases/download/v1.25.1/openclear-1.25.1.cdx.json) (CycloneDX).
 

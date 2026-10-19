@@ -103,3 +103,9 @@ After CS3 the open count should be zero, with every dismissal explained in its a
   filter: CodeQL marks medium security queries as errors too); CLAUDE.md and OWASP_PLAN.md
   (OW-D8a). Left for after the push: dismissing the false positives with reasons, and checking
   which path-injection alerts CodeQL still reports behind the new check.
+- 2026-10-19: 1.25.1 released through PR #23 (every check green, the new CodeQL gate included);
+  GHSA-55j4-4cj6-8j2f published. On `main`, CodeQL kept the original eight path-injection alerts
+  open at their new lines, and the new gate failed the merge's run on them: dismissed as fixed,
+  re-run green. The 86 redirect alerts closed; the last 12 (WebAuthn messages, token-shaped
+  cookies, the theme allowlist, a curated message) dismissed with reasons. **Open alerts: 0, from
+  157.** The plan is complete.
