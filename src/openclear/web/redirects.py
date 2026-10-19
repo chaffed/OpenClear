@@ -34,7 +34,8 @@ def is_local(url: str) -> bool:
 
 def see_other(url: str, status_code: int = 303, headers: dict | None = None) -> RedirectResponse:
     if not is_local(url):
-        logger.warning("Refused a redirect that isn't a local path: %r", url[:200])
+        # Not the URL itself: it can carry what someone typed (CODE_SCANNING_PLAN.md CS2).
+        logger.warning("Refused a redirect that isn't a local path")
         url = FALLBACK
     return RedirectResponse(url, status_code=status_code, headers=headers)
 
