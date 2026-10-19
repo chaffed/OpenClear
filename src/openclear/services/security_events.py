@@ -127,6 +127,7 @@ CATALOG: dict[str, EventType] = {
     "list.exported": EventType("data", "medium"),
     "users.exported": EventType("data", "medium"),
     # integrity
+    "file.malware_detected": EventType("integrity", "high"),  # OW-D34: refused on upload, or quarantined later
     "anomaly_capture.failed": EventType("integrity", "high"),
     "secrets.reencrypted": EventType("integrity", "medium"),
     "control.status.changed": EventType("integrity", "high"),
@@ -176,6 +177,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "sso.domain_removed": "sso_connection.changed",
     "user.email.change_requested": "user.email.change_requested",
     "user.email.changed": "user.email.changed",
+    "file.malware_detected": "file.malware_detected",
     "customer_sign_on.scim_token": "sso_connection.scim_token.issued",
     "customer_sign_on.scim_revoked": "sso_connection.changed",
     "customer_sign_on.password_sign_in": "settings.changed",

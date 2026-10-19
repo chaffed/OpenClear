@@ -153,6 +153,16 @@ def _process_one_file(
         _move(path, "failed")
         return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "failed", error="File too large")
 
+    from openclear.services import malware_service
+
+    try:  # the drop folder doesn't come through HTTP, so it's checked here (OW-D34)
+        if malware_service.enabled():
+            malware_service.check_bytes(path.read_bytes(), filename=path.name, tenant_id=tenant.id, actor_user_id=None, channel="system")
+    except malware_service.UploadRefused as exc:
+        logger.warning("Dropped file %s for tenant %s refused: %s", path, tenant.slug, exc)
+        _move(path, "failed")
+        return ImportedFileResult(tenant.slug, customer_number, kind_subpath, path.name, "failed", error=str(exc))
+
     sha256_hex = file_digest(str(path)).hex()
     if bulk_upload_file_service.find_by_content_hash(session, tenant.id, sha256_hex) is not None:
         logger.info(

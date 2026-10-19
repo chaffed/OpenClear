@@ -42,9 +42,23 @@ Everything is checked on the server: the browser's checks are only a convenience
 | Branding | PNG, JPEG, ICO (no SVG) | 50 MB a request |
 
 Uploaded files are stored under generated names, never served back except to people of the bank
-that uploaded them, and kept with their SHA-256 and a signature (OC-SC-03). Scanning them for
-malware is the bank's or service provider's (a CUEC), with ClamAV and VirusTotal hooks planned
-for 1.25 (OWASP_PLAN.md OW-D34).
+that uploaded them, and kept with their SHA-256 and a signature (OC-SC-03).
+
+**Malware.** Every upload, through the web, the API or the drop folder, can be checked before
+anything reads it (`services/malware_service.py`; OWASP_PLAN.md OW-D34). Both checks are off
+until the service provider turns them on:
+
+- **ClamAV:** the file is streamed to `clamd` (`malware_clamd_address`). If clamd can't answer,
+  the upload is refused (`malware_clamd_on_error = "accept"` lets it through instead).
+- **VirusTotal:** only the file's SHA-256 is looked up (`malware_virustotal_api_key`), never the
+  file, since files sent there are shared with third parties ([ADR 0007](../adr/0007-virustotal-hash-lookups-only.md)).
+  If VirusTotal can't answer, the upload is accepted and the hash asked about again every hour
+  for `malware_recheck_days` (7); `malware_virustotal_on_error = "refuse"` refuses it instead.
+
+Malware is refused; a file found to be malware later is quarantined (never processed or
+downloaded again). Either way there's a high-severity `file.malware_detected` security event,
+an action-log entry and an email to the bank's administrators. The bank's own malware detection
+is a CUEC whether or not these are on (B-SI-3-01).
 
 ## Outside connections
 
@@ -62,6 +76,8 @@ and each bank reviews the ones it uses (Settings → Outside services).
 | Redis | Shared rate-limit counters across instances | Service provider |
 | GitHub's releases API | Checking for a newer OpenClear (no data sent) | Service provider (`release_feed_url`) |
 | Have I Been Pwned's range API | Breached-password check, if turned on (only 5 hash characters sent) | Service provider |
+| ClamAV (`clamd`, usually beside OpenClear) | Malware scan of every upload, if turned on | Service provider |
+| VirusTotal's file API | Malware verdict on each upload's SHA-256, if turned on (never the file) | Service provider |
 
 Inbound, OpenClear is called by browsers, the bank's systems and customers' systems through the
 API, the bank's directory (SCIM), identity providers (SAML posts, back-channel logout), and

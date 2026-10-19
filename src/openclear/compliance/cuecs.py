@@ -112,6 +112,7 @@ NIST_TITLES = {
     "SC-28": "Protection of Information at Rest",
     "SC-28(1)": "Cryptographic Protection",
     "SI-2": "Flaw Remediation",
+    "SI-3": "Malicious Code Protection",
     "SI-4": "System Monitoring",
     "SI-7": "Software, Firmware, and Information Integrity",
     "SI-7(6)": "Cryptographic Protection",
@@ -324,6 +325,13 @@ CUECS: tuple[Cuec, ...] = (
          "anything left undecided.",
          "automated", "sla", "Daily",
          "Controls → Decisions and imports on time", related=("IR-4",)),
+    Cuec("B-SI-3-01", "bank", "SI-3", "Scan files for malware",
+         "Use commercially standard malware detection on the computers and systems that send files to OpenClear, and on "
+         "files staff download from it.",
+         "OpenClear accepts only the file types it reads, re-encodes images, and can check every upload with ClamAV and "
+         "VirusTotal's hash lookups, refusing malware and quarantining a file found later (both optional).",
+         "attested", None, "Yearly", "Settings → Outside services (malware scanning); file.malware_detected in the action log",
+         related=("SI-4",)),
     Cuec("B-CA-3-01", "bank", "CA-3", "Connect the core",
          "Agree and document the interface with the core system (presented items in, decisions out), and confirm decisions are "
          "applied in the core before its cutoff.",

@@ -920,6 +920,39 @@
       "withdrawn": false
     },
     {
+      "id": "B-SI-3-01",
+      "party": "bank",
+      "nist": "SI-3",
+      "nist_title": "Malicious Code Protection",
+      "oscal_id": "si-3",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Scan files for malware",
+      "statement": "Use commercially standard malware detection on the computers and systems that send files to OpenClear, and on files staff download from it.",
+      "complements": "OpenClear accepts only the file types it reads, re-encodes images, and can check every upload with ClamAV and VirusTotal's hash lookups, refusing malware and quarantining a file found later (both optional).",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Settings \u2192 Outside services (malware scanning); file.malware_detected in the action log",
+      "withdrawn": false
+    },
+    {
       "id": "B-CA-3-01",
       "party": "bank",
       "nist": "CA-3",

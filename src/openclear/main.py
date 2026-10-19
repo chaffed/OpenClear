@@ -195,8 +195,15 @@ def create_app() -> FastAPI:
     docs_on = get_settings().api_docs_enabled
     if docs_on is None:
         docs_on = get_settings().environment != "production"
+    from fastapi import Depends
+
+    from openclear.services import malware_service
+
+    # Every file uploaded anywhere is checked for malware before its route runs, when a
+    # scanner is configured (services/malware_service.py; OW-D34).
     app = FastAPI(title="OpenClear", version=_version(), lifespan=_lifespan,
-                  docs_url="/docs" if docs_on else None, redoc_url="/redoc" if docs_on else None)
+                  docs_url="/docs" if docs_on else None, redoc_url="/redoc" if docs_on else None,
+                  dependencies=[Depends(malware_service.check_request)])
 
     # Built-in and allowed plugins register their networks, providers and formats
     # (plugins/__init__.py). A new payment network is a plugin package, not an edit here.
@@ -350,6 +357,12 @@ def create_app() -> FastAPI:
             )
         return _web_error(request, exc.status_code, headers=getattr(exc, "headers", None) or None,
                           show_search=exc.status_code == 404)
+
+    @app.exception_handler(malware_service.UploadRefused)
+    async def _handle_upload_refused(request: Request, exc: malware_service.UploadRefused):
+        if _wants_json(request):
+            return JSONResponse({"detail": str(exc)}, status_code=422)
+        return _web_error(request, 422, title="This file wasn't accepted", message=str(exc))
 
     @app.exception_handler(RequestValidationError)
     async def _handle_validation_error(request: Request, exc: RequestValidationError):

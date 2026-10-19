@@ -147,6 +147,20 @@ class Settings(BaseSettings):
     breached_password_file: str | None = None
     breached_password_hibp: bool = False
     breached_password_hibp_timeout_seconds: float = 3.0
+    # Malware scanning of uploads (services/malware_service.py; OWASP_PLAN.md OW-D34), each
+    # optional; the bank's own malware detection is a CUEC either way. malware_clamd_address is
+    # clamd's "tcp://host:3310" or "unix:///path/clamd.sock"; every upload is streamed to it, and
+    # if it can't answer the upload is refused (or accepted, with "accept"). With
+    # malware_virustotal_api_key, each upload's SHA-256 is looked up (never the file: ADR 0007);
+    # if VirusTotal can't answer, the upload is accepted and the hash checked again later for
+    # malware_recheck_days (or refused, with "refuse").
+    malware_clamd_address: str | None = None
+    malware_clamd_timeout_seconds: float = 30.0
+    malware_clamd_on_error: str = "refuse"
+    malware_virustotal_api_key: str | None = None
+    malware_virustotal_timeout_seconds: float = 5.0
+    malware_virustotal_on_error: str = "accept"
+    malware_recheck_days: int = 7
     # How long the link an administrator's password reset emails stays usable
     # (services/password_reset_service.py).
     password_reset_link_hours: int = 24

@@ -58,6 +58,8 @@ def build() -> TM:
     messaging = ExternalEntity(name="Email and SMS providers", inBoundary=outside)
     cloud_ocr = ExternalEntity(name="Cloud OCR (optional)", inBoundary=outside)
     release_feed = ExternalEntity(name="Release feed (GitHub)", inBoundary=outside)
+    clamd = ExternalEntity(name="ClamAV daemon (optional)", inBoundary=installation)
+    virustotal = ExternalEntity(name="VirusTotal (optional, hashes only)", inBoundary=outside)
 
     # --- OpenClear ---
     waf = Server(name="Edge / WAF", inBoundary=edge)
@@ -151,6 +153,10 @@ def build() -> TM:
     flow(worker, messaging, "Email and SMS", [notices], authenticatesDestination=True)
     flow(worker, cloud_ocr, "Check images for OCR (if configured)", [check_images], authenticatesDestination=True)
     flow(app, release_feed, "Release check", [])
+    flow(app, clamd, "Every upload streamed for a malware scan (if configured)", [payment_files, check_images],
+         protocol="clamd", encrypted=False)
+    flow(app, virustotal, "Each upload's SHA-256 looked up, never the file (if configured)", [], authenticatesDestination=True)
+    flow(worker, virustotal, "Hashes it couldn't answer for, asked again", [], authenticatesDestination=True)
 
     return tm
 

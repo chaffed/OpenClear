@@ -26,46 +26,51 @@ flowchart LR
     n8["Webhook receiver"]
   end
   subgraph b2["Edge (WAF / CDN)"]
-    n12["Edge / WAF"]
+    n14["Edge / WAF"]
   end
   subgraph b3["OpenClear installation (service provider)"]
-    n13["OpenClear web and API"]
-    n14["Background worker"]
-    n15["Plugins (in process)"]
+    n12["ClamAV daemon (optional)"]
+    n15["OpenClear web and API"]
+    n16["Background worker"]
+    n17["Plugins (in process)"]
   end
   subgraph b4["Data stores (service provider)"]
-    n16["Database (Postgres, row-level security)"]
-    n17["File storage (local, S3, Azure)"]
-    n18["Redis (rate limits, optional)"]
-    n19["Keys and secrets (files / environment)"]
+    n18["Database (Postgres, row-level security)"]
+    n19["File storage (local, S3, Azure)"]
+    n20["Redis (rate limits, optional)"]
+    n21["Keys and secrets (files / environment)"]
   end
   subgraph b5["Outside services"]
     n9["Email and SMS providers"]
     n10["Cloud OCR (optional)"]
     n11["Release feed (GitHub)"]
+    n13["VirusTotal (optional, hashes only)"]
   end
-  n0 -->|"Bank staff use the web UI"| n12
-  n1 -->|"Customer users use the web UI"| n12
-  n2 -->|"Platform staff use the operator view"| n12
-  n3 -->|"Embedded session launched from online banking"| n12
-  n4 -->|"Core and API clients call the API"| n12
-  n5 -->|"SSO sign-in responses (browser-relayed)"| n12
-  n6 -->|"SCIM provisioning"| n12
-  n12 -->|"Edge forwards to the origin"| n13
-  n13 -->|"OIDC discovery, token and JWKS requests"| n5
-  n13 -->|"Queries, scoped to one bank"| n16
-  n13 -->|"Uploads, images and exports"| n17
-  n13 -->|"Rate-limit counters"| n18
-  n13 -->|"Signing and encryption keys read at start"| n19
-  n13 -->|"Plugin hooks"| n15
-  n14 -->|"Jobs read and write, per bank"| n16
-  n14 -->|"Exports, archives, OCR input"| n17
-  n14 -->|"Security events (HEC, syslog over TLS)"| n7
-  n14 -->|"Signed webhooks"| n8
-  n14 -->|"Decisions delivered to the core"| n4
-  n14 -->|"Email and SMS"| n9
-  n14 -->|"Check images for OCR (if configured)"| n10
-  n13 -->|"Release check"| n11
+  n0 -->|"Bank staff use the web UI"| n14
+  n1 -->|"Customer users use the web UI"| n14
+  n2 -->|"Platform staff use the operator view"| n14
+  n3 -->|"Embedded session launched from online banking"| n14
+  n4 -->|"Core and API clients call the API"| n14
+  n5 -->|"SSO sign-in responses (browser-relayed)"| n14
+  n6 -->|"SCIM provisioning"| n14
+  n14 -->|"Edge forwards to the origin"| n15
+  n15 -->|"OIDC discovery, token and JWKS requests"| n5
+  n15 -->|"Queries, scoped to one bank"| n18
+  n15 -->|"Uploads, images and exports"| n19
+  n15 -->|"Rate-limit counters"| n20
+  n15 -->|"Signing and encryption keys read at start"| n21
+  n15 -->|"Plugin hooks"| n17
+  n16 -->|"Jobs read and write, per bank"| n18
+  n16 -->|"Exports, archives, OCR input"| n19
+  n16 -->|"Security events (HEC, syslog over TLS)"| n7
+  n16 -->|"Signed webhooks"| n8
+  n16 -->|"Decisions delivered to the core"| n4
+  n16 -->|"Email and SMS"| n9
+  n16 -->|"Check images for OCR (if configured)"| n10
+  n15 -->|"Release check"| n11
+  n15 -->|"Every upload streamed for a malware scan (if configured)"| n12
+  n15 -->|"Each upload's SHA-256 looked up, never the file (if configured)"| n13
+  n16 -->|"Hashes it couldn't answer for, asked again"| n13
 ```
 
 | Flow | From → to | Protocol | Data |
@@ -92,6 +97,9 @@ flowchart LR
 | Email and SMS | Background worker → Email and SMS providers | HTTPS | Notifications |
 | Check images for OCR (if configured) | Background worker → Cloud OCR (optional) | HTTPS | Check images |
 | Release check | OpenClear web and API → Release feed (GitHub) | HTTPS | — |
+| Every upload streamed for a malware scan (if configured) | OpenClear web and API → ClamAV daemon (optional) | clamd | Check images, Payment files (X9.37, NACHA, CSV, Excel, zip) |
+| Each upload's SHA-256 looked up, never the file (if configured) | OpenClear web and API → VirusTotal (optional, hashes only) | HTTPS | — |
+| Hashes it couldn't answer for, asked again | Background worker → VirusTotal (optional, hashes only) | HTTPS | — |
 
 ## Threats specific to OpenClear
 
@@ -133,7 +141,7 @@ the threats it raises for this model, most severe first. Most are answered by th
 above and by the [ASVS assessment](../../OWASP_PLAN.md); they're listed so that a change to
 the model that raises a new one shows up in review.
 
-239 findings across 76 threats.
+254 findings across 76 threats.
 
 | pytm id | Threat | Severity | Elements |
 |---|---|---|---|
@@ -142,7 +150,7 @@ the model that raises a new one shows up in review.
 | AC17 | Session Hijacking - ServerSide | Very High | Edge / WAF |
 | AC18 | Session Hijacking - ClientSide | Very High | Background worker, Plugins (in process) |
 | AC21 | Cross Site Request Forgery | Very High | Background worker, Plugins (in process) |
-| DS06 | Data Leak | Very High | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Uploads, images and exports |
+| DS06 | Data Leak | Very High | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Every upload streamed for a malware scan (if configured), Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Uploads, images and exports |
 | HA01 | Path Traversal | Very High | Edge / WAF |
 | INP02 | Overflow Buffers | Very High | Background worker, Plugins (in process) |
 | INP05 | Command Line Execution through SQL Injection | Very High | Edge / WAF |
@@ -157,9 +165,9 @@ the model that raises a new one shows up in review.
 | AC20 | Reusing Session IDs (aka Session Replay) - ClientSide | High | Background worker, Plugins (in process) |
 | CR01 | Session Sidejacking | High | OpenClear web and API |
 | CR03 | Dictionary-based Password Attack | High | Background worker, Edge / WAF, Plugins (in process) |
-| CR06 | Communication Channel Manipulation | High | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
+| CR06 | Communication Channel Manipulation | High | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Each upload's SHA-256 looked up, never the file (if configured), Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Every upload streamed for a malware scan (if configured), Exports, archives, OCR input, Hashes it couldn't answer for, asked again, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
 | DE04 | Audit Log Manipulation | High | Database (Postgres, row-level security), File storage (local, S3, Azure), Keys and secrets (files / environment), Redis (rate limits, optional) |
-| DR01 | Unprotected Sensitive Data | High | Plugin hooks |
+| DR01 | Unprotected Sensitive Data | High | Every upload streamed for a malware scan (if configured), Plugin hooks |
 | INP03 | Server Side Include (SSI) Injection | High | Edge / WAF |
 | INP08 | Format String Injection | High | Background worker, Edge / WAF, Plugins (in process) |
 | INP09 | LDAP Injection | High | Edge / WAF |
@@ -186,16 +194,16 @@ the model that raises a new one shows up in review.
 | AA01 | Authentication Abuse/ByPass | Medium | Background worker, Edge / WAF, Plugins (in process) |
 | AA02 | Principal Spoof | Medium | Background worker, Edge / WAF, Plugins (in process) |
 | AC01 | Privilege Abuse | Medium | Background worker, Database (Postgres, row-level security), Edge / WAF, File storage (local, S3, Azure), Keys and secrets (files / environment), Plugins (in process), Redis (rate limits, optional) |
-| AC05 | Content Spoofing | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
+| AC05 | Content Spoofing | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Each upload's SHA-256 looked up, never the file (if configured), Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Every upload streamed for a malware scan (if configured), Exports, archives, OCR input, Hashes it couldn't answer for, asked again, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
 | AC07 | Exploiting Incorrectly Configured Access Control Security Levels | Medium | Edge / WAF |
 | AC08 | Manipulate Registry Information | Medium | Edge / WAF |
 | AC09 | Functionality Misuse | Medium | Edge / WAF |
 | AC11 | Session Credential Falsification through Manipulation | Medium | Edge / WAF |
 | AC13 | Hijacking a privileged process | Medium | Background worker, Plugins (in process) |
-| CR08 | Client-Server Protocol Manipulation | Medium | Plugin hooks, Signing and encryption keys read at start |
-| DE01 | Interception | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
+| CR08 | Client-Server Protocol Manipulation | Medium | Every upload streamed for a malware scan (if configured), Plugin hooks, Signing and encryption keys read at start |
+| DE01 | Interception | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Each upload's SHA-256 looked up, never the file (if configured), Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Every upload streamed for a malware scan (if configured), Exports, archives, OCR input, Hashes it couldn't answer for, asked again, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
 | DE02 | Double Encoding | Medium | Background worker, Edge / WAF, Plugins (in process) |
-| DE03 | Sniffing Attacks | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Exports, archives, OCR input, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
+| DE03 | Sniffing Attacks | Medium | Bank staff use the web UI, Check images for OCR (if configured), Core and API clients call the API, Customer users use the web UI, Decisions delivered to the core, Each upload's SHA-256 looked up, never the file (if configured), Edge forwards to the origin, Email and SMS, Embedded session launched from online banking, Every upload streamed for a malware scan (if configured), Exports, archives, OCR input, Hashes it couldn't answer for, asked again, Jobs read and write, per bank, OIDC discovery, token and JWKS requests, Platform staff use the operator view, Plugin hooks, Queries, scoped to one bank, Rate-limit counters, Release check, SCIM provisioning, SSO sign-in responses (browser-relayed), Security events (HEC, syslog over TLS), Signed webhooks, Signing and encryption keys read at start, Uploads, images and exports |
 | DO01 | Flooding | Medium | Background worker, Edge / WAF, OpenClear web and API, Plugins (in process) |
 | DO02 | Excessive Allocation | Medium | Database (Postgres, row-level security), File storage (local, S3, Azure), Keys and secrets (files / environment), Plugins (in process), Redis (rate limits, optional) |
 | DS01 | Excavation | Medium | Edge / WAF |

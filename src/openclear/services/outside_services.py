@@ -47,6 +47,10 @@ def in_use(session: Session, tenant_id: uuid.UUID) -> list[OutsideService]:
         found.append(OutsideService("ocr", "Check image reading (OCR)", settings.ocr_provider))
     if settings.storage_backend != "local":
         found.append(OutsideService("storage", "File storage", settings.storage_backend))
+    if settings.malware_clamd_address:
+        found.append(OutsideService("malware_clamav", "Malware scanning of uploads", "ClamAV"))
+    if settings.malware_virustotal_api_key:
+        found.append(OutsideService("malware_virustotal", "Malware lookups of uploads", "VirusTotal (file hashes only, never files)"))
     if settings.siem_kind:
         found.append(OutsideService("siem_installation", "The installation's security event destination", settings.siem_kind))
     destination = session.execute(select(SecurityEventDestination).where(SecurityEventDestination.tenant_id == tenant_id,

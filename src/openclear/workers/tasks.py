@@ -474,6 +474,22 @@ def _run_controls(schedule: str) -> None:
         session.close()
 
 
+def malware_recheck_job() -> None:
+    """Hourly: asks VirusTotal again about uploads it couldn't answer for when they arrived
+    (services/malware_service.py::recheck_due)."""
+    from openclear.services import malware_service
+
+    session = get_session_factory()()
+    try:
+        malware_service.recheck_due(session)
+        session.commit()
+    except Exception:  # noqa: BLE001
+        session.rollback()
+        logger.exception("Malware re-check failed")
+    finally:
+        session.close()
+
+
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
     jobs, sent notifications, old bulk-upload row results and expired export archives; then

@@ -35,7 +35,7 @@ from openclear.web.templates import templates
 # SMS for every type, including these) stays fully preference-controlled.
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
                                  NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
-                                 NotificationType.NEW_DEVICE_SIGN_IN})
+                                 NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -51,6 +51,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.NEW_DEVICE_SIGN_IN: "A new sign-in to your OpenClear account",
     NotificationType.EMAIL_CHANGE_CONFIRM: "Confirm your new OpenClear email address",
     NotificationType.EMAIL_CHANGED: "The email address on your OpenClear sign-in changed",
+    NotificationType.MALWARE_DETECTED: "Malware was found in a file uploaded to OpenClear",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -409,6 +410,14 @@ def notify_new_device(session: Session, user: User, *, browser: str, address: st
         template_context={"browser": browser, "address": address, "at": at.strftime("%Y-%m-%d %H:%M UTC"), "bank_name": bank_name},
         resource_type="user", resource_id=user.id,
     )
+
+
+def notify_malware_detected(session: Session, tenant_id: uuid.UUID, *, filename: str, found: str, scanner: str, later: bool) -> None:
+    """To everyone at the bank who manages it (tenant:manage)."""
+    for admin in _recipients_for_permission(session, tenant_id, "tenant:manage", customer_id=None):
+        _queue(session, tenant_id=tenant_id, recipient=admin, notification_type=NotificationType.MALWARE_DETECTED,
+               template_context={"filename": filename, "found": found, "scanner": "ClamAV" if scanner == "clamav" else "VirusTotal",
+                                 "later": later}, resource_type="file")
 
 
 def notify_email_address(session: Session, user: User, *, destination: str, notification_type: NotificationType,

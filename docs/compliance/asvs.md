@@ -119,7 +119,7 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 | **V5.3.2** Verify that when the application creates file paths for file operations, instead of user-submitted filenames, it uses internally generated or trusted data, o… | 1 | Met | `src/openclear/bulk_import/file_storage.py` |  |
 | **V5.4.1** Verify that the application validates or ignores user-submitted filenames, including in a JSON, JSONP, or URL parameter and specifies a filename in the Conte… | 2 | Met | `src/openclear/web/routers/bulk_uploads.py` |  |
 | **V5.4.2** Verify that file names served (e.g., in HTTP response header fields or email attachments) are encoded or sanitized (e.g., following RFC 6266) to preserve doc… | 2 | Met | `src/openclear/web/routers/bulk_uploads.py` |  |
-| **V5.4.3** Verify that files obtained from untrusted sources are scanned by antivirus scanners to prevent serving of known malicious content. | 2 | Service provider's (CUEC) | `docs/security/data-and-limits.md` | The bank's malware detection; ClamAV and VirusTotal hooks planned for 1.25 (OW-D34). |
+| **V5.4.3** Verify that files obtained from untrusted sources are scanned by antivirus scanners to prevent serving of known malicious content. | 2 | Service provider's (CUEC) | `src/openclear/services/malware_service.py`, `docs/security/data-and-limits.md`, `test_clamav_refuses_malware_and_tells_the_admins` | Every upload checked by ClamAV and VirusTotal hash lookups when the service provider turns them on (OW-D34); the bank's own malware detection either way (B-SI-3-01). |
 
 ## V6 Authentication
 

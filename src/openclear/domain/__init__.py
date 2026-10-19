@@ -43,6 +43,7 @@ from openclear.domain import (  # noqa: F401
     issued_item,
     job,
     login_session,
+    malware_recheck,
     ml_model,
     notification,
     paid_item,

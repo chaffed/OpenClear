@@ -19,6 +19,7 @@ from openclear.workers.tasks import (
     demo_reset_job,
     dropbox_import_job,
     housekeeping_job,
+    malware_recheck_job,
     notification_dispatch_job,
     retrain_job,
     security_event_delivery_job,
@@ -57,6 +58,8 @@ def _jobs(settings) -> list[tuple[str, Callable[[], None], object, timedelta]]:
         jobs.append(("verify_action_logs_job", verify_action_logs_job, CronTrigger(hour=settings.control_test_cron_hour, minute=45), day))
         jobs.append(("controls_watch_job", controls_watch_job, CronTrigger(minute=5), hour))
         jobs.append(("controls_nightly_job", controls_nightly_job, CronTrigger(hour=settings.control_test_cron_hour, minute=55), day))
+    if settings.malware_virustotal_api_key:
+        jobs.append(("malware_recheck_job", malware_recheck_job, IntervalTrigger(hours=1), hour))
     if demo_reset_enabled(settings):
         jobs.append(("demo_reset_job", demo_reset_job, IntervalTrigger(minutes=settings.demo_tenant_reset_interval_minutes),
                      timedelta(minutes=settings.demo_tenant_reset_interval_minutes)))

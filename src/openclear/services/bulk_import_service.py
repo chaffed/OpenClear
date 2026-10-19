@@ -453,6 +453,10 @@ def run_import(session: Session, upload_id: uuid.UUID, *, last_attempt: bool = F
     record = session.get(BulkUploadFile, upload_id)
     if record is None or record.status in (BulkUploadStatus.COMPLETED, BulkUploadStatus.REJECTED):
         return
+    if record.quarantined_at is not None:  # found to be malware after it arrived (services/malware_service.py)
+        record.status, record.error = BulkUploadStatus.REJECTED, "Quarantined: identified as malware after it was uploaded."
+        session.commit()
+        return
     # Only the accounts the uploader may see (db/account_scope.py).
     bind_for_member(session, record.tenant_id, record.uploaded_by_user_id, record.customer_id)
     try:

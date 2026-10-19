@@ -224,6 +224,8 @@ def bulk_upload_download(
     upload_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)
 ) -> Response:
     record = _get_authorized_record(db, ctx, upload_id)
+    if record.quarantined_at is not None:  # malware, found after it was accepted (OW-D34)
+        raise WebNotFound()
     encoded_name = quote(record.original_filename)
     # Always a generic binary download, never the Content-Type the uploader's browser
     # declared: that value is attacker-controlled, and echoing e.g. text/javascript back

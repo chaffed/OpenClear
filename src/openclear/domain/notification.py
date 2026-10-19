@@ -40,6 +40,8 @@ class NotificationType(str, enum.Enum):
     # Sent to an address, not a person's preferences: always email.
     EMAIL_CHANGE_CONFIRM = "email_change_confirm"
     EMAIL_CHANGED = "email_changed"
+    # services/malware_service.py: an upload was malware (OW-D34). To the bank's administrators; always email.
+    MALWARE_DETECTED = "malware_detected"
     # services/customer_approval_service.py: the bank approved or rejected someone the
     # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
     CUSTOMER_USER_DECIDED = "customer_user_decided"
