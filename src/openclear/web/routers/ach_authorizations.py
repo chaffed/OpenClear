@@ -19,6 +19,7 @@ from openclear.web.deps import render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/ach/authorizations", tags=["web-ach-authorizations"])
 
@@ -150,7 +151,7 @@ def create_authorization(
         resource_id=rule.id,
     )
     db.commit()
-    return RedirectResponse("/ui/ach/authorizations?flash=Authorization+created.", status_code=303)
+    return see_other("/ui/ach/authorizations?flash=Authorization+created.")
 
 
 @router.post("/{rule_id}/revoke")
@@ -173,4 +174,4 @@ def revoke_authorization(
             resource_id=rule.id,
         )
     db.commit()
-    return RedirectResponse("/ui/ach/authorizations?flash=Authorization+revoked.", status_code=303)
+    return see_other("/ui/ach/authorizations?flash=Authorization+revoked.")

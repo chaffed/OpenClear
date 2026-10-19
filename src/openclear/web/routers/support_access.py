@@ -19,13 +19,14 @@ from openclear.domain.user import User
 from openclear.services import support_access_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/settings/support-access", tags=["web-support-access"])
 _PERMISSION = "tenant:manage"
 
 
 def _back(message: str, *, error: bool = False) -> RedirectResponse:
-    return RedirectResponse(f"/ui/settings/support-access?{'error' if error else 'flash'}={quote(message)}", status_code=303)
+    return see_other(f"/ui/settings/support-access?{'error' if error else 'flash'}={quote(message)}")
 
 
 @router.get("")

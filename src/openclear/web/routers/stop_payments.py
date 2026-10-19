@@ -18,6 +18,7 @@ from openclear.web.deps import render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/stop-payments", tags=["web-stop-payments"])
 
@@ -107,7 +108,7 @@ def create_stop_payment(
         resource_id=stop.id,
     )
     db.commit()
-    return RedirectResponse("/ui/stop-payments?flash=Stop+payment+created.", status_code=303)
+    return see_other("/ui/stop-payments?flash=Stop+payment+created.")
 
 
 @router.post("/{stop_id}/cancel")
@@ -130,4 +131,4 @@ def cancel_stop_payment(
             resource_id=stop.id,
         )
     db.commit()
-    return RedirectResponse("/ui/stop-payments?flash=Stop+payment+cancelled.", status_code=303)
+    return see_other("/ui/stop-payments?flash=Stop+payment+cancelled.")

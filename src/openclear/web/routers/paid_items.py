@@ -20,6 +20,7 @@ from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/paid-items", tags=["web-paid-items"])
 
@@ -100,7 +101,7 @@ def create_paid_item(
     db.commit()
 
     flash = "Paid item matched." if item.match_status.value == "matched" else "Paid item created an exception — see the Exceptions queue."
-    return RedirectResponse(f"/ui/paid-items/{item.id}?flash={quote(flash)}", status_code=303)
+    return see_other(f"/ui/paid-items/{item.id}?flash={quote(flash)}")
 
 
 # NOTE: /bulk must be registered before /{item_id} — FastAPI matches path patterns in

@@ -27,6 +27,7 @@ from openclear.auth.security import create_session_tokens
 from openclear.services import audit_log_service, notification_service, session_service, user_service
 from openclear.web.deps import PASSWORD_CHANGE_PATH, get_web_context, render_template
 from openclear.web.security import set_session_cookies, verify_csrf, verify_csrf_header
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 
@@ -95,20 +96,18 @@ def change_my_email(
     from openclear.services import email_change_service
 
     if ctx.signed_in_with == "sso":
-        return RedirectResponse(f"/ui/security?error={quote('Your organization’s sign-on sets your address; ask its administrator.')}",
-                                status_code=303)
+        return see_other(f"/ui/security?error={quote('Your organization’s sign-on sets your address; ask its administrator.')}")
     if not recently_signed_in(ctx):
-        return RedirectResponse(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}", status_code=303)
+        return see_other(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}")
     try:
         change = email_change_service.request_change(db, db.get(User, ctx.user_id), new_email, tenant_id=ctx.tenant_id,
                                                      requested_by_user_id=ctx.user_id,
                                                      base_url=get_settings().public_base_url or str(request.base_url))
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/security?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/security?error={quote(str(exc))}")
     db.commit()
-    return RedirectResponse(f"/ui/security?flash={quote(f'We sent a link to {change.new_email}. Open it to finish the change.')}",
-                            status_code=303)
+    return see_other(f"/ui/security?flash={quote(f'We sent a link to {change.new_email}. Open it to finish the change.')}")
 
 
 @router.post("/sessions/{session_id}/end")
@@ -121,12 +120,12 @@ def end_session(
     """Signs out one of the person's own other sessions (ASVS 5.0 7.5.2)."""
     mine = [s for s in session_service.active_sessions(db, ctx.tenant_id, [ctx.user_id]) if s.id == session_id]
     if not mine or session_id == ctx.session_id:
-        return RedirectResponse(f"/ui/security?error={quote('That session has already ended, or is this one.')}", status_code=303)
+        return see_other(f"/ui/security?error={quote('That session has already ended, or is this one.')}")
     session_service.end_sessions(db, mine)
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.session.ended",
                                     summary="Signed out one of their other sessions", resource_type="user", resource_id=ctx.user_id)
     db.commit()
-    return RedirectResponse(f"/ui/security?flash={quote('Signed out of that session.')}", status_code=303)
+    return see_other(f"/ui/security?flash={quote('Signed out of that session.')}")
 
 
 def _render_password_form(
@@ -182,7 +181,7 @@ def change_password(
     )
     db.commit()
     destination = "/ui/" if ctx.must_change_password else PASSWORD_CHANGE_PATH
-    response = RedirectResponse(f"{destination}?flash=" + quote("Your password has been changed."), status_code=303)
+    response = see_other(f"{destination}?flash=" + quote("Your password has been changed."))
     # change_own_password signed out every session (token_version bumped), this one
     # included — re-issue tokens for it so the user stays on the page they're on.
     _reissue_current_session(response, ctx, db.get(User, ctx.user_id))
@@ -211,7 +210,7 @@ def sign_out_other_sessions(
         resource_id=ctx.user_id,
     )
     db.commit()
-    response = RedirectResponse("/ui/security?flash=" + quote("You've been signed out on all other devices."), status_code=303)
+    response = see_other("/ui/security?flash=" + quote("You've been signed out on all other devices."))
     _reissue_current_session(response, ctx, user)
     return response
 
@@ -273,7 +272,7 @@ def update_phone(
     user = db.get(User, ctx.user_id)
     notification_service.set_phone(db, user, phone.strip() or None)
     db.commit()
-    return RedirectResponse("/ui/security/notifications", status_code=303)
+    return see_other("/ui/security/notifications")
 
 
 @router.post("/notifications")
@@ -291,7 +290,7 @@ async def update_notification_preferences(
             sms_enabled=f"sms_{notification_type.value}" in form,
         )
     db.commit()
-    return RedirectResponse("/ui/security/notifications", status_code=303)
+    return see_other("/ui/security/notifications")
 
 
 @router.post("/webauthn/register/options")
@@ -335,7 +334,7 @@ def delete_credential_route(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     if not recently_signed_in(ctx):
-        return RedirectResponse(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}", status_code=303)
+        return see_other(f"/ui/security?error={quote(RECENT_SIGN_IN_REQUIRED)}")
     nickname = next((c.nickname for c in list_credentials(db, ctx.tenant_id, ctx.user_id) if c.id == credential_id), None)
     deleted = delete_credential(db, ctx.tenant_id, ctx.user_id, credential_id)
     if deleted:
@@ -344,4 +343,4 @@ def delete_credential_route(
     # ASVS 7.4.3: after removing a factor, offer to end every other session.
     flash = ("Security key removed. If it was lost or stolen, use Sign out other devices below." if deleted
              else "Security key not found.")
-    return RedirectResponse(f"/ui/security?flash={quote(flash)}", status_code=303)
+    return see_other(f"/ui/security?flash={quote(flash)}")

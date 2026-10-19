@@ -18,6 +18,7 @@ from openclear.web.bulk_import import start_import
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/accounts", tags=["web-accounts"])
 
@@ -108,7 +109,7 @@ def create_account(
         resource_id=account.id,
     )
     db.commit()
-    return RedirectResponse("/ui/accounts?flash=Account+created.", status_code=303)
+    return see_other("/ui/accounts?flash=Account+created.")
 
 
 @router.get("/bulk")

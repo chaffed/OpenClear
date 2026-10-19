@@ -12,6 +12,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import conformance_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/admin/integration", tags=["web-conformance"])
 _manage = require_web_permission("api_client:manage")
@@ -27,4 +28,4 @@ def checklist_page(request: Request, db: Session = Depends(get_db), ctx: TenantC
 def run_probe(db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage), _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     conformance_service.probe_webhooks(db, ctx.tenant_id)
     db.commit()
-    return RedirectResponse("/ui/admin/integration", status_code=303)
+    return see_other("/ui/admin/integration")

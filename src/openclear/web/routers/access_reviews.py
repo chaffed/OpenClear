@@ -18,6 +18,7 @@ from openclear.services import access_review_service, audit_log_service
 from openclear.services.access_review_service import ReviewError
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_any_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/access-reviews", tags=["web-access-reviews"])
 BASE = "/ui/access-reviews"
@@ -43,7 +44,7 @@ def _review(db: Session, ctx: TenantContext, review_id: uuid.UUID):
 
 
 def _back(path: str, message: str) -> RedirectResponse:
-    return RedirectResponse(f"{path}?flash={quote(message)}", status_code=303)
+    return see_other(f"{path}?flash={quote(message)}")
 
 
 @router.get("")
@@ -63,7 +64,7 @@ def start_review(db: Session = Depends(get_db), ctx: TenantContext = Depends(_re
     _record(db, ctx, "access_review.started", f"Started an access review of {review.item_count} memberships"
             + (f" at {ctx.customer_name}" if ctx.customer_id else ""), review)
     db.commit()
-    return RedirectResponse(f"{BASE}/{review.id}", status_code=303)
+    return see_other(f"{BASE}/{review.id}")
 
 
 @router.get("/{review_id}")

@@ -90,7 +90,7 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 | **V3.5.4** Verify that separate applications are hosted on different hostnames to leverage the restrictions provided by same-origin policy, including how documents or s… | 2 | Service provider's (CUEC) | `docs/guides/edge.md` | One hostname per installation. |
 | **V3.5.5** Verify that messages received by the postMessage interface are discarded if the origin of the message is not trusted, or if the syntax of the message is inva… | 2 | Met | `src/openclear/web/security.py` |  |
 | **V3.7.1** Verify that the application only uses client-side technologies which are still supported and considered secure. Examples of technologies which do not meet th… | 2 | Met | `src/openclear/web/security.py` |  |
-| **V3.7.2** Verify that the application will only automatically redirect the user to a different hostname or domain (which is not controlled by the application) where th… | 2 | Met | `src/openclear/web/security.py` |  |
+| **V3.7.2** Verify that the application will only automatically redirect the user to a different hostname or domain (which is not controlled by the application) where th… | 2 | Met | `src/openclear/web/redirects.py`, `src/openclear/web/security.py` | Every redirect goes through one helper that takes only a local path; the only ones off the site go to the bank's identity provider. |
 
 ## V4 API and Web Service
 

@@ -14,6 +14,7 @@ from openclear.services import audit_log_service, password_reset_service
 from openclear.web.deps import render_template
 from openclear.web.rate_limit import rate_limit
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-password-reset"])
 
@@ -49,5 +50,4 @@ def reset(request: Request, token: str, password: str = Form(""), password_confi
                                     summary=f"{user.email} chose a new password from a reset link",
                                     resource_type="user", resource_id=user.id)
     db.commit()
-    return RedirectResponse(f"/ui/login/{opened.tenant.slug}?flash=" + quote("Your password is set. Sign in to continue."),
-                            status_code=303)
+    return see_other(f"/ui/login/{opened.tenant.slug}?flash=" + quote("Your password is set. Sign in to continue."))

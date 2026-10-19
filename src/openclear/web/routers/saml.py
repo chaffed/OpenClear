@@ -24,6 +24,7 @@ from openclear.services import audit_log_service, session_service, sso_service
 from openclear.web.deps import WebNotFound, render_template
 from openclear.web.routers.auth import _SSO_FAILED_MESSAGE, finish_sso_login
 from openclear.web.security import SAML_STATE_COOKIE_NAME, clear_saml_state_cookie, read_cookie
+from openclear.web.redirects import to_identity_provider
 
 router = APIRouter(prefix="/ui/sso/saml", tags=["web-saml"], include_in_schema=False)
 logger = logging.getLogger(__name__)
@@ -120,4 +121,4 @@ def single_logout(request: Request, tenant_id: uuid.UUID, connection_id: uuid.UU
             summary=f"Signed out by the identity provider ({connection.display_name})", resource_type="user", resource_id=user.id,
         )
         db.commit()
-    return RedirectResponse(redirect or "/ui/login", status_code=303)
+    return to_identity_provider(redirect or "/ui/login")

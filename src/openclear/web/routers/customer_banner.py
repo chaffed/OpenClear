@@ -11,6 +11,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, customer_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/banner", tags=["web-customer-banner"])
 
@@ -67,4 +68,4 @@ def update_banner(
         summary="Updated customer banner message", resource_type="customer", resource_id=customer_id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/banner?flash=Updated.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/banner?flash=Updated.")

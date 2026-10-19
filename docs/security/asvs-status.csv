@@ -55,7 +55,7 @@ V3.5.3,Met,src/openclear/web/security.py,
 V3.5.4,Service provider's (CUEC),docs/guides/edge.md,One hostname per installation.
 V3.5.5,Met,src/openclear/web/security.py,
 V3.7.1,Met,src/openclear/web/security.py,
-V3.7.2,Met,src/openclear/web/security.py,
+V3.7.2,Met,src/openclear/web/redirects.py; src/openclear/web/security.py,"Every redirect goes through one helper that takes only a local path; the only ones off the site go to the bank's identity provider."
 V4.1.1,Met,src/openclear/web/client_ip.py,
 V4.1.2,Service provider's (CUEC),docs/guides/edge.md,HTTPS redirects at the edge.
 V4.1.3,Met,src/openclear/web/client_ip.py,

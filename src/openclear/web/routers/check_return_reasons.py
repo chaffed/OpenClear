@@ -17,6 +17,7 @@ from openclear.services import audit_log_service, check_return_reason_service
 from openclear.services.check_return_reason_service import InvalidCheckReturnReasonInput
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/check-return-reasons", tags=["web-check-return-reasons"])
 _PERMISSION = "ach_return_reason:manage"
@@ -50,7 +51,7 @@ def create_reason(request: Request, reason_text: str = Form(...), return_code: s
                                return_code=return_code, error=str(exc), status_code=422)
     _record(db, ctx, "create", f"Added check return reason {reason.reason_text!r}", reason)
     db.commit()
-    return RedirectResponse("/ui/check-return-reasons?flash=Return+reason+added.", status_code=303)
+    return see_other("/ui/check-return-reasons?flash=Return+reason+added.")
 
 
 @router.get("/{reason_id}/edit")
@@ -80,7 +81,7 @@ def update_reason(request: Request, reason_id: uuid.UUID, reason_text: str = For
         raise WebNotFound()
     _record(db, ctx, "update", f"Updated check return reason {reason.reason_text!r}", reason)
     db.commit()
-    return RedirectResponse("/ui/check-return-reasons?flash=Return+reason+updated.", status_code=303)
+    return see_other("/ui/check-return-reasons?flash=Return+reason+updated.")
 
 
 @router.post("/{reason_id}/{verdict}")
@@ -90,7 +91,7 @@ def set_active(reason_id: uuid.UUID, verdict: str, db: Session = Depends(get_db)
         raise WebNotFound()
     reason = check_return_reason_service.set_active(db, ctx.tenant_id, reason_id, verdict == "reactivate")
     if reason is None:
-        return RedirectResponse("/ui/check-return-reasons?error=Return+reason+not+found.", status_code=303)
+        return see_other("/ui/check-return-reasons?error=Return+reason+not+found.")
     _record(db, ctx, verdict, f"{verdict.capitalize()}d check return reason {reason.reason_text!r}", reason)
     db.commit()
-    return RedirectResponse(f"/ui/check-return-reasons?flash=Return+reason+{verdict}d.", status_code=303)
+    return see_other(f"/ui/check-return-reasons?flash=Return+reason+{verdict}d.")

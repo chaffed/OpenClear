@@ -63,6 +63,7 @@ from openclear.web.security import (
     verify_csrf_header,
     ACCESS_COOKIE_NAME,
 )
+from openclear.web.redirects import see_other, to_identity_provider
 
 router = APIRouter(prefix="/ui", tags=["web-auth"])
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ def login_submit(
             signed_in_with="password",
         )
         next_step = "webauthn/setup" if identity.needs_webauthn_enrollment else "webauthn"
-        response = RedirectResponse(f"/ui/login/{next_step}?next={quote(next_path)}", status_code=303)
+        response = see_other(f"/ui/login/{next_step}?next={quote(next_path)}")
         set_mfa_cookie(response, mfa_token)
         return response
 
@@ -173,7 +174,7 @@ def login_submit(
     )
     user_service.record_login(db, user.id, tenant_id=membership.tenant_id)
     db.commit()
-    response = RedirectResponse(next_path, status_code=303)
+    response = see_other(next_path)
     set_session_cookies(response, tokens)
     device_service.note_sign_in(db, request, response, user, bank_name=tenant.name)
     return response
@@ -202,7 +203,7 @@ def logout(request: Request, db: Session = Depends(get_db), _csrf: None = Depend
                                  actor_type="user", actor_id=claims["sub"])
             db.commit()
     embedded = bool(token and claims.get("emb"))
-    response = RedirectResponse("/ui/embed/ended" if embedded else "/ui/login", status_code=303)
+    response = see_other("/ui/embed/ended" if embedded else "/ui/login")
     clear_auth_cookies(response, embed=embedded)
     return response
 
@@ -398,7 +399,7 @@ def sso_start(
         connection_id=connection.id, tenant_id=tenant_id, nonce=nonce, next_path=next_path, state=state,
         code_verifier=code_verifier,
     )
-    response = RedirectResponse(authorization_url, status_code=303)
+    response = to_identity_provider(authorization_url)
     set_sso_state_cookie(response, state_token)
     return response
 
@@ -416,7 +417,7 @@ def _saml_start(request: Request, connection, tenant_id: uuid.UUID, next_path: s
     state_token = create_sso_state_token(
         connection_id=connection.id, tenant_id=tenant_id, nonce=request_id, next_path=next_path, state=relay_state,
     )
-    response = RedirectResponse(url, status_code=303)
+    response = to_identity_provider(url)
     set_saml_state_cookie(response, state_token)
     return response
 
@@ -525,7 +526,7 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
         confined=membership.customer_id is not None,
         signed_in_with="sso",
     )
-    response = RedirectResponse(safe_next_path(next_path), status_code=303)
+    response = see_other(safe_next_path(next_path))
     set_session_cookies(response, tokens)
     clear_sso_state_cookie(response)
     clear_saml_state_cookie(response)

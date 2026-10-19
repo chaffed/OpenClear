@@ -32,6 +32,7 @@ from openclear.services.decision_service import DecisionError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/exceptions", tags=["web-exceptions"])
 
@@ -350,9 +351,9 @@ def decide_several(
     joiner = "&" if "?" in back else "?"
     choice = _parse_outcome(outcome)
     if choice is None or not exception_ids:
-        return RedirectResponse(f"{back}{joiner}error={quote('Select one or more items, then Pay or Return.')}", status_code=303)
+        return see_other(f"{back}{joiner}error={quote('Select one or more items, then Pay or Return.')}")
     if len(exception_ids) > 200:
-        return RedirectResponse(f"{back}{joiner}error={quote('At most 200 items at once.')}", status_code=303)
+        return see_other(f"{back}{joiner}error={quote('At most 200 items at once.')}")
     dual = db.get(Tenant, ctx.tenant_id).require_dual_control
     can_decide, can_recommend = "exception:decide" in ctx.permissions, "exception:recommend" in ctx.permissions
     done, problems = 0, []
@@ -401,8 +402,8 @@ def decide_several(
     if problems:
         shown = "; ".join(problems[:5]) + (f"; and {len(problems) - 5} more" if len(problems) > 5 else "")
         error = f"{len(problems)} couldn't be done: {shown}."
-        return RedirectResponse(f"{back}{joiner}{'flash=' + quote(message) + '&' if message else ''}error={quote(error)}", status_code=303)
-    return RedirectResponse(f"{back}{joiner}flash={quote(message)}&event=exception-decided", status_code=303)
+        return see_other(f"{back}{joiner}{'flash=' + quote(message) + '&' if message else ''}error={quote(error)}")
+    return see_other(f"{back}{joiner}flash={quote(message)}&event=exception-decided")
 
 
 def _short_label(db: Session, item) -> str:
@@ -424,10 +425,10 @@ def recommend(
 ) -> RedirectResponse:
     outcome = _parse_outcome(outcome)
     if outcome is None:
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}")
     reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, outcome, reason_code, return_reason_id or ach_return_reason_id)
     if problem:
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(problem)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(problem)}")
     # A fresh recommendation can be undone from the toast that confirms it; a revised one
     # can't (undoing it would withdraw the earlier one too).
     before = exception_service.get_exception(db, ctx.tenant_id, exception_id, customer_id=ctx.customer_id)
@@ -450,9 +451,9 @@ def recommend(
     db.commit()
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(message)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(message)}")
     undo = "&undo=withdraw-recommendation" if fresh else ""
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.&event=exception-recommended{undo}", status_code=303)
+    return see_other(f"/ui/exceptions/{exception_id}?flash=Recommendation+submitted.&event=exception-recommended{undo}")
 
 
 @router.post("/{exception_id}/recommendation/withdraw")
@@ -466,14 +467,14 @@ def withdraw_recommendation(
     result = decision_service.withdraw_recommendation(db, ctx.tenant_id, exception_id, ctx)
     if result.error is not None:
         db.rollback()
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_DECISION_ERROR_MESSAGES[result.error])}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(_DECISION_ERROR_MESSAGES[result.error])}")
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="exception.recommendation_withdrawn",
         summary="Withdrew their recommendation; the exception is open again",
         resource_type="exception_item", resource_id=exception_id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Recommendation+withdrawn.", status_code=303)
+    return see_other(f"/ui/exceptions/{exception_id}?flash=Recommendation+withdrawn.")
 
 
 @router.post("/{exception_id}/decide")
@@ -490,10 +491,10 @@ def decide(
 ) -> RedirectResponse:
     outcome = _parse_outcome(outcome)
     if outcome is None:
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(_CHOOSE_OUTCOME)}")
     reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, outcome, reason_code, return_reason_id or ach_return_reason_id)
     if problem:
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(problem)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(problem)}")
     result = decision_service.decide(
         db, ctx.tenant_id, exception_id, ctx, outcome=outcome, reason_code=reason_code, notes=notes or None,
         ach_return_reason_id=reason_id, check_return_reason_id=reason_id, channel="web",
@@ -512,6 +513,6 @@ def decide(
     db.commit()
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
-        return RedirectResponse(f"/ui/exceptions/{exception_id}?error={quote(message)}", status_code=303)
+        return see_other(f"/ui/exceptions/{exception_id}?error={quote(message)}")
     # `event` tells an embedding online banking page (static/js/app.js); ignored otherwise.
-    return RedirectResponse(f"/ui/exceptions/{exception_id}?flash=Decision+recorded.&event=exception-decided", status_code=303)
+    return see_other(f"/ui/exceptions/{exception_id}?flash=Decision+recorded.&event=exception-decided")

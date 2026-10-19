@@ -12,6 +12,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import customer_service, wizard_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-wizard"])
 
@@ -38,7 +39,7 @@ def acknowledge_bank_step(
 ) -> RedirectResponse:
     wizard_service.acknowledge_step(db, ctx.tenant_id, None, step_key, ctx.user_id)
     db.commit()
-    return RedirectResponse("/ui/wizard/bank", status_code=303)
+    return see_other("/ui/wizard/bank")
 
 
 @router.post("/ui/wizard/bank/{step_key}/unacknowledge")
@@ -48,7 +49,7 @@ def unacknowledge_bank_step(
 ) -> RedirectResponse:
     wizard_service.unacknowledge_step(db, ctx.tenant_id, None, step_key)
     db.commit()
-    return RedirectResponse("/ui/wizard/bank", status_code=303)
+    return see_other("/ui/wizard/bank")
 
 
 # --- Customer wizard: /ui/customers/{customer_id}/wizard ---
@@ -83,7 +84,7 @@ def acknowledge_customer_step(
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
     wizard_service.acknowledge_step(db, ctx.tenant_id, customer_id, step_key, ctx.user_id)
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/wizard", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/wizard")
 
 
 @router.post("/ui/customers/{customer_id}/wizard/{step_key}/unacknowledge")
@@ -94,4 +95,4 @@ def unacknowledge_customer_step(
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
     wizard_service.unacknowledge_step(db, ctx.tenant_id, customer_id, step_key)
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}/wizard", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}/wizard")

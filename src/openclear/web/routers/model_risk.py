@@ -18,6 +18,7 @@ from openclear.domain.control_run import ControlRun
 from openclear.services import mrm_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(tags=["web-model-risk"])
 _manage = require_web_permission("admin:manage")
@@ -42,7 +43,7 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
            _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     content = file.file.read(MAX_REPLAY_BYTES + 1)
     if len(content) > MAX_REPLAY_BYTES:
-        return RedirectResponse(f"/ui/admin/model-risk?error={quote('That file is too large to replay.')}", status_code=303)
+        return see_other(f"/ui/admin/model-risk?error={quote('That file is too large to replay.')}")
     from openclear.services import long_runs
     from openclear.workers.jobs import jobs_queued
 
@@ -51,10 +52,10 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
                                      channel="web")
     except mrm_service.ReplayError as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/admin/model-risk?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/admin/model-risk?error={quote(str(exc))}")
     db.commit()
     jobs_queued(db.get_bind())
-    return RedirectResponse(f"/ui/admin/model-risk?run={run.id}", status_code=303)
+    return see_other(f"/ui/admin/model-risk?run={run.id}")
 
 
 @router.post("/ui/admin/model-risk/anomaly-capture")
@@ -62,4 +63,4 @@ def anomaly_capture(db: Session = Depends(get_db), ctx: TenantContext = Depends(
                     _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     run = mrm_service.anomaly_capture(db, ctx.tenant_id, user_id=ctx.user_id, channel="web")
     db.commit()
-    return RedirectResponse(f"/ui/admin/model-risk?run={run.id}", status_code=303)
+    return see_other(f"/ui/admin/model-risk?run={run.id}")

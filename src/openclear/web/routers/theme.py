@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 
 from openclear.web.security import THEME_COOKIE_NAME, _secure_cookies, cookie_name, safe_next_path, verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/theme", tags=["web-theme"])
 
@@ -23,7 +24,7 @@ def set_theme(
     a TenantContext or User row. `theme=system` (the default/unset state) clears any
     previous override so the page falls back to the `@media (prefers-color-scheme: dark)`
     CSS rule in static/css/app.css."""
-    response = RedirectResponse(safe_next_path(next), status_code=303)
+    response = see_other(safe_next_path(next))
     if theme in _VALID_THEMES:
         response.set_cookie(
             cookie_name(THEME_COOKIE_NAME),

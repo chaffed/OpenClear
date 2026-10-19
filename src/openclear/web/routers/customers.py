@@ -14,6 +14,7 @@ from openclear.services import account_service, audit_log_service, customer_ml_s
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/customers", tags=["web-customers"])
 
@@ -96,7 +97,7 @@ def remind_customer(
     db.commit()
     message = (f"Reminder sent to {people} {'person' if people == 1 else 'people'} about {items} open item{'s' if items != 1 else ''}."
                if people else ("Nobody at this customer can act on its items." if items else "This customer has nothing open."))
-    return RedirectResponse(f"/ui/customers/{customer_id}?flash={quote(message)}", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}?flash={quote(message)}")
 
 
 @router.get("/new")
@@ -152,7 +153,7 @@ def create_customer(
     db.commit()
     # Straight into this customer's own setup checklist rather than the plain list —
     # see services/wizard_service.py.
-    return RedirectResponse(f"/ui/customers/{customer.id}/wizard?flash=Customer+created.", status_code=303)
+    return see_other(f"/ui/customers/{customer.id}/wizard?flash=Customer+created.")
 
 
 # NOTE: /new must be registered before /{customer_id} below — FastAPI matches path
@@ -223,10 +224,10 @@ def set_self_service(
             tenant_id=ctx.tenant_id, user_id=ctx.user_id, summary=f"Let {customer.name} manage more of its own access")
     except ValueError as exc:
         db.rollback()
-        return RedirectResponse(f"/ui/customers/{customer_id}?error={quote(str(exc))}", status_code=303)
+        return see_other(f"/ui/customers/{customer_id}?error={quote(str(exc))}")
     if outcome.waiting:
         db.commit()
-        return RedirectResponse(f"/ui/customers/{customer_id}?flash={quote(waiting_message(outcome))}", status_code=303)
+        return see_other(f"/ui/customers/{customer_id}?flash={quote(waiting_message(outcome))}")
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.self_service",
         summary=f"{customer.name} manages its own people: {'yes' if manages_users else 'no'}; its own sign-on: {'yes' if manages_sso else 'no'}; "
@@ -234,7 +235,7 @@ def set_self_service(
         resource_type="customer", resource_id=customer.id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer.id}?flash=Self-service+saved.", status_code=303)
+    return see_other(f"/ui/customers/{customer.id}?flash=Self-service+saved.")
 
 
 @router.post("/{customer_id}/approval")
@@ -258,7 +259,7 @@ def set_approval(
         resource_type="customer", resource_id=customer.id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer.id}?flash=Approval+setting+saved.", status_code=303)
+    return see_other(f"/ui/customers/{customer.id}?flash=Approval+setting+saved.")
 
 
 @router.get("/{customer_id}/edit")
@@ -323,4 +324,4 @@ def update_customer(
         resource_id=customer.id,
     )
     db.commit()
-    return RedirectResponse(f"/ui/customers/{customer_id}?flash=Customer+updated.", status_code=303)
+    return see_other(f"/ui/customers/{customer_id}?flash=Customer+updated.")

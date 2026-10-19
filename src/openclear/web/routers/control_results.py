@@ -20,6 +20,7 @@ from openclear.services import audit_log_service, control_results_service
 from openclear.services.control_results_service import DeviationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/admin/controls", tags=["web-control-results"])
 _read = require_web_permission("audit_log:read")
@@ -34,7 +35,7 @@ def _titles() -> dict[str, str]:
 
 
 def _back(path: str, message: str) -> RedirectResponse:
-    return RedirectResponse(f"{path}?flash={quote(message)}", status_code=303)
+    return see_other(f"{path}?flash={quote(message)}")
 
 
 # Literal paths before /deviations/{deviation_id}.

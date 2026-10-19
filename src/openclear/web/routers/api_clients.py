@@ -17,6 +17,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import api_client_service, audit_log_service, customer_service, security_group_service, sso_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.security import verify_csrf
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/admin/api-clients", tags=["web-api-clients"])
 _manage = require_web_permission("api_client:manage")
@@ -68,16 +69,16 @@ def update_key_pairs_only(
             user_id=ctx.user_id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return RedirectResponse("/ui/admin/api-clients?error=" + quote(str(exc)), status_code=303)
+        return see_other("/ui/admin/api-clients?error=" + quote(str(exc)))
     if outcome.waiting:
         db.commit()
-        return RedirectResponse("/ui/admin/api-clients?flash=" + quote(waiting_message(outcome)), status_code=303)
+        return see_other("/ui/admin/api-clients?flash=" + quote(waiting_message(outcome)))
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
                                         action="tenant.update_api_key_pairs_only",
                                         summary=f"API clients {'must' if key_pairs_only else 'needn’t'} sign with a key pair")
     db.commit()
-    return RedirectResponse("/ui/admin/api-clients?flash=Updated.", status_code=303)
+    return see_other("/ui/admin/api-clients?flash=Updated.")
 
 
 @router.get("/new")
@@ -160,7 +161,7 @@ def revoke_api_client(
         summary=f"Revoked API client {client.name}", resource_type="api_client", resource_id=client.id,
     )
     db.commit()
-    return RedirectResponse("/ui/admin/api-clients?flash=API+client+revoked.", status_code=303)
+    return see_other("/ui/admin/api-clients?flash=API+client+revoked.")
 
 
 @router.get("/{api_client_id}/key")
@@ -192,7 +193,7 @@ def set_key_pair(
         resource_id=client.id,
     )
     db.commit()
-    return RedirectResponse("/ui/admin/api-clients?flash=" + quote(f"{client.name} now signs in with its key pair."), status_code=303)
+    return see_other("/ui/admin/api-clients?flash=" + quote(f"{client.name} now signs in with its key pair."))
 
 
 @router.post("/{api_client_id}/use-secret")

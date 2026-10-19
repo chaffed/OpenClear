@@ -24,6 +24,7 @@ from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, rende
 from openclear.web.pagination import paginate
 from openclear.web.security import verify_csrf
 from openclear.workers.jobs import jobs_queued
+from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/check-images", tags=["web-check-images"])
 
@@ -89,7 +90,7 @@ def upload_check_image(
     queue_ocr(db, ctx.tenant_id, check_image.id)
     db.commit()
     jobs_queued(db.get_bind(), background_tasks)
-    return RedirectResponse(f"/ui/check-images/{check_image.id}?flash=Uploaded.+OCR+is+processing.", status_code=303)
+    return see_other(f"/ui/check-images/{check_image.id}?flash=Uploaded.+OCR+is+processing.")
 
 
 # NOTE: /bulk must be registered before /{check_image_id} below — FastAPI matches path
@@ -166,7 +167,7 @@ def reprocess_check_image(
     queue_ocr(db, ctx.tenant_id, image.id)
     db.commit()
     jobs_queued(db.get_bind(), background_tasks)
-    return RedirectResponse(f"/ui/check-images/{check_image_id}?flash=Reprocessing.", status_code=303)
+    return see_other(f"/ui/check-images/{check_image_id}?flash=Reprocessing.")
 
 
 def _image_media_type(data: bytes) -> str:
