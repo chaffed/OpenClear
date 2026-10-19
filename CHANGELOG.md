@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.25.0 — 2026-10-19
 
 Files and verification (OWASP_PLAN.md OW4):
 
