@@ -287,7 +287,8 @@ def _accent_style(accent: str | None) -> Markup:
     if not accent or not _HEX_COLOR.match(accent):
         return Markup("")
     light, dark = colors.accent_text(accent)
-    return Markup(
+    # B704: only #rrggbb values reach it (the check above, and colors.accent_text's own output)
+    return Markup(  # nosec B704
         f'<style>:root{{--accent:{accent};--accent-text:{light}}}'
         f'@media (prefers-color-scheme: dark){{:root:not([data-theme="light"]){{--accent-text:{dark}}}}}'
         f':root[data-theme="dark"]{{--accent-text:{dark}}}</style>'
