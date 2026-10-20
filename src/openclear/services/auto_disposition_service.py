@@ -116,10 +116,17 @@ def get_disposition_summary(
 def compute_decision_deadline(
     session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, network_code: str
 ) -> datetime | None:
-    """None for a tenant-wide/bank-staff-submitted item (no customer to look a setting up
-    for — same "doesn't apply" rule ml/predict.py::_resolve_scoring_source uses for
-    customer_id is None) or when the resolved mode is NONE. Otherwise now + the
-    customer's configured (or global default) response window."""
+    """The cut-off, when the bank has set one for this network (services/cutoff_service.py,
+    UI_PLAN.md UI-D13): every item gets it, the bank's own and customers' with no default
+    decision too. Otherwise, as before cut-offs: None for a tenant-wide/bank-staff-submitted
+    item (no customer to look a setting up for — same "doesn't apply" rule
+    ml/predict.py::_resolve_scoring_source uses for customer_id is None) or when the resolved
+    mode is NONE, else now + the customer's configured (or global default) response window."""
+    from openclear.services import cutoff_service
+
+    cutoff = cutoff_service.deadline_for(session, tenant_id, customer_id, network_code)
+    if cutoff is not None:
+        return cutoff
     if customer_id is None:
         return None
     mode = get_disposition_mode(session, tenant_id, customer_id, network_code)

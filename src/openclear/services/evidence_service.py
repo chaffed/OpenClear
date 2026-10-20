@@ -123,7 +123,27 @@ def _settings(session: Session, tenant_id: uuid.UUID) -> dict:
               for g in security_group_service.list_security_groups(session, tenant_id)]
     return {"require_dual_control": tenant.require_dual_control, "segregation_of_duties": tenant.sod_mode,
             "stale_date_threshold_days": tenant.stale_date_threshold_days, "password_login_enabled": tenant.password_login_enabled,
-            "security_groups": groups}
+            "security_groups": groups, "decision_cutoff": _cutoffs(session, tenant)}
+
+
+def _cutoffs(session: Session, tenant) -> dict:
+    """When decisions become final (UI_PLAN.md UI-D13): the bank's cut-offs, its closures, and
+    each cut-off agreed with a customer, with when it was last set."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
+    from openclear.services import cutoff_service
+
+    agreed = session.execute(
+        select(Customer.customer_number, Customer.name, CustomerDispositionSetting.network_code, CustomerDispositionSetting.cutoff_time,
+               CustomerDispositionSetting.updated_at)
+        .join(Customer, Customer.id == CustomerDispositionSetting.customer_id)
+        .where(CustomerDispositionSetting.tenant_id == tenant.id, CustomerDispositionSetting.cutoff_time.is_not(None))
+        .order_by(Customer.customer_number, CustomerDispositionSetting.network_code)).all()
+    return {"time_zone": tenant.time_zone, "cutoffs": dict(tenant.decision_cutoffs or {}),
+            "min_review_minutes": tenant.cutoff_min_review_minutes,
+            "closures": [{"day": c.closed_on.isoformat(), "name": c.name} for c in cutoff_service.closures(session, tenant.id)],
+            "agreed_with_customers": [{"customer_number": number, "customer": name, "network": network, "cutoff": cutoff,
+                                       "set_at": _iso(updated)} for number, name, network, cutoff, updated in agreed]}
 
 
 def _audit(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> dict:

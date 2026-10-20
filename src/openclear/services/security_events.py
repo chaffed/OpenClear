@@ -234,6 +234,9 @@ AUDIT_EVENTS: dict[str, str] = {
     "sso.password_login": "settings.changed",
     "tenant.update_data_export_timeout": "settings.changed",
     "tenant.update_decision_files": "settings.changed",
+    "tenant.update_cutoffs": "settings.changed",  # when decisions become final (UI_PLAN.md UI-D13)
+    "customer.update_cutoff": "settings.changed",
+    "tenant.update_closures": "settings.changed",
     "customer.update_password_policy": "settings.changed",
     "tenant.update_sod_mode": "sod.mode.changed",
     "compliance.settings.changed": "settings.changed",  # the attestations' second person among them

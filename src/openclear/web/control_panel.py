@@ -82,7 +82,7 @@ def bank_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
 
 
 def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
-    from openclear.services import decision_outbox_service, reminder_service, sso_service
+    from openclear.services import cutoff_service, decision_outbox_service, reminder_service, sso_service
     from openclear.services.siem import delivery
 
     contact_set = any((tenant.support_email, tenant.support_phone, tenant.website))
@@ -156,6 +156,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("dual-control", "Decisions & rules", "Dual control", "how_to_reg", "/ui/settings/dual-control",
              "A second person approves each pay or return decision.", "On" if tenant.require_dual_control else "Off",
              tone="ok" if tenant.require_dual_control else "", modal=True, keywords="maker checker approval four eyes"),
+        Tile("cutoff", "Decisions & rules", "Decision cut-off", "schedule", "/ui/settings/cutoff",
+             "When items must be decided by; decisions can change until then.", cutoff_service.describe(tenant), modal=True,
+             keywords="cutoff deadline time zone holidays closed business day final"),
         Tile("reminders", "Decisions & rules", "Reminders", "notifications_active", "/ui/settings/reminders",
              "Email and text reminders before the cutoff for items still to decide.", reminders, modal=True,
              keywords="cutoff deadline notify notifications sms email"),

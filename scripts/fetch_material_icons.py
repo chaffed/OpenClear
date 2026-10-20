@@ -44,6 +44,7 @@ ICONS: dict[str, str] = {
     "sync_alt": "nav: ACH Transactions",
     "assignment_return": "nav: ACH Return Reasons",
     "home": "nav: Home",
+    "schedule": "settings: Decision cut-off",
     "flag": "nav: Exceptions",
     "gavel": "nav: Unauthorized Debit Statement",
     "model_training": "nav: Fraud Training Data",

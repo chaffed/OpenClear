@@ -172,6 +172,9 @@ erDiagram
 <tr><td>support_email / support_phone / website</td><td>String</td><td>yes</td><td></td><td>Shown in the page footer; footer is hidden entirely if every contact field is unset.</td></tr>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td>Shown in the page footer.</td></tr>
 <tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>Reminders before the cutoff, minutes before each deadline, comma-separated ("120,30"). Null follows the installation's default; empty turns them off (services/reminder_service.py).</td></tr>
+<tr><td>time_zone</td><td>String(64)</td><td>yes</td><td></td><td>The bank's time zone (an IANA name, such as America/New_York), in which its decision cut-offs are set.</td></tr>
+<tr><td>decision_cutoffs</td><td>JSON</td><td>no</td><td></td><td>Each network's decision cut-off as a time of day ({"check": "11:00"}). Items are due at the first cut-off on a business day at least cutoff_min_review_minutes after they arrive; decisions can be changed until then (services/cutoff_service.py).</td></tr>
+<tr><td>cutoff_min_review_minutes</td><td>Integer</td><td>no</td><td></td><td>The least time an item gets before its cut-off; one arriving closer is due at the next business day's. Default 120.</td></tr>
 <tr><td>security_event_feed_read_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank last read its security events through the API (for the "Security events delivered" control).</td></tr>
 </tbody>
 </table>
@@ -1023,7 +1026,37 @@ erDiagram
 <tr><td>decided_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>source</td><td>String(15) enum</td><td>no</td><td></td><td>human / automatic (default-disposition sweep).</td></tr>
 <tr><td>features_json</td><td>JSON</td><td>yes</td><td></td><td>The feature vector used for ML scoring/training, frozen at decision time.</td></tr>
-<tr><td>feed_sequence</td><td>BigInteger</td><td>yes</td><td>UK (with tenant_id)</td><td>Its place in the bank's decision feed (1, 2, 3…), in the order decisions were committed. Null for a fraud-training example.</td></tr>
+<tr><td>feed_sequence</td><td>BigInteger</td><td>yes</td><td>UK (with tenant_id)</td><td>Its place in the bank's decision feed (1, 2, 3…), given when it locks. Null until then, and for a fraud-training example.</td></tr>
+<tr><td>locked_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the decision became final and went out (the feed, webhooks, decision files). Until the item's cut-off it can be changed; null means it still can.</td></tr>
+</tbody>
+</table>
+
+<h3>decision_revision</h3>
+<p>An earlier version of a decision, kept when it was changed or undone before the cut-off. Written once, never changed.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id / exception_item_id</td><td>UUID</td><td>no</td><td>FK</td><td></td></tr>
+<tr><td>outcome, reason_code, return_transaction_code, notes</td><td></td><td></td><td></td><td>As the decision had them.</td></tr>
+<tr><td>submitted_by_user_id / decided_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>As the decision had them.</td></tr>
+<tr><td>decided_at</td><td>Timestamp</td><td>no</td><td></td><td>When that version was made.</td></tr>
+<tr><td>revised_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Who changed or undid it.</td></tr>
+<tr><td>revised_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>undone</td><td>Boolean</td><td>no</td><td></td><td>True when nothing replaced it: the item went back to be decided.</td></tr>
+</tbody>
+</table>
+
+<h3>bank_closure</h3>
+<p>A day the bank is closed beyond weekends and the Federal Reserve's holidays: no cut-off falls on it.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>closed_on</td><td>Date</td><td>no</td><td>UK (with tenant_id)</td><td></td></tr>
+<tr><td>name</td><td>String(120)</td><td>no</td><td></td><td>Why, such as "Founder's Day".</td></tr>
+<tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
 
@@ -1091,7 +1124,8 @@ that an organization has turned on (Settings → Plugins). OpenClear's own are a
 <tr><td>tenant_id / customer_id</td><td>UUID</td><td>no</td><td>FK</td><td></td></tr>
 <tr><td>network_code</td><td>String(32)</td><td>no</td><td>FK → payment_network.code, UK (with customer_id)</td><td></td></tr>
 <tr><td>mode</td><td>String(20) enum</td><td>no</td><td></td><td>none / always_pay / always_return / ml_determined — applied by the auto-disposition sweep when an exception's deadline passes unanswered.</td></tr>
-<tr><td>response_window_hours</td><td>Integer</td><td>yes</td><td></td><td></td></tr>
+<tr><td>response_window_hours</td><td>Integer</td><td>yes</td><td></td><td>Used only while the bank has no cut-off for this network.</td></tr>
+<tr><td>cutoff_time</td><td>String(5)</td><td>yes</td><td></td><td>A cut-off agreed with this customer ("14:00", the bank's time zone), in place of the bank's for this network. Set by bank staff.</td></tr>
 <tr><td>default_ach_return_reason_id</td><td>UUID</td><td>yes</td><td>FK → ach_return_reason.id</td><td>Required for an ACH always_return/ml_determined return; if unset, that customer+network is skipped by the sweep rather than guessed.</td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>

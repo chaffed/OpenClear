@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -71,6 +71,10 @@ class Decision(Base):
     # "everything after N" never misses one. None for a fraud-training example, which
     # isn't a real item to pay or return.
     feed_sequence: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # When the decision became final and went out (feed, webhook, decision files). Until the
+    # item's cut-off it can be changed (UI_PLAN.md UI-D13); None means it still can. A decision
+    # made with no cut-off ahead of it locks at once.
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class DecisionFeedCursor(Base):
@@ -86,3 +90,28 @@ class DecisionFeedCursor(Base):
     through_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     updated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+
+
+class DecisionRevision(Base):
+    """An earlier version of a decision, kept when it was changed or undone before the cut-off
+    (UI_PLAN.md UI-D13). Written once, never changed: with the action log, the full history of
+    what was decided, by whom, and what replaced it."""
+
+    __tablename__ = "decision_revision"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    exception_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("exception_item.id"), nullable=False, index=True)
+    outcome: Mapped[DecisionOutcome] = mapped_column(
+        Enum(DecisionOutcome, name="decision_outcome", native_enum=False, length=10), nullable=False
+    )
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    return_transaction_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Who changed or undid it, and when; `undone` when nothing replaced it.
+    revised_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    revised_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    undone: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

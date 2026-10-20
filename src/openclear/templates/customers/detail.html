@@ -55,6 +55,27 @@
     <time datetime="{{ nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}.{% else %}Nothing to decide.{% endif %}
     Reminders: {{ reminder_timing }}.</p>
   <p class="hint"><a href="/ui/layouts">Issue-file layouts</a> · <a href="/ui/users">Users</a> · <a href="/ui/issued-items">Issued items</a></p>
+  {# The cut-off agreed with this customer (UI_PLAN.md UI-D13): blank uses the bank's. #}
+  {% set network_names = {"check": "Checks", "ach": "ACH"} %}
+  <h3>Cut-off</h3>
+  {% if not bank_time_zone %}
+  <p class="hint">Set the bank's decision cut-off and time zone in Settings first; a customer's own time is kept with it.</p>
+  {% endif %}
+  {% if can(ctx, "tenant:manage") %}
+  <form method="post" action="/ui/customers/{{ customer.id }}/cutoff" class="cutoff-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% for code in networks %}
+    <label>{{ network_names.get(code, code) }}
+      <input type="time" name="cutoff_{{ code }}" value="{{ customer_cutoffs.get(code) or '' }}" step="60" aria-describedby="cutoff-hint-{{ code }}">
+    </label>
+    <p class="hint" id="cutoff-hint-{{ code }}">{% if customer_cutoffs.get(code) %}Agreed with {{ customer.name }}.{% endif %}
+      The bank's: {{ bank_cutoffs.get(code) or "not set" }}{% if bank_time_zone %} ({{ bank_time_zone | replace("_", " ") }}){% endif %}. Leave blank to use it.</p>
+    {% endfor %}
+    <div class="form-actions"><button type="submit" class="secondary">{{ icon("save") }}Save the cut-off</button></div>
+  </form>
+  {% else %}
+  <p>{% for code in networks %}{{ network_names.get(code, code) }}: {{ customer_cutoffs.get(code) or bank_cutoffs.get(code) or "not set" }}{% if customer_cutoffs.get(code) %} (agreed){% endif %}{{ " · " if not loop.last }}{% endfor %}</p>
+  {% endif %}
 </div>
 
 <div class="card">
