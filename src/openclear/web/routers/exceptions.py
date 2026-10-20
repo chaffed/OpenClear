@@ -3,10 +3,11 @@
 
 import uuid
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
@@ -483,6 +484,7 @@ def decide(
     notes: str = Form(""),
     ach_return_reason_id: str = Form(""),
     return_reason_id: str = Form(""),
+    from_list: str = Form("", alias="from"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:decide")),
     _csrf: None = Depends(verify_csrf),
@@ -512,5 +514,47 @@ def decide(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return see_other(f"/ui/exceptions/{exception_id}", error=message)
+    # On to the next item still to decide, in the queue it was opened from (UI_PLAN.md UI-D11).
     # `event` tells an embedding online banking page (static/js/app.js); ignored otherwise.
-    return see_other(f"/ui/exceptions/{exception_id}", flash="Decision recorded.", event="exception-decided")
+    label = _short_label(db, result.exception)
+    done = f"{label[:1].upper()}{label[1:]}: {'paid' if outcome == DecisionOutcome.PAY else 'returned'}."
+    queue = _queue_path(from_list)
+    if queue is None:
+        return see_other(f"/ui/exceptions/{exception_id}", flash=done, event="exception-decided")
+    following = _next_to_decide(db, ctx, exception_id, queue)
+    if following is None:
+        return see_other(queue, flash=f"{done} Nothing else is waiting for you here.", event="exception-decided")
+    return see_other(f"/ui/exceptions/{following.id}", flash=done, event="exception-decided", **{"from": queue})
+
+
+def _queue_path(from_list: str) -> str | None:
+    """The exceptions list an item was opened from, if it's a work queue (what still needs a
+    person); None for a list of decided items, or anything that isn't the exceptions list."""
+    from openclear.web.security import safe_next_path
+
+    path = safe_next_path(from_list, default="")
+    if not (path == "/ui/exceptions" or path.startswith("/ui/exceptions?")):
+        return None
+    status = parse_qs(urlsplit(path).query).get("status", [""])[0]
+    return path if status in ("", *(s.value for s in exception_service.NEEDS_ATTENTION)) else None
+
+
+def _next_to_decide(db: Session, ctx: TenantContext, current_id: uuid.UUID, queue: str) -> ExceptionItem | None:
+    """The oldest other item in that queue (its network and customer filters) this person can
+    still act on: not one waiting on their own recommendation."""
+    params = parse_qs(urlsplit(queue).query)
+    status = params.get("status", [""])[0]
+    statuses = (ExceptionStatus(status),) if status else exception_service.NEEDS_ATTENTION
+    customer_id = ctx.customer_id
+    if customer_id is None and params.get("customer"):
+        try:
+            customer_id = uuid.UUID(params["customer"][0])
+        except ValueError:
+            customer_id = None
+    found = exception_service.list_exceptions(
+        db, ctx.tenant_id, network_code=params.get("network_code", [""])[0] or None, statuses=statuses, customer_id=customer_id,
+        where=[ExceptionItem.id != current_id,
+               or_(ExceptionItem.recommended_by_user_id.is_(None), ExceptionItem.recommended_by_user_id != ctx.user_id)],
+        order_by=ExceptionItem.created_at.asc(), limit=1,
+    )
+    return found[0] if found else None

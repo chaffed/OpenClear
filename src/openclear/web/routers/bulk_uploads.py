@@ -26,6 +26,35 @@ router = APIRouter(prefix="/ui/bulk-uploads", tags=["web-bulk-uploads"])
 _PERMISSION_BY_KIND = bulk_import_service.PERMISSION_BY_KIND
 
 # Where "back" goes from an upload's page: the list its rows landed in.
+# What one row of each kind makes, for the outcome sentence (UI_PLAN.md FL5).
+_NOUNS = {
+    BulkUploadKind.ISSUED_ITEMS: ("issued check", "issued checks"),
+    BulkUploadKind.ACH_TRANSACTIONS: ("ACH transaction", "ACH transactions"),
+    BulkUploadKind.USERS: ("user", "users"),
+    BulkUploadKind.ACCOUNTS: ("account", "accounts"),
+    BulkUploadKind.CHECK_IMAGES: ("check image", "check images"),
+    BulkUploadKind.PAID_ITEMS: ("paid check", "paid checks"),
+    BulkUploadKind.FRAUD_TRAINING_EXAMPLES: ("training example", "training examples"),
+}
+
+
+def _record_details(db: Session, ctx: TenantContext, tracked: list) -> dict:
+    """For each issued check an upload created: its number, amount and payee, so the list says
+    what was made, not only "issued_item"."""
+    from openclear.repositories.issued_item_repo import IssuedItemRepository
+
+    ids = [t.resource_id for t in tracked if t.resource_type == "issued_item"]
+    if not ids:
+        return {}
+    repo = IssuedItemRepository(db, ctx.tenant_id, ctx.customer_id)
+    details = {}
+    for resource_id in ids:
+        item = repo.get(resource_id)
+        if item is not None:
+            details[resource_id] = f"Check {item.check_number} · ${item.amount:,.2f}" + (f" · {item.payee_name}" if item.payee_name else "")
+    return details
+
+
 _BACK_BY_KIND = {
     BulkUploadKind.ISSUED_ITEMS: ("/ui/issued-items", "Back to issued items"),
     BulkUploadKind.ACH_TRANSACTIONS: ("/ui/ach/transactions", "Back to ACH transactions"),
@@ -127,6 +156,7 @@ def bulk_upload_detail(
         finished=finished, failures=failures, has_row_results=has_row_results, back_url=back_url, back_label=back_label,
         corrections=[c for c in corrections if c.success], fixed_rows=fixed_rows, correctable=bulk_import_service.correctable(record),
         layout_name=(options.get("layout") or {}).get("name"), offer_layout=offer_layout,
+        nouns=_NOUNS.get(record.kind, ("row", "rows")), record_details=_record_details(db, ctx, tracked_records),
     )
 
 

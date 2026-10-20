@@ -9,6 +9,17 @@
   rings in a bank's accent use a shade of it that reaches WCAG AA contrast in each theme. The
   bank name and links were too dark to read on the dark theme before. Links all share that
   colour, and the Branding setting previews it in both themes.
+- **Deciding moves on to the next item** (`UI_PLAN.md` UI2): after Pay or Return, the next item
+  still to decide opens, with a note of what was just done; after the last, the list says
+  nothing else is waiting.
+- The "Decide now" link is no longer hidden behind the theme and Help controls. The theme
+  choice moved into the navigation, which also gains **Home**.
+- A customer's Getting Started checklist: "Add an account" and "Add a user" open with the
+  customer already chosen, and saving comes back to the checklist. Steps say "Done" or "To do".
+- A new stop payment is effective today unless changed, and a form with an error keeps what was
+  typed.
+- An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),
+  lists the checks it added, and keeps "Back out this upload" apart from the other buttons.
 
 ## 1.25.1 — 2026-10-19
 

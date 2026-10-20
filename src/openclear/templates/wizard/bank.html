@@ -20,13 +20,14 @@
     <tbody>
       {% for view in steps %}
       <tr>
-        <td style="width:2rem;">
+        <td class="checklist-state">
+          {# In words, not only a colour (UI_PLAN.md FL9). #}
           {% if view.is_complete %}
-          <span class="badge badge-ok">✓</span>
+          <span class="badge badge-ok">Done</span>
           {% elif view.step.optional %}
-          <span class="badge">optional</span>
+          <span class="badge">Optional</span>
           {% else %}
-          <span class="badge badge-danger">•</span>
+          <span class="badge badge-warn">To do</span>
           {% endif %}
         </td>
         <td>
@@ -38,12 +39,12 @@
             {% if view.is_complete %}
             <form method="post" action="/ui/wizard/bank/{{ view.step.key }}/unacknowledge" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="link-button">— mark not done</button>
+              <button type="submit" class="link-button">Mark not done</button>
             </form>
             {% else %}
             <form method="post" action="/ui/wizard/bank/{{ view.step.key }}/acknowledge" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button type="submit" class="link-button">— mark done</button>
+              <button type="submit" class="link-button">Mark done</button>
             </form>
             {% endif %}
             {% endif %}

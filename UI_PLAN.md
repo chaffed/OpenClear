@@ -315,3 +315,31 @@ doesn't have.
     passes.
   F2 turned out wrong (the accent's refusal rule already existed) and F17 overstated; both are
   corrected above. The desktop reference pictures were rewritten for the link colour.
+- 2026-10-19: UI2 built on `ui2-journeys`:
+  - **After a decision, the next item:** Pay or Return moves on to the oldest item still open
+    in the queue it was opened from (its network and customer filters), with a toast naming
+    what was done. With nothing left it goes to the list ("Nothing else is waiting for you
+    here"). The tablet's two-pane queue does the same, and Back returns to the decided item.
+  - **Recommendations stay on their item for now,** because the toast's Undo withdraws that
+    item's recommendation. UI3's Undo will carry the item, and then they move on too.
+  - **The page's top row:** the decide banner and Help in the flow of the page; the theme in
+    the navigation (or the top row where there's no navigation). The floating controls, and
+    the CSS that kept content clear of them, are gone.
+  - **Home** at the top of the navigation.
+  - **The customer's checklist** links with the customer chosen, and saving returns to it.
+    Its states are in words ("Done", "To do", "Optional"), and its buttons read
+    "Mark done" / "Mark not done".
+  - **The stop payment's effective date** starts as today. The form keeps what was typed when
+    it comes back with an error (it came back empty before).
+  - **The upload result:** the outcome first ("1 issued check added. 1 row needs fixing."),
+    "What this upload added" with each check's number, amount and payee, the file's details
+    under a disclosure, and "Back out" in its own danger-styled section.
+  - **`tests/test_web/test_journeys.py`** walks the journeys in a browser: deciding three in a
+    row; "Decide now" not covered at 1280 and 390 px; Home; a stop payment from the check
+    number alone; the checklist round trip; an upload with a bad row, fixed.
+  **Not done, and why:** UI-D12's invitations for a customer's people from the bank side.
+  Users the bank adds go through the bank's second-person rule for access changes
+  (`access_changes.hold_new`). An invitation creates the membership only when it's accepted,
+  so as things stand it would bypass that rule. It needs its own design: hold the invitation,
+  or hold the membership on acceptance. It's left as a follow-up, and until then "Add a user"
+  opens the bank's form with the customer chosen.

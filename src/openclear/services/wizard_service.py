@@ -160,7 +160,7 @@ CUSTOMER_STEPS: list[WizardStep] = [
         title="Add this customer's accounts",
         description="The accounts belonging to this customer that OpenClear will monitor.",
         link_text="Add an account",
-        link_url="/ui/accounts/new",
+        link_url="/ui/accounts/new?customer_id={customer_id}&return=/ui/customers/{customer_id}/wizard",
         auto_check=_customer_has_accounts,
     ),
     WizardStep(
@@ -168,7 +168,7 @@ CUSTOMER_STEPS: list[WizardStep] = [
         title="Add this customer's users",
         description="Staff — the bank's own or this customer's employees — scoped to just this customer's data.",
         link_text="Add a user",
-        link_url="/ui/users/new",
+        link_url="/ui/users/new?customer_id={customer_id}&return=/ui/customers/{customer_id}/wizard",
         auto_check=_customer_has_users,
     ),
     WizardStep(

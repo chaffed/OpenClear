@@ -14,14 +14,14 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Account
       <select name="account_id" required>
-        {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} ({{ a.account_number }})</option>{% endfor %}
+        {% for a in accounts %}<option value="{{ a.id }}"{{ " selected" if (form or {}).get("account_id") == a.id | string else "" }}>{{ a.name }} ({{ a.account_number }})</option>{% endfor %}
       </select>
     </label>
-    <label>Check number <input type="text" name="check_number" required></label>
-    <label>Amount (optional — leave blank to match any amount) <input type="text" name="amount" placeholder="0.00"></label>
-    <label>Effective date <input type="date" name="effective_date" required></label>
-    <label>Expiration date (optional) <input type="date" name="expiration_date"></label>
-    <label>Reason <input type="text" name="reason"></label>
+    <label>Check number <input type="text" name="check_number" value="{{ (form or {}).get('check_number', '') }}" required></label>
+    <label>Amount (optional — leave blank to match any amount) <input type="text" name="amount" placeholder="0.00" value="{{ (form or {}).get('amount', '') }}"></label>
+    <label>Effective date <input type="date" name="effective_date" value="{{ (form or {}).get('effective_date', '') }}" required></label>
+    <label>Expiration date (optional) <input type="date" name="expiration_date" value="{{ (form or {}).get('expiration_date', '') }}"></label>
+    <label>Reason <input type="text" name="reason" value="{{ (form or {}).get('reason', '') }}"></label>
     <button type="submit">{{ icon("add") }}Create</button>
   </form>
 </div>

@@ -30,11 +30,25 @@
     </form>
   </div>
   {% endif %}
+  {% macro theme_form(css_class) %}
+  <form method="post" action="/ui/theme" class="inline-form {{ css_class }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.url.path }}{{ ('?' + request.url.query) if request.url.query else '' }}">
+    <label>Theme
+      <select name="theme" class="theme-select" data-auto-submit>
+        <option value="system" {{ "selected" if not theme else "" }}>System</option>
+        <option value="light" {{ "selected" if theme == "light" else "" }}>Light</option>
+        <option value="dark" {{ "selected" if theme == "dark" else "" }}>Dark</option>
+      </select>
+    </label>
+  </form>
+  {% endmacro %}
   <div class="app-shell">
     {% if ctx and not embedded %}
     {% from "_macros/icon.html" import icon %}
-    {% macro nav_link(href, label, icon_name, badge=0) %}
-    <a href="{{ href }}" class="{{ 'active' if (request.url.path == href or request.url.path.startswith(href + '/')) else '' }}">{{ icon(icon_name) }}{{ label }}{% if badge %}<span class="nav-count" aria-label="{{ badge }} waiting">{{ badge }}</span>{% endif %}</a>
+    {% macro nav_link(href, label, icon_name, badge=0, match=none) %}
+    {% set path = match or href %}
+    <a href="{{ href }}" class="{{ 'active' if (request.url.path == path or request.url.path.startswith(path + '/')) else '' }}">{{ icon(icon_name) }}{{ label }}{% if badge %}<span class="nav-count" aria-label="{{ badge }} waiting">{{ badge }}</span>{% endif %}</a>
     {% endmacro %}
     {% set show_ach_return_reasons = can(ctx, "ach_return_reason:manage") %}
     {% set show_wsud = ctx.customer_id is not none and can(ctx, "wsud:sign") %}
@@ -66,6 +80,8 @@
         <input id="nav-search-input" type="search" name="q" placeholder="Search…" autocomplete="off">
       </form>
       <div class="nav-links">
+        {# Home (UI_PLAN.md FL4): ?home=1 opens the dashboard even when a customer's items to decide would land them on the list. #}
+        {{ nav_link("/ui/?home=1", "Home", "home", match="/ui/") }}
         <p class="nav-section">Review</p>
         {% if can(ctx, "exception:read") %}{{ nav_link("/ui/exceptions", "Exceptions", "flag", badge=ctx.needs_attention_count) }}{% endif %}
         {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
@@ -111,6 +127,7 @@
       {% else %}
       <div class="nav-bottom">
       {% endif %}
+        {{ theme_form("nav-theme") }}
         <form method="post" action="/ui/logout" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="link-button">Log out</button>
@@ -121,8 +138,15 @@
     {% endif %}
 
     <div class="page" id="main-content">
+      {% set has_help = self.help_body()|trim %}
+      {% set show_banner = ctx and ctx.customer_id and ctx.needs_attention_count and (can(ctx, "exception:decide") or can(ctx, "exception:recommend")) %}
+      {% set nav_shown = ctx and not embedded %}
+      {% if show_banner or has_help or not nav_shown %}
+      {# The page's top row (UI_PLAN.md FL2): in the flow of the page, so nothing sits over the
+         banner's link or a card's corner. The theme is in the navigation when there is one. #}
+      <div class="page-top">
       {# "Decide now" (UX_PLAN.md U5): while items wait for this person's decision, on every page. #}
-      {% if ctx and ctx.customer_id and ctx.needs_attention_count and (can(ctx, "exception:decide") or can(ctx, "exception:recommend")) %}
+      {% if show_banner %}
       {% set mins = minutes_until(ctx.nearest_deadline) %}
       {% set urgency = "urgent" if mins is not none and mins <= 30 else "soon" if mins is not none and mins <= 120 else "calm" %}
       <div class="decide-banner decide-banner-{{ urgency }}" role="status">
@@ -132,6 +156,12 @@
           · the first by <time datetime="{{ ctx.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ ctx.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}
         </span>
         {% if not request.url.path.startswith("/ui/exceptions") or request.url.path.startswith("/ui/exceptions/") %}<a href="/ui/exceptions">Decide now</a>{% endif %}
+      </div>
+      {% endif %}
+        <div class="page-top-tools">
+          {% if not nav_shown %}{{ theme_form("page-theme") }}{% endif %}
+          {% if has_help %}<button type="button" id="page-help-button" class="help-button" aria-label="Help">?</button>{% endif %}
+        </div>
       </div>
       {% endif %}
       {% if ctx and ctx.is_demo %}
@@ -148,19 +178,6 @@
         asked to add one when you sign in. <a href="/ui/security">Add a security key</a></p>
       {% endif %}
       {% include "partials/_banner.html" %}
-      {% set has_help = self.help_body()|trim %}
-      <div class="page-controls">
-        <form method="post" action="/ui/theme" class="inline-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input type="hidden" name="next" value="{{ request.url.path }}{{ ('?' + request.url.query) if request.url.query else '' }}">
-          <select name="theme" class="theme-select" data-auto-submit aria-label="Color theme">
-            <option value="system" {{ "selected" if not theme else "" }}>System</option>
-            <option value="light" {{ "selected" if theme == "light" else "" }}>Light</option>
-            <option value="dark" {{ "selected" if theme == "dark" else "" }}>Dark</option>
-          </select>
-        </form>
-        {% if has_help %}<button type="button" id="page-help-button" class="help-button" aria-label="Help">?</button>{% endif %}
-      </div>
       {% if has_help %}
       <dialog id="page-help-dialog" class="help-dialog">
         <button type="button" class="help-close" aria-label="Close">&times;</button>

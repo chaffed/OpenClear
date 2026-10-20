@@ -336,19 +336,13 @@ th.sort-desc .sort-button::after { content: "\2193"; opacity: 1; }
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-/* Every other .toolbar in the app sits inside a .card, whose own padding keeps it clear
-of .page-controls (the absolutely-positioned theme/help controls pinned to .page's own
-top-right corner) below. A .toolbar with no .card ancestor -- e.g. the doc index pages'
-h1 + "Download PDF" row -- has no such clearance and would otherwise render right
-underneath page-controls, clipped by it. */
-.page > .toolbar { margin-top: 2.75rem; }
-/* Same clearance for notices rendered at the very top of .page (flash messages, the
-public-demo notice, the tenant banner), which otherwise ran underneath page-controls. */
-.page > :is(.flash, .banner-carousel):first-child { margin-top: 2.75rem; }
-
-.page-controls {
-  position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 0.5rem; align-items: center;
-}
+/* The page's top row (UI_PLAN.md FL2): the decide banner, then Help (and the theme, on pages
+   without the navigation), in the flow of the page so nothing covers either. */
+.page-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.page-top > .decide-banner { flex: 1; margin-bottom: 0; }
+.page-top-tools { margin-left: auto; display: flex; gap: 0.5rem; align-items: center; }
+.page-theme label, .nav-theme label { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+.nav-theme label { padding: 0.4rem 0.5rem; }
 .theme-select {
   display: inline-block; width: auto; margin: 0; padding: 0.3rem 0.4rem; font-size: 0.8rem;
 }
@@ -391,9 +385,6 @@ public-demo notice, the tenant banner), which otherwise ran underneath page-cont
 @media (max-width: 1023.98px) {
   /* The theme and Help controls get a strip of their own above the content, instead of
      sitting over the first card's corner. */
-  .page-controls { top: 1rem; right: 1rem; }
-  .page { padding-top: 4.25rem; }
-  .page > .toolbar, .page > :is(.flash, .banner-carousel):first-child { margin-top: 0; }
 }
 
 .app-footer {
@@ -903,3 +894,13 @@ fieldset { min-width: 0; }
 .accent-preview-light { background: #ffffff; }
 .accent-preview-dark { background: #0f172a; }
 .accent-swatch { color: #ffffff; padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.85rem; }
+
+/* Getting Started checklists (UI_PLAN.md FL9): each step's state in words. */
+.checklist-state { width: 6rem; vertical-align: top; white-space: nowrap; }
+.link-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+
+/* An upload's result (UI_PLAN.md FL5): the outcome first; undoing the upload set apart. */
+.upload-outcome { font-size: 1.05rem; }
+.file-details { margin: 1.5rem 0; }
+.danger-zone { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--badge-danger-bg); border-radius: 8px; }
+.danger-zone h2 { margin-top: 0; font-size: 1rem; }

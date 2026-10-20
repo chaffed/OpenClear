@@ -19,6 +19,7 @@
   {% if risk %}<p class="decision-score"><span class="fact-label">Fraud risk</span> <span class="badge {{ risk.badge }}">{{ risk.level }} · {{ risk.return_percent }}%</span></p>{% endif %}
   <form method="post" action="{{ action }}" class="decision-pay"{% if pay_confirm %} data-confirm="{{ pay_confirm }}" data-confirm-title="Pay a high-risk item?" data-confirm-yes="Pay it"{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="from" value="{{ list_return(request, '/ui/exceptions') }}">
     <input type="hidden" name="outcome" value="pay">
     <button type="submit" class="button-pay" data-key="p">{{ icon("check_circle") }}{{ "Recommend paying" if mode == "recommend" else "Pay" }}{% if recommended == "pay" %} <span class="recommended-tag">recommended</span>{% endif %}</button>
     <details class="decision-note"><summary>Add a note</summary>
@@ -30,6 +31,7 @@
     <summary class="button button-return" data-key="r">{{ icon("block") }}{{ return_label }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</summary>
     <form method="post" action="{{ action }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="from" value="{{ list_return(request, '/ui/exceptions') }}">
       <input type="hidden" name="outcome" value="return">
       {% if return_reasons %}
       <fieldset class="reason-list">
@@ -60,7 +62,7 @@
 {% endblock %}
 {% block content %}
 {# data-item-view: what the queue's pane on a landscape tablet shows (static/js/app.js initQueuePane). #}
-<div class="item-view" data-item-view>
+<div class="item-view" data-item-view data-item-url="{{ request.url.path }}?from={{ list_return(request, '/ui/exceptions') | urlencode }}">
 {% set risk = fraud_risk(item.ml_score) %}
 {% set actionable = item.status.value in ["open", "pending_approval"] %}
 <p class="back-link"><a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a></p>
