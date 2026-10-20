@@ -34,7 +34,8 @@ def test_footer_shows_license_but_no_contact_line_when_none_configured(client, t
     assert "app-footer" in resp.text
     footer_html = resp.text.split('class="app-footer"')[1].split("</footer>")[0]
     assert 'href="/ui/license"' in footer_html
-    assert "·" not in footer_html
+    contact = footer_html.split('class="app-footer-license"')[0]
+    assert "·" not in contact and "<p>" not in contact
 
 
 def test_footer_present_post_login_when_contact_info_set(client, db_session, tenant_factory):
@@ -77,7 +78,7 @@ def test_footer_omits_unset_fields(client, db_session, tenant_factory):
     footer_html = resp.text.split('class="app-footer"')[1].split("</footer>")[0]
     assert "help@footer-partial-fields.example.com" in footer_html
     # no address/phone/website were set -- none of their separators should appear stray
-    assert footer_html.count("·") == 1
+    assert footer_html.split('class="app-footer-license"')[0].count("·") == 1
 
 
 def test_footer_contact_line_disappears_after_clearing_all_fields(client, db_session, tenant_factory):
@@ -102,3 +103,13 @@ def test_the_license_page_without_the_file(client, monkeypatch, tmp_path):
     monkeypatch.setattr(license_router, "_LICENSE_PATH", tmp_path / "missing")
     page = client.get("/ui/license")
     assert page.status_code == 200 and "gnu.org/licenses/agpl-3.0.html" in page.text
+
+
+def test_the_license_line_has_the_notices_and_the_source(client, tenant_factory):
+    """AGPL-3.0 §5(d) and §13 (UI_PLAN.md UI-D9): copyright, no warranty, the license, the source."""
+    tenant, _account, users = tenant_factory.make(slug="footer-agpl")
+    _login(client, tenant.slug, users["admin"].email)
+    line = client.get("/ui/").text.split('class="app-footer-license"')[1].split("</p>")[0]
+    assert "© 2026 Chaffed" in line and "no warranty" in line and 'href="/ui/license"' in line and "Source code" in line
+    page = client.get("/ui/license").text
+    assert "without any" in page and "warranty" in page and "github.com/chaffed/OpenClear" in page
