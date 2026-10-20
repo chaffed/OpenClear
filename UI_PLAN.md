@@ -427,3 +427,12 @@ doesn't have.
     single state (Action log, Model risk, Billing, Plugins) stay without one.
   **Not done, waiting for the product owner:** the shorter footer (UI-D9). The AGPL's §5(d)
   notice wording needs the owner's check before it changes.
+- 2026-10-20: The footer (UI-D9), approved by the product owner after a preview:
+  - one line: "OpenClear © 2026 Chaffed · Free software under the GNU AGPL, with no warranty ·
+    License · Source code";
+  - the license page opens with the standard notice (copyright, license, no warranty) and the
+    source link above the full text;
+  - a new `source_code_url` setting (default the GitHub repository), for an installation
+    running its own changes.
+  This fixes two gaps the old footer had: it showed no copyright notice or no-warranty
+  statement (AGPL §5(d)), and nothing offered the source code to network users (§13).
