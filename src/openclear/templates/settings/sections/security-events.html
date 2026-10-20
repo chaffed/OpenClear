@@ -28,7 +28,7 @@
   <fieldset data-siem-for="syslog">
     <legend>Syslog</legend>
     <label>Host <input type="text" name="host" value="{{ destination.host if destination and destination.host else '' }}" placeholder="siem.yourbank.example"></label>
-    <label>Port <input type="number" name="port" min="1" max="65535" value="{{ destination.port if destination and destination.port else '' }}" placeholder="6514" style="max-width:8em;"></label>
+    <label>Port <input type="number" name="port" min="1" max="65535" value="{{ destination.port if destination and destination.port else '' }}" placeholder="6514" class="field-m"></label>
     <label>Transport
       <select name="transport">
         {% for t in transports if t != "udp" or allow_udp %}<option value="{{ t }}" {{ "selected" if destination and destination.transport == t else "" }}>{{ {"tls": "TLS (RFC 5425)", "tcp": "TCP", "udp": "UDP"}[t] }}</option>{% endfor %}

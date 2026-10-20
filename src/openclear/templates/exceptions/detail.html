@@ -133,14 +133,13 @@
     <div class="card">
       <h2>What was expected vs. what was presented</h2>
       <table class="evidence">
-        <thead><tr><th></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th><th></th></tr></thead>
+        <thead><tr><th><span class="visually-hidden">What</span></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th></tr></thead>
         <tbody>
           {% for row in evidence.rows %}
           <tr class="{{ 'mismatch' if row.mismatch else '' }}">
-            <th scope="row">{{ row.label }}</th>
+            <th scope="row">{{ row.label }}{% if row.mismatch %} <span class="badge badge-danger">Doesn't match</span>{% endif %}</th>
             <td>{{ value(row.expected, row.kind) }}</td>
             <td>{{ value(row.presented, row.kind) }}</td>
-            <td>{% if row.mismatch %}<span class="badge badge-danger">Doesn't match</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

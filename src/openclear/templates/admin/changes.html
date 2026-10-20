@@ -42,7 +42,7 @@
       <form method="post" action="/ui/admin/changes/{{ c.id }}/reject" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <label class="visually-hidden" for="reason-{{ c.id }}">Why reject it</label>
-        <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required style="max-width:12em;">
+        <input id="reason-{{ c.id }}" name="reason" placeholder="Why" required class="field-l">
         <button type="submit" class="secondary">{{ icon("block") }}Reject</button>
       </form>
       {%- else %}<span class="text-muted">Needs someone who could make it</span>{% endif %}

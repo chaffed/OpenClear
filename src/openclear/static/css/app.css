@@ -13,7 +13,6 @@
   --on-accent: #ffffff;
   --accent-text: #2563eb;       /* the accent as text, links and focus rings (colors.accent_text) */
   --link: var(--accent-text);
-  --secondary-bg: #6b7280;
   --pay-bg: #15803d;
   --return-bg: #b91c1c;
   --danger: #dc2626;
@@ -178,7 +177,12 @@ body {
 
 .card-narrow { max-width: 480px; margin: 3rem auto; }
 
-h1 { margin-top: 0; font-size: 1.4rem; }
+/* One heading scale (UI_PLAN.md UI-D4): a page's title, then its sections, then their parts.
+   Before, h2 had no size and came out larger than the page's h1. */
+h1 { margin-top: 0; font-size: 1.5rem; line-height: 1.25; }
+h2 { font-size: 1.2rem; line-height: 1.3; margin: 1.25rem 0 0.75rem; }
+.card > h2:first-child, .card > .toolbar h2 { margin-top: 0; }
+h3 { font-size: 1rem; line-height: 1.35; margin: 1rem 0 0.5rem; }
 
 label { display: block; margin-bottom: 0.9rem; font-size: 0.85rem; color: var(--text-muted); }
 input, select, textarea {
@@ -209,7 +213,11 @@ button, .button {
   align-items: center;
   gap: 0.4rem;
 }
-button.secondary, .button.secondary { background: var(--secondary-bg); }
+/* Secondary: outlined in the link colour, so it doesn't look disabled (UI_PLAN.md UI-D5). */
+button.secondary, .button.secondary { background: transparent; color: var(--link); border: 1px solid var(--link); }
+button.secondary:hover, .button.secondary:hover { background: var(--bg-muted); }
+/* Disabled has a look of its own. */
+button:disabled, .button[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 button.danger, .button.danger { background: var(--danger); }
 
 .inline-form { display: inline; margin: 0; }
@@ -300,12 +308,12 @@ th.sort-desc .sort-button::after { content: "\2193"; opacity: 1; }
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
   margin-top: 1rem; font-size: 0.85rem; color: var(--text-faint);
 }
-.pagination .pagination-links { display: flex; gap: 0.5rem; }
+.pagination .pagination-links { display: flex; gap: 0.5rem; align-items: center; }
 .pagination a.button, .pagination span.button-disabled {
   padding: 0.35rem 0.75rem; font-size: 0.85rem;
 }
 .pagination span.button-disabled {
-  background: var(--bg-muted); color: var(--text-faint); border-radius: 6px; display: inline-block;
+  border: 1px solid var(--border); color: var(--text-faint); border-radius: 6px; display: inline-block; cursor: not-allowed;
 }
 
 .badge {
@@ -829,12 +837,10 @@ fieldset { min-width: 0; }
   table.evidence, table.evidence > :is(thead, tbody) { display: block; }
   table.evidence tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; border-bottom: 1px solid var(--border); }
   table.evidence :is(th, td) { border: 0; }
-  table.evidence > thead th:is(:first-child, :last-child) { display: none; }
-  table.evidence > tbody th[scope="row"] { grid-row: 1; grid-column: 1; padding-bottom: 0; }
+  table.evidence > thead th:first-child { display: none; }
+  table.evidence > tbody th[scope="row"] { grid-row: 1; grid-column: 1 / -1; padding-bottom: 0; }
   table.evidence > tbody td:nth-of-type(1) { grid-row: 2; grid-column: 1; }
   table.evidence > tbody td:nth-of-type(2) { grid-row: 2; grid-column: 2; }
-  table.evidence > tbody td:nth-of-type(3) { grid-row: 1; grid-column: 2; justify-self: end; padding-bottom: 0; }
-  table.evidence > tbody td:nth-of-type(3):empty { display: none; }
   table.evidence tr.mismatch { background: var(--badge-danger-bg); }
 }
 
@@ -904,3 +910,13 @@ fieldset { min-width: 0; }
 .file-details { margin: 1.5rem 0; }
 .danger-zone { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--badge-danger-bg); border-radius: 8px; }
 .danger-zone h2 { margin-top: 0; font-size: 1rem; }
+
+/* The comparison's "Doesn't match" sits with the row's name, not in a column of its own (UI_PLAN.md F17). */
+table.evidence th[scope="row"] .badge { margin-left: 0.5rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+/* Field widths for short values, instead of inline styles (UI_PLAN.md F17). */
+.field-xs { max-width: 4em; }
+.field-s { max-width: 6em; }
+.field-m { max-width: 8em; }
+.field-l { max-width: 12em; }
+.field-xl { max-width: 15em; }

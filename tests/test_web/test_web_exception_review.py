@@ -59,7 +59,7 @@ def test_check_evidence_puts_issued_and_presented_side_by_side(client, db_sessio
     page = client.get(f"/ui/exceptions/{exception.id}").text
 
     assert "What was expected vs. what was presented" in page
-    amount_row = re.search(r'<tr class="mismatch">\s*<th scope="row">Amount</th>(.*?)</tr>', page, re.S)
+    amount_row = re.search(r'<tr class="mismatch">\s*<th scope="row">Amount(.*?)</tr>', page, re.S)
     assert amount_row, "the amount row should be flagged"
     assert "$100.00" in amount_row.group(1) and "$999.00" in amount_row.group(1)
     assert "Doesn&#39;t match" in amount_row.group(1) or "Doesn't match" in amount_row.group(1)
@@ -118,7 +118,7 @@ def test_ach_evidence_shows_the_authorized_limit(client, db_session, tenant_fact
     page = client.get(f"/ui/exceptions/{exception.id}").text
 
     assert "Over authorized amount" in page
-    amount_row = re.search(r'<tr class="mismatch">\s*<th scope="row">Amount</th>(.*?)</tr>', page, re.S)
+    amount_row = re.search(r'<tr class="mismatch">\s*<th scope="row">Amount(.*?)</tr>', page, re.S)
     assert amount_row and "$100.00" in amount_row.group(1) and "$250.00" in amount_row.group(1)
 
 

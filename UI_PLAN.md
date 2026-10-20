@@ -381,3 +381,14 @@ doesn't have.
   dual control can't be marked with the `recommended_*` fields alone (they still describe the
   original recommendation after it's approved). And the next item is now one this person can
   act on: under dual control the checker gets recommended items and the maker gets open ones.
+- 2026-10-19: UI4 built on `ui4-components`:
+  - one heading scale (h1 1.5rem, h2 1.2rem, h3 1rem), so section headings no longer outgrow
+    the page title;
+  - secondary buttons outlined in the link colour, and a disabled look of their own;
+  - the pager's "Page 1 of 1" in line with Prev and Next;
+  - the comparison table's "Doesn't match" beside the row's name, with the empty fourth column
+    gone (on phones too);
+  - 24 inline `style="max-width:…"` attributes replaced by `.field-xs` to `.field-xl`. The 13
+    left are computed values (the colour preview, a percentage bar) or one-offs.
+  Network and Status still sit at opposite edges of the exceptions toolbar; that's for UI5's
+  pass over the list.

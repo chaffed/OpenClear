@@ -30,6 +30,8 @@
   without one see no change. The API's decisions gain `locked_at`, `changeable_until` and
   `change_pending`; `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
   decision before its cut-off.
+- Section headings are smaller than the page title, as they should be; secondary buttons are
+  outlined rather than grey (which looked disabled); "Doesn't match" sits with the row it's about.
 - An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),
   lists the checks it added, and keeps "Back out this upload" apart from the other buttons.
 

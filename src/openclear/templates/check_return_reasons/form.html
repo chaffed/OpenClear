@@ -12,7 +12,7 @@
       <input type="text" name="reason_text" maxlength="255" value="{{ reason_text if reason_text is defined else (reason.reason_text if reason else '') }}" required autofocus>
     </label>
     <label>Return code (optional; X9.100-188, such as N or Q)
-      <input type="text" name="return_code" maxlength="4" style="max-width:8em;" value="{{ return_code if return_code is defined else (reason.return_code or '' if reason else '') }}">
+      <input type="text" name="return_code" maxlength="4" class="field-m" value="{{ return_code if return_code is defined else (reason.return_code or '' if reason else '') }}">
     </label>
     <button type="submit">{{ icon("save" if reason else "add") }}{{ "Save" if reason else "Add" }}</button>
   </form>
