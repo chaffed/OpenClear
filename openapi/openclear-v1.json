@@ -3323,15 +3323,39 @@
       },
       "DecisionRead": {
         "properties": {
+          "change_pending": {
+            "default": false,
+            "title": "Change Pending",
+            "type": "boolean"
+          },
+          "changeable_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changeable Until"
+          },
           "decided_at": {
             "format": "date-time",
             "title": "Decided At",
             "type": "string"
           },
           "decided_by_user_id": {
-            "format": "uuid",
-            "title": "Decided By User Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By User Id"
           },
           "exception_item_id": {
             "format": "uuid",
@@ -3342,6 +3366,18 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "locked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked At"
           },
           "notes": {
             "anyOf": [
@@ -12156,6 +12192,46 @@
       }
     },
     "/api/v1/exceptions/{exception_id}/decision": {
+      "delete": {
+        "description": "Take a decision back before its item's cut-off: the item is open to decide again. Not\nunder dual control (409), where a change is recommended and approved instead.",
+        "operationId": "undo_decision_api_v1_exceptions__exception_id__decision_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Undo Decision",
+        "tags": [
+          "decisions"
+        ]
+      },
       "get": {
         "operationId": "get_decision_api_v1_exceptions__exception_id__decision_get",
         "parameters": [
@@ -12198,6 +12274,63 @@
           }
         ],
         "summary": "Get Decision",
+        "tags": [
+          "decisions"
+        ]
+      },
+      "put": {
+        "description": "Change a decision before its item's cut-off (`changeable_until`); afterwards it's final\nand this answers 409. It follows a first decision's rules. Under dual control, someone with\n`exception:recommend` proposes the change (`change_pending` is then true and the decision\nin place stands), and someone else with `exception:decide` approves it the same way.",
+        "operationId": "change_decision_api_v1_exceptions__exception_id__decision_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Decision",
         "tags": [
           "decisions"
         ]

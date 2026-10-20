@@ -478,10 +478,13 @@ DecisionOutcome = Literal["pay", "return"]
 
 
 class DecisionRead(TypedDict):
+    change_pending: NotRequired[bool]
+    changeable_until: NotRequired[str | None]
     decided_at: str
-    decided_by_user_id: str
+    decided_by_user_id: str | None
     exception_item_id: str
     id: str
+    locked_at: NotRequired[str | None]
     notes: str | None
     outcome: DecisionOutcome
     reason_code: str
@@ -1991,12 +1994,34 @@ class DecisionsApi:
         """
         return self._c.call("POST", f"/api/v1/exceptions/{_path(exception_id)}/decide", json=body)
 
+    def undo_decision(self, exception_id: str) -> None:
+        """Undo Decision.
+
+        DELETE /api/v1/exceptions/{exception_id}/decision
+
+        Take a decision back before its item's cut-off: the item is open to decide again. Not
+        under dual control (409), where a change is recommended and approved instead.
+        """
+        return self._c.call("DELETE", f"/api/v1/exceptions/{_path(exception_id)}/decision")
+
     def get_decision(self, exception_id: str) -> DecisionRead:
         """Get Decision.
 
         GET /api/v1/exceptions/{exception_id}/decision
         """
         return self._c.call("GET", f"/api/v1/exceptions/{_path(exception_id)}/decision")
+
+    def change_decision(self, exception_id: str, body: DecideRequest) -> DecisionRead:
+        """Change Decision.
+
+        PUT /api/v1/exceptions/{exception_id}/decision
+
+        Change a decision before its item's cut-off (`changeable_until`); afterwards it's final
+        and this answers 409. It follows a first decision's rules. Under dual control, someone with
+        `exception:recommend` proposes the change (`change_pending` is then true and the decision
+        in place stands), and someone else with `exception:decide` approves it the same way.
+        """
+        return self._c.call("PUT", f"/api/v1/exceptions/{_path(exception_id)}/decision", json=body)
 
     def recommend_decision(self, exception_id: str, body: RecommendRequest) -> ExceptionRead:
         """Recommend Decision.

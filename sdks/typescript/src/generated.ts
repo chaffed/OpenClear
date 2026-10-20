@@ -453,10 +453,13 @@ export interface DecisionBatchRead {
 export type DecisionOutcome = "pay" | "return";
 
 export interface DecisionRead {
+  change_pending?: boolean;
+  changeable_until?: string | null;
   decided_at: string;
-  decided_by_user_id: string;
+  decided_by_user_id: string | null;
   exception_item_id: string;
   id: string;
+  locked_at?: string | null;
   notes: string | null;
   outcome: DecisionOutcome;
   reason_code: string;
@@ -2176,12 +2179,38 @@ export class DecisionsApi {
   }
 
   /**
+   * Undo Decision.
+   *
+   * DELETE /api/v1/exceptions/{exception_id}/decision
+   *
+   * Take a decision back before its item's cut-off: the item is open to decide again. Not
+   * under dual control (409), where a change is recommended and approved instead.
+   */
+  undoDecision(exceptionId: string): Promise<void> {
+    return this.c.call<void>("DELETE", `/api/v1/exceptions/${encodeURIComponent(String(exceptionId))}/decision`, {  });
+  }
+
+  /**
    * Get Decision.
    *
    * GET /api/v1/exceptions/{exception_id}/decision
    */
   getDecision(exceptionId: string): Promise<DecisionRead> {
     return this.c.call<DecisionRead>("GET", `/api/v1/exceptions/${encodeURIComponent(String(exceptionId))}/decision`, {  });
+  }
+
+  /**
+   * Change Decision.
+   *
+   * PUT /api/v1/exceptions/{exception_id}/decision
+   *
+   * Change a decision before its item's cut-off (`changeable_until`); afterwards it's final
+   * and this answers 409. It follows a first decision's rules. Under dual control, someone with
+   * `exception:recommend` proposes the change (`change_pending` is then true and the decision
+   * in place stands), and someone else with `exception:decide` approves it the same way.
+   */
+  changeDecision(exceptionId: string, body: DecideRequest): Promise<DecisionRead> {
+    return this.c.call<DecisionRead>("PUT", `/api/v1/exceptions/${encodeURIComponent(String(exceptionId))}/decision`, { json: body });
   }
 
   /**

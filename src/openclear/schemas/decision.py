@@ -36,5 +36,13 @@ class DecisionRead(BaseModel):
     return_transaction_code: str | None
     notes: str | None
     submitted_by_user_id: uuid.UUID | None
-    decided_by_user_id: uuid.UUID
+    # None for a decision made automatically at the cut-off (the customer's default).
+    decided_by_user_id: uuid.UUID | None
     decided_at: datetime
+    # When it became final and went to the bank's core (the decision feed, webhooks, decision
+    # files). Until then it can be changed: PUT or DELETE …/decision, up to `changeable_until`,
+    # the item's cut-off (UI_PLAN.md UI-D13).
+    locked_at: datetime | None = None
+    changeable_until: datetime | None = None
+    # Under dual control: a change recommended for someone else to approve, and still waiting.
+    change_pending: bool = False
