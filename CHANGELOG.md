@@ -39,6 +39,10 @@
   sign-in link), and says what to do about a forgotten password.
 - A bank's home page lists the five items due soonest, with their customers. The Controls tile
   says "1 failing" or "2 warnings", and Getting started shows how far along it is.
+- **A bank can invite a customer's people by email, with no access to start with.** From the
+  customer's page (and its Getting Started checklist): they choose their own password and can look
+  after their own sign-in, nothing else, until someone other than whoever invited them gives them
+  a role under Users. Navigation shows only what a person may open.
 - The footer's license notice is one line, with the copyright, the no-warranty statement and a
   link to the source code (`OPENCLEAR_SOURCE_CODE_URL`, for an installation running its own
   changes); the license page opens with the full notice.

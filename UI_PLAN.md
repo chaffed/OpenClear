@@ -245,6 +245,19 @@ each action was checked in the routes.
   - **The toast after a decision (UI-D11)** offers **Undo** while the decision can be changed.
     Undo takes the item back to undecided, recorded like any change. It's offered only without
     dual control; under dual control a change goes through approval.
+- **UI-D14. The bank invites a customer's people with no access.** *(The product owner's
+  decision, 2026-10-20.)* This replaces the invitation half of UI-D12, which would have bypassed
+  the access-change approval rule.
+  - **The invitation grants nothing.** The person joins a built-in "No access yet" group with
+    no permissions. Every bank has it (seeded for existing banks), and it can't be edited.
+  - **What they can do.** They sign in, and look after their own sign-in: password, security
+    key, email and notifications. Their home page says they're waiting for access. Navigation
+    shows only what a person may open.
+  - **Someone else gives the role.** Whoever invited them can never grant it, whatever the
+    bank's settings. If access changes need a second admin, the grant also waits for approval
+    like any other. Both steps go in the action log.
+  - **A customer's own administrators** keep inviting their own people into roles the bank
+    offers, as before.
 - **UI-D10. Some things wait for a person.** The screen-reader and keyboard pass, and user
   testing (F18), stay on MASTER_PLAN.md's waiting list. This plan doesn't replace them. Its
   stages make the screens easier to test once those sessions happen.
@@ -436,3 +449,13 @@ doesn't have.
     running its own changes.
   This fixes two gaps the old footer had: it showed no copyright notice or no-warranty
   statement (AGPL §5(d)), and nothing offered the source code to network users (§13).
+- 2026-10-20: UI-D14 built on `invites` (the product owner chose this design):
+  - the "No access yet" group (`security_group.system_role`, migration `f6b8d0a2c4e5` seeding
+    it in every bank), which can't be edited;
+  - the bank's invitation from the customer's page, also linked from the customer's checklist
+    as "Invite someone";
+  - acceptance into the built-in group, even where the customer doesn't manage its own people;
+  - the rule that the inviter never grants the role, checked where a role change is applied
+    for both the bank's path (`access.entitlements`) and the customer's (`customer.person`);
+  - the "waiting for access" home page;
+  - navigation links shown only with their read permission.

@@ -167,8 +167,8 @@ CUSTOMER_STEPS: list[WizardStep] = [
         key="users",
         title="Add this customer's users",
         description="Staff — the bank's own or this customer's employees — scoped to just this customer's data.",
-        link_text="Add a user",
-        link_url="/ui/users/new?customer_id={customer_id}&return=/ui/customers/{customer_id}/wizard",
+        link_text="Invite someone",
+        link_url="/ui/customers/{customer_id}?return=/ui/customers/{customer_id}/wizard#invite",
         auto_check=_customer_has_users,
     ),
     WizardStep(

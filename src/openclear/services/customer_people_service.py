@@ -29,7 +29,7 @@ from openclear.auth.security import hash_password, verify_password
 from openclear.db.tenancy import bind_session_to_tenant, memberships_elsewhere
 from openclear.domain.customer import Customer
 from openclear.domain.customer_admin import UserInvitation
-from openclear.domain.security_group import SecurityGroup
+from openclear.domain.security_group import NO_ACCESS, SecurityGroup
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
@@ -66,13 +66,17 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _customer(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> Customer:
+def _customer(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, by_bank: bool = False) -> Customer:
     customer = session.get(Customer, customer_id)
     if customer is None or customer.tenant_id != tenant_id or not customer.is_active:
         raise PeopleError("Customer not found.")
-    if not customer.self_manages_users:
+    if not customer.self_manages_users and not by_bank:
         raise PeopleError("Your bank manages this organization's people.")
     return customer
+
+
+def _no_access(group: SecurityGroup | None) -> bool:
+    return group is not None and group.system_role == NO_ACCESS
 
 
 def offered_groups(session: Session, tenant_id: uuid.UUID) -> list[SecurityGroup]:
@@ -168,15 +172,20 @@ def _validate_accounts(session: Session, tenant_id: uuid.UUID, customer_id: uuid
 def invite(
     session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, email: str, security_group_id: uuid.UUID,
     all_accounts: bool = True, account_ids: list[uuid.UUID] | None = None, require_webauthn: bool = False,
-    invited_by_user_id: uuid.UUID | None, accept_base_url: str,
+    invited_by_user_id: uuid.UUID | None, accept_base_url: str, by_bank: bool = False,
 ) -> UserInvitation:
     """Invites one person; the email carries a one-time link. A newer invitation for the same
-    email replaces an unused one."""
-    customer = _customer(session, tenant_id, customer_id)
+    email replaces an unused one. `by_bank`: the bank invites, into its built-in "No access
+    yet" group only (invite_without_access)."""
+    customer = _customer(session, tenant_id, customer_id, by_bank=by_bank)
     email = (email or "").strip()
     if not looks_like_email(email):
         raise PeopleError("Enter an email address.")
-    _offered_group(session, tenant_id, security_group_id)
+    if by_bank:
+        if not _no_access(session.get(SecurityGroup, security_group_id)):
+            raise PeopleError("A bank's invitation gives no access: someone else gives them a role afterwards.")
+    else:
+        _offered_group(session, tenant_id, security_group_id)
     chosen = _validate_accounts(session, tenant_id, customer_id, all_accounts, account_ids or [])
     existing = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
     if existing is not None and existing.is_service_account:
@@ -209,6 +218,39 @@ def invite(
         expires_days=INVITATION_DAYS, invitation_id=invitation.id,
     )
     return invitation
+
+
+def invite_without_access(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, email: str,
+                          invited_by_user_id: uuid.UUID | None, accept_base_url: str) -> UserInvitation:
+    """The bank invites one of a customer's people (UI_PLAN.md UI-D14). They join the built-in
+    "No access yet" group: they can sign in and look after their own sign-in, nothing else.
+    Someone other than whoever invited them gives them a role, through the access-change rules,
+    so an invitation never grants access on its own."""
+    from openclear.services import security_group_service
+
+    group = security_group_service.no_access_group(session, tenant_id)
+    return invite(session, tenant_id, customer_id, email=email, security_group_id=group.id, invited_by_user_id=invited_by_user_id,
+                  accept_base_url=accept_base_url, by_bank=True)
+
+
+def inviter_of(session: Session, membership: TenantMembership) -> uuid.UUID | None:
+    """Who invited the person behind this membership, if they joined through an invitation."""
+    return session.execute(select(UserInvitation.invited_by_user_id).where(
+        UserInvitation.tenant_id == membership.tenant_id, UserInvitation.customer_id == membership.customer_id,
+        UserInvitation.accepted_user_id == membership.user_id).order_by(UserInvitation.accepted_at.desc()).limit(1)).scalar_one_or_none()
+
+
+def access_grant_refusal(session: Session, membership: TenantMembership, user_id: uuid.UUID | None,
+                         new_group_id: uuid.UUID | None) -> str | None:
+    """Someone in "No access yet" gets a role from someone other than whoever invited them
+    (UI_PLAN.md UI-D14): the message to show when this person may not, else None."""
+    if new_group_id is None or new_group_id == membership.security_group_id:
+        return None
+    if not _no_access(session.get(SecurityGroup, membership.security_group_id)):
+        return None
+    if user_id is not None and inviter_of(session, membership) == user_id:
+        return "You invited this person, so someone else gives them a role."
+    return None
 
 
 def revoke_invitation(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, invitation_id: uuid.UUID) -> UserInvitation:
@@ -249,7 +291,8 @@ def open_invitation(session: Session, token: str) -> OpenInvitation | None:
             or _aware(invitation.expires_at) <= _now()):
         return None
     customer = session.get(Customer, invitation.customer_id)
-    if customer is None or not customer.is_active or not customer.self_manages_users:
+    from_bank = _no_access(session.get(SecurityGroup, invitation.security_group_id))
+    if customer is None or not customer.is_active or not (customer.self_manages_users or from_bank):
         return None
     user = session.execute(select(User).where(User.email == invitation.email)).scalar_one_or_none()
     return OpenInvitation(invitation, customer, tenant, user,
@@ -259,7 +302,7 @@ def open_invitation(session: Session, token: str) -> OpenInvitation | None:
 def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembership:
     invitation = opened.invitation
     group = session.get(SecurityGroup, invitation.security_group_id)
-    if group is None or not group.offered_to_customers:
+    if group is None or not (group.offered_to_customers or _no_access(group)):
         raise PeopleError("This invitation's role is no longer offered. Ask for a new invitation.")
     membership = TenantMembership(user_id=user.id, tenant_id=invitation.tenant_id, customer_id=invitation.customer_id,
                                   security_group_id=invitation.security_group_id, require_webauthn=invitation.require_webauthn)
@@ -272,7 +315,8 @@ def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembers
     session.flush()
     from openclear.services import customer_approval_service
 
-    customer_approval_service.hold_if_required(session, membership)  # MOBILE_PLAN.md R6
+    if not _no_access(group):  # the bank invited them itself, and they have no access to approve
+        customer_approval_service.hold_if_required(session, membership)  # MOBILE_PLAN.md R6
     return membership
 
 

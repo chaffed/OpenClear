@@ -235,6 +235,8 @@ class TenantFactory:
 
         users = {}
         for group_name, group in groups.items():
+            if group.system_role:  # built in ("No access yet"): nobody joins it by default
+                continue
             user = user_service.create_user_with_membership(
                 self.session,
                 tenant.id,

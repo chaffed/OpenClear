@@ -272,6 +272,34 @@ async def set_cutoff(request: Request, customer_id: uuid.UUID, db: Session = Dep
     return see_other(f"/ui/customers/{customer.id}", flash="Cut-off saved.")
 
 
+@router.post("/{customer_id}/invite")
+def invite_person(request: Request, customer_id: uuid.UUID, email: str = Form(""), return_to: str = Form("", alias="return"),
+                  db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("user:manage")),
+                  _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """The bank invites one of this customer's people, with no access (UI_PLAN.md UI-D14):
+    signed in, nothing else, until someone other than this person gives them a role."""
+    from openclear.config import get_settings
+    from openclear.services import customer_people_service, customer_service
+    from openclear.web.redirects import checklist_return
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    back = checklist_return(return_to) or f"/ui/customers/{customer.id}"
+    try:
+        invitation = customer_people_service.invite_without_access(
+            db, ctx.tenant_id, customer.id, email=email, invited_by_user_id=ctx.user_id,
+            accept_base_url=get_settings().public_base_url or str(request.base_url))
+    except customer_people_service.PeopleError as exc:
+        db.rollback()
+        return see_other(back, error=str(exc))
+    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer_people.invite",
+                                    summary=f"Invited {invitation.email} to {customer.name}, with no access yet",
+                                    resource_type="customer", resource_id=customer.id)
+    db.commit()
+    return see_other(back, flash=f"Invitation sent to {invitation.email}. Once they've joined, someone other than you gives them a role under Users.")
+
+
 @router.post("/{customer_id}/approval")
 def set_approval(
     customer_id: uuid.UUID,
