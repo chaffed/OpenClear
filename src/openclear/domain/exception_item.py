@@ -88,6 +88,10 @@ class ExceptionItem(Base):
         ForeignKey("ach_return_reason.id"), nullable=True
     )
     recommended_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    # A change to a decision recommended under dual control, waiting for someone else to approve
+    # it (UI_PLAN.md UI-D13): the recommended_* fields above hold the change, and the decision
+    # already made stands until it's approved. Cleared when approved, or when the cut-off locks it.
+    change_recommended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     decision_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # When the exception.deadline_approaching webhook went out (services/webhook_service.py

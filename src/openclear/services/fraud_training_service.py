@@ -157,6 +157,7 @@ def submit_check_fraud_example(
         submitted_by_user_id=None,
         decided_by_user_id=ctx.user_id,
         features_json=features,
+        locked_at=datetime.now(timezone.utc),  # a training label: final, and never sent anywhere
     )
     DecisionRepository(session, tenant_id).add(decision)
     session.flush()
@@ -238,6 +239,7 @@ def submit_ach_fraud_example(
         submitted_by_user_id=None,
         decided_by_user_id=ctx.user_id,
         features_json=features,
+        locked_at=datetime.now(timezone.utc),  # a training label: final, and never sent anywhere
     )
     DecisionRepository(session, tenant_id).add(decision)
     session.flush()

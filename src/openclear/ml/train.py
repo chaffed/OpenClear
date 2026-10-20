@@ -75,6 +75,8 @@ def _labeled_decisions(stmt, network_code: str, customer_id: uuid.UUID | None, t
     stmt = stmt.join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id).where(
         ExceptionItem.network_code == network_code,
         Decision.features_json.is_not(None),
+        # Only final decisions: one that can still change before its cut-off isn't a label yet (UI_PLAN.md UI-D13).
+        Decision.locked_at.is_not(None),
         ExceptionItem.retracted_at.is_(None),
     )
     if customer_id is not None:

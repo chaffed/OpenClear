@@ -19,7 +19,6 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
-from openclear.domain.ach_transaction import AchSettlementStatus, AchTransaction
 from openclear.domain.customer_disposition_setting import CustomerDispositionSetting, DispositionMode
 from openclear.domain.decision import Decision, DecisionOutcome, DecisionSource
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
@@ -28,7 +27,7 @@ from openclear.networks.registry import get_adapter, registered_codes
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
 from openclear.repositories.customer_disposition_setting_repo import CustomerDispositionSettingRepository
 from openclear.repositories.decision_repo import DecisionRepository
-from openclear.services import decision_feed_service, notification_service, webhook_service
+from openclear.services import notification_service
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,18 +195,11 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
         features_json=features,
     )
     DecisionRepository(session, exception_item.tenant_id).add(decision)
-    decision_feed_service.assign_sequence(session, decision, exception_item)
-    webhook_service.emit(session, exception_item.tenant_id, "exception.decided", {
-        "exception_id": exception_item.id, "decision_id": decision.id, "sequence": decision.feed_sequence, "outcome": decision.outcome.value,
-    })
-
     exception_item.status = ExceptionStatus.PAY if outcome == DecisionOutcome.PAY else ExceptionStatus.RETURN
+    # Made at the cut-off, so final at once (services/decision_service.py lock).
+    from openclear.services import decision_service
 
-    if outcome == DecisionOutcome.RETURN and exception_item.network_code == "ach":
-        source_item = adapter.load_source_item(session, exception_item.source_item_id)
-        if isinstance(source_item, AchTransaction):
-            source_item.settlement_status = AchSettlementStatus.RETURNED
-
+    decision_service.lock(session, decision, exception_item)
     session.flush()
     notification_service.notify_exception_auto_decided(session, exception_item, decision)
     return decision

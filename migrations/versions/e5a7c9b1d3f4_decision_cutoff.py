@@ -41,6 +41,8 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('cutoff_time', sa.String(length=5), nullable=True))
     with op.batch_alter_table('decision') as batch_op:
         batch_op.add_column(sa.Column('locked_at', sa.DateTime(timezone=True), nullable=True))
+    with op.batch_alter_table('exception_item') as batch_op:
+        batch_op.add_column(sa.Column('change_recommended_at', sa.DateTime(timezone=True), nullable=True))
     # Every decision so far was final when it was made.
     op.execute('UPDATE decision SET locked_at = decided_at')
 
@@ -91,6 +93,8 @@ def downgrade() -> None:
         op.execute('DROP POLICY IF EXISTS tenant_isolation_bank_closure ON "bank_closure"')
     op.drop_table('decision_revision')
     op.drop_table('bank_closure')
+    with op.batch_alter_table('exception_item') as batch_op:
+        batch_op.drop_column('change_recommended_at')
     with op.batch_alter_table('decision') as batch_op:
         batch_op.drop_column('locked_at')
     with op.batch_alter_table('customer_disposition_setting') as batch_op:
