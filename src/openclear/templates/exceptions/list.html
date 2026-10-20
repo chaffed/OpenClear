@@ -26,7 +26,7 @@
   {{ slot("exceptions.toolbar") }}
   {# On a phone, Network and Status are in a bottom sheet; the button says what's chosen. #}
   <form method="get" action="/ui/exceptions" class="toolbar">
-    {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else status_filter | exception_status)
+    {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else "Decided, changeable" if status_filter == "changeable" else status_filter | exception_status)
                      ~ " · " ~ ({"check": "Checks", "ach": "ACH"}.get(network_filter) or "Checks and ACH"), "tune") }}
     {% call bottom_sheet("queue-filters", "Network and status") %}
     <label style="max-width:180px;">Network
@@ -42,6 +42,7 @@
         {% for s in statuses %}
         <option value="{{ s }}" {{ "selected" if status_filter == s else "" }}>{{ s | exception_status }}</option>
         {% endfor %}
+        <option value="changeable" {{ "selected" if status_filter == "changeable" else "" }}>Decided, changeable</option>
         <option value="all" {{ "selected" if status_filter == "all" else "" }}>All</option>
       </select>
     </label>
@@ -108,8 +109,11 @@
   {{ ls.empty_state(True, "") }}
   {% elif not status_filter %}
   <p>Nothing needs attention right now. <a href="/ui/exceptions?status=all">See all exceptions</a>.</p>
+  {% elif status_filter == "changeable" %}
+  <p>No decisions are waiting for their cut-off.</p>
   {% else %}
   <p>No exceptions with this status.</p>
   {% endif %}
 </div>
+{% include "exceptions/_undo_last.html" %}
 {% endblock %}

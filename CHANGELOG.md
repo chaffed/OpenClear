@@ -18,6 +18,18 @@
   customer already chosen, and saving comes back to the checklist. Steps say "Done" or "To do".
 - A new stop payment is effective today unless changed, and a form with an error keeps what was
   typed.
+- **Decisions can be changed until the cut-off** (`UI_PLAN.md` UI3, the product owner's
+  decision). Each bank sets a decision cut-off per kind of item (checks, ACH) in its time zone,
+  with a minimum review time; a customer can have its own cut-off, agreed with the bank. Items
+  are due at the first cut-off on a business day (weekends, Federal Reserve holidays and the
+  bank's closed days skipped). Until then a decision can be changed or taken back (under dual
+  control, a change is recommended and someone else approves it); at the cut-off it becomes
+  final. Every earlier version is kept.
+- **Integrations: decisions now reach the decision feed, the `exception.decided` webhook and
+  decision files at the cut-off, not when they're made**, for banks that set a cut-off. Banks
+  without one see no change. The API's decisions gain `locked_at`, `changeable_until` and
+  `change_pending`; `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
+  decision before its cut-off.
 - An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),
   lists the checks it added, and keeps "Back out this upload" apart from the other buttons.
 

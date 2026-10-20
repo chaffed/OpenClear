@@ -343,3 +343,41 @@ doesn't have.
   so as things stand it would bypass that rule. It needs its own design: hold the invitation,
   or hold the membership on acceptance. It's left as a follow-up, and until then "Add a user"
   opens the bank's form with the customer chosen.
+- 2026-10-19: UI3 built on `ui3-cutoff`, in four commits:
+  - **UI3a, the cut-offs:**
+    - the bank's time zone, cut-off per network and minimum review time (a control-panel
+      tile), and a cut-off agreed with a customer (on its page), both protected changes
+      (`decision_cutoff`, `customer_cutoff`);
+    - closures;
+    - `services/cutoff_service.py`, with the Federal Reserve holidays worked out from their
+      rules and tested against 2026's published list;
+    - deadlines from the cut-off for every item, the bank's own too, falling back to the
+      response window until a bank sets one;
+    - the hub's Cut-off column; the evidence export.
+  - **UI3b, the decision lifecycle:** decisions stay unlocked before the cut-off, so nothing
+    goes out. They lock at it (the deadline sweep), or at once with no cut-off ahead. Change,
+    undo, and a recommended change under dual control. Training learns only from locked
+    decisions.
+  - **UI3c, the API:** `locked_at`, `changeable_until`, `change_pending`; PUT and DELETE
+    `…/decision`. OpenAPI and SDKs regenerated. End-user and admin docs.
+  - **UI3d, the screens:**
+    - the item says until when it can change (or "Final since");
+    - Change decision and "Take it back", or under dual control "Recommend a change" and
+      "Approve the change";
+    - the earlier versions of the decision;
+    - Undo in the toast after moving on to the next item, checked server-side to be the
+      person's own decision, still changeable, and not under dual control;
+    - "Decided, changeable" in the list;
+    - waiting changes in Approvals and its count;
+    - recommendations now move on to the next item too.
+
+  **Deviation from UI-D13, and why:** every earlier version is kept in `decision_revision`,
+  and the decision row is changed in place, not superseded by new rows.
+  `decision.exception_item_id` is unique, and twenty modules (billing, the feed, exports,
+  training) assume one decision per item. History rows give the same audit trail without
+  touching them.
+
+  **Also:** `exception_item.change_recommended_at` was added, because a change waiting under
+  dual control can't be marked with the `recommended_*` fields alone (they still describe the
+  original recommendation after it's approved). And the next item is now one this person can
+  act on: under dual control the checker gets recommended items and the maker gets open ones.

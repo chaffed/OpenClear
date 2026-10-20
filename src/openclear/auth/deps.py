@@ -46,7 +46,8 @@ class AccessRevoked(Exception):
 def _pending_approval_count(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, user_id: uuid.UUID) -> int:
     stmt = select(func.count(ExceptionItem.id)).where(
         ExceptionItem.tenant_id == tenant_id,
-        ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL,
+        # A recommendation waiting, or a change to a decision waiting before its cut-off (UI_PLAN.md UI-D13).
+        or_(ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL, ExceptionItem.change_recommended_at.is_not(None)),
         or_(ExceptionItem.recommended_by_user_id.is_(None), ExceptionItem.recommended_by_user_id != user_id),
     )
     if customer_id is not None:
