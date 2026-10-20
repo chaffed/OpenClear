@@ -209,7 +209,10 @@
           {%- if contact.website %} · <a href="{{ contact.website }}">{{ contact.website }}</a>{% endif -%}
         </p>
         {% endif %}
-        <p class="app-footer-license">OpenClear is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation. <a href="/ui/license">View the full license</a>.</p>
+        {# AGPL-3.0 §5(d)'s Appropriate Legal Notices and §13's offer of the source, in one line
+           (UI_PLAN.md UI-D9); the full notice is on the license page. #}
+        <p class="app-footer-license">OpenClear © 2026 Chaffed · Free software under the GNU AGPL, with no warranty ·
+          <a href="/ui/license">License</a> · <a href="{{ source_code_url() }}">Source code</a></p>
       </footer>
     </div>
   </div>

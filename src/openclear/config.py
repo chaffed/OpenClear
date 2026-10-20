@@ -546,6 +546,10 @@ class Settings(BaseSettings):
     # doesn't forward the original scheme/host correctly — same class of caveat as
     # webauthn_origin. None (default) derives it from the live request instead.
     public_base_url: str | None = None
+    # Where this installation's source code is (AGPL-3.0 §13: anyone using it over a network is
+    # offered the source of the version running). An installation running changes of its own
+    # points this at its own copy. Linked from every page's footer and the license page.
+    source_code_url: str = "https://github.com/chaffed/OpenClear"
     # /.well-known/security.txt (RFC 9116; OWASP_PLAN.md OW3a): how to report a vulnerability in
     # this installation. Contact is one or more URIs, comma-separated ("mailto:security@bank.example,
     # https://bank.example/security"); without one the file isn't served. Expires defaults to a

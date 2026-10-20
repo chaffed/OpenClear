@@ -299,6 +299,15 @@ templates.env.globals["accent_style"] = _accent_style
 templates.env.globals["accent_text"] = colors.accent_text
 
 
+def _source_code_url() -> str:
+    from openclear.config import get_settings
+
+    return get_settings().source_code_url
+
+
+templates.env.globals["source_code_url"] = _source_code_url
+
+
 # Pages opened from a control-panel tile, and the tile each returns to: base.html shows
 # "Back to settings" on them, landing on that tile (UX_PLAN.md U11).
 _PANEL_PAGES = {
