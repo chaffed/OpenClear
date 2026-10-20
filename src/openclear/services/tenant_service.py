@@ -11,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear import colors
 from openclear.config import get_settings
 from openclear.domain.tenant import Tenant
 from openclear.services import message_content
@@ -118,38 +119,17 @@ def get_tenant_branding_by_slug(session: Session, slug: str) -> TenantBranding |
     return _branding_from_tenant(tenant)
 
 
-_MIN_ACCENT_CONTRAST_RATIO = 4.5  # WCAG AA for text — every button renders white text on this color
-
-
-def _relative_luminance(hex_color: str) -> float:
-    """WCAG's standard relative-luminance formula (the same math the contrast-ratio
-    formula in the WCAG 2.1 spec is built from) — used here purely to check a tenant's
-    chosen accent color stays readable as white button text, in both light and dark mode
-    (see static/css/app.css's button rule and the dark-mode section it links to)."""
-    r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (1, 3, 5))
-
-    def _linearize(channel: float) -> float:
-        return channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4
-
-    r, g, b = _linearize(r), _linearize(g), _linearize(b)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def _contrast_ratio_against_white(hex_color: str) -> float:
-    # White's own relative luminance is exactly 1.0 — the WCAG contrast-ratio formula is
-    # (lighter + 0.05) / (darker + 0.05), and white is always the lighter of the two here.
-    return (1.0 + 0.05) / (_relative_luminance(hex_color) + 0.05)
-
-
 def _validate_accent_color(accent_color: str | None) -> str | None:
     if not accent_color:
         return None
     if not _HEX_COLOR_RE.match(accent_color):
         raise InvalidTenantSettingsInput(f"{accent_color!r} is not a valid hex color — expected e.g. #2563eb")
-    if _contrast_ratio_against_white(accent_color) < _MIN_ACCENT_CONTRAST_RATIO:
+    # Every button puts white text on the accent (static/css/app.css); as text on the page,
+    # each theme uses colors.accent_text's shade of it instead.
+    if colors.contrast_ratio(accent_color, "#ffffff") < colors.AA_TEXT:
         raise InvalidTenantSettingsInput(
             f"{accent_color!r} is too light to read as white button text — try a darker shade "
-            f"(needs at least a {_MIN_ACCENT_CONTRAST_RATIO}:1 contrast ratio against white)"
+            f"(needs at least a {colors.AA_TEXT}:1 contrast ratio against white)"
         )
     return accent_color
 

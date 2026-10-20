@@ -11,6 +11,7 @@ import nh3
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
+from openclear import colors
 from openclear.db.tenancy import TenantContext
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -274,6 +275,27 @@ def _minutes_until(when) -> int | None:
 
 
 templates.env.globals["minutes_until"] = _minutes_until
+
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _accent_style(accent: str | None) -> Markup:
+    """A bank's accent and the shade of it each theme uses as text (colors.accent_text,
+    UI_PLAN.md UI-D2), overriding static/css/app.css's defaults with the same selectors.
+    Only a `#rrggbb` value reaches the stylesheet, whatever is stored."""
+    if not accent or not _HEX_COLOR.match(accent):
+        return Markup("")
+    light, dark = colors.accent_text(accent)
+    return Markup(
+        f'<style>:root{{--accent:{accent};--accent-text:{light}}}'
+        f'@media (prefers-color-scheme: dark){{:root:not([data-theme="light"]){{--accent-text:{dark}}}}}'
+        f':root[data-theme="dark"]{{--accent-text:{dark}}}</style>'
+    )
+
+
+templates.env.globals["accent_style"] = _accent_style
+templates.env.globals["accent_text"] = colors.accent_text
 
 
 # Pages opened from a control-panel tile, and the tile each returns to: base.html shows

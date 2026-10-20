@@ -30,7 +30,7 @@ navigation, then type, colour and forms.
 | # | Finding | Evidence | Severity |
 |---|---|---|---|
 | F1 | **In dark mode the bank's accent colour is used as text on the dark background**: the bank name, the active navigation item and hover states. | Demo accent `#0f5b8a` on `#0f172a` is **2.45:1**; the default `#2563eb` is 3.45:1. Both need 4.5:1. (`app.css` `.sidenav a.active`, `.brand`) | Critical |
-| F2 | **Any accent colour a bank picks is accepted unchecked.** Buttons put white text on it, and so do the navigation count and the skip link. | `tenant_service._validate_accent_color` only checks the hex format. White on a light brand colour such as `#f59e0b` is 2.15:1. | Critical |
+| F2 | ~~Any accent colour a bank picks is accepted unchecked.~~ **Wrong (corrected 2026-10-19, building UI1):** `tenant_service._validate_accent_color` already refuses an accent under 4.5:1 against white, so white button text is always readable. What's left is F1, plus a borderline accent as text on the light grey of the selected navigation item. | `tenant_service.py` | — |
 | F3 | **The axe check only sees one case:** light mode, desktop width, a bank admin, the default accent. It never sees dark mode, a phone, a customer's session or a bank's own colour. That's why F1 went unnoticed. | `test_accessibility.py`: no theme, viewport or accent parameter; 19 pages, all as the bank. | High |
 | F4 | **Headings are upside down.** `h1` is set to 1.4rem, but `h2` has no size, so it renders at the browser's 1.5em. Section headings come out bigger than the page title. | On the exception page, "What was expected vs. what was presented" is larger than "Check #10025". | High |
 | F5 | **There are two link styles.** No rule sets link colour, so links in tables, "Back to exceptions" and "Upload an image" are the browser's own blue (and purple once visited). Other links ("Review queue →", "More filters") use the bank's accent. | `app.css` has no `a {}` rule. Visible on every list and detail page. | Medium |
@@ -45,7 +45,7 @@ navigation, then type, colour and forms.
 | F14 | **The exceptions list on a phone.** The filter summary is a grey (disabled-looking) button, sorting is a lone "Status ↕" chip, and the cards leave out the date. On desktop, Network and Status sit at opposite edges, and "Page 1 of 1" doesn't line up with Prev and Next. | Exceptions, desktop and phone. | Low |
 | F15 | **The bank's dashboard puts everything in one card.** It has a "Logged in as" line, and a tile that shows text ("Under 1 hour") where the others show numbers. It counts what's waiting but doesn't show any of it. | Bank dashboard. | Low |
 | F16 | **The footer's licence notice takes five lines on a phone, on every page.** | Every page. | Low |
-| F17 | **Smaller inconsistencies:** settings states written differently ("Warn" and "18 WARN"); some tiles have no state; the exception page's comparison table has an empty fourth column; 52 raw hex colours in `app.css` and 35 inline `style=` attributes in templates. | Settings panel; exception detail; `app.css`. | Low |
+| F17 | **Smaller inconsistencies:** settings states written differently ("Warn" and "18 WARN"); some tiles have no state; the exception page's comparison table has an empty fourth column; a handful of raw hex colours in `app.css` rules (most of the 52 are the token definitions themselves) and 35 inline `style=` attributes in templates. | Settings panel; exception detail; `app.css`. | Low |
 | F18 | **Still to be done by a person (from UX_PLAN.md):** the screen-reader and keyboard-only pass, and the user-testing sessions. Neither has happened. | UX_PLAN.md progress log, 2026-10-10 and 2026-10-11. | — |
 
 ## User flows
@@ -87,14 +87,16 @@ each action was checked in the routes.
   - What's taken from the skill: one heading scale, semantic colour tokens, 4.5:1 contrast in
     both themes, visible focus, empty states with a next step, and 44 px touch targets (already
     met on phones and tablets).
-- **UI-D2. The bank's colour is adjusted, not refused.** Banks have brand colours they won't
-  change. From the one colour, the server works out:
-  - `--on-accent`: white or near-black, whichever reaches 4.5:1 on it.
-  - `--accent-text-light` and `--accent-text-dark`: the accent darkened or lightened until it
-    reaches 4.5:1 on each theme's background.
-  - Text uses the text tokens; fills use the accent itself.
-  - The Branding setting shows a preview of both themes, and says when the colour was adjusted
-    for legibility.
+- **UI-D2. The bank's colour fills; a readable shade of it is the text.**
+  - Banks keep their brand colour. The existing rule stays: an accent too light for white
+    button text is refused.
+  - From that colour, `colors.accent_text` works out the shade to use as text, links and focus
+    rings in each theme: the least change toward black (light theme) or white (dark theme)
+    that reaches 4.5:1 on both of that theme's backgrounds.
+  - Fills (`--accent`, with `--on-accent` text) use the colour itself; text uses
+    `--accent-text`.
+  - The Branding setting shows a preview of both themes, and says when the shade was adjusted
+    from the bank's colour.
   - It's a small pure function in Python with tests; no JavaScript, and nothing stored.
 - **UI-D3. One link style.**
   - `a { color: var(--link) }`, where `--link` is the accent's text colour for that theme.
@@ -300,3 +302,16 @@ doesn't have.
   - deadlines from the first cut-off after a minimum review time, on a business day;
   - the response window kept only until a bank sets its cut-off.
   Stage UI3 gains the settings, the calendar and their tests.
+- 2026-10-19: UI1 built on `ui1-contrast` (stacked on `rf-review-fixes`):
+  - `openclear/colors.py`, also used by the accent check, so the contrast maths has one home;
+  - `accent_style` in both page heads; `--accent-text`, `--on-accent` and `--link`, with every
+    text, outline and border use of the accent moved to the readable shade;
+  - one link colour;
+  - tokens for the secondary, Pay and Return fills;
+  - the Branding preview;
+  - the axe check in five views: desktop, dark with a dark accent, phone with a borderline
+    accent, a customer's user, and customer dark on a phone. Run against the old CSS, the dark
+    views fail on the bank name, the dashboard links and "More filters"; with UI1 every view
+    passes.
+  F2 turned out wrong (the accent's refusal rule already existed) and F17 overstated; both are
+  corrected above. The desktop reference pictures were rewritten for the link colour.

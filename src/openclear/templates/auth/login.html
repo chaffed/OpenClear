@@ -3,7 +3,7 @@
 {% block title %}Log in — {{ branding.name if branding else "OpenClear" }}{% endblock %}
 {% block favicon %}{% if branding and branding.has_favicon %}<link rel="icon" href="/ui/branding/{{ branding.slug }}/favicon">{% else %}<link rel="icon" type="image/svg+xml" href="/static/img/openclear-badge.svg">{% endif %}{% endblock %}
 {% block head_extra %}
-{% if branding and branding.accent_color %}<style>:root{ --accent: {{ branding.accent_color }}; }</style>{% endif %}
+{% if branding %}{{ accent_style(branding.accent_color) }}{% endif %}
 {% endblock %}
 {% block content %}
 {% set password_enabled = customer_password_login_enabled if customer_password_login_enabled is defined else (branding.password_login_enabled if branding else true) %}

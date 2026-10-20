@@ -5,6 +5,10 @@
 - Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages
   after an action are encoded the same way everywhere (a space is now `+` in the address).
   Release metrics now count the release's own advisory. No change to what pages show.
+- **Readable in dark mode with any bank colour** (`UI_PLAN.md` UI1): text, links and focus
+  rings in a bank's accent use a shade of it that reaches WCAG AA contrast in each theme. The
+  bank name and links were too dark to read on the dark theme before. Links all share that
+  colour, and the Branding setting previews it in both themes.
 
 ## 1.25.1 — 2026-10-19
 

@@ -6,7 +6,7 @@
   <title>{% block title %}{{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version('css/app.css') }}">
   {% block favicon %}{% if ctx and ctx.has_favicon %}<link rel="icon" href="/ui/branding/{{ ctx.tenant_slug }}/favicon">{% else %}<link rel="icon" type="image/svg+xml" href="/static/img/openclear-badge.svg">{% endif %}{% endblock %}
-  {% if ctx and ctx.accent_color %}<style>:root{ --accent: {{ ctx.accent_color }}; }</style>{% endif %}
+  {% if ctx %}{{ accent_style(ctx.accent_color) }}{% endif %}
   {% if ctx and ctx.access_expires_at %}
   {# Read by static/js/session.js: when this session's idle timeout and maximum length
      run out (Unix seconds), so it can keep an active user signed in and warn an idle one. #}
