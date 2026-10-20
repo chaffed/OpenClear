@@ -96,6 +96,24 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if due_soonest %}
+  {# What's waiting, not only how much (UI_PLAN.md F15). #}
+  <h2>Due soonest</h2>
+  <table class="due-soonest">
+    <thead><tr><th>Item</th><th>Customer</th><th class="numeric">Amount</th><th>Decide by</th></tr></thead>
+    <tbody>
+      {% for row in due_soonest %}
+      <tr>
+        <td><a href="/ui/exceptions/{{ row.item.id }}?from=/ui/exceptions">{{ row.summary.label if row.summary else "Exception" }}</a></td>
+        <td>{{ row.customer or "—" }}</td>
+        <td class="numeric">{{ row.summary.amount | currency if row.summary and row.summary.amount is not none else "—" }}</td>
+        <td>{% if row.deadline %}<time datetime="{{ row.deadline | iso_utc }}" data-local-time data-relative-time>{{ row.deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}<span class="text-muted">No deadline</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="/ui/exceptions">All items to decide</a></p>
+  {% endif %}
 </div>
 {{ slot("dashboard.panel") }}
 {% endblock %}

@@ -138,7 +138,7 @@ def test_the_controls_tile_state(client, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="panel-controls")
     _login(client, tenant.slug, users["admin"].email)
     state = client.get("/ui/admin/controls/summary").json()
-    assert state["tone"] in ("ok", "warn", "danger") and ("FAIL" in state["state"] or "WARN" in state["state"] or state["state"] == "All pass")
+    assert state["tone"] in ("ok", "warn", "danger") and ("failing" in state["state"] or "warning" in state["state"] or state["state"] == "All pass")
 
 
 def test_check_return_reasons_can_be_added_edited_and_retired(client, db_session, tenant_factory):

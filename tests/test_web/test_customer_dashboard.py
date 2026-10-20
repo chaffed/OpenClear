@@ -32,3 +32,11 @@ def test_the_account_menu_names_the_person_and_offers_only_what_applies(client, 
     assert users["admin"].email in page and "account-menu" in page
     assert "Switch organization" not in page  # one organization: nowhere to switch to
     assert "Logged in as" not in page
+
+
+def test_the_banks_dashboard_shows_what_is_due_soonest(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="dash-bank")
+    _make_exception(db_session, tenant, account, users, "7401", "10.00", "99.00")
+    _sign_in_as(client, tenant, users["admin"].email)
+    page = client.get("/ui/").text
+    assert "Due soonest" in page and "Check #7401" in page

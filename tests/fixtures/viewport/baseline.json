@@ -182,8 +182,19 @@
   "dashboard": {
     "1024": [],
     "1280": [],
-    "360": [],
-    "768": []
+    "360": [
+      "small target: a \"All items to decide\"",
+      "small target: a \"Check #####\"",
+      "small target: a \"Check ######\"",
+      "small target: a \"Gusto Payroll (##########)\"",
+      "table scrolls sideways: \"Due soonest\""
+    ],
+    "768": [
+      "small target: a \"All items to decide\"",
+      "small target: a \"Check #####\"",
+      "small target: a \"Check ######\"",
+      "small target: a \"Gusto Payroll (##########)\""
+    ]
   },
   "exception": {
     "1024": [],

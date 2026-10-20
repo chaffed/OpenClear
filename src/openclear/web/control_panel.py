@@ -86,6 +86,10 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
     from openclear.services.siem import delivery
 
     contact_set = any((tenant.support_email, tenant.support_phone, tenant.website))
+    from openclear.services import wizard_service
+
+    done, required = wizard_service.bank_progress(db, ctx.tenant_id)
+    wizard_state = "Done" if done == required else f"{done} of {required} done"
     policy_rules = sum(bool(x) for x in (tenant.password_require_uppercase, tenant.password_require_lowercase,
                                          tenant.password_require_number, tenant.password_require_symbol))
     origins = [o for o in (tenant.embed_allowed_origins or "").splitlines() if o.strip()]
@@ -117,7 +121,8 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
              ("Showing " + " and ".join(messages) + " message") if messages else "None", modal=True,
              keywords="login banner announcement"),
         Tile("getting-started", "Organization", "Getting started", "checklist", "/ui/wizard/bank",
-             "The checklist for setting up a new bank.", keywords="wizard setup onboarding"),
+             "The checklist for setting up a new bank.", wizard_state, tone="" if wizard_state == "Done" else "warn",
+             keywords="wizard setup onboarding"),
         Tile("password-policy", "Security & access", "Password policy", "password", "/ui/settings/password-policy",
              "Minimum length and required characters for new passwords.",
              f"{tenant.password_min_length}+ characters" + (f", {_plural(policy_rules, 'rule')}" if policy_rules else ""),

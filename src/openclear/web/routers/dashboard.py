@@ -51,6 +51,21 @@ def _attention_summary(db: Session, ctx: TenantContext) -> dict:
     return {"count": count, "due_soon": due_soon, "oldest_age": _age(oldest) if oldest else None}
 
 
+def _due_soonest(db: Session, ctx: TenantContext, limit: int = 5) -> list[dict]:
+    """The bank's items still to decide, nearest deadline first (those with none after, oldest
+    first): what a bank's dashboard shows below its counts (UI_PLAN.md F15)."""
+    from openclear.web.routers.exceptions import _load_sources, _names_for_page, _summarize_source_item
+
+    items = exception_service.list_exceptions(
+        db, ctx.tenant_id, statuses=exception_service.NEEDS_ATTENTION, customer_id=ctx.customer_id,
+        order_by=[ExceptionItem.decision_deadline.is_(None), ExceptionItem.decision_deadline.asc(), ExceptionItem.created_at.asc()],
+        limit=limit)
+    sources = _load_sources(db, items)
+    _accounts, customers = _names_for_page(db, ctx, items, sources)
+    return [{"item": item, "summary": _summarize_source_item(item.network_code, sources[item.id]) if item.id in sources else None,
+             "customer": customers.get(item.customer_id, ""), "deadline": _aware(item.decision_deadline)} for item in items]
+
+
 def _customer_jobs(db: Session, ctx: TenantContext) -> dict:
     """A customer's two jobs, for the top of its dashboard (UI_PLAN.md UI-D8): deciding what's
     waiting, and sending the issued checks. Also any decisions still open to change before
@@ -118,6 +133,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContex
         request, "dashboard.html", ctx=ctx, show_getting_started=show_getting_started,
         security_group_name=group.name if group else None,
         jobs=_customer_jobs(db, ctx) if ctx.customer_id is not None else None,
+        due_soonest=_due_soonest(db, ctx) if ctx.customer_id is None and "exception:read" in ctx.permissions else [],
         attention=attention,
         awaiting_my_approval=ctx.pending_approval_count if "exception:decide" in ctx.permissions else None,
         outstanding_issued_items_count=outstanding_issued_items_count,

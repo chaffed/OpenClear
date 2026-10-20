@@ -5,7 +5,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 
 | Page | 360px | 768px | 1024px | 1280px |
 |---|---|---|---|---|
-| dashboard | ✓ | ✓ | ✓ | ✓ |
+| dashboard | 4 small | 4 small | ✓ | ✓ |
 | exceptions | ✓ | ✓ | ✓ | ✓ |
 | exception | ✓ | ✓ | ✓ | ✓ |
 | issued_items | ✓ | ✓ | ✓ | ✓ |
@@ -80,3 +80,16 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | platform_changes | ✓ | ✓ | ✓ | ✓ |
 
 ## Details
+
+### dashboard at 360px
+- table scrolls sideways: "Due soonest" (374px in 278px)
+- small target: a "Check ######" (3x, e.g. 50x34)
+- small target: a "Check #####" (1x, e.g. 88x17)
+- small target: a "Gusto Payroll (##########)" (1x, e.g. 96x34)
+- small target: a "All items to decide" (1x, e.g. 134x18)
+
+### dashboard at 768px
+- small target: a "Check ######" (3x, e.g. 96x17)
+- small target: a "Check #####" (1x, e.g. 88x17)
+- small target: a "Gusto Payroll (##########)" (1x, e.g. 187x17)
+- small target: a "All items to decide" (1x, e.g. 134x18)

@@ -419,3 +419,11 @@ doesn't have.
     - on a bank's own sign-in link, the organization is known and not asked for;
     - a line saying what to do about a forgotten password, under the current policy (an
       administrator resets it).
+- 2026-10-20: UI7 built on `ui7-bank`:
+  - **The bank's dashboard** lists the five items due soonest under its counts, each with its
+    customer, amount and deadline; "Logged in as" went in UI5.
+  - **Settings tiles:** Controls says "1 failing" or "18 warnings" in words, like every other
+    tile. Getting started shows its progress ("3 of 5 done", or "Done"). Tiles for pages with no
+    single state (Action log, Model risk, Billing, Plugins) stay without one.
+  **Not done, waiting for the product owner:** the shorter footer (UI-D9). The AGPL's §5(d)
+  notice wording needs the owner's check before it changes.

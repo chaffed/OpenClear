@@ -37,6 +37,8 @@
 - Phones show a number keyboard for amounts and check and account numbers. Sign-in works with
   password managers, asks for the "Organization" in plain words (and not at all on a bank's own
   sign-in link), and says what to do about a forgotten password.
+- A bank's home page lists the five items due soonest, with their customers. The Controls tile
+  says "1 failing" or "2 warnings", and Getting started shows how far along it is.
 - Section headings are smaller than the page title, as they should be; secondary buttons are
   outlined rather than grey (which looked disabled); "Doesn't match" sits with the row it's about.
 - An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),
