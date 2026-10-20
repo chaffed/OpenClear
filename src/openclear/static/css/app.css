@@ -114,9 +114,10 @@ body {
 }
 .nav-toggle:hover { color: var(--accent-text); border-color: var(--accent-text); }
 .sidenav-panel { display: flex; flex-direction: column; flex: 1; gap: 0.2rem; min-height: 0; }
+/* Which customer this session sees: a plain label, not a warning (UI_PLAN.md F8). */
 .customer-scope-badge {
-  margin: 0 0.5rem 1rem; padding: 0.3rem 0.5rem; font-size: 0.75rem; color: var(--badge-warn-fg);
-  background: var(--badge-warn-bg); border-radius: 6px;
+  margin: 0 0.5rem 1rem; padding: 0.3rem 0.5rem; font-size: 0.8rem; color: var(--text-muted);
+  background: var(--bg-muted); border-radius: 6px;
 }
 .sidenav .nav-links { display: flex; flex-direction: column; gap: 0.2rem; }
 .sidenav .nav-section {
@@ -920,3 +921,25 @@ table.evidence th[scope="row"] .badge { margin-left: 0.5rem; font-weight: 600; t
 .field-m { max-width: 8em; }
 .field-l { max-width: 12em; }
 .field-xl { max-width: 15em; }
+
+/* The account menu at the foot of the navigation (UI_PLAN.md UI-D6). */
+.account-menu summary { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer;
+  color: var(--text-muted); font-size: 0.9rem; list-style: none; }
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu summary:hover { background: var(--bg-muted); color: var(--accent-text); }
+.account-menu[open] summary { color: var(--text); font-weight: 600; }
+.account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.account-menu-items { display: flex; flex-direction: column; gap: 0.2rem; padding-left: 0.5rem; }
+.account-menu-items .link-button { display: flex; align-items: center; gap: 0.5rem; }
+@media (max-width: 1023.98px) {
+  .account-menu summary { min-height: 44px; }
+}
+
+/* A customer's dashboard leads with its two jobs (UI_PLAN.md UI-D8). */
+.jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.job { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+.job h2 { margin-top: 0; }
+
+/* Filters that belong together sit together, not at opposite edges (UI_PLAN.md F14). */
+.toolbar.toolbar-start { justify-content: flex-start; gap: 0.75rem 1.5rem; }
+.file-format { margin-top: 1.5rem; }

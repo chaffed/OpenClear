@@ -392,3 +392,20 @@ doesn't have.
     left are computed values (the colour preview, a percentage bar) or one-offs.
   Network and Status still sit at opposite edges of the exceptions toolbar; that's for UI5's
   pass over the list.
+- 2026-10-20: UI5 built on `ui5-customer`:
+  - **The customer's dashboard leads with its jobs:**
+    - "N items to decide" with when the first is due and "Decide now", or "Nothing to decide.
+      You're all caught up.";
+    - how many decisions can still change, and until when;
+    - "Upload issued checks" with the last file's date and result.
+    It's titled with the customer's name. "Logged in as Admin" is gone from both dashboards.
+  - **The account menu** at the foot of the navigation, under the person's email, holds
+    Security, the theme, Switch organization (only when they belong somewhere else, counted
+    through `memberships_elsewhere` so row-level security doesn't hide it) and Log out. The
+    docs links read "Help and guides" and "Admin guides".
+  - **The scope label** reads "For Maple Street Dental" in neutral colours.
+  - **The upload page** opens with the file field. The column reference is under "File format,
+    without a layout", with what each column is.
+  - **The exceptions list:** cards show the date; Network and Status sit together.
+  Two full-suite runs under machine load failed browser tests with timeouts. Each passed run
+  alone, and the next full run passed (2127).

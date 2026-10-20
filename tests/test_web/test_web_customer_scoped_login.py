@@ -40,7 +40,7 @@ def test_login_defaults_to_bank_wide_membership_when_multiple_exist(client, db_s
     # bank-wide membership wins by default -> full admin reach, no scope badge
     resp = client.get("/ui/")
     assert resp.status_code == 200
-    assert "Scoped to" not in resp.text
+    assert "customer-scope-badge" not in resp.text
     assert client.get("/ui/users").status_code == 200
 
 
@@ -115,7 +115,7 @@ def test_switch_into_customer_scope_shows_badge_and_masks_admin_routes(client, d
     assert resp.status_code == 303
 
     home = client.get("/ui/")
-    assert "Scoped to" in home.text
+    assert "customer-scope-badge" in home.text
     assert "Gadgets LLC" in home.text
     assert client.get("/ui/accounts").status_code == 200
 

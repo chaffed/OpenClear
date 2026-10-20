@@ -115,7 +115,7 @@ def test_decide_now_is_never_covered_and_home_reaches_the_dashboard(client, db_s
     page = browser_page(1280, 900)
     page.goto(URL + "/ui/exceptions")
     page.locator(".sidenav a", has_text="Home").click()
-    page.wait_for_selector("h1:has-text('Dashboard')")
+    page.wait_for_selector(".jobs h2:has-text('to decide')")  # the customer's dashboard leads with its jobs
 
 
 def test_a_stop_payment_needs_only_the_check_number(client, db_session, tenant_factory, browser_page):  # noqa: F811

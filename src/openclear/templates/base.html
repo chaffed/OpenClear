@@ -70,7 +70,7 @@
       </div>
       <div class="sidenav-panel" id="sidenav-panel">
       <button type="button" class="nav-close" data-nav-close aria-label="Close navigation menu">{{ icon("close") }}</button>
-      {% if ctx.customer_id %}<p class="customer-scope-badge">Scoped to <strong>{{ ctx.customer_name }}</strong></p>{% endif %}
+      {% if ctx.customer_id %}<p class="customer-scope-badge">For <strong>{{ ctx.customer_name }}</strong></p>{% endif %}
       {# While a password must be replaced (too short or breached, auth/login_service.py), every other page just
          redirects back to the change form (web/deps.py), so don't offer links to them. #}
       {% if not ctx.must_change_password %}
@@ -119,19 +119,29 @@
         {% if can(ctx, "billing:read") and ctx.customer_id is none %}{{ nav_link("/ui/billing", "Billing", "request_quote") }}{% endif %}
         {% endif %}
       </div>
+      {# The account menu (UI_PLAN.md UI-D6): who's signed in, and what's theirs rather than the bank's. #}
       <div class="nav-bottom">
-        {% if show_end_user_docs %}{{ nav_link("/ui/docs/end-user", "End User Documentation", "menu_book") }}{% endif %}
-        {% if show_admin_docs %}{{ nav_link("/ui/docs/admin", "Admin Documentation", "library_books") }}{% endif %}
-        {{ nav_link("/ui/switch-tenant", "Switch organization", "swap_horiz") }}
-        {{ nav_link("/ui/security", "Security", "vpn_key") }}
+        {% if show_end_user_docs %}{{ nav_link("/ui/docs/end-user", "Help and guides", "menu_book") }}{% endif %}
+        {% if show_admin_docs %}{{ nav_link("/ui/docs/admin", "Admin guides", "library_books") }}{% endif %}
+        <details class="account-menu">
+          <summary>{{ icon("person") }}<span class="account-name">{{ ctx.user_email or "Your account" }}</span></summary>
+          <div class="account-menu-items">
+            {{ nav_link("/ui/security", "Security", "vpn_key") }}
+            {% if ctx.other_organizations %}{{ nav_link("/ui/switch-tenant", "Switch organization", "swap_horiz") }}{% endif %}
+            {{ theme_form("nav-theme") }}
+            <form method="post" action="/ui/logout" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="link-button">{{ icon("logout") }}Log out</button>
+            </form>
+          </div>
+        </details>
       {% else %}
       <div class="nav-bottom">
-      {% endif %}
-        {{ theme_form("nav-theme") }}
         <form method="post" action="/ui/logout" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="link-button">Log out</button>
         </form>
+      {% endif %}
       </div>
       </div>
     </nav>

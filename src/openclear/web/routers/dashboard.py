@@ -51,6 +51,32 @@ def _attention_summary(db: Session, ctx: TenantContext) -> dict:
     return {"count": count, "due_soon": due_soon, "oldest_age": _age(oldest) if oldest else None}
 
 
+def _customer_jobs(db: Session, ctx: TenantContext) -> dict:
+    """A customer's two jobs, for the top of its dashboard (UI_PLAN.md UI-D8): deciding what's
+    waiting, and sending the issued checks. Also any decisions still open to change before
+    their cut-off (UI-D13)."""
+    from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
+    from openclear.domain.decision import Decision
+
+    scoped = ExceptionRepository(db, ctx.tenant_id, ctx.customer_id).query()
+    waiting = scoped.where(ExceptionItem.status.in_(exception_service.NEEDS_ATTENTION)).subquery()
+    to_decide, first_due = db.execute(select(func.count(), func.min(waiting.c.decision_deadline)).select_from(waiting)).one()
+    open_to_change = scoped.join(Decision, Decision.exception_item_id == ExceptionItem.id).where(
+        Decision.locked_at.is_(None), ExceptionItem.decision_deadline > datetime.now(timezone.utc)).subquery()
+    changeable, change_until = db.execute(select(func.count(), func.min(open_to_change.c.decision_deadline))
+                                          .select_from(open_to_change)).one()
+    last_upload = db.execute(select(BulkUploadFile).where(
+        BulkUploadFile.tenant_id == ctx.tenant_id, BulkUploadFile.customer_id == ctx.customer_id,
+        BulkUploadFile.kind == BulkUploadKind.ISSUED_ITEMS).order_by(BulkUploadFile.uploaded_at.desc()).limit(1)).scalar_one_or_none()
+    return {"to_decide": to_decide, "first_due": _aware(first_due), "changeable": changeable, "change_until": _aware(change_until),
+            "last_upload": last_upload, "can_decide": bool({"exception:decide", "exception:recommend"} & set(ctx.permissions)),
+            "can_upload": "issued_item:write" in ctx.permissions}
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
+
+
 @router.get("/")
 def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(get_web_context)):
     # "Decide now" (UX_PLAN.md U5): a customer's people with checks waiting for their
@@ -91,6 +117,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContex
     return render_template(
         request, "dashboard.html", ctx=ctx, show_getting_started=show_getting_started,
         security_group_name=group.name if group else None,
+        jobs=_customer_jobs(db, ctx) if ctx.customer_id is not None else None,
         attention=attention,
         awaiting_my_approval=ctx.pending_approval_count if "exception:decide" in ctx.permissions else None,
         outstanding_issued_items_count=outstanding_issued_items_count,

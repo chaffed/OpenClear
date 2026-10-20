@@ -45,6 +45,7 @@ ICONS: dict[str, str] = {
     "assignment_return": "nav: ACH Return Reasons",
     "home": "nav: Home",
     "schedule": "settings: Decision cut-off",
+    "logout": "account menu: Log out",
     "flag": "nav: Exceptions",
     "gavel": "nav: Unauthorized Debit Statement",
     "model_training": "nav: Fraud Training Data",

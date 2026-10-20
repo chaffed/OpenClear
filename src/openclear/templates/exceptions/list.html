@@ -25,7 +25,7 @@
   <h1>Exceptions</h1>
   {{ slot("exceptions.toolbar") }}
   {# On a phone, Network and Status are in a bottom sheet; the button says what's chosen. #}
-  <form method="get" action="/ui/exceptions" class="toolbar">
+  <form method="get" action="/ui/exceptions" class="toolbar toolbar-start">
     {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else "Decided, changeable" if status_filter == "changeable" else status_filter | exception_status)
                      ~ " · " ~ ({"check": "Checks", "ach": "ACH"}.get(network_filter) or "Checks and ACH"), "tune") }}
     {% call bottom_sheet("queue-filters", "Network and status") %}
@@ -60,7 +60,7 @@
     {"key": "account", "label": "Account", "hide": "tablet"},
   ] + ([{"key": "customer", "label": "Customer"}] if show_customers else []) + [
     {"key": "amount", "label": "Amount", "role": "money", "numeric": True},
-    {"key": "date", "label": "Date", "hide": "tablet"},
+    {"key": "date", "label": "Date"},
     {"key": "why", "label": "Why it's here"},
   ] + ([{"key": "risk", "label": "Fraud risk", "sort": "score"}] if show_scores else [])
     + ([{"key": "deadline", "label": "Decide by", "sort": "deadline"}] if show_deadlines else [])

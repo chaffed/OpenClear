@@ -30,6 +30,10 @@
   without one see no change. The API's decisions gain `locked_at`, `changeable_until` and
   `change_pending`; `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
   decision before its cut-off.
+- A customer's home page leads with its two jobs: what's left to decide (or that nothing is),
+  and uploading issued checks, with the last file's result. An account menu under your email
+  holds Security, the theme and Log out; "Switch organization" shows only if you belong to
+  another. The upload page starts with the file, with the format reference folded away.
 - Section headings are smaller than the page title, as they should be; secondary buttons are
   outlined rather than grey (which looked disabled); "Doesn't match" sits with the row it's about.
 - An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),

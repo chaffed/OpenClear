@@ -9,23 +9,11 @@
   and can be reviewed later from the Action Log or the bulk upload's own page.</p>
 {% endblock %}
 {% block content %}
+{# The file first, the format reference under a disclosure (UI_PLAN.md F11). #}
 <div class="card">
-  <h1>Bulk upload issued items</h1>
-  <p>Upload a delimited file (CSV, TSV, pipe- or semicolon-separated), an Excel (.xlsx) file,
-    or a fixed-width file. A file in your own format needs a <a href="/ui/layouts">layout</a>
-    that says where each field is. Without one, the first row must name these columns
-    (case/spacing-insensitive, any order):</p>
-  <table class="column-guide">
-    <thead><tr><th>Column</th><th>Required</th><th>Example</th></tr></thead>
-    <tbody>
-      <tr><td>account_number</td><td>yes</td><td>1001 (or an account's own external account ID, if it has one)</td></tr>
-      <tr><td>check_number</td><td>yes</td><td>5001</td></tr>
-      <tr><td>amount</td><td>yes</td><td>150.00</td></tr>
-      <tr><td>payee_name</td><td>yes</td><td>Acme Vendor</td></tr>
-      <tr><td>issue_date</td><td>yes</td><td>2026-01-15</td></tr>
-      <tr><td>account_name</td><td>no</td><td>Operating (used only when creating a new account)</td></tr>
-    </tbody>
-  </table>
+  <h1>Upload issued checks</h1>
+  <p>Send the checks you've written, so the bank can match them when they're presented. A CSV,
+    another delimited file, an Excel file or a fixed-width file.</p>
   {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
   {% if upload_record %}
   <p>The file you just submitted was still saved and signed for audit purposes:
@@ -41,9 +29,25 @@
         {% for layout in layouts or [] %}<option value="{{ layout.id }}" {{ "selected" if layout.id == default_layout_id else "" }}>{{ layout.name }}{{ " (default)" if layout.is_default else "" }}</option>{% endfor %}
       </select>
     </label>
-    {% if not layouts %}<p class="hint">No layouts yet. <a href="/ui/layouts/new">Build one from a sample of your file.</a></p>{% endif %}
+    {% if not layouts %}<p class="hint">Your file in your own columns? <a href="/ui/layouts/new">Describe it once with a layout, from a sample.</a></p>{% endif %}
     <label><input type="checkbox" name="create_missing_accounts" value="true"> Automatically create accounts for account numbers not already in the system</label>
     <button type="submit">{{ icon("upload") }}Upload</button>
   </form>
+
+  <details class="more-details file-format">
+    <summary><h2>File format, without a layout</h2></summary>
+    <p>The first row names these columns, in any order; capitals and spaces don't matter.</p>
+    <table class="column-guide">
+      <thead><tr><th>Column</th><th>What it is</th><th>Required</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>account_number</code></td><td>The account the check is drawn on</td><td>yes</td><td>1001 (or the account's own external ID, if it has one)</td></tr>
+        <tr><td><code>check_number</code></td><td>The check's number</td><td>yes</td><td>5001</td></tr>
+        <tr><td><code>amount</code></td><td>The amount, in dollars</td><td>yes</td><td>150.00</td></tr>
+        <tr><td><code>payee_name</code></td><td>Who it's made out to</td><td>yes</td><td>Acme Vendor</td></tr>
+        <tr><td><code>issue_date</code></td><td>The date on the check</td><td>yes</td><td>2026-01-15</td></tr>
+        <tr><td><code>account_name</code></td><td>A name for a new account</td><td>no</td><td>Operating (used only when creating a new account)</td></tr>
+      </tbody>
+    </table>
+  </details>
 </div>
 {% endblock %}

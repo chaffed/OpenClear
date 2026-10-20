@@ -108,6 +108,10 @@ class TenantContext:
     # change-password form while it's set; auth/deps.py::get_current_context refuses API
     # use outright.
     must_change_password: bool = False
+    # Who's signed in, for the account menu (UI_PLAN.md UI-D6), and how many organizations they
+    # belong to besides this one (offers "Switch organization" only when there's somewhere to go).
+    user_email: str | None = None
+    other_organizations: int = 0
 
     # This is the shared public demo organization: web/demo_guard.py locks the handful of
     # actions that would let one visitor lock out or disrupt the others, and base.html

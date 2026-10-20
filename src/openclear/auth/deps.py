@@ -16,7 +16,7 @@ from openclear.auth.security import decode_token
 from openclear.config import get_settings
 from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
-from openclear.db.tenancy import TenantContext, bind_session_to_tenant
+from openclear.db.tenancy import TenantContext, bind_session_to_tenant, memberships_elsewhere
 from openclear.domain.customer import Customer
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.security_group import SecurityGroup
@@ -209,6 +209,8 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         is_demo=branding.is_demo,
         customer_banner_message=customer_banner_message,
         must_change_password=user.must_change_password,
+        user_email=user.email,
+        other_organizations=0 if user.is_service_account else memberships_elsewhere(db, user_id, tenant_id),
         session_id=uuid.UUID(payload["sid"]) if payload.get("sid") else None,
         access_expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
         session_expires_at=datetime.fromtimestamp(payload["sxp"], tz=timezone.utc) if payload.get("sxp") else None,
