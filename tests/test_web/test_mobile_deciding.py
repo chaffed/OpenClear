@@ -46,7 +46,7 @@ def test_the_queue_is_cards_with_checkboxes_on_a_phone(client, db_session, tenan
     # (The test's server doesn't follow the redirect into the browser, so wait for the answer.)
     with page.expect_response("**/ui/exceptions/bulk") as answer:
         page.locator("dialog.confirm-dialog").get_by_role("button", name="Return 2").click()
-    assert "flash=Returned%202%20items" in answer.value.headers["location"]
+    assert "flash=Returned+2+items" in answer.value.headers["location"]
     db_session.expire_all()
     assert sorted(i.status.value for i in db_session.query(ExceptionItem).filter_by(tenant_id=tenant.id)) == ["return", "return"]
 
@@ -257,7 +257,7 @@ def test_undo_withdraws_ones_own_recommendation_only_before_approval(client, db_
     # Nobody else can withdraw it, not even someone who can approve it.
     csrf = _login(client, tenant, users["admin"].email)
     refused = client.post(f"/ui/exceptions/{item.id}/recommendation/withdraw", data={"csrf_token": csrf}, follow_redirects=False)
-    assert "Only%20the%20person" in refused.headers["location"]
+    assert "Only+the+person" in refused.headers["location"]
     assert "withdraw-recommendation" not in client.get(f"/ui/exceptions/{item.id}").text
     db_session.expire_all()
     assert db_session.get(ExceptionItem, item.id).status.value == "pending_approval"
@@ -278,7 +278,7 @@ def test_undo_withdraws_ones_own_recommendation_only_before_approval(client, db_
     client.post(f"/ui/exceptions/{item.id}/decide", data={"csrf_token": csrf, "outcome": "pay"})
     csrf = _login(client, tenant, users["preparer"].email)
     late = client.post(f"/ui/exceptions/{item.id}/recommendation/withdraw", data={"csrf_token": csrf}, follow_redirects=False)
-    assert "no%20recommendation%20awaiting%20approval" in late.headers["location"]
+    assert "no+recommendation+awaiting+approval" in late.headers["location"]
     db_session.expire_all()
     assert db_session.get(ExceptionItem, item.id).status.value == "pay"
 

@@ -7,15 +7,15 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import controls_service
 from openclear.web.deps import render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-controls"])
 
@@ -64,7 +64,6 @@ def controls_summary(db: Session = Depends(get_db), ctx: TenantContext = Depends
 @router.post("/ui/admin/controls/evidence")
 def export_evidence(start: date = Form(...), end: date = Form(...), format: str = Form("pdf"), db: Session = Depends(get_db),
                     ctx: TenantContext = Depends(require_web_permission("audit_log:read")), _csrf: None = Depends(verify_csrf)) -> Response:
-    from urllib.parse import quote
 
     from openclear.api.v1.audit import export_response
 
@@ -77,12 +76,12 @@ def export_evidence(start: date = Form(...), end: date = Form(...), format: str 
             return export_response(db, ctx, start, end, fmt, "web")
         run = long_runs.start_evidence_export(db, ctx.tenant_id, start=start, end=end, fmt=fmt, user_id=ctx.user_id, channel="web")
     except HTTPException as exc:
-        return see_other(f"/ui/admin/controls?error={quote(str(exc.detail))}")
+        return see_other("/ui/admin/controls", error=str(exc.detail))
     except evidence_service.EvidenceError as exc:
-        return see_other(f"/ui/admin/controls?error={quote(str(exc))}")
+        return see_other("/ui/admin/controls", error=str(exc))
     db.commit()
     jobs_queued(db.get_bind())
-    return see_other(f"/ui/admin/controls?export={run.id}")
+    return see_other("/ui/admin/controls", export=run.id)
 
 
 @router.get("/ui/admin/controls/evidence/{run_id}")

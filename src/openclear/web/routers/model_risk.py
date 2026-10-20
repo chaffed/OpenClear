@@ -5,7 +5,6 @@
 through today's rules, run the anomaly-capture test, and read the reports."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,8 +16,8 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.control_run import ControlRun
 from openclear.services import mrm_service
 from openclear.web.deps import render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-model-risk"])
 _manage = require_web_permission("admin:manage")
@@ -43,7 +42,7 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
            _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     content = file.file.read(MAX_REPLAY_BYTES + 1)
     if len(content) > MAX_REPLAY_BYTES:
-        return see_other(f"/ui/admin/model-risk?error={quote('That file is too large to replay.')}")
+        return see_other("/ui/admin/model-risk", error='That file is too large to replay.')
     from openclear.services import long_runs
     from openclear.workers.jobs import jobs_queued
 
@@ -52,10 +51,10 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
                                      channel="web")
     except mrm_service.ReplayError as exc:
         db.rollback()
-        return see_other(f"/ui/admin/model-risk?error={quote(str(exc))}")
+        return see_other("/ui/admin/model-risk", error=str(exc))
     db.commit()
     jobs_queued(db.get_bind())
-    return see_other(f"/ui/admin/model-risk?run={run.id}")
+    return see_other("/ui/admin/model-risk", run=run.id)
 
 
 @router.post("/ui/admin/model-risk/anomaly-capture")
@@ -63,4 +62,4 @@ def anomaly_capture(db: Session = Depends(get_db), ctx: TenantContext = Depends(
                     _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     run = mrm_service.anomaly_capture(db, ctx.tenant_id, user_id=ctx.user_id, channel="web")
     db.commit()
-    return see_other(f"/ui/admin/model-risk?run={run.id}")
+    return see_other("/ui/admin/model-risk", run=run.id)

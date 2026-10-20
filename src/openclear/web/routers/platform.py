@@ -7,7 +7,6 @@ support person sees the access banks have granted them, and opens a bank only th
 (services/support_access_service.py)."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -19,8 +18,8 @@ from openclear.domain.user import User
 from openclear.services import operator_service, support_access_service
 from openclear.web import platform_session
 from openclear.web.deps import render_template
-from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
 from openclear.web.redirects import see_other
+from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
 
 router = APIRouter(prefix="/ui/platform", tags=["web-platform"])
 
@@ -214,7 +213,7 @@ def reset_admin_key(request: Request, tenant_id: uuid.UUID, email: str = Form(..
         tenant_id=None, user_id=user.id, summary=f"Reset the security keys of {email.strip()} at {bank.name}. "
                                                  f"Identity confirmed by: {identity_check.strip()[:300]}")
     db.commit()
-    return see_other("/ui/platform/changes?flash=" + quote("Another operator resets them by approving it under Changes."))
+    return see_other("/ui/platform/changes", flash="Another operator resets them by approving it under Changes.")
 
 
 @router.get("/host-attestations")
@@ -244,13 +243,12 @@ def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), en
                             statement: str = Form(""), db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
                             _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     from datetime import date
-    from urllib.parse import quote
 
     from openclear.config import get_settings
     from openclear.services import attestation_service
 
     if get_settings().host_cuecs_attested_by != "platform":
-        return see_other("/ui/platform/host-attestations?flash=" + quote("Each bank attests the host's CUECs on this installation."))
+        return see_other("/ui/platform/host-attestations", flash="Each bank attests the host's CUECs on this installation.")
     from openclear.services import platform_log_service
 
     try:
@@ -259,35 +257,34 @@ def record_host_attestation(cuec_id: str = Form(...), start: str = Form(...), en
     except (attestation_service.AttestationError, ValueError) as exc:
         db.rollback()
         message = str(exc) if isinstance(exc, attestation_service.AttestationError) else "Choose the period's dates."
-        return see_other("/ui/platform/host-attestations?flash=" + quote(message))
+        return see_other("/ui/platform/host-attestations", flash=message)
     platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.prepare",
                                 summary=f"Prepared {cuec_id} for {made.period_start} to {made.period_end}: {made.result}",
                                 resource_type="cuec_attestation", resource_id=made.id)
     db.commit()
-    return see_other("/ui/platform/host-attestations?flash=" + quote(f"{cuec_id} prepared: someone else accepts and signs it."))
+    return see_other("/ui/platform/host-attestations", flash=f"{cuec_id} prepared: someone else accepts and signs it.")
 
 
 @router.post("/host-attestations/{attestation_id}/accept")
 def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
                             _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
-    from urllib.parse import quote
 
     from openclear.domain.cuec_attestation import CuecAttestation
     from openclear.services import attestation_service, platform_log_service
 
     attestation = db.get(CuecAttestation, attestation_id)
     if attestation is None or attestation.tenant_id is not None:
-        return see_other("/ui/platform/host-attestations?flash=" + quote("No such host attestation."))
+        return see_other("/ui/platform/host-attestations", flash="No such host attestation.")
     try:
         attestation_service.accept_installation(db, attestation, user_id=user.id)
     except attestation_service.AttestationError as exc:
         db.rollback()
-        return see_other("/ui/platform/host-attestations?flash=" + quote(str(exc)))
+        return see_other("/ui/platform/host-attestations", flash=str(exc))
     platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.accept",
                                 summary=f"Accepted and signed {attestation.cuec_id} for {attestation.period_start} to {attestation.period_end}",
                                 resource_type="cuec_attestation", resource_id=attestation.id)
     db.commit()
-    return see_other("/ui/platform/host-attestations?flash=" + quote(f"{attestation.cuec_id} accepted and signed."))
+    return see_other("/ui/platform/host-attestations", flash=f"{attestation.cuec_id} accepted and signed.")
 
 
 @router.get("/banks/new")
@@ -322,7 +319,7 @@ def create_bank(request: Request, name: str = Form(...), slug: str = Form(...), 
     db.commit()
     note = ("Nobody else can approve it, so it's set up in 24 hours unless you withdraw it." if outcome.change and outcome.change.applies_at
             else "Another operator sets it up by approving it under Changes.")
-    return see_other(f"/ui/platform/changes?flash={quote(note)}")
+    return see_other("/ui/platform/changes", flash=note)
 
 
 @router.get("/changes")
@@ -351,7 +348,7 @@ def acknowledge_settings(db: Session = Depends(get_db), user: User = Depends(pla
 
     names = installation_settings.acknowledge(db, user_id=user.id)
     db.commit()
-    return see_other(f"/ui/platform/changes?flash={quote('Acknowledged: ' + (', '.join(names) or 'no change'))}")
+    return see_other("/ui/platform/changes", flash='Acknowledged: ' + (', '.join(names) or 'no change'))
 
 
 @router.post("/changes/{change_id}/{verdict}")
@@ -368,14 +365,14 @@ def decide_change(request: Request, change_id: uuid.UUID, verdict: str, reason: 
             change_request_service.decide(db, None, change_id, approve=verdict == "approve", user_id=user.id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other(f"/ui/platform/changes?flash={quote(str(exc))}")
+        return see_other("/ui/platform/changes", flash=str(exc))
     provisioned = db.info.pop("provisioned", None)
     db.commit()
     if provisioned:
         tenant, password, admin_email = provisioned
         return render_template(request, "platform/provisioned.html", tenant=tenant, admin_email=admin_email, password=password)
     done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
-    return see_other(f"/ui/platform/changes?flash={quote(done)}")
+    return see_other("/ui/platform/changes", flash=done)
 
 
 @router.post("/support/{grant_id}/start")
@@ -389,7 +386,7 @@ def start_support(grant_id: uuid.UUID, db: Session = Depends(get_db), user: User
         grant = support_access_service.start(db, grant_id, user=user)
     except support_access_service.SupportAccessError as exc:
         db.commit()
-        return see_other(f"/ui/platform?error={quote(str(exc))}")
+        return see_other("/ui/platform", error=str(exc))
     db.commit()
     expires_at = support_access_service._aware(grant.expires_at)
     token = create_token(user_id=user.id, tenant_id=grant.tenant_id, security_group_id=uuid.UUID(int=0), token_type="access",

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages
+  after an action are encoded the same way everywhere (a space is now `+` in the address).
+  Release metrics now count the release's own advisory. No change to what pages show.
+
 ## 1.25.1 — 2026-10-19
 
 - **Security (high, [GHSA-55j4-4cj6-8j2f](https://github.com/chaffed/OpenClear/security/advisories/GHSA-55j4-4cj6-8j2f)):**

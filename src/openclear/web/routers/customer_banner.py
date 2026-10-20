@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Chaffed
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 import uuid
 
@@ -10,8 +10,8 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, customer_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/banner", tags=["web-customer-banner"])
 
@@ -68,4 +68,4 @@ def update_banner(
         summary="Updated customer banner message", resource_type="customer", resource_id=customer_id,
     )
     db.commit()
-    return see_other(f"/ui/customers/{customer_id}/banner?flash=Updated.")
+    return see_other(f"/ui/customers/{customer_id}/banner", flash="Updated.")

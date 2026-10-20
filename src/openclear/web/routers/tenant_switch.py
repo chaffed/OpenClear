@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,8 +16,8 @@ from openclear.db.tenancy import TenantContext, acting_as_tenant
 from openclear.domain.user import User
 from openclear.services import session_service, user_service
 from openclear.web.deps import get_web_context, render_template
-from openclear.web.security import set_mfa_cookie, set_session_cookies, verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import set_mfa_cookie, set_session_cookies, verify_csrf
 
 router = APIRouter(prefix="/ui/switch-tenant", tags=["web-tenant-switch"])
 
@@ -104,10 +103,10 @@ def switch_tenant(
         (m for m in user_service.list_memberships_for_user(db, ctx.user_id) if m.membership.id == membership_id), None
     )
     if target is None:
-        return see_other("/ui/switch-tenant?error=Not+a+member+of+that+organization.")
+        return see_other("/ui/switch-tenant", error="Not a member of that organization.")
     refusal = switch_refusal(db, ctx, target)
     if refusal is not None:
-        return see_other("/ui/switch-tenant?error=" + quote(refusal))
+        return see_other("/ui/switch-tenant", error=refusal)
 
     user = db.get(User, ctx.user_id)
 
@@ -123,7 +122,7 @@ def switch_tenant(
             authenticated_at=ctx.authenticated_at,
         )
         # switch_refusal has already made sure a key is registered there.
-        response = see_other(f"/ui/login/webauthn?next={quote('/ui/')}")
+        response = see_other("/ui/login/webauthn", next='/ui/')
         set_mfa_cookie(response, mfa_token)
         return response
 

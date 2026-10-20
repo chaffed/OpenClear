@@ -50,7 +50,7 @@ def test_an_admin_signs_everyone_out_but_themselves(client, db_session, tenant_f
 
     done = client.post("/ui/users/sign-out-everyone", data={"csrf_token": csrf}, follow_redirects=False)
 
-    assert "2%20sessions%20ended" in done.headers["location"]
+    assert "2+sessions+ended" in done.headers["location"]
     assert all(b.get("/ui/", follow_redirects=False).status_code == 303 for b in others)
     assert client.get("/ui/", follow_redirects=False).status_code == 200
 

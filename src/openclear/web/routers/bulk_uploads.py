@@ -7,7 +7,7 @@ import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from openclear import storage
@@ -16,9 +16,9 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
 from openclear.services import bulk_import_service, bulk_upload_file_service, bulk_upload_reversal_service, plugin_service
 from openclear.web.deps import WebForbidden, WebNotFound, get_web_context, render_template
+from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
 from openclear.workers.jobs import jobs_queued
-from openclear.web.redirects import see_other
 
 router = APIRouter(prefix="/ui/bulk-uploads", tags=["web-bulk-uploads"])
 
@@ -139,7 +139,7 @@ def fix_rows_form(request: Request, upload_id: uuid.UUID, db: Session = Depends(
         return see_other(f"/ui/bulk-uploads/{upload_id}")
     rows = bulk_import_service.open_failures(db, record)
     if not rows:
-        return see_other(f"/ui/bulk-uploads/{upload_id}?flash={quote('Every failed row is fixed.')}")
+        return see_other(f"/ui/bulk-uploads/{upload_id}", flash='Every failed row is fixed.')
     return render_template(request, "bulk_uploads/fix.html", ctx=ctx, record=record, rows=rows,
                            remaining=(record.failed_count or 0) - sum(1 for c in bulk_import_service.corrections(db, record) if c.success))
 
@@ -162,7 +162,7 @@ async def fix_rows(request: Request, upload_id: uuid.UUID, db: Session = Depends
     fixed, still = bulk_import_service.apply_corrections(db, record, edits, user_id=ctx.user_id, channel="web")
     db.commit()
     message = f"{fixed} row{'s' if fixed != 1 else ''} imported." + (f" {still} still need{'s' if still == 1 else ''} fixing." if still else "")
-    return see_other(f"/ui/bulk-uploads/{upload_id}/fix?flash={quote(message)}")
+    return see_other(f"/ui/bulk-uploads/{upload_id}/fix", flash=message)
 
 
 @router.get("/{upload_id}/results.csv")
@@ -205,7 +205,7 @@ def bulk_upload_back_out(
     )
     if results is None:
         db.rollback()
-        return see_other(f"/ui/bulk-uploads/{upload_id}?error={quote('Nothing to back out — this upload has already been backed out, or nothing it created was tracked.')}")
+        return see_other(f"/ui/bulk-uploads/{upload_id}", error='Nothing to back out — this upload has already been backed out, or nothing it created was tracked.')
     return render_template(
         request,
         "bulk_result.html",

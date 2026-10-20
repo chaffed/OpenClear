@@ -43,16 +43,22 @@ def test_safe_name_keeps_the_last_part():
     assert storage.safe_name("..") == "file" and storage.safe_name(None, "evidence") == "evidence"
 
 
-@pytest.mark.asvs("5.3.2")
-def test_a_customers_user_cant_write_outside_the_folder(client, db_session, tenant_factory, archives):
-    tmp_path, area = archives
-    tenant, _account, _users = tenant_factory.make(slug="cs0-web")
+def _customer_attester(db_session, tenant_factory, slug: str):
+    """A customer's user who may attest (`compliance:attest` isn't masked for customer sessions)."""
+    tenant, _account, _users = tenant_factory.make(slug=slug)
     customer, _account = _make_customer_with_account(db_session, tenant, "CS0-1")
     admin_group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Admin")
-    attester = user_service.create_user_with_membership(db_session, tenant.id, email="cfo@cs0-customer.example.com",
+    attester = user_service.create_user_with_membership(db_session, tenant.id, email=f"cfo@{slug}-customer.example.com",
                                                         password=TenantFactory.PASSWORD, security_group_id=admin_group.id,
                                                         customer_id=customer.id)
     db_session.commit()
+    return tenant, attester
+
+
+@pytest.mark.asvs("5.3.2")
+def test_a_customers_user_cant_write_outside_the_folder(client, db_session, tenant_factory, archives):
+    tmp_path, area = archives
+    tenant, attester = _customer_attester(db_session, tenant_factory, "cs0-web")
     csrf = _login(client, tenant.slug, attester.email)
 
     client.post("/ui/compliance/cuecs/C-AC-2-01/attestations",
@@ -63,13 +69,46 @@ def test_a_customers_user_cant_write_outside_the_folder(client, db_session, tena
     assert [p.name.split("-", 1)[1] for p in area.rglob("*") if p.is_file()] == ["escaped.txt"]
 
 
+@pytest.mark.asvs("5.3.2")
 def test_through_the_api_too(client, db_session, tenant_factory, archives):
     tmp_path, area = archives
-    tenant, _account, users = tenant_factory.make(slug="cs0-api")
-    headers = login_headers(client, tenant.slug, users["admin"].email)
-    made = client.post("/api/v1/compliance/cuecs/B-AT-3-01/attestations", headers=headers,
+    tenant, attester = _customer_attester(db_session, tenant_factory, "cs0-api")
+    headers = login_headers(client, tenant.slug, attester.email)
+    made = client.post("/api/v1/compliance/cuecs/C-AC-2-01/attestations", headers=headers,
                        data={"start": "2026-01-01", "end": "2026-03-31", "result": "operated", "statement": "Reviewed."},
                        files={"evidence_file": (EVIL, b"payload", "text/plain")})
     assert made.status_code == 201, made.text
     assert made.json()["files"][0]["name"] == "escaped.txt"
     _nothing_escaped(tmp_path, area)
+
+
+@pytest.fixture
+def every_area(tmp_path, monkeypatch):
+    """Each storage area in its own folder under tmp_path."""
+    for area, setting in storage.AREAS.items():
+        monkeypatch.setattr(get_settings(), setting, str(tmp_path / "areas" / area))
+    return tmp_path
+
+
+@pytest.mark.parametrize("area", sorted(storage.AREAS))
+def test_every_area_refuses_a_key_that_climbs_out(every_area, area):
+    with pytest.raises(storage.UnsafeKey):
+        storage.LocalStorage().put(area, "t/../../../escaped.txt", b"x")
+    assert list(every_area.rglob("escaped.txt")) == []
+    stored = storage.LocalStorage().put(area, "t/fine.txt", b"x")
+    assert Path(stored).resolve().is_relative_to((every_area / "areas" / area).resolve())
+
+
+@pytest.mark.parametrize("area", sorted(storage.AREAS))
+def test_a_link_inside_an_area_cant_lead_out_of_it(every_area, area):
+    """A key safe_key accepts, through a symlink that points outside: only LocalStorage's own
+    check of the resolved path catches it (CODE_SCANNING_PLAN.md CS-D1, "the real control")."""
+    root = every_area / "areas" / area
+    outside = every_area / "outside"
+    (root / "t").mkdir(parents=True)
+    outside.mkdir()
+    (root / "t" / "link").symlink_to(outside, target_is_directory=True)
+    assert storage.safe_key("t/link/escaped.txt") == "t/link/escaped.txt"
+    with pytest.raises(storage.UnsafeKey):
+        storage.LocalStorage().put(area, "t/link/escaped.txt", b"x")
+    assert list(outside.iterdir()) == []

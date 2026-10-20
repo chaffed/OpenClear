@@ -8,7 +8,6 @@ need compliance:manage."""
 
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -19,8 +18,8 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import audit_log_service, control_results_service
 from openclear.services.control_results_service import DeviationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/admin/controls", tags=["web-control-results"])
 _read = require_web_permission("audit_log:read")
@@ -32,10 +31,6 @@ def _titles() -> dict[str, str]:
     from openclear.compliance import checks
 
     return {c.key: c.title for c in checks.registry()}
-
-
-def _back(path: str, message: str) -> RedirectResponse:
-    return see_other(f"{path}?flash={quote(message)}")
 
 
 # Literal paths before /deviations/{deviation_id}.
@@ -64,7 +59,7 @@ async def deviation_settings(request: Request, db: Session = Depends(get_db), ct
     except ValueError:
         grace = -1
     if not 1 <= grace <= 24 * 30:
-        return _back("/ui/admin/controls/deviations", "The grace period is 1 hour to 30 days.")
+        return see_other("/ui/admin/controls/deviations", flash="The grace period is 1 hour to 30 days.")
     known = {c.key for c in checks.registry()}
     warn = sorted(k for k in form.getlist("warn_check") if k in known)
     tenant = db.get(Tenant, ctx.tenant_id)
@@ -73,7 +68,7 @@ async def deviation_settings(request: Request, db: Session = Depends(get_db), ct
                                     summary=f"Deviation grace period {grace} hours; warnings count for: {', '.join(warn) or 'none'}",
                                     resource_type="tenant", resource_id=ctx.tenant_id)
     db.commit()
-    return _back("/ui/admin/controls/deviations", "Deviation settings saved.")
+    return see_other("/ui/admin/controls/deviations", flash="Deviation settings saved.")
 
 
 @router.post("/test-period")
@@ -81,7 +76,7 @@ def test_period(start: date = Form(...), end: date = Form(...), db: Session = De
                 _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     """Every population check over a past period (CT-D11), recorded as this person's run."""
     if end < start or (end - start).days > MAX_PERIOD_DAYS or end > datetime.now(timezone.utc).date():
-        return _back("/ui/admin/controls/deviations", f"Choose a past period of at most {MAX_PERIOD_DAYS} days.")
+        return see_other("/ui/admin/controls/deviations", flash=f"Choose a past period of at most {MAX_PERIOD_DAYS} days.")
     begin = datetime.combine(start, time.min, tzinfo=timezone.utc)
     finish = datetime.combine(end, time.min, tzinfo=timezone.utc) + timedelta(days=1)
     results = control_results_service.test_period(db, ctx.tenant_id, begin, finish, user_id=ctx.user_id)
@@ -91,7 +86,7 @@ def test_period(start: date = Form(...), end: date = Form(...), db: Session = De
                                     resource_type="tenant", resource_id=ctx.tenant_id)
     db.commit()
     failing = [r for r in results if r.status != "PASS"]
-    return _back("/ui/admin/controls/deviations", f"Tested {start} to {end}: {len(results) - len(failing)} pass, {len(failing)} don't.")
+    return see_other("/ui/admin/controls/deviations", flash=f"Tested {start} to {end}: {len(results) - len(failing)} pass, {len(failing)} don't.")
 
 
 @router.get("/deviations/{deviation_id}")
@@ -119,12 +114,12 @@ def respond(deviation_id: uuid.UUID, cause: str = Form(""), response: str = Form
         db.rollback()
         if control_results_service.get_deviation(db, ctx.tenant_id, deviation_id) is None:
             raise WebNotFound() from None
-        return _back(path, str(exc))
+        return see_other(path, flash=str(exc))
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="compliance.deviation.responded",
                                     summary=f"Recorded the cause of and response to the {found.check_key} deviation opened "
                                             f"{found.opened_at:%Y-%m-%d %H:%M}", resource_type="control_deviation", resource_id=found.id)
     db.commit()
-    return _back(path, "Response recorded.")
+    return see_other(path, flash="Response recorded.")
 
 
 @router.get("/checks/{check_key}")

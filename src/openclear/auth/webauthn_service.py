@@ -29,6 +29,13 @@ class WebauthnError(Exception):
     legitimate client-side outcomes (stale challenge, wrong key, replayed request)."""
 
 
+def refused(step: str, exc: Exception) -> WebauthnError:
+    """A response the webauthn library refused. Its message goes to the log, not the person:
+    they get fixed text (CODE_SCANNING_PLAN.md CS1). Used for bank people and platform staff."""
+    logger.info("WebAuthn %s failed: %s", step.lower(), exc)
+    return WebauthnError(f"{step} failed: the security key's response didn't check out. Try again.")
+
+
 def _descriptor(credential: WebauthnCredential) -> PublicKeyCredentialDescriptor:
     transports = [AuthenticatorTransport(t) for t in (credential.transports or [])]
     return PublicKeyCredentialDescriptor(id=credential.credential_id, transports=transports or None)
@@ -106,9 +113,7 @@ def complete_registration(
             expected_origin=settings.webauthn_origin,
         )
     except Exception as exc:  # webauthn raises its own exception hierarchy; normalize to WebauthnError
-        # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
-        logger.info("WebAuthn registration failed: %s", exc)
-        raise WebauthnError("Registration verification failed: the security key's response didn't check out. Try again.") from exc
+        raise refused("Registration verification", exc) from exc
 
     repo = WebauthnCredentialRepository(session, tenant_id)
     credential_row = WebauthnCredential(
@@ -191,9 +196,7 @@ def _complete_authentication(
             credential_current_sign_count=credential_row.sign_count,
         )
     except Exception as exc:
-        # The library's message stays in the log, not the response (CODE_SCANNING_PLAN.md CS1).
-        logger.info("WebAuthn authentication failed: %s", exc)
-        raise WebauthnError("Authentication verification failed: the security key's response didn't check out. Try again.") from exc
+        raise refused("Authentication verification", exc) from exc
 
     # Sign-count regression is the standard signal a credential was cloned — reject it
     # rather than silently accepting, even though we already verified the signature.

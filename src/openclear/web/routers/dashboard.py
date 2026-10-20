@@ -58,8 +58,6 @@ def dashboard(request: Request, db: Session = Depends(get_db), ctx: TenantContex
     # (?home=1) still opens it.
     if (ctx.customer_id is not None and ctx.needs_attention_count and not request.query_params.get("home")
             and ({"exception:decide", "exception:recommend"} & set(ctx.permissions))):
-        from fastapi.responses import RedirectResponse
-
         return see_other("/ui/exceptions")
     # Only bank-wide admins can act on the bank wizard's steps, and customer-scoped
     # sessions don't have a single tenant-wide "getting started" state to show anyway.

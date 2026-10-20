@@ -9,7 +9,6 @@ compliance:manage; preparing, accepting and rejecting attestations compliance:at
 import json
 import uuid
 from datetime import date
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -21,8 +20,8 @@ from openclear.db.tenancy import TenantContext
 from openclear.services import attestation_service, audit_log_service
 from openclear.services.attestation_service import AttestationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/compliance", tags=["web-cuecs"])
 _read = require_web_permission("compliance:read")
@@ -30,10 +29,6 @@ _manage = require_web_permission("compliance:manage")
 _attest = require_web_permission("compliance:attest")
 FILE_LIMIT = 10 * 1024 * 1024
 BASE = "/ui/compliance/cuecs"
-
-
-def _back(path: str, message: str) -> RedirectResponse:
-    return see_other(f"{path}?flash={quote(message)}")
 
 
 def _record(db: Session, ctx: TenantContext, action: str, summary: str, resource_type: str, resource_id) -> None:
@@ -83,7 +78,7 @@ def settings(attestation_period: str = Form("quarterly"), attest_second_person: 
     from openclear.domain.tenant import Tenant
 
     if ctx.customer_id is not None or attestation_period not in attestation_service.PERIODS:
-        return _back(BASE, "Choose monthly, quarterly or yearly.")
+        return see_other(BASE, flash="Choose monthly, quarterly or yearly.")
     from openclear.services import change_request_service
     from openclear.web.routers.tenant_settings import waiting_message
 
@@ -95,12 +90,12 @@ def settings(attestation_period: str = Form("quarterly"), attest_second_person: 
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return _back(BASE, str(exc))
+        return see_other(BASE, flash=str(exc))
     second = attest_second_person if outcome.applied else tenant.attest_second_person
     _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if second else 'not required'}; "
             f"customers {'asked' if ask_customers_to_attest else 'not asked'} to attest each year", "tenant", ctx.tenant_id)
     db.commit()
-    return _back(BASE, waiting_message(outcome) if outcome.waiting else "Attestation settings saved.")
+    return see_other(BASE, flash=waiting_message(outcome) if outcome.waiting else "Attestation settings saved.")
 
 
 @router.post("/mappings/import")
@@ -108,15 +103,15 @@ async def import_mappings(upload_file: UploadFile, db: Session = Depends(get_db)
                           _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
     content = await upload_file.read(FILE_LIMIT + 1)
     if len(content) > FILE_LIMIT:
-        return _back(BASE, "That file is too large.")
+        return see_other(BASE, flash="That file is too large.")
     try:
         added, problems = attestation_service.import_csv(db, ctx.tenant_id, ctx.customer_id, content, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return _back(BASE, str(exc))
+        return see_other(BASE, flash=str(exc))
     _record(db, ctx, "compliance.mapping.changed", f"Imported {added} CUEC mappings from {upload_file.filename}", "tenant", ctx.tenant_id)
     db.commit()
-    return _back(BASE, f"Added {added} mappings." + (f" Skipped: {'; '.join(problems[:5])}" if problems else ""))
+    return see_other(BASE, flash=f"Added {added} mappings." + (f" Skipped: {'; '.join(problems[:5])}" if problems else ""))
 
 
 @router.post("/customers/ask")
@@ -129,7 +124,7 @@ def ask_customers(db: Session = Depends(get_db), ctx: TenantContext = Depends(_m
     _record(db, ctx, "compliance.customers.asked", f"Asked {people} people at {customers} customers to attest their responsibilities for {start.year}",
             "tenant", ctx.tenant_id)
     db.commit()
-    return _back(BASE, f"Asked {people} people at {customers} customers." if people else "No customer has anyone who can attest yet.")
+    return see_other(BASE, flash=f"Asked {people} people at {customers} customers." if people else "No customer has anyone who can attest yet.")
 
 
 @router.post("/prepare")
@@ -145,7 +140,7 @@ def prepare_now(db: Session = Depends(get_db), ctx: TenantContext = Depends(_att
     attestation_service.announce(db, ctx.tenant_id, made, channel="web", user_id=ctx.user_id)
     _record(db, ctx, "compliance.attestation.prepared", f"Prepared {len(made)} attestations for {start} to {end}", "tenant", ctx.tenant_id)
     db.commit()
-    return _back(BASE, f"Prepared {len(made)} attestations for {start} to {end}.")
+    return see_other(BASE, flash=f"Prepared {len(made)} attestations for {start} to {end}.")
 
 
 @router.post("/mappings/{mapping_id}/delete")
@@ -158,7 +153,7 @@ def delete_mapping(mapping_id: uuid.UUID, db: Session = Depends(get_db), ctx: Te
     db.delete(mapping)
     _record(db, ctx, "compliance.mapping.changed", f"Removed the mapping of {cuec_id} to {mapping.control_ref}", "tenant", ctx.tenant_id)
     db.commit()
-    return _back(f"{BASE}/{cuec_id}", "Mapping removed.")
+    return see_other(f"{BASE}/{cuec_id}", flash="Mapping removed.")
 
 
 @router.post("/mappings/{mapping_id}/auto-accept")
@@ -172,7 +167,7 @@ def auto_accept(mapping_id: uuid.UUID, on: bool = Form(False), db: Session = Dep
             f"{'Turned on' if on else 'Turned off'} accepting {mapping.cuec_id}'s proposed attestations automatically ({mapping.control_ref})",
             "cuec_mapping", mapping.id)
     db.commit()
-    return _back(f"{BASE}/{mapping.cuec_id}", "Saved.")
+    return see_other(f"{BASE}/{mapping.cuec_id}", flash="Saved.")
 
 
 @router.get("/attestations/{attestation_id}.json")
@@ -195,12 +190,12 @@ def accept(attestation_id: uuid.UUID, db: Session = Depends(get_db), ctx: Tenant
         attestation_service.accept(db, found, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return _back(f"{BASE}/{found.cuec_id}", str(exc))
+        return see_other(f"{BASE}/{found.cuec_id}", flash=str(exc))
     _record(db, ctx, "compliance.attestation.accepted", f"Accepted {found.cuec_id} for {found.period_start} to {found.period_end}: {found.result}",
             "cuec_attestation", found.id)
     attestation_service.announce_accepted(db, ctx.tenant_id, found)
     db.commit()
-    return _back(f"{BASE}/{found.cuec_id}", "Accepted and signed.")
+    return see_other(f"{BASE}/{found.cuec_id}", flash="Accepted and signed.")
 
 
 @router.post("/attestations/{attestation_id}/reject")
@@ -213,11 +208,11 @@ def reject(attestation_id: uuid.UUID, reason: str = Form(""), db: Session = Depe
         attestation_service.reject(db, found, reason=reason, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return _back(f"{BASE}/{found.cuec_id}", str(exc))
+        return see_other(f"{BASE}/{found.cuec_id}", flash=str(exc))
     _record(db, ctx, "compliance.attestation.rejected", f"Rejected {found.cuec_id} for {found.period_start} to {found.period_end}: {reason.strip()[:300]}",
             "cuec_attestation", found.id)
     db.commit()
-    return _back(f"{BASE}/{found.cuec_id}", "Rejected.")
+    return see_other(f"{BASE}/{found.cuec_id}", flash="Rejected.")
 
 
 @router.get("/cuecs/{cuec_id}")
@@ -246,10 +241,10 @@ def add_mapping(cuec_id: str, control_ref: str = Form(""), control_name: str = F
                                                   owner=owner, link=link, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return _back(f"{BASE}/{cuec_id}", str(exc))
+        return see_other(f"{BASE}/{cuec_id}", flash=str(exc))
     _record(db, ctx, "compliance.mapping.changed", f"Mapped {cuec_id} to {mapping.control_ref}", "cuec_mapping", mapping.id)
     db.commit()
-    return _back(f"{BASE}/{cuec_id}", "Mapping added.")
+    return see_other(f"{BASE}/{cuec_id}", flash="Mapping added.")
 
 
 @router.post("/cuecs/{cuec_id}/attestations")
@@ -262,7 +257,7 @@ async def attest(request: Request, cuec_id: str, db: Session = Depends(get_db), 
             continue
         data = await upload.read(FILE_LIMIT + 1)
         if len(data) > FILE_LIMIT:
-            return _back(f"{BASE}/{cuec_id}", "Each file must be under 10 MB.")
+            return see_other(f"{BASE}/{cuec_id}", flash="Each file must be under 10 MB.")
         uploads.append((upload.filename, data))
     files = attestation_service.store_files(ctx.tenant_id, uploads)
     try:
@@ -272,8 +267,8 @@ async def attest(request: Request, cuec_id: str, db: Session = Depends(get_db), 
             files=files, user_id=ctx.user_id)
     except (AttestationError, ValueError) as exc:
         db.rollback()
-        return _back(f"{BASE}/{cuec_id}", str(exc) if isinstance(exc, AttestationError) else "Choose the period's dates.")
+        return see_other(f"{BASE}/{cuec_id}", flash=str(exc) if isinstance(exc, AttestationError) else "Choose the period's dates.")
     _record(db, ctx, "compliance.attestation.prepared", f"Prepared an attestation of {cuec_id} for {attestation.period_start} to "
             f"{attestation.period_end}: {attestation.result}" + (f", with {len(files)} files" if files else ""), "cuec_attestation", attestation.id)
     db.commit()
-    return _back(f"{BASE}/{cuec_id}", "Prepared. It's signed once accepted.")
+    return see_other(f"{BASE}/{cuec_id}", flash="Prepared. It's signed once accepted.")

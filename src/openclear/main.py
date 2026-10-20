@@ -4,7 +4,6 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import quote
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
@@ -25,9 +24,9 @@ from openclear.web.deps import (
 )
 from openclear.auth.sod import SodViolation
 from openclear.web import rate_limit
+from openclear.web.redirects import see_other
 from openclear.web.router import web_router
 from openclear.web.security_headers import apply_security_headers, new_csp_nonce
-from openclear.web.redirects import see_other
 
 _STATIC_DIR = Path(__file__).parent / "static"
 _DOCS_SCREENSHOTS_DIR = Path(__file__).parent.parent.parent / "docs" / "screenshots"
@@ -387,15 +386,14 @@ def create_app() -> FastAPI:
 
         next_path = safe_next_path(exc.next_path)
         if exc.try_resume:
-            return see_other(f"/ui/auth/resume?next={quote(next_path)}")
+            return see_other("/ui/auth/resume", next=next_path)
         if was_embedded(request):  # a frame can't show the login page; tell its parent instead
             return see_other("/ui/embed/ended")
-        url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
-        return see_other(url)
+        return see_other("/ui/login", next=None if next_path == "/ui/" else next_path)
 
     @app.exception_handler(WebPasswordChangeRequired)
     def _handle_web_password_change_required(request: Request, exc: WebPasswordChangeRequired) -> RedirectResponse:
-        return see_other(f"{PASSWORD_CHANGE_PATH}?required=1")
+        return see_other(PASSWORD_CHANGE_PATH, required=1)
 
     @app.exception_handler(SodViolation)
     def _handle_sod_violation(request: Request, exc: SodViolation):

@@ -56,7 +56,6 @@ def verify_audit_log(
     this starts one (or finds the one already going) and shows it, refreshing until done."""
     from types import SimpleNamespace
 
-    from fastapi.responses import RedirectResponse
 
     from openclear.services import long_runs
     from openclear.workers.jobs import jobs_queued
@@ -65,7 +64,7 @@ def verify_audit_log(
         started = long_runs.start_verification(db, ctx.tenant_id, user_id=ctx.user_id)
         db.commit()
         jobs_queued(db.get_bind())
-        return see_other(f"/ui/audit-log/verify?run={started.id}")
+        return see_other("/ui/audit-log/verify", run=started.id)
     shown = long_runs.get_run(db, ctx.tenant_id, run, long_runs.VERIFICATION)
     if shown is None:
         raise WebNotFound()

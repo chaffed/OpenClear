@@ -250,7 +250,7 @@ def test_a_fail_that_recovers_its_timeline_deviation_response_and_event(client, 
     assert "send data unencrypted" in page
     refused = client.post(f"/ui/admin/controls/deviations/{deviation.id}/respond", data={"csrf_token": csrf, "cause": "", "response": ""},
                           follow_redirects=False)
-    assert "Say%20what%20caused" in refused.headers["location"]
+    assert "Say+what+caused" in refused.headers["location"]
     client.post(f"/ui/admin/controls/deviations/{deviation.id}/respond",
                 data={"csrf_token": csrf, "cause": "A test endpoint left on http", "response": "Moved it to https"})
     db_session.expire_all()
@@ -278,7 +278,7 @@ def test_who_can_respond_test_a_period_and_see_these_pages(client, db_session, t
     csrf = _login(client, tenant, users["admin"].email)
     done = client.post("/ui/admin/controls/test-period", data={"csrf_token": csrf, "start": "2026-01-01", "end": "2026-01-31"},
                        follow_redirects=False)
-    assert "Tested%202026-01-01" in done.headers["location"]
+    assert "Tested+2026-01-01" in done.headers["location"]
     db_session.expire_all()
     people = db_session.execute(select(ControlTestResult).where(ControlTestResult.tenant_id == tenant.id,
                                                                 ControlTestResult.started_by == "person")).scalars().all()

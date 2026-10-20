@@ -11,7 +11,7 @@ import uuid
 
 import jwt
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.auth import saml_service
@@ -22,9 +22,9 @@ from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.sso_connection import SsoProtocol
 from openclear.services import audit_log_service, session_service, sso_service
 from openclear.web.deps import WebNotFound, render_template
+from openclear.web.redirects import see_other, to_identity_provider
 from openclear.web.routers.auth import _SSO_FAILED_MESSAGE, finish_sso_login
 from openclear.web.security import SAML_STATE_COOKIE_NAME, clear_saml_state_cookie, read_cookie
-from openclear.web.redirects import to_identity_provider
 
 router = APIRouter(prefix="/ui/sso/saml", tags=["web-saml"], include_in_schema=False)
 logger = logging.getLogger(__name__)
@@ -121,4 +121,5 @@ def single_logout(request: Request, tenant_id: uuid.UUID, connection_id: uuid.UU
             summary=f"Signed out by the identity provider ({connection.display_name})", resource_type="user", resource_id=user.id,
         )
         db.commit()
-    return to_identity_provider(redirect or "/ui/login")
+    # The identity provider's own address to answer at, when it gave one; otherwise our sign-in page.
+    return to_identity_provider(redirect) if redirect else see_other("/ui/login")

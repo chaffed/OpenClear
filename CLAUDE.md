@@ -65,9 +65,11 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 ## Release (version X.Y.Z)
 1. Bump `pyproject.toml`; add `"X.Y.Z": "<head revision>"` to `migrations/version_history.py`;
    rename CHANGELOG "Unreleased" to `## X.Y.Z — <date>`; note it in `MASTER_PLAN.md`;
-   `python scripts/release_metrics.py X.Y.Z` (rewrites `docs/compliance/security-metrics.md`).
+   `python scripts/release_metrics.py X.Y.Z` (rewrites `docs/compliance/security-metrics.md`; it
+   counts the release's draft advisories, so draft them first).
 2. Fast-forward `main`, push, wait for CI: `gh run watch <id> --exit-status`.
-3. `git tag -a vX.Y.Z` and push it; `gh api repos/chaffed/OpenClear/releases --input <json>`
+3. `git tag -a vX.Y.Z` and push it; publish the release's advisories (so the notes link to public
+   pages); `gh api repos/chaffed/OpenClear/releases --input <json>`
    (`tag_name`, `name`, `body` from the CHANGELOG section followed by
    `python scripts/release_metrics.py X.Y.Z --notes`). Publishing the release attaches the SBOM
    (`.github/workflows/release.yml`); check it's there.

@@ -1,0 +1,106 @@
+{
+  "name": "main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ],
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "test (3.11)",
+            "integration_id": 15368
+          },
+          {
+            "context": "test (3.13)",
+            "integration_id": 15368
+          },
+          {
+            "context": "test-postgres",
+            "integration_id": 15368
+          },
+          {
+            "context": "dependencies",
+            "integration_id": 15368
+          },
+          {
+            "context": "lock-current",
+            "integration_id": 15368
+          },
+          {
+            "context": "bandit",
+            "integration_id": 15368
+          },
+          {
+            "context": "secrets",
+            "integration_id": 15368
+          },
+          {
+            "context": "analyze (python)",
+            "integration_id": 15368
+          },
+          {
+            "context": "analyze (javascript-typescript)",
+            "integration_id": 15368
+          },
+          {
+            "context": "analyze (csharp)",
+            "integration_id": 15368
+          }
+        ]
+      }
+    },
+    {
+      "type": "code_scanning",
+      "parameters": {
+        "code_scanning_tools": [
+          {
+            "tool": "CodeQL",
+            "security_alerts_threshold": "high_or_higher",
+            "alerts_threshold": "errors"
+          }
+        ]
+      }
+    }
+  ]
+}

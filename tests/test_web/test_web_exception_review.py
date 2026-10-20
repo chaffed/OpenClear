@@ -195,7 +195,7 @@ def test_outcome_starts_unchosen_and_is_required(client, db_session, tenant_fact
                        data={"csrf_token": client.cookies.get("csrf_token"), "outcome": "", "reason_code": "x"},
                        follow_redirects=False)
 
-    assert resp.status_code == 303 and "Choose%20Pay%20or%20Return" in resp.headers["location"]
+    assert resp.status_code == 303 and "Choose+Pay+or+Return" in resp.headers["location"]
     db_session.expire_all()
     assert exception.status == ExceptionStatus.OPEN
 

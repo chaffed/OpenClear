@@ -37,17 +37,19 @@ def asvs() -> dict:
 
 
 def advisories(version: str) -> list[str] | None:
-    """The published advisories whose fix is this version."""
-    try:
-        out = subprocess.run(["gh", "api", f"repos/{REPO}/security-advisories?state=published&per_page=100"],
-                             capture_output=True, text=True, check=True, timeout=60).stdout
-    except (OSError, subprocess.SubprocessError):
-        return None
+    """The advisories whose fix is this version, drafts included: the metrics are written at
+    release step 1, before the advisory is published at step 3 (REVIEW_FIXES_PLAN.md RF-D8)."""
     found = []
-    for advisory in json.loads(out):
-        patched = {p for v in advisory.get("vulnerabilities") or [] for p in re.split(r"[,\s]+", v.get("patched_versions") or "")}
-        if version in patched:
-            found.append(f"{advisory['ghsa_id']} ({advisory.get('severity') or 'unrated'}): {advisory['summary']}")
+    for state in ("draft", "published"):
+        try:
+            out = subprocess.run(["gh", "api", f"repos/{REPO}/security-advisories?state={state}&per_page=100"],
+                                 capture_output=True, text=True, check=True, timeout=60).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
+        for advisory in json.loads(out):
+            patched = {p for v in advisory.get("vulnerabilities") or [] for p in re.split(r"[,\s]+", v.get("patched_versions") or "")}
+            if version in patched:
+                found.append(f"{advisory['ghsa_id']} ({advisory.get('severity') or 'unrated'}): {advisory['summary']}")
     return found
 
 

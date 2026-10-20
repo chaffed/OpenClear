@@ -4,7 +4,6 @@
 import logging
 import secrets
 import uuid
-from urllib.parse import quote
 
 import jwt
 from fastapi import APIRouter, Depends, Form, Request
@@ -158,7 +157,7 @@ def login_submit(
             signed_in_with="password",
         )
         next_step = "webauthn/setup" if identity.needs_webauthn_enrollment else "webauthn"
-        response = see_other(f"/ui/login/{next_step}?next={quote(next_path)}")
+        response = see_other(f"/ui/login/{next_step}", next=next_path)
         set_mfa_cookie(response, mfa_token)
         return response
 

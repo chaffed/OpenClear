@@ -85,5 +85,5 @@ def test_the_page_setting_and_asking_now(client, db_session, tenant_factory):
     db_session.expire_all()
     assert db_session.get(type(tenant), tenant.id).ask_customers_to_attest is True
     asked = client.post("/ui/compliance/customers/ask", data={"csrf_token": csrf}, follow_redirects=False)
-    assert asked.status_code == 303 and "Asked%201%20people" in asked.headers["location"]
+    assert asked.status_code == 303 and "Asked+1+people" in asked.headers["location"]
     assert db_session.execute(select(Notification).where(Notification.notification_type == NotificationType.ATTESTATION_REQUESTED)).first()

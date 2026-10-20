@@ -15,10 +15,10 @@ The bank and connection are in the URL, since these arrive before any session ex
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.auth.oidc_service import OidcError, verify_logout_token
@@ -28,8 +28,8 @@ from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.sso_connection import SsoProtocol
 from openclear.services import audit_log_service, session_service, sso_service
 from openclear.web.deps import WebNotFound
-from openclear.web.security import safe_next_path
 from openclear.web.redirects import see_other
+from openclear.web.security import safe_next_path
 
 router = APIRouter(prefix="/ui/sso/oidc", tags=["web-oidc"], include_in_schema=False)
 logger = logging.getLogger(__name__)
@@ -96,5 +96,5 @@ def initiate_login(
     params = {"tenant_id": str(tenant_id), "next": next_path}
     if login_hint:
         params["login_hint"] = login_hint
-    return see_other(f"/ui/login/sso/{connection.id}/start?{urlencode(params)}")
+    return see_other(f"/ui/login/sso/{connection.id}/start", **params)
 

@@ -66,6 +66,10 @@ an object's name, so they're not affected. Severity: **high**.
   traversal sat open. Two changes: release work goes through a pull request (the gate runs), and
   the CodeQL workflow fails when the analysis has a new error-level or high-severity result, so
   a direct push goes red too.
+  *As built (noted 2026-10-19, REVIEW_FIXES_PLAN.md F13):* the workflow fails on an open alert of
+  high or critical security severity. Error level was dropped: CodeQL marks medium security
+  queries as errors too, so it would have failed on every medium alert. The ruleset's own check
+  still blocks a pull request on errors.
 
 ## Stages
 

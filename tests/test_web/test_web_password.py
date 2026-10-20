@@ -219,7 +219,7 @@ def test_admin_reset_emails_a_one_time_link_the_admin_never_sees(client, db_sess
 
     resp = _reset(client, _membership(db_session, viewer, tenant).id)
 
-    assert resp.status_code == 303 and "emailed%20a%20link" in resp.headers["location"]
+    assert resp.status_code == 303 and "emailed+a+link" in resp.headers["location"]
     assert db_session.query(AuditLogEntry).filter_by(tenant_id=tenant.id, action="user.password_reset").count() == 1
     link = _reset_link(db_session, viewer)
     assert link.split("/")[-1] not in client.get("/ui/users").text  # nothing about the link on the admin's pages
@@ -291,7 +291,7 @@ def test_a_reset_needs_email_to_be_set_up(client, db_session, tenant_factory, mo
 
     resp = _reset(client, _membership(db_session, users["viewer"], tenant).id)
 
-    assert "Email%20isn" in resp.headers["location"] or "Email+isn" in resp.headers["location"]
+    assert "Email+isn" in resp.headers["location"]
     assert _logged_in(_login(TestClient(client.app), tenant.slug, users["viewer"].email))  # nothing changed
 
 
@@ -309,7 +309,7 @@ def test_admin_cannot_reset_user_who_belongs_to_another_organization(client, db_
     resp = _reset(client, _membership(db_session, viewer, tenant).id)
 
     assert resp.status_code == 303
-    assert "other%20organizations" in resp.headers["location"] or "other+organizations" in resp.headers["location"]
+    assert "other+organizations" in resp.headers["location"]
     assert _logged_in(_login(TestClient(client.app), tenant.slug, viewer.email))  # password unchanged
 
 
@@ -333,7 +333,7 @@ def test_admin_cannot_reset_a_membership_from_another_tenant(client, db_session,
     resp = _reset(client, _membership(db_session, other_users["viewer"], other_tenant).id)
 
     assert resp.status_code == 303
-    assert "not+found" in resp.headers["location"].lower() or "not%20found" in resp.headers["location"].lower()
+    assert "not+found" in resp.headers["location"].lower()
     assert _logged_in(_login(TestClient(client.app), other_tenant.slug, other_users["viewer"].email))
 
 

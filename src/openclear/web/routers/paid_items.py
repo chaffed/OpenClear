@@ -4,10 +4,9 @@
 import uuid
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
@@ -19,8 +18,8 @@ from openclear.services import account_service, audit_log_service
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/paid-items", tags=["web-paid-items"])
 
@@ -101,7 +100,7 @@ def create_paid_item(
     db.commit()
 
     flash = "Paid item matched." if item.match_status.value == "matched" else "Paid item created an exception — see the Exceptions queue."
-    return see_other(f"/ui/paid-items/{item.id}?flash={quote(flash)}")
+    return see_other(f"/ui/paid-items/{item.id}", flash=flash)
 
 
 # NOTE: /bulk must be registered before /{item_id} — FastAPI matches path patterns in

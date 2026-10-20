@@ -131,7 +131,7 @@ def test_dual_control_toggle_via_web(client, db_session, tenant_factory):
                                                       password=TenantFactory.PASSWORD, security_group_id=admin_group.id)
     db_session.commit()
     resp2 = client.post("/ui/settings/dual-control", data={"csrf_token": _csrf(client)}, follow_redirects=False)
-    assert resp2.status_code == 303 and "Sent%20for%20approval" in resp2.headers["location"]
+    assert resp2.status_code == 303 and "Sent+for+approval" in resp2.headers["location"]
     db_session.expire_all()
     assert db_session.get(Tenant, tenant.id).require_dual_control is True
     [change] = change_request_service.pending(db_session, tenant.id)

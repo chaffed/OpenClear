@@ -6,7 +6,6 @@ grants a named platform support person access for a reason and a period, approve
 access with a second admin, and ends access at any time."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -18,15 +17,11 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.user import User
 from openclear.services import support_access_service
 from openclear.web.deps import render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/settings/support-access", tags=["web-support-access"])
 _PERMISSION = "tenant:manage"
-
-
-def _back(message: str, *, error: bool = False) -> RedirectResponse:
-    return see_other(f"/ui/settings/support-access?{'error' if error else 'flash'}={quote(message)}")
 
 
 @router.get("")
@@ -48,9 +43,9 @@ def grant(support_email: str = Form(...), reason: str = Form(...), hours: int = 
                                            write_access=write_access, granted_by_user_id=ctx.user_id)
     except support_access_service.SupportAccessError as exc:
         db.rollback()
-        return _back(str(exc), error=True)
+        return see_other("/ui/settings/support-access", error=str(exc))
     db.commit()
-    return _back("Write access granted; a second admin must approve it before it starts." if row.write_access
+    return see_other("/ui/settings/support-access", flash="Write access granted; a second admin must approve it before it starts." if row.write_access
                  else "Access granted.")
 
 
@@ -65,9 +60,9 @@ def decide(grant_id: uuid.UUID, verdict: str, db: Session = Depends(get_db), ctx
             support_access_service.revoke(db, ctx.tenant_id, grant_id, user_id=ctx.user_id)
             message = "Access ended."
         else:
-            return _back("Unknown action.", error=True)
+            return see_other("/ui/settings/support-access", error="Unknown action.")
     except support_access_service.SupportAccessError as exc:
         db.rollback()
-        return _back(str(exc), error=True)
+        return see_other("/ui/settings/support-access", error=str(exc))
     db.commit()
-    return _back(message)
+    return see_other("/ui/settings/support-access", flash=message)

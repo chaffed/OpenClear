@@ -10,7 +10,7 @@ import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -23,8 +23,8 @@ from openclear.services import change_request_service, audit_log_service, custom
 from openclear.services.customer_people_service import PeopleError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.rate_limit import rate_limit
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-people"])
 _manage = require_web_permission("customer_user:manage")
@@ -40,10 +40,6 @@ def _record(db: Session, ctx: TenantContext, action: str, summary: str) -> None:
 def _accounts(db: Session, ctx: TenantContext) -> list[Account]:
     return list(db.execute(select(Account).where(Account.tenant_id == ctx.tenant_id, Account.customer_id == ctx.customer_id)
                            .order_by(Account.account_number)).scalars())
-
-
-def _back(message: str) -> RedirectResponse:
-    return see_other("/ui/people?flash=" + quote(message))
 
 
 def _ids(values: list) -> list[uuid.UUID]:
@@ -109,14 +105,14 @@ def set_approvals(request: Request, changes_need_approval: bool = Form(False), d
                                                           tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return _back(str(exc))
+        return see_other("/ui/people", flash=str(exc))
     if outcome.waiting:
         db.commit()
-        return _back(_waiting(outcome))
+        return see_other("/ui/people", flash=_waiting(outcome))
     if outcome.summary != "Nothing changed.":
         _record(db, ctx, "customer.approval_switch", outcome.summary)
     db.commit()
-    return _back("Saved.")
+    return see_other("/ui/people", flash="Saved.")
 
 
 @router.post("/ui/people/invite")
@@ -141,7 +137,7 @@ async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantCon
             db.rollback()
             return _invite_form(request, db, ctx, error=str(exc), values=values, status_code=422)
         db.commit()
-        return _back(_waiting(outcome))
+        return see_other("/ui/people", flash=_waiting(outcome))
     try:
         invitation = customer_people_service.invite(
             db, ctx.tenant_id, ctx.customer_id, email=values["email"],
@@ -155,7 +151,7 @@ async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantCon
         return _invite_form(request, db, ctx, error=str(exc), values=values, status_code=422)
     _record(db, ctx, "customer_people.invite", f"Invited {invitation.email}")
     db.commit()
-    return _back(f"Invitation sent to {invitation.email}.")
+    return see_other("/ui/people", flash=f"Invitation sent to {invitation.email}.")
 
 
 @router.post("/ui/people/invite/bulk")
@@ -204,7 +200,7 @@ def revoke_invitation(invitation_id: uuid.UUID, db: Session = Depends(get_db), c
         raise WebNotFound() from None
     _record(db, ctx, "customer_people.revoke_invitation", f"Withdrew the invitation to {invitation.email}")
     db.commit()
-    return _back("Invitation withdrawn.")
+    return see_other("/ui/people", flash="Invitation withdrawn.")
 
 
 @router.get("/ui/people/export.csv")
@@ -284,7 +280,7 @@ def sign_out_everyone(request: Request, db: Session = Depends(get_db), ctx: Tena
     ended = session_service.end_sessions(db, session_service.active_sessions(db, ctx.tenant_id, members), keep=ctx.session_id)
     _record(db, ctx, "customer_people.sessions.ended_all", f"Signed everyone out ({ended} sessions)")
     db.commit()
-    return _back(f"Signed everyone out: {ended} sessions ended. You're still signed in.")
+    return see_other("/ui/people", flash=f"Signed everyone out: {ended} sessions ended. You're still signed in.")
 
 
 @router.post("/ui/people/{membership_id}")
@@ -307,7 +303,7 @@ async def update_person(request: Request, membership_id: uuid.UUID, db: Session 
             db.rollback()
             return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
         db.commit()
-        return _back(_waiting(outcome))
+        return see_other("/ui/people", flash=_waiting(outcome))
     try:
         membership = customer_people_service.update_person(
             db, ctx.tenant_id, ctx.customer_id, membership_id,
@@ -323,7 +319,7 @@ async def update_person(request: Request, membership_id: uuid.UUID, db: Session 
             f"Changed {person.user.email}: {person.group.name if person.group else ''}, {person.accounts}"
             f"{', passkey required' if membership.require_webauthn else ''}")
     db.commit()
-    return _back(f"Saved {person.user.email}.")
+    return see_other("/ui/people", flash=f"Saved {person.user.email}.")
 
 
 def _action(request: Request, db: Session, ctx: TenantContext, membership_id: uuid.UUID, fn, action: str, done: str):
@@ -344,7 +340,7 @@ def deactivate(request: Request, membership_id: uuid.UUID, db: Session = Depends
     out = _action(request, db, ctx, membership_id,
                   lambda: customer_people_service.set_active(db, ctx.tenant_id, ctx.customer_id, membership_id, False),
                   "customer_people.deactivate", "Deactivated {email}")
-    return out if isinstance(out, Response) else _back(f"Deactivated {out[1].user.email}.")
+    return out if isinstance(out, Response) else see_other("/ui/people", flash=f"Deactivated {out[1].user.email}.")
 
 
 @router.post("/ui/people/{membership_id}/reactivate")
@@ -353,7 +349,7 @@ def reactivate(request: Request, membership_id: uuid.UUID, db: Session = Depends
     out = _action(request, db, ctx, membership_id,
                   lambda: customer_people_service.set_active(db, ctx.tenant_id, ctx.customer_id, membership_id, True),
                   "customer_people.reactivate", "Reactivated {email}")
-    return out if isinstance(out, Response) else _back(f"Reactivated {out[1].user.email}.")
+    return out if isinstance(out, Response) else see_other("/ui/people", flash=f"Reactivated {out[1].user.email}.")
 
 
 @router.post("/ui/people/{membership_id}/unlock")
@@ -362,7 +358,7 @@ def unlock(request: Request, membership_id: uuid.UUID, db: Session = Depends(get
     out = _action(request, db, ctx, membership_id,
                   lambda: customer_people_service.unlock(db, ctx.tenant_id, ctx.customer_id, membership_id),
                   "customer_people.unlock", "Unlocked {email}")
-    return out if isinstance(out, Response) else _back(f"Unlocked {out[1].user.email}.")
+    return out if isinstance(out, Response) else see_other("/ui/people", flash=f"Unlocked {out[1].user.email}.")
 
 
 @router.post("/ui/people/{membership_id}/sign-out")
@@ -371,7 +367,7 @@ def sign_out(request: Request, membership_id: uuid.UUID, db: Session = Depends(g
     out = _action(request, db, ctx, membership_id,
                   lambda: customer_people_service.sign_out_everywhere(db, ctx.tenant_id, ctx.customer_id, membership_id),
                   "customer_people.sign_out_everywhere", "Signed {email} out everywhere")
-    return out if isinstance(out, Response) else _back(f"Signed {out[1].user.email} out everywhere.")
+    return out if isinstance(out, Response) else see_other("/ui/people", flash=f"Signed {out[1].user.email} out everywhere.")
 
 
 @router.post("/ui/people/{membership_id}/reset-security-keys")
@@ -385,7 +381,7 @@ def reset_security_keys(request: Request, membership_id: uuid.UUID, identity_che
     if isinstance(out, Response):
         return out
     (user, _removed), _person = out
-    return _back(f"{user.email}'s security keys were removed. They'll add a new one when they next sign in.")
+    return see_other("/ui/people", flash=f"{user.email}'s security keys were removed. They'll add a new one when they next sign in.")
 
 
 @router.post("/ui/people/{membership_id}/email")
@@ -402,7 +398,7 @@ def change_email(request: Request, membership_id: uuid.UUID, new_email: str = Fo
         db.rollback()
         return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
     db.commit()
-    return _back(f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
+    return see_other("/ui/people", flash=f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
 
 
 @router.post("/ui/people/{membership_id}/reset-password")
@@ -416,7 +412,7 @@ def reset_password(request: Request, membership_id: uuid.UUID, db: Session = Dep
     if isinstance(out, Response):
         return out
     user, _person = out
-    return _back(f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once "
+    return see_other("/ui/people", flash=f"{user.email}'s password was reset. They've been emailed a link to choose a new one; it works once "
                  f"and expires in {get_settings().password_reset_link_hours} hours.")
 
 
@@ -461,4 +457,4 @@ def accept(request: Request, token: str, password: str = Form(""), password_conf
     db.commit()
     message = (f"Thanks. {opened.tenant.name} approves new people first: you can sign in once they have."
                if membership.pending_approval_at else "You're in. Sign in to continue.")
-    return see_other(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}?flash=" + quote(message))
+    return see_other(f"/ui/login/{opened.tenant.slug}/{quote(opened.customer.customer_number)}", flash=message)

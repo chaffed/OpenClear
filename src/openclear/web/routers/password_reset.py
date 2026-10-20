@@ -3,18 +3,17 @@
 """Finishing an administrator's password reset (services/password_reset_service.py): no
 sign-in, the emailed link is the credential, as with invitations (web/routers/people.py)."""
 
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.services import audit_log_service, password_reset_service
 from openclear.web.deps import render_template
 from openclear.web.rate_limit import rate_limit
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(tags=["web-password-reset"])
 
@@ -50,4 +49,4 @@ def reset(request: Request, token: str, password: str = Form(""), password_confi
                                     summary=f"{user.email} chose a new password from a reset link",
                                     resource_type="user", resource_id=user.id)
     db.commit()
-    return see_other(f"/ui/login/{opened.tenant.slug}?flash=" + quote("Your password is set. Sign in to continue."))
+    return see_other(f"/ui/login/{opened.tenant.slug}", flash="Your password is set. Sign in to continue.")

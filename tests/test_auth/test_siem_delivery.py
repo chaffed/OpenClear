@@ -456,7 +456,7 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
     resp = client.post("/ui/settings/security-events", data={
         "csrf_token": csrf, "action": "test", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in", "token": "tok-Sentinel-Q7",
     }, follow_redirects=False)
-    assert resp.status_code == 303 and "test+event+was+delivered" in resp.headers["location"].replace("%20", "+").lower()
+    assert resp.status_code == 303 and "test+event+was+delivered" in resp.headers["location"].lower()
     assert http_receiver.events()[0]["event"]["name"] == "security_events.test"
     assert delivery.bank_destination(db_session, tenant.id) is None  # a test doesn't save
 
@@ -472,7 +472,7 @@ def test_a_bank_adds_a_destination_and_sends_a_test_event(http_receiver, client,
     resp = client.post("/ui/settings/security-events", data={
         "csrf_token": csrf, "action": "save", "kind": "https", "enabled": "true", "url": http_receiver.url + "/in", "token": "tok-Sentinel-Q7",
     }, follow_redirects=False)
-    assert resp.status_code == 303 and "Sent%20for%20approval" in resp.headers["location"]
+    assert resp.status_code == 303 and "Sent+for+approval" in resp.headers["location"]
     [change] = change_request_service.pending(db_session, tenant.id)
     assert "tok-Sentinel-Q7" not in json.dumps(change.payload)  # the token waits encrypted
     change_request_service.decide(db_session, tenant.id, change.id, approve=True, user_id=second.id)

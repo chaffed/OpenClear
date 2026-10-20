@@ -47,9 +47,9 @@ def test_the_banks_review_of_every_membership(client, db_session, tenant_factory
     items = _items(db_session, review_id)
     assert users["viewer"].email in items and s["admin"].email in items and "API client: Core sync" in items  # staff, customers, clients
     assert items[s["admin"].email].scope == "Acme" and items[users["viewer"].email].scope == "Bank-wide"
-    assert "already open" in client.post("/ui/access-reviews", data={"csrf_token": csrf}, follow_redirects=False).headers["location"].replace("%20", " ")
+    assert "already open" in client.post("/ui/access-reviews", data={"csrf_token": csrf}, follow_redirects=False).headers["location"].replace("+", " ")
 
-    assert "Say%20what%20changed" in _decide(client, csrf, review_id, items[users["preparer"].email], "changed").headers["location"]
+    assert "Say+what+changed" in _decide(client, csrf, review_id, items[users["preparer"].email], "changed").headers["location"]
     _decide(client, csrf, review_id, items[users["viewer"].email], "removed")
     _decide(client, csrf, review_id, items["API client: Core sync"], "removed")
     _decide(client, csrf, review_id, items[users["preparer"].email], "changed", "Moved to Viewer")
@@ -83,7 +83,7 @@ def test_a_customer_reviews_only_its_own_people(client, db_session, tenant_facto
     items = _items(db_session, review_id)
     assert set(items) == {s["admin"].email}  # nobody else's, no bank staff
     refused = _decide(client, csrf, review_id, items[s["admin"].email], "removed")  # their only administrator
-    assert refused.status_code == 303 and "administrator" in refused.headers["location"].replace("%20", " ")
+    assert refused.status_code == 303 and "administrator" in refused.headers["location"].replace("+", " ")
     _decide(client, csrf, review_id, items[s["admin"].email], "confirmed")
     assert control_checks.customer_access_review(db_session, tenant.id).status == "PASS"
 

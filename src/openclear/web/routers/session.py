@@ -20,7 +20,6 @@ length, and the tenant's idle-timeout setting would mean nothing. (The JSON API 
 normal OAuth-style refresh semantics: clients refresh after expiry, by design.)"""
 
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
 
 import jwt
 from fastapi import APIRouter, Depends, Request
@@ -92,8 +91,10 @@ def resume(request: Request, next: str | None = None, db: Session = Depends(get_
         tokens = _continue_session(request, db)
     except session_service.RefreshFailed:
         embedded = was_embedded(request)
-        login_url = "/ui/login" if next_path == "/ui/" else f"/ui/login?next={quote(next_path)}"
-        response = see_other("/ui/embed/ended" if embedded else login_url)
+        if embedded:
+            response = see_other("/ui/embed/ended")
+        else:
+            response = see_other("/ui/login", next=None if next_path == "/ui/" else next_path)
         clear_auth_cookies(response, embed=embedded)
         return response
     response = see_other(next_path)

@@ -59,7 +59,7 @@ def test_an_invited_person_waits_until_the_bank_approves(client, db_session, ten
     csrf = _login(client, s["tenant"], s["admin"].email)
     _invite(client, csrf, s, "pat@acme.example.com")
     accepted = _accept(client, _link(db_session, "pat@acme.example.com"))
-    assert "approves%20new%20people%20first" in accepted.headers["location"]
+    assert "approves+new+people+first" in accepted.headers["location"]
     membership = _membership(db_session, "pat@acme.example.com")
     assert not membership.is_active and membership.pending_approval_at is not None
 
@@ -73,7 +73,7 @@ def test_an_invited_person_waits_until_the_bank_approves(client, db_session, ten
     csrf = _login(client, s["tenant"], s["admin"].email)
     assert "waiting for your bank" in client.get("/ui/people").text
     reactivated = client.post(f"/ui/people/{membership.id}/reactivate", data={"csrf_token": csrf}, follow_redirects=False)
-    assert "only%20your%20bank" in reactivated.headers.get("location", "") or "only your bank" in reactivated.text
+    assert "only+your+bank" in reactivated.headers.get("location", "") or "only your bank" in reactivated.text
     assert not _membership(db_session, "pat@acme.example.com").is_active
 
     # The bank: the menu says one is waiting; approving lets them in, and the administrator hears.
@@ -105,7 +105,7 @@ def test_rejecting_needs_a_reason_and_removes_their_access(client, db_session, t
     csrf = _login(client, s["tenant"], s["users"]["admin"].email)
     no_reason = client.post(f"/ui/approvals/customer-users/{membership.id}/reject", data={"csrf_token": csrf, "reason": " "},
                             follow_redirects=False)
-    assert "Say%20why" in no_reason.headers["location"] and _membership(db_session, "pat@acme.example.com") is not None
+    assert "Say+why" in no_reason.headers["location"] and _membership(db_session, "pat@acme.example.com") is not None
     client.post(f"/ui/approvals/customer-users/{membership.id}/reject", data={"csrf_token": csrf, "reason": "Not on our signer list"})
     assert _membership(db_session, "pat@acme.example.com") is None
     assert _password_login(client, s["tenant"], "pat@acme.example.com").status_code == 401

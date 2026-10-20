@@ -69,7 +69,7 @@ def test_an_address_someone_else_has_is_refused(client, db_session, tenant_facto
     tenant, _account, users = tenant_factory.make(slug="email-taken")
     csrf = _sign_in(client, tenant, users["viewer"].email)
     done = client.post("/ui/security/email", data={"new_email": users["admin"].email, "csrf_token": csrf}, follow_redirects=False)
-    assert "Someone%20else" in done.headers["location"]
+    assert "Someone+else" in done.headers["location"]
     assert not _sent(db_session, NotificationType.EMAIL_CHANGE_CONFIRM, users["admin"].email)
 
 
@@ -90,7 +90,7 @@ def test_an_admin_changes_someone_only_in_their_bank_and_not_someone_elsewhere(c
     assert "An administrator at" in _sent(db_session, NotificationType.EMAIL_CHANGE_CONFIRM, "prep@renamed.example.com")[0].body
     refused = client.post(f"/ui/users/{membership[viewer]}/email", data={"new_email": "v@renamed.example.com", "csrf_token": csrf},
                           follow_redirects=False)
-    assert "other%20organizations" in refused.headers["location"]
+    assert "other+organizations" in refused.headers["location"]
 
 
 def test_the_directory_changes_an_email_and_both_addresses_hear(client, db_session, tenant_factory):

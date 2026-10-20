@@ -6,7 +6,6 @@ services/api_client_service.py). A new or rotated secret is shown on the page th
 creates it, once, and never again."""
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -16,8 +15,8 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.services import api_client_service, audit_log_service, customer_service, security_group_service, sso_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
-from openclear.web.security import verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/admin/api-clients", tags=["web-api-clients"])
 _manage = require_web_permission("api_client:manage")
@@ -58,7 +57,6 @@ def update_key_pairs_only(
     _csrf: None = Depends(verify_csrf),
 ) -> Response:
     """Require API clients to sign with a key pair (OW-D26): on at once, off after a second admin."""
-    from urllib.parse import quote
 
     from openclear.services import audit_log_service, change_request_service
     from openclear.web.routers.tenant_settings import waiting_message
@@ -69,16 +67,16 @@ def update_key_pairs_only(
             user_id=ctx.user_id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other("/ui/admin/api-clients?error=" + quote(str(exc)))
+        return see_other("/ui/admin/api-clients", error=str(exc))
     if outcome.waiting:
         db.commit()
-        return see_other("/ui/admin/api-clients?flash=" + quote(waiting_message(outcome)))
+        return see_other("/ui/admin/api-clients", flash=waiting_message(outcome))
     if outcome.summary != "Nothing changed.":
         audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
                                         action="tenant.update_api_key_pairs_only",
                                         summary=f"API clients {'must' if key_pairs_only else 'needn’t'} sign with a key pair")
     db.commit()
-    return see_other("/ui/admin/api-clients?flash=Updated.")
+    return see_other("/ui/admin/api-clients", flash="Updated.")
 
 
 @router.get("/new")
@@ -161,7 +159,7 @@ def revoke_api_client(
         summary=f"Revoked API client {client.name}", resource_type="api_client", resource_id=client.id,
     )
     db.commit()
-    return see_other("/ui/admin/api-clients?flash=API+client+revoked.")
+    return see_other("/ui/admin/api-clients", flash="API client revoked.")
 
 
 @router.get("/{api_client_id}/key")
@@ -193,7 +191,7 @@ def set_key_pair(
         resource_id=client.id,
     )
     db.commit()
-    return see_other("/ui/admin/api-clients?flash=" + quote(f"{client.name} now signs in with its key pair."))
+    return see_other("/ui/admin/api-clients", flash=f"{client.name} now signs in with its key pair.")
 
 
 @router.post("/{api_client_id}/use-secret")

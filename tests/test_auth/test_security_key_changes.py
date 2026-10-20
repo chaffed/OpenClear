@@ -54,7 +54,7 @@ def test_a_stale_session_cant_change_keys_on_the_web(client, db_session, tenant_
     options = client.post("/ui/security/webauthn/register/options", headers={"X-CSRF-Token": csrf})
     assert options.status_code == 403 and "sign in again" in options.json()["error"]
     removed = client.post(f"/ui/security/webauthn/{row.id}/delete", data={"csrf_token": csrf}, follow_redirects=False)
-    assert "sign%20in%20again" in removed.headers["location"]
+    assert "sign+in+again" in removed.headers["location"]
     db_session.expire_all()
     assert db_session.get(WebauthnCredential, row.id) is not None
 
@@ -68,7 +68,7 @@ def test_a_recent_session_removes_a_key_and_it_is_recorded_and_emailed(client, d
 
     removed = client.post(f"/ui/security/webauthn/{row.id}/delete", data={"csrf_token": csrf}, follow_redirects=False)
 
-    assert "Sign%20out%20other%20devices" in removed.headers["location"]
+    assert "Sign+out+other+devices" in removed.headers["location"]
     assert db_session.query(AuditLogEntry).filter_by(tenant_id=tenant.id, action="user.security_key_removed").count() == 1
     note = db_session.query(Notification).filter_by(recipient_user_id=admin.id,
                                                     notification_type=NotificationType.SECURITY_KEY_CHANGED).one()

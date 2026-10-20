@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Chaffed
 
 import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -33,8 +32,8 @@ from openclear.services import (
     tenant_ml_service,
 )
 from openclear.web.deps import WebNotFound, render_template, require_any_web_permission, require_web_permission
-from openclear.web.security import clear_auth_cookies, verify_csrf
 from openclear.web.redirects import see_other
+from openclear.web.security import clear_auth_cookies, verify_csrf
 
 router = APIRouter(prefix="/ui/admin", tags=["web-admin"])
 
@@ -120,7 +119,7 @@ def reset_demo(
     # rather than try to keep this session alive against data that changed out from
     # under it, send them back to the login page to sign in again with the same demo
     # credentials.
-    response = see_other("/ui/login?flash=" + quote("Demo data reset — log back in with the demo credentials."))
+    response = see_other("/ui/login", flash="Demo data reset — log back in with the demo credentials.")
     clear_auth_cookies(response)
     return response
 
@@ -135,11 +134,11 @@ def retrain(
     # Only a bank's own bank-only model can be retrained here; the shared model is run by
     # the platform operator (api/v1/platform_ml.py), never by one bank's admins.
     if db.get(Tenant, ctx.tenant_id).ml_model_source != MlModelSource.PRIVATE:
-        return see_other("/ui/admin/ml-models?error=" + quote("Your organization uses the shared model, which the platform operator retrains."))
+        return see_other("/ui/admin/ml-models", error="Your organization uses the shared model, which the platform operator retrains.")
     try:
         result = train_model(db, network_code, tenant_id=ctx.tenant_id)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
-        return see_other(f"/ui/admin/ml-models?error={quote(str(exc))}")
+        return see_other("/ui/admin/ml-models", error=str(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="ml_model.retrain",
         summary=f"Retrained the bank-only {network_code} model ({'activated' if result.promoted else 'not activated'})",
@@ -147,7 +146,7 @@ def retrain(
     )
     db.commit()
     reason = (result.model_row.metrics_json or {}).get("evaluation", {}).get("reason", "")
-    return see_other(f"/ui/admin/ml-models?flash={quote(f'Retrained {network_code}. {reason}')}")
+    return see_other("/ui/admin/ml-models", flash=f'Retrained {network_code}. {reason}')
 
 
 @router.post("/ml/models/{model_id}/activate")
@@ -162,21 +161,21 @@ def activate(
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id)
         except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return see_other("/ui/admin/ml-models?error=" + quote(str(exc) if "waiting" in str(exc) else "That model couldn't be found."))
+            return see_other("/ui/admin/ml-models", error=str(exc) if "waiting" in str(exc) else "That model couldn't be found.")
         db.commit()
-        return see_other("/ui/admin/ml-models?flash=" + quote("Waiting for a second admin to approve (Settings → Changes awaiting approval)."))
+        return see_other("/ui/admin/ml-models", flash="Waiting for a second admin to approve (Settings → Changes awaiting approval).")
     try:
         # Confined to this bank's own bank-only models (ml/registry.py::activate_model).
         model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)
     except ValueError:
         db.rollback()
-        return see_other("/ui/admin/ml-models?error=" + quote("That model couldn't be found."))
+        return see_other("/ui/admin/ml-models", error="That model couldn't be found.")
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="ml_model.activate",
         summary=f"Activated bank-only {model.network_code} model {model.version}", resource_type="ml_model", resource_id=model.id,
     )
     db.commit()
-    return see_other("/ui/admin/ml-models?flash=Model+activated.")
+    return see_other("/ui/admin/ml-models", flash="Model activated.")
 
 
 def _get_customer_or_404(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID):
@@ -224,7 +223,7 @@ def set_customer_ml_mode(
     _get_customer_or_404(db, ctx.tenant_id, customer_id)
     customer_ml_service.set_mode(db, ctx.tenant_id, customer_id, network_code, mode)
     db.commit()
-    return see_other(f"/ui/admin/customers/{customer_id}/ml?flash=Scoring+mode+updated.")
+    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Scoring mode updated.")
 
 
 @router.post("/customers/{customer_id}/disposition")
@@ -244,14 +243,14 @@ def set_customer_disposition(
         if hours is not None and hours <= 0:
             raise ValueError("response_window_hours must be positive")
     except ValueError:
-        return see_other(f"/ui/admin/customers/{customer_id}/ml?error={quote('Response window must be a positive whole number of hours, or blank.')}")
+        return see_other(f"/ui/admin/customers/{customer_id}/ml", error='Response window must be a positive whole number of hours, or blank.')
     reason_id = uuid.UUID(default_ach_return_reason_id) if default_ach_return_reason_id else None
     auto_disposition_service.set_disposition_setting(
         db, ctx.tenant_id, customer_id, network_code,
         mode=mode, response_window_hours=hours, default_ach_return_reason_id=reason_id,
     )
     db.commit()
-    return see_other(f"/ui/admin/customers/{customer_id}/ml?flash=Default+disposition+updated.")
+    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Default disposition updated.")
 
 
 @router.post("/customers/{customer_id}/ml/retrain")
@@ -266,9 +265,9 @@ def retrain_customer_model(
     try:
         result = train_model(db, network_code, customer_id=customer_id)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
-        return see_other(f"/ui/admin/customers/{customer_id}/ml?error={quote(str(exc))}")
+        return see_other(f"/ui/admin/customers/{customer_id}/ml", error=str(exc))
     flash = f"Retrained {network_code}: promoted={result.promoted}, metrics={result.metrics}"
-    return see_other(f"/ui/admin/customers/{customer_id}/ml?flash={quote(flash)}")
+    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash=flash)
 
 
 @router.post("/customers/{customer_id}/ml/models/{model_id}/activate")
@@ -285,13 +284,13 @@ def activate_customer_model(
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=customer_id, user_id=ctx.user_id)
         except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return see_other(f"/ui/admin/customers/{customer_id}/ml?error={quote(str(exc))}")
+            return see_other(f"/ui/admin/customers/{customer_id}/ml", error=str(exc))
         db.commit()
-        return see_other(f"/ui/admin/customers/{customer_id}/ml?flash=" + quote("Waiting for a second admin to approve."))
+        return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Waiting for a second admin to approve.")
     try:
         activate_model(db, model_id, expected_customer_id=customer_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/admin/customers/{customer_id}/ml?error={quote(str(exc))}")
+        return see_other(f"/ui/admin/customers/{customer_id}/ml", error=str(exc))
     db.commit()
-    return see_other(f"/ui/admin/customers/{customer_id}/ml?flash=Model+activated.")
+    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Model activated.")
