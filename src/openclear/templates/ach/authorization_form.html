@@ -27,7 +27,7 @@
     <label>Originator name <input type="text" name="originator_name" value="{{ prefill.originator_name if prefill else '' }}" required></label>
     <label>Receiver ID (optional — leave blank to authorize any receiver for this originator)
       <input type="text" name="receiver_id" value="{{ prefill.receiver_id if prefill else '' }}"></label>
-    <label>Max amount (optional) <input type="text" name="max_amount" placeholder="0.00"></label>
+    <label>Max amount (optional) <input inputmode="decimal" type="text" name="max_amount" placeholder="0.00"></label>
     <label>Frequency limit per 30 days (optional) <input type="number" name="frequency_limit" min="1"></label>
     <label>Allowed SEC codes, comma-separated (optional, e.g. PPD,WEB) <input type="text" name="allowed_sec_codes" value="{{ prefill.allowed_sec_codes if prefill else '' }}"></label>
     <label>Effective date <input type="date" name="effective_date" value="{{ prefill.effective_date if prefill else '' }}" required></label>

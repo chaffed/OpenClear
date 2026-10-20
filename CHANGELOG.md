@@ -34,6 +34,9 @@
   and uploading issued checks, with the last file's result. An account menu under your email
   holds Security, the theme and Log out; "Switch organization" shows only if you belong to
   another. The upload page starts with the file, with the format reference folded away.
+- Phones show a number keyboard for amounts and check and account numbers. Sign-in works with
+  password managers, asks for the "Organization" in plain words (and not at all on a bank's own
+  sign-in link), and says what to do about a forgotten password.
 - Section headings are smaller than the page title, as they should be; secondary buttons are
   outlined rather than grey (which looked disabled); "Doesn't match" sits with the row it's about.
 - An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),

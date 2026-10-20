@@ -409,3 +409,13 @@ doesn't have.
   - **The exceptions list:** cards show the date; Network and Status sit together.
   Two full-suite runs under machine load failed browser tests with timeouts. Each passed run
   alone, and the next full run passed (2127).
+- 2026-10-20: UI6 built on `ui6-forms`:
+  - **Number keyboards on phones:** `inputmode="decimal"` on 12 amount fields and
+    `inputmode="numeric"` on check and account numbers, including the fix-rows form's
+    computed fields. `tests/test_web/test_forms.py` fails on a new one without it.
+  - **Sign-in:**
+    - `autocomplete` values (`username`, `current-password`, `organization`);
+    - "Organization" with a hint, instead of "Organization slug";
+    - on a bank's own sign-in link, the organization is known and not asked for;
+    - a line saying what to do about a forgotten password, under the current policy (an
+      administrator resets it).

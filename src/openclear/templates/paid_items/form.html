@@ -19,8 +19,8 @@
         {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} ({{ a.account_number }})</option>{% endfor %}
       </select>
     </label>
-    <label>Check number <input type="text" name="check_number" required></label>
-    <label>Presented amount <input type="text" name="presented_amount" placeholder="0.00" required></label>
+    <label>Check number <input inputmode="numeric" type="text" name="check_number" required></label>
+    <label>Presented amount <input inputmode="decimal" type="text" name="presented_amount" placeholder="0.00" required></label>
     <label>Presented date <input type="date" name="presented_date" required></label>
     <button type="submit">{{ icon("send") }}Submit</button>
   </form>

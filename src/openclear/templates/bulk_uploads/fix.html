@@ -25,7 +25,9 @@
         {% for key, value in row.values.items() %}
         {% set at_fault = row.error_field == key %}
         <label>{{ key | replace("_", " ") | capitalize }}
-          <input type="text" name="row_{{ row.row_index }}__{{ key }}" value="{{ value }}"
+          {# Number keyboards on phones for numbers (UI_PLAN.md F12). #}
+          {% set mode = "decimal" if "amount" in key else "numeric" if key in ("check_number", "account_number") else "" %}
+          <input type="text" name="row_{{ row.row_index }}__{{ key }}" value="{{ value }}"{% if mode %} inputmode="{{ mode }}"{% endif %}
             {% if at_fault %}aria-invalid="true" aria-describedby="err-{{ row.row_index }}-{{ key }}" class="input-error"{% endif %}>
           {% if at_fault %}<span class="field-error" id="err-{{ row.row_index }}-{{ key }}">{{ row.error }}</span>{% endif %}
         </label>
