@@ -52,7 +52,7 @@ def revoke_session(session: Session, *, session_id: uuid.UUID, user_id: uuid.UUI
     override, whichever is greater. Expired rows are pruned opportunistically here rather
     than by a scheduled job."""
     now = datetime.now(timezone.utc)
-    session.execute(delete(RevokedSession).where(RevokedSession.expires_at < now))
+    session.execute(delete(RevokedSession).where(RevokedSession.expires_at < now).execution_options(synchronize_session=False))
     if session.get(RevokedSession, session_id) is None:
         keep_minutes = max(get_settings().jwt_refresh_token_expire_minutes, _longest_tenant_session_minutes(session))
         session.add(RevokedSession(session_id=session_id, user_id=user_id, expires_at=now + timedelta(minutes=keep_minutes)))
@@ -110,6 +110,9 @@ def refresh_session(session: Session, refresh_token: str) -> tuple[SessionTokens
     # A pre-sid refresh token (minted before session claims existed) starts a fresh
     # session id; its maximum length is still its own expiry.
     session_id = uuid.UUID(claims["sid"]) if claims.get("sid") else None
+    if claims.get("rid"):
+        _retire_refresh_token(session, uuid.UUID(claims["rid"]), user, session_id, tenant_id,
+                              datetime.fromtimestamp(claims["exp"], tz=timezone.utc))
     tokens = create_session_tokens(
         user_id=user.id,
         tenant_id=tenant_id,
@@ -126,6 +129,43 @@ def refresh_session(session: Session, refresh_token: str) -> tuple[SessionTokens
         authenticated_at=claims.get("auth"),
     )
     return tokens, tenant
+
+
+# Two tabs refreshing at once both send the token they hold; the second, a moment after the
+# first retired it, isn't a thief.
+REUSE_GRACE = timedelta(seconds=60)
+
+
+def _retire_refresh_token(session: Session, refresh_id: uuid.UUID, user: User, session_id: uuid.UUID | None,
+                          tenant_id: uuid.UUID, expires_at: datetime) -> None:
+    """Refresh tokens are used once (FULL_REVIEW_PLAN.md FR-D8; ASVS 5.0 7.2.4): each refresh
+    retires the token it was given, recorded like a revoked session (keyed by the token's own
+    `rid`, kept until it would have expired). A retired token presented again after REUSE_GRACE
+    was copied: the session ends for whoever holds it, and the bank's security team is told.
+    The caller commits."""
+    from sqlalchemy.exc import IntegrityError
+
+    from openclear.services import security_events
+
+    now = datetime.now(timezone.utc)
+    retired = session.get(RevokedSession, refresh_id)
+    if retired is None:
+        session.add(RevokedSession(session_id=refresh_id, user_id=user.id, revoked_at=now, expires_at=expires_at))
+        try:
+            session.flush()
+        except IntegrityError:  # retired by a refresh running alongside this one: the grace case
+            session.rollback()
+        return
+    revoked_at = retired.revoked_at if retired.revoked_at.tzinfo else retired.revoked_at.replace(tzinfo=timezone.utc)
+    if now - revoked_at <= REUSE_GRACE:
+        return
+    if session_id is not None:
+        revoke_session(session, session_id=session_id, user_id=user.id)
+    security_events.emit(session, "auth.session.reuse_detected", tenant_id=tenant_id, outcome="failure", reason="refresh_token_reused",
+                         actor_type="user", actor_id=user.id, actor_label=user.email,
+                         details={"session_id": str(session_id) if session_id else None})
+    session.commit()  # the session stays ended though the refresh is refused
+    raise RefreshFailed("This sign-in was used from somewhere else, so it was ended. Sign in again.")
 
 
 # --- The sessions list (OWASP_PLAN.md OW-D29) --------------------------------------------------

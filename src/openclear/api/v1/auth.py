@@ -9,12 +9,14 @@ from openclear.auth.security import create_session_tokens, create_token
 from openclear.db.session import get_db
 from openclear.schemas.auth import LoginRequest, LoginResponse, RefreshRequest, TokenResponse
 from openclear.services import demo_tenant_service, session_service, user_service
+from openclear.web.rate_limit import rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
+def login(payload: LoginRequest, db: Session = Depends(get_db),
+          _limit: None = Depends(rate_limit("login", limit_setting="login_attempts_per_minute"))) -> LoginResponse:
     # See web/routers/auth.py::login_submit's identical call for why this runs before
     # any identity for this request is resolved -- a no-op for every non-demo tenant.
     demo_tenant_service.maybe_reset_if_demo_idle_by_slug(db, payload.tenant_slug)
@@ -71,4 +73,5 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResp
         tokens, _tenant = session_service.refresh_session(db, payload.refresh_token)
     except session_service.RefreshFailed as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from None
+    db.commit()  # the refresh token just used is retired: use the new one next time
     return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)

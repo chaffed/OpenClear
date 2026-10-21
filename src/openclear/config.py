@@ -249,6 +249,10 @@ class Settings(BaseSettings):
     # throttled as a single caller (WAF_PLAN.md W1).
     rate_limit_per_principal_per_minute: int = 600
     markdown_preview_rate_limit_per_minute: int = 30
+    # Password sign-ins (web, API, platform) per caller address per minute, on top of the lockout
+    # per account (FULL_REVIEW_PLAN.md FR-D7): one address guessing across many accounts is slowed
+    # here; one account guessed from many addresses is stopped by the lockout.
+    login_attempts_per_minute: int = 20
     # "memory" counts per process (above). "redis" shares the counts between every
     # instance (pip install 'openclear[redis]'); if Redis can't be reached, requests are
     # allowed and the error logged, so an outage of the limiter isn't an outage of the app.

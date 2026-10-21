@@ -3,7 +3,7 @@
 
 import enum
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,7 +16,6 @@ from openclear.domain.customer import Customer
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
-from openclear.services import notification_service
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -145,18 +144,11 @@ def authenticate_password(
         return failed("locked", tenant.id, user, PasswordLoginOutcome.LOCKED)
 
     if not verify_password(password, user.hashed_password):
-        user.failed_login_attempts += 1
-        attempts, minutes, until_unlocked = lockout_policy(tenant, settings)
-        if user.failed_login_attempts >= attempts:
-            user.locked_until = LOCKED_UNTIL_UNLOCKED if until_unlocked else datetime.now(timezone.utc) + timedelta(minutes=minutes)
-            session.flush()
-            # Only fires the moment the lockout threshold is actually crossed, not on
-            # every subsequent rejected attempt while already locked (that's the
-            # early-return at the top of this function, above).
-            notification_service.notify_account_locked(session, user, minutes=None if until_unlocked else minutes)
+        from openclear.auth import lockout
+
+        if lockout.record_failure(session, user, tenant, settings=settings).locked_now:
             failed("invalid_credentials", tenant.id, user)
             return failed("threshold_reached", tenant.id, user, PasswordLoginOutcome.LOCKED, name="auth.lockout")
-        session.flush()
         return failed("invalid_credentials", tenant.id, user)
 
     if password_needs_rehash(user.hashed_password):
@@ -284,10 +276,9 @@ def authenticate_platform(session: Session, email: str, password: str, *, settin
         failed("locked", user)
         return None
     if not verify_password(password, user.hashed_password):
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.login_max_failed_attempts:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.login_lockout_minutes)
-            notification_service.notify_account_locked(session, user)
+        from openclear.auth import lockout
+
+        if lockout.record_failure(session, user, None, settings=settings).locked_now:  # platform staff: the installation's policy
             failed("threshold_reached", user, name="auth.lockout")
         else:
             failed("invalid_credentials", user)

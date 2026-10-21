@@ -62,6 +62,7 @@ from openclear.web.security import (
     verify_csrf_header,
     ACCESS_COOKIE_NAME,
 )
+from openclear.web.rate_limit import rate_limit
 from openclear.web.redirects import see_other, to_identity_provider
 
 router = APIRouter(prefix="/ui", tags=["web-auth"])
@@ -108,6 +109,7 @@ def login_submit(
     next: str = Form("/ui/"),
     db: Session = Depends(get_db),
     _csrf: None = Depends(verify_csrf),
+    _limit: None = Depends(rate_limit("login", limit_setting="login_attempts_per_minute")),
 ) -> HTMLResponse:
     next_path = safe_next_path(next)
     # Reactive demo-tenant reset: runs *before* any identity for this request is

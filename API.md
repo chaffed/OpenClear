@@ -57,6 +57,11 @@ Body: `{"refresh_token": "..."}`. Returns a new `TokenResponse` (`access_token` 
 group and active status — not whatever was true when the refresh token was issued — so a
 permission change or deactivation takes effect the next time a client refreshes.
 
+**A refresh token works once.** Keep the `refresh_token` each refresh returns and use that next
+time. Presenting a used one again within a minute is allowed (two requests refreshing together);
+after that it's taken as a copy, the whole session is ended (the newer tokens stop working too),
+and the bank's security team sees `auth.session.reuse_detected`. Sign in again to start a new one.
+
 ### API clients (for a bank's systems)
 
 A bank's own systems (its core, its online banking provider, its middleware) sign in with

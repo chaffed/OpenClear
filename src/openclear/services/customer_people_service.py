@@ -350,9 +350,6 @@ def accept_as_new(session: Session, opened: OpenInvitation, password: str | None
 def accept_as_existing(session: Session, opened: OpenInvitation, current_password: str) -> tuple[User, TenantMembership]:
     """Someone who already signs in to OpenClear elsewhere proves it's them with their own
     password; only then are they added. A wrong password counts toward their lockout."""
-    from openclear.config import get_settings
-    from openclear.services import notification_service
-
     user = opened.existing_user
     if user is None or not user.is_active or user.is_service_account:
         raise PeopleError("This invitation can't be accepted. Ask for a new one.")
@@ -360,12 +357,10 @@ def accept_as_existing(session: Session, opened: OpenInvitation, current_passwor
     if user.locked_until is not None and _aware(user.locked_until) > now:
         raise PeopleError("Your sign-in is locked for now after too many attempts. Try again later.")
     if not verify_password(current_password or "", user.hashed_password):
-        # Counted toward the same lockout as a failed sign-in (auth/login_service.py).
-        settings = get_settings()
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.login_max_failed_attempts:
-            user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
-            notification_service.notify_account_locked(session, user)
+        # Counted toward the same lockout as a failed sign-in, by the inviting bank's policy.
+        from openclear.auth import lockout
+
+        lockout.record_failure(session, user, opened.tenant)
         session.flush()
         raise PeopleError("That isn't the password for this email.")
     user.failed_login_attempts, user.locked_until = 0, None

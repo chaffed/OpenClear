@@ -52,6 +52,9 @@ CATALOG: dict[str, EventType] = {
     "auth.sso.failed": EventType("authentication", "medium"),
     "auth.logout": EventType("authentication", "low"),
     "auth.session.revoked": EventType("authentication", "medium"),
+    # A refresh token already used was presented again: it was copied, so the session is ended
+    # (services/session_service.py; FULL_REVIEW_PLAN.md FR-D8).
+    "auth.session.reuse_detected": EventType("authentication", "high"),
     "auth.token.issued": EventType("authentication", "low"),
     "auth.token.failed": EventType("authentication", "medium"),
     "auth.token_exchange.succeeded": EventType("authentication", "low"),

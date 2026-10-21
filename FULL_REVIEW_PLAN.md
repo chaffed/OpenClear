@@ -275,3 +275,14 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   fenced: a second run of either repeats work but doesn't double a payment (the export writes
   another archive; the dropbox skips files by hash).
 
+- 2026-10-21: FR3 built on `fr3-sign-in` (stacked on FR2): `auth/lockout.py` (the count incremented
+  in SQL; the lock set by a conditional update, so parallel guesses lock and email once; the
+  bank's policy at all four sites, and a lock that ran out locks again on the next wrong
+  password); `login_attempts_per_minute` (20, per address) on web, API and platform sign-in;
+  refresh tokens carry `rid` and are retired on use in `revoked_session`, with a 60-second grace
+  for two tabs refreshing together and `auth.session.reuse_detected` (high) ending the session
+  after it. **Deviation:** the sign-in limit is per address, not per address and email (FR-D7):
+  the per-account half is the lockout itself, and keying on the email would need the body read
+  before the route. ASVS: V6.3.1's evidence gains `auth/lockout.py`; refresh rotation isn't
+  claimed against a row (7.2.4 is about new tokens at sign-in). Also fixed: `revoke_session`'s
+  clean-up compared in-memory datetimes, which failed on SQLite once a refresh had retired a token.

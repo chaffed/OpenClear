@@ -245,6 +245,7 @@ Suggested detections, as queries in plain terms. Adjust the thresholds to your b
 | A large export | `data_export.started`, `audit.export`, `list.exported`, `users.exported` | Any full data export; more than 5 list exports by one person in an hour |
 | A control turning to FAIL | `control.status.changed` (recorded when the Controls page or API is read, and checked hourly) | Any with `outcome` failure (`details.to` is FAIL); a WARN for review; `details.to` PASS when it recovers |
 | A new way in | `api_client.created`, `sso_connection.changed`, `security_events.destination.changed`, `webhook.changed` | Any occurrence, for review |
+| A copied sign-in | `auth.session.reuse_detected` (high) | Any one: a refresh token used once was presented again more than a minute later, so the session was ended. Find the `source.ip` that presented it |
 | Token abuse | `auth.token.failed`, `rate_limit.exceeded` | A burst from one client or address (these are sampled to one event a minute per source; read `details.since_last_event` for the count) |
 
 ## Checking it end to end

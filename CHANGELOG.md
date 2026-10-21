@@ -16,6 +16,16 @@
   change at once apply it once. Reset, email-change and invitation links, and online banking
   launch codes, work exactly once even when opened twice together. A background import handed
   to another worker (its heartbeat looked stale) can no longer commit alongside it.
+- **Sign-in** (FR3): every wrong password counts even when many arrive at once, and a wrong
+  current password on the change-password form, or on accepting an invitation, now follows the
+  bank's own lockout rule (attempts, minutes, or until unlocked) like signing in does. After a
+  lockout runs out, the next wrong password locks it again. Password sign-ins are limited per
+  address too (`OPENCLEAR_LOGIN_ATTEMPTS_PER_MINUTE`, 20), web, API and platform.
+- **Refresh tokens are used once** (FR3). Each refresh returns a new refresh token (as before);
+  the one used is retired. Presenting a retired one more than a minute later ends the session and
+  raises a high-severity `auth.session.reuse_detected` security event. **API change:** clients must
+  keep the refresh token each refresh returns; one that refreshes with its first token again is
+  signed out.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 
