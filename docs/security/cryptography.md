@@ -11,7 +11,6 @@ and py_webauthn; OpenClear implements no cryptographic primitive itself.
 | Session signing key pair | Signing session and API tokens (`iss` and `aud` checked) | ECDSA P-256 (ES256) | Files named in `jwt_*_key_path` | Service provider, on the bank's schedule (`key_age` control) |
 | File signing key pair | Signing uploaded files' digests and the evidence export | ECDSA P-256, SHA-256 | Files (`file_signing_*`) | Service provider |
 | Audit log signing key pair | Signing each action-log entry in its chain | ECDSA P-256, SHA-256 | Files (`audit_log_signing_*`) | Service provider |
-| Unauthorized-debit statement key pair | Signing Written Statements of Unauthorized Debit | ECDSA P-256 | Files (`wsud_signing_*`) | Service provider |
 | Field encryption key | Encrypting secrets in the database: SSO client secrets, SAML private keys, webhook secrets, plugin settings marked secret | AES-256-GCM, key from HKDF-SHA256 of `sso_encryption_key` | Environment / secret store | Service provider: set the old value in `sso_encryption_key_previous`; values re-encrypt at start |
 | SAML signing keys | Signing requests to a SAML identity provider | RSA-3072 for connections made since 1.22.1 (RSA-2048 before; replacement in issue #21) | Database, encrypted with the field key | Recreate the connection |
 | Passwords | Signing in | bcrypt over HMAC-SHA-256 (`ocv2:`) | Database (hash only) | The person |

@@ -383,28 +383,29 @@ def stale_ach_authorizations(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("stale_ach_authorizations", title, PASS, f"All {len(active)} active ACH authorizations are current and in use.", evidence)
 
 
-def wsud_signed(session: Session, tenant_id: uuid.UUID) -> Control:
-    """Consumer debits returned 7 to 60 days ago, each with a signed Written Statement of
-    Unauthorized Debit (the customer signs after the return, so a week's grace)."""
-    from openclear.domain.ach_transaction import AchSettlementStatus, AchTransaction
-    from openclear.domain.wsud_statement_transaction import WsudStatementTransaction
-    from openclear.services.wsud_service import CONSUMER_SEC_CODES
+# Consumer SEC codes: a Written Statement of Unauthorized Debit is a consumer remedy (Nacha).
+CONSUMER_SEC_CODES = frozenset({"PPD", "WEB", "TEL", "ARC", "BOC", "POP", "RCC"})
 
-    now = _now()
-    returned = select(AchTransaction.id).where(
+
+def wsud_form(session: Session, tenant_id: uuid.UUID) -> Control:
+    """A bank that returned a consumer ACH debit in the last 60 days has its Written Statement of
+    Unauthorized Debit form published for customers (SIMPLIFY_PLAN.md SP-D4): the bank collects
+    the statement, and its customers need to know how."""
+    from openclear.domain.ach_transaction import AchSettlementStatus, AchTransaction
+    from openclear.services import bank_form_service
+
+    returned = session.execute(select(func.count()).select_from(AchTransaction).where(
         AchTransaction.tenant_id == tenant_id, AchTransaction.settlement_status == AchSettlementStatus.RETURNED,
-        AchTransaction.sec_code.in_(CONSUMER_SEC_CODES), AchTransaction.updated_at <= now - timedelta(days=7),
-        AchTransaction.updated_at >= now - timedelta(days=60))
-    total = session.execute(select(func.count()).select_from(returned.subquery())).scalar_one()
-    signed = session.execute(select(func.count(func.distinct(WsudStatementTransaction.ach_transaction_id))).where(
-        WsudStatementTransaction.ach_transaction_id.in_(returned))).scalar_one()
-    evidence = {"consumer_debits_returned": total, "with_a_signed_statement": signed}
-    title = "Unauthorized debits signed for"
-    if total > signed:
-        return Control("wsud_signed", title, WARN,
-                       f"{total - signed} of {total} consumer debits returned over a week ago have no signed Written Statement of "
-                       "Unauthorized Debit.", evidence)
-    return Control("wsud_signed", title, PASS, f"All {total} consumer debits returned 7 to 60 days ago have a signed statement.", evidence)
+        AchTransaction.sec_code.in_(CONSUMER_SEC_CODES), AchTransaction.updated_at >= _now() - timedelta(days=60))).scalar_one()
+    form = bank_form_service.get(session, tenant_id)
+    evidence = {"consumer_debits_returned_60_days": returned, "form": form.format if form else None}
+    title = "Unauthorized-debit statement form published"
+    if form is not None:
+        return Control("wsud_form", title, PASS, f"Customers see your form ({form.format}).", evidence)
+    if returned:
+        return Control("wsud_form", title, WARN, f"{_plural(returned, 'consumer ACH debit')} returned in the last 60 days, and no "
+                       "Written Statement of Unauthorized Debit form is published (Settings → Unauthorized debit statement).", evidence)
+    return Control("wsud_form", title, PASS, "No form yet, and no consumer ACH debits returned in the last 60 days.", evidence)
 
 
 def evidence_export(session: Session, tenant_id: uuid.UUID) -> Control:
@@ -609,7 +610,7 @@ def control_response(session: Session, tenant_id: uuid.UUID) -> Control:
 
 REVIEW_EVERY_DAYS = 92  # a quarter
 KEY_FILES = {"jwt_private_key_path": "Session token signing", "file_signing_private_key_path": "File and evidence signing",
-             "audit_log_signing_private_key_path": "Action log signing", "wsud_signing_private_key_path": "Unauthorized-debit statement signing"}
+             "audit_log_signing_private_key_path": "Action log signing"}
 
 
 def _last_review(session: Session, tenant_id: uuid.UUID, customer_id):

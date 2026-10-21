@@ -845,9 +845,9 @@ and request/response schemas, see [API.md](API.md).
 
 ## Signing keys
 
-Four things get cryptographically signed: JWTs (login sessions), bulk-upload files
-(tamper-evidence), the immutable audit log (its hash chain — see "Immutable action
-log" below), and signed Written Statement of Unauthorized Debit (WSUD) attestations.
+Three things get cryptographically signed: JWTs (login sessions), bulk-upload files
+(tamper-evidence), and the immutable audit log (its hash chain — see "Immutable action
+log" below).
 Each uses its own ECDSA P-256 (ES256) key pair rather than a shared secret
 string, so a leaked key can't also be used to forge the others, and — unlike a
 guessable string — a real key pair can't accidentally ship as a usable default.
@@ -860,9 +860,9 @@ deployment.** Generate your own before deploying:
 python scripts/generate_keys.py --output-dir keys
 ```
 
-This prints the eight `OPENCLEAR_*_PRIVATE_KEY_PATH`/`OPENCLEAR_*_PUBLIC_KEY_PATH` env vars to
-set. Prefer `openssl` instead? The equivalent for each of the four pairs (`jwt`,
-`file_signing`, `audit_log_signing`, `wsud_signing`) is:
+This prints the six `OPENCLEAR_*_PRIVATE_KEY_PATH`/`OPENCLEAR_*_PUBLIC_KEY_PATH` env vars to
+set. Prefer `openssl` instead? The equivalent for each of the three pairs (`jwt`,
+`file_signing`, `audit_log_signing`) is:
 
 ```
 openssl ecparam -genkey -name prime256v1 -noout -out keys/<name>_private.pem
@@ -893,13 +893,6 @@ still-at-their-checked-in-default conditions, unrelated to signing keys:
   `ocr/azure_di_provider.py`'s own docstrings for what wiring up a real cloud call would
   need). Without this check, choosing either in production would only fail the moment
   someone actually uploaded a check image, not at startup.
-- **WSUD e-signature text still at its placeholder default.** `OPENCLEAR_WSUD_CONSENT_
-  DISCLOSURE_TEXT`/`OPENCLEAR_WSUD_ATTESTATION_TEXT` default to placeholder legal language
-  implementing only the *structural* elements the federal E-SIGN Act requires — **not
-  reviewed by a lawyer.** Have your own counsel review and supply real text via those two
-  env vars before relying on this for a real Written Statement of Unauthorized Debit
-  attestation. Changing this text doesn't affect any already-signed statement — each one
-  snapshots exactly what was shown and signed at the time.
 
 ## Reverse proxy / WAF deployment
 
@@ -918,8 +911,8 @@ injects scripts, alters security headers, or lets requests around it.
 Counts are kept in memory in each process. With several processes, share them through Redis
 (`OPENCLEAR_RATE_LIMIT_BACKEND=redis`; see "Running more than one instance").
 
-**The caller's address.** Rate limits, the action log, security events, JSON logs and a WSUD
-signer's IP all use the same address, worked out once per request (`web/request_context.py`).
+**The caller's address.** Rate limits, the action log, security events and JSON logs all use
+the same address, worked out once per request (`web/request_context.py`).
 By default it's the TCP connection's own address, which a client can't fake. Behind a proxy
 or an edge network, every connection comes from the proxy, so tell OpenClear how to find
 the caller:
@@ -996,18 +989,16 @@ path a real tenant would (see "Reverse proxy / WAF deployment" above and
 [Signing keys](#signing-keys) above describes, supplied at deploy time, never baked into
 the image:
 
-- The four signing key pairs (`python scripts/generate_keys.py --output-dir keys`,
-  mount `keys/` into the container, e.g. at `/secrets/keys`, and set all eight
+- The three signing key pairs (`python scripts/generate_keys.py --output-dir keys`,
+  mount `keys/` into the container, e.g. at `/secrets/keys`, and set all six
   `OPENCLEAR_*_KEY_PATH` env vars to point there)
 - A random `OPENCLEAR_SSO_ENCRYPTION_KEY`
-- Real, counsel-reviewed `OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT` /
-  `OPENCLEAR_WSUD_ATTESTATION_TEXT`
 - `OPENCLEAR_WEBAUTHN_RP_ID` / `OPENCLEAR_WEBAUTHN_ORIGIN` set to your real domain
 - For the demo image only: `OPENCLEAR_DEMO_TENANT_ENABLED=true` (already set by
   `Dockerfile.demo`) and `OPENCLEAR_DEMO_TENANT_PASSWORD` (a real secret — set it yourself,
   it has no default)
 
-A container that's missing any of the first four refuses to start at all
+A container that's missing either of the first two refuses to start at all
 (`assert_production_safe`) rather than silently serving with this repo's own public
 `dev_keys/`.
 
@@ -1022,10 +1013,8 @@ docker run -d \
   -v pospay_data:/data \
   -v /path/to/your/keys:/secrets/keys:ro \
   -e OPENCLEAR_JWT_PRIVATE_KEY_PATH=/secrets/keys/jwt_private.pem \
-  # ...the other seven OPENCLEAR_*_KEY_PATH vars, same pattern...
+  # ...the other five OPENCLEAR_*_KEY_PATH vars, same pattern...
   -e OPENCLEAR_SSO_ENCRYPTION_KEY=... \
-  -e OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT=... \
-  -e OPENCLEAR_WSUD_ATTESTATION_TEXT=... \
   -e OPENCLEAR_WEBAUTHN_RP_ID=your-domain.example.com \
   -e OPENCLEAR_WEBAUTHN_ORIGIN=https://your-domain.example.com \
   openclear:latest
@@ -1113,7 +1102,7 @@ generic `/ui/login` form.
 
 **Deploying one publicly**: see [Docker](#docker) above for `Dockerfile.demo` — it's the
 production image with `OPENCLEAR_DEMO_TENANT_ENABLED=true` layered on, needing everything a
-real deployment needs (real signing keys, `OPENCLEAR_SSO_ENCRYPTION_KEY`, WSUD text — the
+real deployment needs (real signing keys, `OPENCLEAR_SSO_ENCRYPTION_KEY` — the
 demo tenant serves real public traffic and runs the exact same code path a real tenant
 would, so it gets no shortcuts). `fly.toml` at the repo root is a working, minimal-cost
 example for [Fly.io](https://fly.io) specifically — one machine on the smallest VM size
@@ -1136,7 +1125,7 @@ Or bring up the whole stack (app + Postgres) with `docker compose up --build`.
 on the single-tenant operational tables (`account`, `issued_item`, `stop_payment`,
 `check_image`, `paid_item`, `ach_authorization_rule`, `ach_transaction`,
 `security_group`, `tenant_membership`, `bulk_upload_file`, `audit_log_entry`,
-`ach_return_reason`, `wsud_statement`, `wsud_statement_transaction`) as
+`ach_return_reason`, `bank_form`, and every table added since) as
 defense-in-depth alongside the primary
 tenant-isolation mechanism (the repository-layer filter in `repositories/base.py`, which
 is what's actually under test in `tests/test_api/test_cross_tenant_isolation.py`).

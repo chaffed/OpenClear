@@ -40,7 +40,6 @@ from openclear.domain.notification import Notification, NotificationChannel, Not
 from openclear.domain.paid_item import PaidItem, PaidItemSource
 from openclear.domain.stop_payment import StopPayment
 from openclear.domain.tenant_membership import TenantMembership
-from openclear.domain.wsud_statement import WsudStatement
 
 
 @dataclass(frozen=True, slots=True)
@@ -290,15 +289,6 @@ def _check_images(session, tenant_id, period):
     return _rows(session, stmt, "account")
 
 
-def _wsud(session, tenant_id, period):
-    stmt = (
-        select(WsudStatement.customer_id, func.count())
-        .where(WsudStatement.tenant_id == tenant_id, *_in(WsudStatement.signed_at, period))
-        .group_by(WsudStatement.customer_id)
-    )
-    return _rows(session, stmt, "customer")
-
-
 def _exports(session, tenant_id, period):
     stmt = (
         select(DataExportJob.customer_id, func.count())
@@ -343,7 +333,6 @@ METRICS: dict[str, Metric] = {m.code: m for m in [
     Metric("ach_exceptions", "ACH exceptions", "item", "account", _exceptions("ach")),
     Metric("ach_returns", "ACH debits returned", "item", "account",
            _decisions(("ach",), Decision.outcome == DecisionOutcome.RETURN)),
-    Metric("wsud_statements", "Unauthorized-debit statements (WSUD) signed", "item", "customer", _wsud),
     # Either network
     Metric("items_paid_on_decision", "Exceptions decided pay", "item", "account",
            _decisions(("check", "ach"), Decision.outcome == DecisionOutcome.PAY)),

@@ -1,8 +1,7 @@
 # Dev/test keys — DO NOT USE IN PRODUCTION
 
-These eight PEM files are a deliberately public, checked-in ECDSA P-256 key pair set
-(one pair each for JWT signing, bulk-upload file signing, audit-log signing, and WSUD
-statement signing) so local development and the test suite work with zero setup —
+These six PEM files are a deliberately public, checked-in ECDSA P-256 key pair set
+(one pair each for JWT signing, bulk-upload file signing and audit-log signing) so local development and the test suite work with zero setup —
 exactly the role the old hardcoded `"dev-secret-change-me-..."` strings used to play,
 just as real (but published, hence insecure) keys instead of a guessable string.
 

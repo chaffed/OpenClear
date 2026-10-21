@@ -242,10 +242,10 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-SI-06", "Decisions delivered to the core",
       "Decisions go to the core through an outbox with retries, as files or calls, so none is lost if the core is down.",
       ("CA-3",), "corrective", "built_in", ("decision_delivery",), ("B-CA-3-01",), "Settings → Decision files"),
-    C("OC-SI-07", "Unauthorized debits signed for",
-      "A customer signs a Written Statement of Unauthorized Debit for a returned consumer ACH debit, kept with its consent "
-      "and attestation text.",
-      ("IR-6", "AU-10"), "detective", "built_in", ("wsud_signed",), ("C-IR-6-01",), "Written statements of unauthorized debit"),
+    C("OC-SI-07", "The bank's unauthorized-debit statement form",
+      "Customers see the bank's own Written Statement of Unauthorized Debit form (Markdown, HTML or a PDF); the bank collects "
+      "and keeps the signed statement its own way.",
+      ("IR-6",), "detective", "configurable", ("wsud_form",), ("B-IR-6-02", "C-IR-6-01"), "Settings → Unauthorized debit statement"),
     # --- Configuration management ---------------------------------------------------------
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "

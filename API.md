@@ -673,7 +673,7 @@ account, per customer or bank-wide:
 | `check_exceptions` / `ach_exceptions` | exceptions raised | account |
 | `check_returns` / `ach_returns` / `items_returned` | items returned | account |
 | `items_paid_on_decision` / `auto_decisions` | exceptions decided pay / decided by the default | account |
-| `stop_payments`, `check_images`, `wsud_statements`, `files_received`, `data_exports` | as named | account / customer |
+| `stop_payments`, `check_images`, `files_received`, `data_exports` | as named | account / customer |
 | `sms_sent` / `email_sent` | notifications sent | bank |
 
 Bank-level metrics appear on the bank-wide statement (`customer_id: null`), which uses the

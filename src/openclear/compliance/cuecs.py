@@ -325,6 +325,12 @@ CUECS: tuple[Cuec, ...] = (
          "anything left undecided.",
          "automated", "sla", "Daily",
          "Controls → Decisions and imports on time", related=("IR-4",)),
+    Cuec("B-IR-6-02", "bank", "IR-6", "Obtain and keep Written Statements of Unauthorized Debit",
+         "Obtain a Written Statement of Unauthorized Debit from a customer who reports a consumer ACH debit as unauthorized, "
+         "as the Nacha Rules require, and keep it for the period they set.",
+         "OpenClear shows customers the bank's own statement form (Markdown, HTML or a PDF) and warns while a bank that "
+         "returns consumer debits has none published.",
+         "assisted", "wsud_form", "Yearly", "Settings → Unauthorized debit statement", related=("AU-11",)),
     Cuec("B-SI-3-01", "bank", "SI-3", "Scan files for malware",
          "Use commercially standard malware detection on the computers and systems that send files to OpenClear, and on "
          "files staff download from it.",
@@ -429,10 +435,10 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear raises an exception for an ACH debit no authorization covers.",
          "assisted", "stale_ach_authorizations", "Quarterly", "ACH authorizations"),
     Cuec("C-IR-6-01", "customer", "IR-6", "Report fraud at once",
-         "Report suspected fraud or an unauthorized debit to the bank at once, and sign the Written Statement of Unauthorized "
-         "Debit when returning an ACH debit as unauthorized.",
-         "OpenClear collects and keeps the signed statement with the return.",
-         "automated", "wsud_signed", "Per event", "Exceptions; Written statements", related=("IR-4",)),
+         "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's Written Statement of "
+         "Unauthorized Debit when returning an ACH debit as unauthorized.",
+         "OpenClear shows the customer the bank's statement form, and returns the debit when the customer decides to.",
+         "attested", None, "Yearly", "Unauthorized debit statement; Exceptions", related=("IR-4",)),
     Cuec("C-SC-28-01", "customer", "SC-28", "Protect what's downloaded",
          "Treat reports, exports and check images downloaded from OpenClear as confidential: store them encrypted, share them only "
          "with those who need them, and delete them when no longer needed.",

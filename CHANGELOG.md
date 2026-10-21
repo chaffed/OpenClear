@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Unauthorized debit statements are the bank's own form** (`SIMPLIFY_PLAN.md` SP1, the product
+  owner's decision). OpenClear no longer has customers sign a Written Statement of Unauthorized
+  Debit. Each bank sets its own form under Settings → *Unauthorized debit statement*: written in
+  Markdown, in HTML (cleaned of scripts and form fields), or uploaded as a PDF with a note above
+  it. Customers see it under *Unauthorized debit statement*, or are told to contact the bank if
+  there's none. The bank obtains and keeps the statement its own way (a new bank CUEC,
+  B-IR-6-02), and control OC-SI-07 now warns while a bank that returns consumer debits has no
+  form published. **Removed:** the signed statements and their tables, the WSUD signing key
+  pair (`OPENCLEAR_WSUD_SIGNING_*`), the two legal-text settings (production no longer needs
+  them), the `wsud:sign` and `wsud:read` permissions, and the billing metric `wsud_statements`.
 - **Deciding is safe when two people act at once** (`FULL_REVIEW_PLAN.md` FR1). Every change to an
   item's decision takes the item's lock first, so a recommendation made the moment someone else
   decides is told the item is decided, instead of leaving it waiting for an approval that could

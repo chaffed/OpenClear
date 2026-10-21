@@ -25,7 +25,7 @@ stored electronically.
 | ACH debit filters and blocks | Per-account authorizations by originator (and optionally receiver), with amount, frequency and SEC code limits; an account can block all debits. Debits outside them become exceptions to decide. |
 | Return deadlines | Each exception has a decision deadline. Exceptions past or near it show on the Controls page; an unanswered one can be auto-decided by the customer's standing instruction. |
 | Return reasons | A per-bank catalog of return reason codes; NACHA return files of decided returns. |
-| Written Statement of Unauthorized Debit | Customers sign WSUDs in OpenClear. Each is signed (ECDSA) with the consent and attestation text the bank's counsel supplies, and kept with the debits it covers. |
+| Written Statement of Unauthorized Debit | The bank obtains and keeps the statement its own way (CUEC B-IR-6-02). OpenClear shows customers the bank's form, in Markdown, HTML or a PDF, and warns while a bank returning consumer debits has none published (control OC-SI-07). |
 
 ## Audit
 

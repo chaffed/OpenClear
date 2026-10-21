@@ -17,7 +17,7 @@ def _login(client, tenant_slug, email, password=TenantFactory.PASSWORD):
 def _grantee(db_session, tenant, email="fraud-training@example.com"):
     """ml_training_example:write is deliberately excluded from every default security
     group (see auth/permissions.py::_NOT_ADMIN_DEFAULT), so tests need a custom group
-    that explicitly grants it — same pattern test_web_wsud.py uses for wsud:sign."""
+    that explicitly grants it."""
     group = security_group_service.create_security_group(
         db_session, tenant.id, security_group_service.SecurityGroupInput(name="Fraud Training Grantee", permissions=["ml_training_example:write"])
     )

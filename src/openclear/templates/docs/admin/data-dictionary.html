@@ -765,8 +765,8 @@ erDiagram
 
 <h2 id="ach">3. ACH</h2>
 <p><strong>ach_authorization_rule</strong> is the allow-list ACH transactions are screened
-against. <strong>wsud_statement</strong> is a customer's electronic attestation that one
-or more of their <strong>ach_transaction</strong> rows was unauthorized.</p>
+against. <strong>bank_form</strong> holds the bank's own Written Statement of Unauthorized
+Debit form, which its customers see; the bank collects the signed statement its own way.</p>
 
 {% if pdf_mode %}
 <div class="pdf-diagram-page">
@@ -777,10 +777,6 @@ or more of their <strong>ach_transaction</strong> rows was unauthorized.</p>
 erDiagram
     account ||--o{ ach_authorization_rule : authorizes
     account ||--o{ ach_transaction : receives
-    customer ||--o{ wsud_statement : signs
-    user ||--o{ wsud_statement : "signed by"
-    wsud_statement ||--o{ wsud_statement_transaction : covers
-    ach_transaction ||--o{ wsud_statement_transaction : "covered by"
 
     account { uuid id PK }
     customer { uuid id PK }
@@ -801,17 +797,10 @@ erDiagram
         uuid id PK
         uuid tenant_id FK
     }
-    wsud_statement {
+    bank_form {
         uuid id PK
         uuid tenant_id FK
-        uuid customer_id FK
-        uuid signed_by_user_id FK
-    }
-    wsud_statement_transaction {
-        uuid id PK
-        uuid tenant_id FK
-        uuid wsud_statement_id FK
-        uuid ach_transaction_id FK
+        uuid updated_by_user_id FK
     }
 {% endcall %}
 {% endif %}
@@ -885,29 +874,20 @@ one. Seeded with common reasons; never deleted, only retired.</p>
 </tbody>
 </table>
 
-<h3>wsud_statement / wsud_statement_transaction</h3>
+<h3>bank_form</h3>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td colspan="5"><strong>wsud_statement</strong> — one signed attestation, covering one or more transactions</td></tr>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
-<tr><td>tenant_id / customer_id</td><td>UUID</td><td>no</td><td>FK</td><td></td></tr>
-<tr><td>signed_by_user_id</td><td>UUID</td><td>no</td><td>FK → user.id</td><td></td></tr>
-<tr><td>signer_typed_name</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
-<tr><td>signer_ip_address / signer_user_agent</td><td>String</td><td>yes</td><td></td><td>Captured at signing time for audit purposes.</td></tr>
-<tr><td>consent_disclosure_version</td><td>String(20)</td><td>no</td><td></td><td></td></tr>
-<tr><td>statement_text_snapshot</td><td>Text</td><td>no</td><td></td><td>The exact attestation text as signed, frozen even if the template changes later.</td></tr>
-<tr><td>signed_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
-<tr><td>signature_hex</td><td>String(200)</td><td>no</td><td></td><td>Server-computed signature over the stored fields, re-verifiable on demand.</td></tr>
-<tr><td colspan="5"><strong>wsud_statement_transaction</strong> — join table</td></tr>
-<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
-<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>wsud_statement_id</td><td>UUID</td><td>no</td><td>FK → wsud_statement.id</td><td></td></tr>
-<tr><td>ach_transaction_id</td><td>UUID</td><td>no</td><td>FK → ach_transaction.id</td><td></td></tr>
-<tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td>Row-level security.</td></tr>
+<tr><td>key</td><td>String(40)</td><td>no</td><td></td><td>Which form: <code>wsud</code>, the Written Statement of Unauthorized Debit. One per bank and key.</td></tr>
+<tr><td>format</td><td>String(10)</td><td>no</td><td></td><td>markdown / html / pdf.</td></tr>
+<tr><td>body</td><td>Text</td><td>yes</td><td></td><td>The form in Markdown or HTML (shown sanitised), or a note shown above a PDF.</td></tr>
+<tr><td>storage_ref / filename</td><td>String</td><td>yes</td><td></td><td>The uploaded PDF, in the bank's asset storage.</td></tr>
+<tr><td>updated_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
-<p class="hint">Unique constraint on (wsud_statement_id, ach_transaction_id) — a transaction can't be attached to the same statement twice.</p>
 
 <h2 id="exceptions-ml">4. Exceptions, Decisions &amp; ML</h2>
 <p>A check or ACH item that didn't match cleanly becomes an <strong>exception_item</strong>;

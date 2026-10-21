@@ -19,11 +19,7 @@ _OVERRIDDEN = {
     "file_signing_public_key_path": "keys/file_signing_public.pem",
     "audit_log_signing_private_key_path": "keys/audit_log_signing_private.pem",
     "audit_log_signing_public_key_path": "keys/audit_log_signing_public.pem",
-    "wsud_signing_private_key_path": "keys/wsud_signing_private.pem",
-    "wsud_signing_public_key_path": "keys/wsud_signing_public.pem",
     "sso_encryption_key": "a-real-random-secret-not-the-checked-in-default",
-    "wsud_consent_disclosure_text": "Real, counsel-reviewed consent disclosure text.",
-    "wsud_attestation_text": "Real, counsel-reviewed attestation text.",
 }
 
 

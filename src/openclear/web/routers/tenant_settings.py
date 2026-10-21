@@ -61,6 +61,7 @@ SECTIONS = {
     "decision-files": "Decision files",
     "security-events": "Security event forwarding",
     "auto-import": "Auto-import",
+    "wsud-form": "Unauthorized debit statement",
 }
 
 # Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
@@ -179,6 +180,11 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         }
     if key == "reminders":
         return _reminder_kwargs(db, ctx, tenant)
+    if key == "wsud-form":
+        from openclear.services import bank_form_service
+
+        form = bank_form_service.get(db, ctx.tenant_id)
+        return {"form": form, "form_format": form.format if form else "markdown", "form_body": (form.body or "") if form else ""}
     if key == "cutoff":
         return _cutoff_kwargs(db, tenant)
     if key == "security-events":
@@ -709,6 +715,38 @@ def update_messages(
         _record(db, ctx, "tenant.update_messages", "Updated login/banner messages")
     db.commit()
     return _saved(request, key="messages")
+
+
+@router.post("/wsud-form")
+async def update_wsud_form(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """The bank's own Written Statement of Unauthorized Debit form (SIMPLIFY_PLAN.md SP1)."""
+    from openclear.services import bank_form_service
+
+    form_data = await request.form()
+    if form_data.get("remove"):
+        if bank_form_service.remove(db, ctx.tenant_id):
+            _record(db, ctx, "bank_form.remove", "Removed the unauthorized debit statement form")
+        db.commit()
+        return _saved(request, "Form removed: your customers are told to contact you.", key="wsud-form")
+    chosen = str(form_data.get("format") or "")
+    body = str(form_data.get(f"body_{chosen}") or form_data.get("body") or "")
+    upload = form_data.get("pdf")
+    pdf = await upload.read() if chosen == "pdf" and upload is not None and getattr(upload, "filename", "") else None
+    try:
+        form = bank_form_service.save(db, ctx.tenant_id, format=chosen, body=body, pdf=pdf,
+                                      filename=getattr(upload, "filename", None), user_id=ctx.user_id)
+    except bank_form_service.FormError as exc:
+        db.rollback()
+        return render_section(request, db, ctx, "wsud-form", error=str(exc), form_format=chosen or "markdown", form_body=body)
+    _record(db, ctx, "bank_form.update", f"Updated the unauthorized debit statement form ({form.format})", resource_type="bank_form",
+            resource_id=form.id)
+    db.commit()
+    return _saved(request, "Form saved: your customers see it under Unauthorized debit statement.", key="wsud-form")
 
 
 @router.post("/reminders")

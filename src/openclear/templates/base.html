@@ -51,7 +51,7 @@
     <a href="{{ href }}" class="{{ 'active' if (request.url.path == path or request.url.path.startswith(path + '/')) else '' }}">{{ icon(icon_name) }}{{ label }}{% if badge %}<span class="nav-count" aria-label="{{ badge }} waiting">{{ badge }}</span>{% endif %}</a>
     {% endmacro %}
     {% set show_ach_return_reasons = can(ctx, "ach_return_reason:manage") %}
-    {% set show_wsud = ctx.customer_id is not none and can(ctx, "wsud:sign") %}
+    {% set show_wsud = ctx.customer_id is not none and can(ctx, "ach_transaction:read") %}
     {% set show_customer_banner = ctx.customer_id is not none and can(ctx, "customer_banner:manage") %}
     {% set show_settings = panel_visible(ctx) %}
     {% set show_org_section = (show_settings and ctx.customer_id is none) or can(ctx, "customer:manage") or can(ctx, "admin:manage") or can(ctx, "user:manage")
@@ -88,7 +88,7 @@
         {% if can(ctx, "exception:read") %}{{ nav_link("/ui/exceptions", "Exceptions", "flag", badge=ctx.needs_attention_count) }}{% endif %}
         {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
         {% if ctx.customer_users_waiting %}{{ nav_link("/ui/approvals/customer-users", "New customer users", "how_to_reg", badge=ctx.customer_users_waiting) }}{% endif %}
-        {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
+        {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized debit statement", "gavel") }}{% endif %}
 
         {# Only what this person may open (UI_PLAN.md UI-D14: someone with no access yet sees none of it). #}
         {% if can(ctx, "account:read") or can(ctx, "issued_item:read") or can(ctx, "stop_payment:read") or can(ctx, "paid_item:read") or can(ctx, "check_image:read") %}

@@ -38,7 +38,7 @@ END_USER_DOC_PAGES: list[DocPage] = [
     DocPage("ach-transactions", "ACH Transactions", "Submitting incoming ACH debits and credits for screening."),
     DocPage("ach-authorizations", "ACH Authorizations & Allow Rules", "Maintaining the allow list ACH transactions are screened against."),
     DocPage("exceptions", "Exceptions & Decisioning", "Reviewing and deciding flagged checks and ACH items."),
-    DocPage("wsud", "Unauthorized Debit Statements", "Signing a statement that a returned ACH debit was unauthorized."),
+    DocPage("wsud", "Unauthorized Debit Statements", "Your bank's form for reporting an ACH debit you didn't authorize."),
     DocPage("fraud-training", "Known-Fraud Training Data", "Labeling known-fraud items to improve the ML model."),
     DocPage("bulk-uploads", "Bulk File Uploads", "Uploading files in bulk, and undoing an upload if needed."),
     DocPage("billing-statement", "Your Billing Statement", "Reading your monthly statement of positive pay charges."),

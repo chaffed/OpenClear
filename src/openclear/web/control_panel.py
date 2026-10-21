@@ -110,6 +110,7 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         siem_state, siem_tone = delivery.senders.KINDS.get(destination.kind, destination.kind) + (
             " · delivering" if destination.last_success_at else " · waiting for the first event"), "ok"
     messages = [name for name, value in (("login", tenant.login_message), ("banner", tenant.banner_message)) if value]
+    wsud_state = _wsud_form_state(db, ctx.tenant_id)
     return [
         Tile("branding", "Organization", "Branding", "palette", "/ui/settings/branding",
              "Your name, logo, favicon and accent color.", tenant.name, modal=True, keywords="logo color colour favicon name"),
@@ -145,6 +146,10 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("wsud-form", "Data & compliance", "Unauthorized debit statement", "gavel", "/ui/settings/wsud-form",
+             "Your form for customers to report an unauthorized ACH debit: Markdown, HTML or a PDF.",
+             wsud_state, tone="warn" if wsud_state == "Not set" else "",
+             keywords="wsud unauthorized debit statement nacha form return"),
         Tile("outside-services", "Data & compliance", "Outside services", "extension", "/ui/settings/outside-services",
              "The outside services OpenClear uses for you, and when you last reviewed each.", modal=True,
              keywords="vendors third party providers tprm review"),
@@ -436,3 +441,10 @@ def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
 
 def tile_for(db: Session, ctx: TenantContext, key: str) -> Tile | None:
     return next((t for t in tiles_for(db, ctx) if t.key == key), None)
+
+
+def _wsud_form_state(db, tenant_id) -> str:
+    from openclear.services import bank_form_service
+
+    form = bank_form_service.get(db, tenant_id)
+    return {"markdown": "Written (Markdown)", "html": "Written (HTML)", "pdf": "A PDF"}.get(form.format, "Set") if form else "Not set"

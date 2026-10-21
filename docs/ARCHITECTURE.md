@@ -115,7 +115,8 @@ The core tables, by area:
   was presented), `check_image` (front/back images, OCR results).
 - **ACH:** `ach_authorization_rule` (which originators may debit an account, with
   optional receiver, amount, frequency and SEC-code limits), `ach_transaction`,
-  `ach_return_reason`, and `wsud_statement` for Written Statements of Unauthorized Debit.
+  `ach_return_reason`, and `bank_form` for each bank's own Written Statement of Unauthorized Debit
+  form (shown to customers; the bank collects the statement).
 - **Shared review core:** `exception_item` and `decision`. These are network-agnostic.
 - **ML:** `ml_model` (one row per trained version, in a *slot*), `customer_ml_setting`.
 - **Organisation:** `tenant`, `customer`, `user`, `tenant_membership`, `security_group`,

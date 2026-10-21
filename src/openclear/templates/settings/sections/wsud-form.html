@@ -1,0 +1,30 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Nacha's rules have the bank get a Written Statement of Unauthorized Debit from a
+  customer who reports a consumer ACH debit as unauthorized. You collect and keep it your own way;
+  OpenClear shows your customers your form, under <strong>Unauthorized debit statement</strong>.
+  Write it here, paste your own HTML, or upload a PDF they print and return. Until you set one,
+  they're told to contact you.</p>
+<form method="post" action="/ui/settings/wsud-form" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset>
+    <legend>How the form is written</legend>
+    <label><input type="radio" name="format" value="markdown" {{ "checked" if form_format == "markdown" else "" }}> Markdown</label>
+    <label><input type="radio" name="format" value="html" {{ "checked" if form_format == "html" else "" }}> HTML (scripts, styles and form fields are removed)</label>
+    <label><input type="radio" name="format" value="pdf" {{ "checked" if form_format == "pdf" else "" }}> A PDF to download</label>
+  </fieldset>
+  <label>The form, or a note above your PDF
+    <textarea name="body" rows="14" maxlength="200000">{{ form_body }}</textarea></label>
+  <label>PDF (up to 10 MB){% if form and form.filename %}: now <strong>{{ form.filename }}</strong>; choose another to replace it{% endif %}
+    <input type="file" name="pdf" accept="application/pdf,.pdf"></label>
+  <div class="form-actions">
+    <button type="submit">{{ icon("save") }}Save</button>
+    {% if form %}<a href="/ui/wsud" class="button secondary">{{ icon("visibility") }}See it as a customer does</a>{% endif %}
+  </div>
+</form>
+{% if form %}
+<form method="post" action="/ui/settings/wsud-form" data-confirm="Remove the form? Customers will be told to contact you instead.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="remove" value="1">
+  <button type="submit" class="danger">{{ icon("delete") }}Remove the form</button>
+</form>
+{% endif %}
