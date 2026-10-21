@@ -217,7 +217,8 @@ def _cutoff_kwargs(db: Session, tenant: Tenant, **typed) -> dict:
     from openclear.services import cutoff_service
 
     zones = cutoff_service.us_time_zones()
-    return {"time_zone": tenant.time_zone or "", "cutoffs": dict(tenant.decision_cutoffs or {}),
+    return {"time_zone": cutoff_service.time_zone_for(tenant), "cutoffs": dict(tenant.decision_cutoffs or {}),
+            "default_cutoff": (get_settings().default_decision_cutoff or "").strip(),
             "min_review_minutes": tenant.cutoff_min_review_minutes, "networks": registered_codes(),
             "zones_first": zones, "zones_other": sorted(cutoff_service.available_time_zones() - set(zones)),
             "closures": cutoff_service.closures(db, tenant.id), **typed}

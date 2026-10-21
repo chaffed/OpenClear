@@ -5,6 +5,13 @@ import pytest
 
 from openclear.config import Settings, assert_production_safe
 
+@pytest.fixture(autouse=True)
+def _a_default_cutoff(monkeypatch):
+    """Production needs a default decision cut-off (config.assert_production_safe); the suite
+    runs without one (tests/conftest.py), so these production configurations get one back."""
+    monkeypatch.setenv("OPENCLEAR_DEFAULT_DECISION_CUTOFF", "11:00")
+
+
 _OVERRIDDEN = {
     "jwt_private_key_path": "keys/jwt_private.pem",
     "jwt_public_key_path": "keys/jwt_public.pem",

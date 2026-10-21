@@ -459,3 +459,14 @@ doesn't have.
     for both the bank's path (`access.entitlements`) and the customer's (`customer.person`);
   - the "waiting for access" home page;
   - navigation links shown only with their read permission.
+- 2026-10-21: The product owner's further decisions:
+  - **#27's open point:** the inviter may request the person's role if a different admin
+    approves it (as built).
+  - **Every bank has a decision cut-off, even one deciding in real time.** Until a bank sets
+    its own, the installation's default applies: 11:00 New York time (`default_decision_cutoff`,
+    `default_time_zone`). Production refuses to start without a default. The response window no
+    longer applies, so its field is gone from the customer's ML page, and automatic decisions say
+    "no decision by the cut-off". Only the tests run without a default.
+  - **The exceptions API marks a decision that isn't final** (`decision_final`,
+    `changeable_until`) rather than hiding it. Integrations act only on final decisions, or take
+    decisions from the feed, webhook or files. Those three already carried only locked ones.

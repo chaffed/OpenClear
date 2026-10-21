@@ -524,9 +524,11 @@ class EmbedLaunchRead(TypedDict):
 
 
 class ExceptionRead(TypedDict):
+    changeable_until: NotRequired[str | None]
     created_at: str
     customer_id: NotRequired[str | None]
     decision_deadline: str | None
+    decision_final: NotRequired[bool | None]
     exception_types: list[str]
     id: str
     ml_model_version: str | None

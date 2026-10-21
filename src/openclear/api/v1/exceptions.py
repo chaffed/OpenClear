@@ -39,7 +39,21 @@ def list_exceptions(
         order_by=order, limit=page.limit, offset=page.offset, where=extra.get("where"),
     )
     set_page_headers(request, response, page, total, since=updated_since, rows=items)
-    return [ExceptionRead.from_orm_row(i) for i in items]
+    decisions = _decisions(db, ctx, items)
+    return [ExceptionRead.from_orm_row(i, decisions.get(i.id)) for i in items]
+
+
+def _decisions(db: Session, ctx: TenantContext, items) -> dict:
+    """The decisions of these items, in one query, for each item's decision_final."""
+    from sqlalchemy import select
+
+    from openclear.domain.decision import Decision
+
+    ids = [i.id for i in items]
+    if not ids:
+        return {}
+    rows = db.execute(select(Decision).where(Decision.tenant_id == ctx.tenant_id, Decision.exception_item_id.in_(ids))).scalars()
+    return {d.exception_item_id: d for d in rows}
 
 
 @router.get("/{exception_id}", response_model=ExceptionRead)
@@ -51,4 +65,4 @@ def get_exception(
     item = exception_service.get_exception(db, ctx.tenant_id, exception_id, customer_id=ctx.customer_id)
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exception not found")
-    return ExceptionRead.from_orm_row(item)
+    return ExceptionRead.from_orm_row(item, _decisions(db, ctx, [item]).get(item.id))

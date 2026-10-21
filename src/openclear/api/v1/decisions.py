@@ -74,7 +74,7 @@ def recommend_decision(
         resource_id=exception_id,
     )
     db.commit()
-    return ExceptionRead.from_orm_row(result.exception)
+    return ExceptionRead.from_orm_row(result.exception)  # a recommendation: no decision yet
 
 
 @router.post("/{exception_id}/decide", response_model=DecisionRead)

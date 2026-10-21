@@ -153,13 +153,11 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
     if mode == DispositionMode.FIXED_PAY:
         outcome = DecisionOutcome.PAY
         source = DecisionSource.AUTO_DEFAULT
-        hours = get_response_window_hours(session, exception_item.tenant_id, exception_item.customer_id, exception_item.network_code)
-        reason_code = f"Auto-decided: no response within {hours}h window"
+        reason_code = "Auto-decided: no decision by the cut-off"
     elif mode == DispositionMode.FIXED_RETURN:
         outcome = DecisionOutcome.RETURN
         source = DecisionSource.AUTO_DEFAULT
-        hours = get_response_window_hours(session, exception_item.tenant_id, exception_item.customer_id, exception_item.network_code)
-        reason_code = f"Auto-decided: no response within {hours}h window"
+        reason_code = "Auto-decided: no decision by the cut-off"
     else:  # ML_DETERMINED
         score = score_exception(session, exception_item)
         if score is None:

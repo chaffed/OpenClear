@@ -533,9 +533,11 @@ public sealed record EmbedLaunchRead
 
 public sealed record ExceptionRead
 {
+    [JsonPropertyName("changeable_until")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ChangeableUntil { get; init; }
     [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
     [JsonPropertyName("customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerId { get; init; }
     [JsonPropertyName("decision_deadline")] public string DecisionDeadline { get; init; } = default!;
+    [JsonPropertyName("decision_final")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? DecisionFinal { get; init; }
     [JsonPropertyName("exception_types")] public IReadOnlyList<string> ExceptionTypes { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("ml_model_version")] public string MlModelVersion { get; init; } = default!;

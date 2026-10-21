@@ -26,9 +26,12 @@
   control, a change is recommended and someone else approves it); at the cut-off it becomes
   final. Every earlier version is kept.
 - **Integrations: decisions now reach the decision feed, the `exception.decided` webhook and
-  decision files at the cut-off, not when they're made**, for banks that set a cut-off. Banks
-  without one see no change. The API's decisions gain `locked_at`, `changeable_until` and
-  `change_pending`; `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
+  decision files at the cut-off, not when they're made.** Every bank has a cut-off: until it sets
+  its own, the installation's default, 11:00 New York time (`OPENCLEAR_DEFAULT_DECISION_CUTOFF`,
+  `OPENCLEAR_DEFAULT_TIME_ZONE`; production won't start without one). The API's decisions gain
+  `locked_at`, `changeable_until` and `change_pending`, and its exceptions `decision_final` and
+  `changeable_until`: act only on a final decision, or take decisions from the feed, the webhook or
+  decision files. `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
   decision before its cut-off.
 - A customer's home page leads with its two jobs: what's left to decide (or that nothing is),
   and uploading issued checks, with the last file's result. An account menu under your email

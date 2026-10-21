@@ -1,6 +1,7 @@
 {% from "_macros/icon.html" import icon %}
 {% set network_names = {"check": "Checks", "ach": "ACH"} %}
-<p class="hint">Items are decided by the cut-off. Until then a decision can be changed; at the cut-off
+<p class="hint">Every bank has a decision cut-off{% if default_cutoff %}: until you set your own, it's {{ default_cutoff }}, New York time{% endif %}.
+  Items are decided by the cut-off. Until then a decision can be changed; at the cut-off
   it becomes final and goes to your core. Each item is due at the first cut-off on a business day
   that leaves at least the review time below. A customer can have its own time, agreed with you, on
   its page. Changing a cut-off affects items that arrive afterwards.</p>
@@ -21,10 +22,10 @@
     <legend>Cut-off for each kind of item</legend>
     {% for code in networks %}
     <label>{{ network_names.get(code, code) }}
-      <input type="time" name="cutoff_{{ code }}" value="{{ cutoffs.get(code) or '' }}" step="60">
+      <input type="time" name="cutoff_{{ code }}" value="{{ cutoffs.get(code) or '' }}" step="60"{% if default_cutoff %} placeholder="{{ default_cutoff }}"{% endif %}>
     </label>
     {% endfor %}
-    <p class="hint">Leave one blank to keep that kind of item on its customers' response windows.</p>
+    <p class="hint">{% if default_cutoff %}Leave one blank to use the default, {{ default_cutoff }}.{% else %}Leave one blank to keep that kind of item on its customers' response windows.{% endif %}</p>
   </fieldset>
   <label>Minimum time to review, in minutes
     <input type="number" name="min_review_minutes" value="{{ min_review_minutes }}" min="0" max="1440" inputmode="numeric">
