@@ -146,6 +146,8 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
     with no maker-checker check (there's no maker) and no human decider."""
     if exception_item.customer_id is None:
         return None
+    if exception_item.status not in (ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL):
+        return None  # decided (or withdrawn) since the sweep listed it
     mode = get_disposition_mode(session, exception_item.tenant_id, exception_item.customer_id, exception_item.network_code)
 
     if mode == DispositionMode.NONE:

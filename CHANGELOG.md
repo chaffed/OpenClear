@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Deciding is safe when two people act at once** (`FULL_REVIEW_PLAN.md` FR1). Every change to an
+  item's decision takes the item's lock first, so a recommendation made the moment someone else
+  decides is told the item is decided, instead of leaving it waiting for an approval that could
+  never be given; and a decision taken back at the cut-off isn't sent. The default decision at
+  the deadline never overrides someone deciding at that moment.
+- **Decisions reach the bank within a minute of the cut-off.** They're locked and sent every
+  minute (`OPENCLEAR_DECISION_LOCK_INTERVAL_SECONDS`, 60), each on its own, so one that fails is
+  retried without holding the rest back. They used to wait for the five-minute deadline sweep.
+
 ## 1.26.0 — 2026-10-21
 
 - Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages

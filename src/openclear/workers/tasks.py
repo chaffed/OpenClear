@@ -299,25 +299,30 @@ def sweep_expired_dispositions_job() -> None:
             session.rollback()
             logger.exception("Deadline reminders failed")
         now = datetime.now(timezone.utc)
-        rows = (
-            session.execute(
-                select(ExceptionItem).where(
-                    ExceptionItem.status.in_([ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL]),
-                    ExceptionItem.decision_deadline.is_not(None),
-                    ExceptionItem.decision_deadline <= now,
-                )
+        rows = session.execute(
+            select(ExceptionItem.id, ExceptionItem.tenant_id).where(
+                ExceptionItem.status.in_([ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL]),
+                ExceptionItem.decision_deadline.is_not(None),
+                ExceptionItem.decision_deadline <= now,
             )
-            .scalars()
-            .all()
-        )
+        ).all()
+
+        from openclear.repositories.exception_repo import ExceptionRepository
 
         decided = 0
         skipped = 0
-        for exception_item in rows:
+        for exception_id, tenant_id in rows:
             # Postgres RLS: the settings and the paid item / ACH transaction it updates
             # belong to this exception's bank.
-            bind_session_to_tenant(session, exception_item.tenant_id)
+            bind_session_to_tenant(session, tenant_id)
             try:
+                # The same row lock a person deciding takes (FULL_REVIEW_PLAN.md FR-D1): someone
+                # deciding it this very moment wins, and the default isn't applied over them.
+                exception_item = ExceptionRepository(session, tenant_id).get_for_update(exception_id, skip_locked=True)
+                if exception_item is None:
+                    session.rollback()
+                    skipped += 1
+                    continue
                 decision = auto_disposition_service.auto_decide_exception(session, exception_item)
             except Exception:  # noqa: BLE001 -- isolate one exception's failure from the rest of the sweep
                 logger.exception("Auto-disposition failed for exception %s", exception_item.id)
@@ -338,10 +343,23 @@ def sweep_expired_dispositions_job() -> None:
 
             if locked := decision_service.lock_due(session):
                 logger.info("Locked %d decisions at their cut-off", locked)
-            session.commit()
-        except Exception:  # noqa: BLE001 -- tried again on the next sweep
+        except Exception:  # noqa: BLE001 -- tried again on the next run
             session.rollback()
             logger.exception("Locking decisions at the cut-off failed")
+    finally:
+        session.close()
+
+
+def decision_lock_job() -> None:
+    """Every minute (decision_lock_interval_seconds): decisions whose cut-off has passed become
+    final and go out (services/decision_service.py::lock_due), so a core sees them within a
+    minute of the cut-off rather than at the next deadline sweep (FULL_REVIEW_PLAN.md FR-D5)."""
+    from openclear.services import decision_service
+
+    session = get_session_factory()()
+    try:
+        if locked := decision_service.lock_due(session):
+            logger.info("Locked %d decisions at their cut-off", locked)
     finally:
         session.close()
 

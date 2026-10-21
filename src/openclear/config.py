@@ -373,6 +373,10 @@ class Settings(BaseSettings):
     # has passed with no human decision, per a per-customer CustomerDispositionSetting.
     enable_disposition_scheduler: bool = False  # opt-in: off by default, same reasoning as enable_ml_scheduler
     disposition_sweep_interval_seconds: int = 300
+    # How often decisions past their cut-off are made final and sent (workers/tasks.py::
+    # decision_lock_job), with the disposition scheduler on. A core sees a decision at most this
+    # long after its cut-off.
+    decision_lock_interval_seconds: int = 60
     # The exception.deadline_approaching webhook goes out this many hours before an open
     # exception's decision deadline (checked by the same sweep).
     webhook_deadline_warning_hours: int = 4

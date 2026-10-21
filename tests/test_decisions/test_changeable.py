@@ -134,3 +134,36 @@ def test_a_change_nobody_approves_by_the_cutoff_is_dropped(db_session, tenant_fa
     db_session.commit()
     assert decision.outcome == DecisionOutcome.PAY and decision.locked_at is not None
     assert item.change_recommended_at is None and item.recommended_outcome == "pay"
+
+
+def test_at_the_cutoff_one_failure_doesnt_hold_the_others(db_session, tenant_factory, monkeypatch):
+    """Each decision locks in its own transaction (FULL_REVIEW_PLAN.md FR-D5): one that fails is
+    tried again next run, and the rest still go out now."""
+    tenant, account, users = tenant_factory.make(slug="chg-lock-each")
+    first, second = _item(db_session, tenant, account, number="5101"), _item(db_session, tenant, account, number="5102")
+    for item in (first, second):
+        _decide(db_session, tenant, item, users["admin"])
+        item.decision_deadline = datetime.now(timezone.utc) - timedelta(minutes=1)
+    db_session.commit()
+    real_lock = decision_service.lock
+
+    def failing_for_first(session, decision, exception):
+        if exception.id == first.id:
+            raise RuntimeError("core unreachable")
+        real_lock(session, decision, exception)
+
+    monkeypatch.setattr(decision_service, "lock", failing_for_first)
+    assert decision_service.lock_due(db_session) == 1
+    monkeypatch.setattr(decision_service, "lock", real_lock)
+    assert decision_service.lock_due(db_session) == 1  # the next run gets the first
+    locked = db_session.execute(select(Decision).where(Decision.exception_item_id.in_([first.id, second.id]))).scalars().all()
+    assert all(d.locked_at is not None for d in locked) and len(locked) == 2
+
+
+def test_the_lock_job_runs_every_minute_with_the_sweep(monkeypatch):
+    from openclear.config import get_settings
+    from openclear.workers import scheduler
+
+    monkeypatch.setenv("OPENCLEAR_ENABLE_DISPOSITION_SCHEDULER", "true")
+    get_settings.cache_clear()
+    assert scheduler.expected_jobs()["decision_lock_job"] == timedelta(seconds=60)

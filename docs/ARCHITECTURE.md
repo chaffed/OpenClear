@@ -237,6 +237,22 @@ If nobody decides by the deadline, the scheduled sweep
 pay, always return, or follow the model's score. It leaves the item alone if the choice
 can't be made safely (no model yet, or an ACH return with no default return reason).
 
+A decision made before the item's cut-off can be changed or taken back until then; at the
+cut-off it locks and goes out (feed number, `exception.decided`, decision files). That runs
+every minute (`decision_lock_interval_seconds`, `workers/tasks.py::decision_lock_job`), each
+decision in its own transaction.
+
+**One item, one lock.** Every change to an item's decision state (recommend, withdraw, decide,
+change, undo, the default at the deadline, the lock at the cut-off) first takes the item's row
+lock (`ExceptionRepository.get_for_update`) and reads it fresh, so two people, or a person and
+the cut-off, can't both act on what they each read. The scheduled jobs pass `skip_locked` and
+leave a busy item for their next run.
+
+**Lock order.** Two per-bank transaction locks exist on Postgres: the action log's
+(`audit_log_service._chain_lock_key`) and the decision feed's (`decision_feed_service._lock_key`).
+Take the action log's first, always; `assign_sequence` does, so any new code that numbers a
+decision inherits the order. Taking the two in opposite orders in two transactions deadlocks.
+
 Evidence for a decision (images, OCR, matched issued item, rule details) is assembled by
 `services/exception_evidence.py`. Recommendations, decisions and other significant actions
 are written to the append-only audit log (`services/audit_log_service.py`): a signed hash
