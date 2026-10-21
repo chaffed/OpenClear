@@ -2744,6 +2744,27 @@ export class PlatformJobsApi {
   }
 }
 
+/** `platform-metrics` endpoints. */
+export class PlatformMetricsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Metrics.
+   *
+   * GET /api/v1/platform/metrics
+   *
+   * Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook
+   * deliveries, and this process's requests. Scrape it every minute or so.
+   */
+  metrics(): Promise<Uint8Array> {
+    return this.c.call<Uint8Array>("GET", `/api/v1/platform/metrics`, { auth: "platform", raw: true });
+  }
+}
+
 /** `platform-ml` endpoints. */
 export class PlatformMlApi {
   private readonly c: Transport;
@@ -3061,6 +3082,7 @@ export const AREAS = {
   paidItems: PaidItemsApi,
   platformBilling: PlatformBillingApi,
   platformJobs: PlatformJobsApi,
+  platformMetrics: PlatformMetricsApi,
   platformMl: PlatformMlApi,
   platformUsage: PlatformUsageApi,
   returnReasons: ReturnReasonsApi,

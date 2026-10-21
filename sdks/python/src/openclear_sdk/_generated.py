@@ -2455,6 +2455,23 @@ class PlatformJobsApi:
         return self._c.call("POST", f"/api/v1/platform/jobs/{_path(job_id)}/retry", auth="platform")
 
 
+class PlatformMetricsApi:
+    """`platform-metrics` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def metrics(self) -> bytes:
+        """Metrics.
+
+        GET /api/v1/platform/metrics
+
+        Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook
+        deliveries, and this process's requests. Scrape it every minute or so.
+        """
+        return self._c.call("GET", "/api/v1/platform/metrics", auth="platform", raw=True)
+
+
 class PlatformMlApi:
     """`platform-ml` endpoints."""
 
@@ -2718,6 +2735,7 @@ AREAS = {
     "paid_items": PaidItemsApi,
     "platform_billing": PlatformBillingApi,
     "platform_jobs": PlatformJobsApi,
+    "platform_metrics": PlatformMetricsApi,
     "platform_ml": PlatformMlApi,
     "platform_usage": PlatformUsageApi,
     "return_reasons": ReturnReasonsApi,

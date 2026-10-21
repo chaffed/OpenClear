@@ -2666,6 +2666,26 @@ public sealed partial class PlatformJobsApi
 }
 
 /// <summary>
+/// platform-metrics endpoints.
+/// </summary>
+public sealed partial class PlatformMetricsApi
+{
+    private readonly ITransport _c;
+    public PlatformMetricsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Metrics.
+    ///
+    /// GET /api/v1/platform/metrics
+    ///
+    /// Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook
+    /// deliveries, and this process's requests. Scrape it every minute or so.
+    /// </summary>
+    public Task<byte[]> MetricsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/platform/metrics", platform: true, cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// platform-ml endpoints.
 /// </summary>
 public sealed partial class PlatformMlApi
@@ -2961,6 +2981,7 @@ public partial class OpenClearClient
     public PaidItemsApi PaidItems { get; private set; } = default!;
     public PlatformBillingApi PlatformBilling { get; private set; } = default!;
     public PlatformJobsApi PlatformJobs { get; private set; } = default!;
+    public PlatformMetricsApi PlatformMetrics { get; private set; } = default!;
     public PlatformMlApi PlatformMl { get; private set; } = default!;
     public PlatformUsageApi PlatformUsage { get; private set; } = default!;
     public ReturnReasonsApi ReturnReasons { get; private set; } = default!;
@@ -2998,6 +3019,7 @@ public partial class OpenClearClient
         PaidItems = new PaidItemsApi(this);
         PlatformBilling = new PlatformBillingApi(this);
         PlatformJobs = new PlatformJobsApi(this);
+        PlatformMetrics = new PlatformMetricsApi(this);
         PlatformMl = new PlatformMlApi(this);
         PlatformUsage = new PlatformUsageApi(this);
         ReturnReasons = new ReturnReasonsApi(this);

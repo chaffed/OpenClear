@@ -14441,6 +14441,33 @@
         ]
       }
     },
+    "/api/v1/platform/metrics": {
+      "get": {
+        "description": "Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook\ndeliveries, and this process's requests. Scrape it every minute or so.",
+        "operationId": "metrics_api_v1_platform_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Metrics",
+        "tags": [
+          "platform-metrics"
+        ]
+      }
+    },
     "/api/v1/platform/ml/fraud-examples/pending": {
       "get": {
         "description": "Fraud-training examples from banks on the shared model that aren't yet approved\nfor training it (oldest first). Bank-only banks' examples never need approval: they\nonly ever train that bank's own model.",
