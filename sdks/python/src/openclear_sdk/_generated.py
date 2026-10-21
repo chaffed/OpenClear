@@ -109,6 +109,12 @@ class AchFraudExampleCreate(TypedDict):
 AchMatchStatus = Literal["pending", "matched", "exception"]
 
 
+class AchReturnReasonRead(TypedDict):
+    id: str
+    reason_text: str
+    transaction_code: str | None
+
+
 AchSettlementStatus = Literal["pending", "paid", "returned"]
 
 
@@ -340,6 +346,12 @@ class CheckImageRead(TypedDict):
     processed_at: str | None
 
 
+class CheckReturnReasonRead(TypedDict):
+    id: str
+    reason_text: str
+    return_code: str | None
+
+
 class ControlCheck(TypedDict):
     detail: str | None
     key: str
@@ -455,6 +467,7 @@ class DataExportRead(TypedDict):
 
 class DecideRequest(TypedDict):
     ach_return_reason_id: NotRequired[str | None]
+    check_return_reason_id: NotRequired[str | None]
     notes: NotRequired[str | None]
     outcome: DecisionOutcome
     reason_code: NotRequired[str]
@@ -490,6 +503,20 @@ class DecisionRead(TypedDict):
     reason_code: str
     return_transaction_code: str | None
     submitted_by_user_id: str | None
+
+
+class DecisionRevisionRead(TypedDict):
+    """An earlier version of a decision, changed or taken back before the cut-off."""
+
+    decided_at: str
+    decided_by_user_id: str | None
+    notes: str | None
+    outcome: DecisionOutcome
+    reason_code: str
+    return_transaction_code: str | None
+    revised_at: str
+    revised_by_user_id: str | None
+    undone: bool
 
 
 class DeviationRead(TypedDict):
@@ -848,6 +875,7 @@ operator's approval before it can train the shared model (api/v1/platform_ml.py)
 
 class RecommendRequest(TypedDict):
     ach_return_reason_id: NotRequired[str | None]
+    check_return_reason_id: NotRequired[str | None]
     notes: NotRequired[str | None]
     outcome: DecisionOutcome
     reason_code: NotRequired[str]
@@ -1926,23 +1954,24 @@ class DecisionFeedApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def decision_feed(self, *, after: int | None = None, limit: int | None = None) -> list[dict[str, Any]]:
+    def decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None) -> list[dict[str, Any]]:
         """Decision Feed.
 
         GET /api/v1/decisions
 
         Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
         you processed and pass it as `after` next time. When a full page comes back, a
-        `Link: rel="next"` header points at the next one.
+        `Link: rel="next"` header points at the next one. With `customer_number`, only that
+        customer's decisions; the sequence numbers are still the bank's, so expect gaps.
         """
-        return self._c.call("GET", "/api/v1/decisions", query={"after": after, "limit": limit})
+        return self._c.call("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number})
 
-    def iter_decision_feed(self, *, after: int | None = None, limit: int | None = None) -> Iterator[dict[str, Any]]:
+    def iter_decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None) -> Iterator[dict[str, Any]]:
         """Every row of decision_feed, following each page's `Link: rel="next"`.
 
         GET /api/v1/decisions
         """
-        return self._c.paginate("GET", "/api/v1/decisions", query={"after": after, "limit": limit})
+        return self._c.paginate("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number})
 
     def acknowledge(self, body: Acknowledgement) -> dict[str, Any]:
         """Acknowledge.
@@ -2025,6 +2054,16 @@ class DecisionsApi:
         """
         return self._c.call("PUT", f"/api/v1/exceptions/{_path(exception_id)}/decision", json=body)
 
+    def get_decision_history(self, exception_id: str) -> list[DecisionRevisionRead]:
+        """Get Decision History.
+
+        GET /api/v1/exceptions/{exception_id}/decision/history
+
+        Every earlier version of the item's decision, oldest first: each change or take-back made
+        before its cut-off. Empty when it was decided once.
+        """
+        return self._c.call("GET", f"/api/v1/exceptions/{_path(exception_id)}/decision/history")
+
     def recommend_decision(self, exception_id: str, body: RecommendRequest) -> ExceptionRead:
         """Recommend Decision.
 
@@ -2095,19 +2134,19 @@ class ExceptionsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def list_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[ExceptionRead]:
+    def list_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, customer_number: str | None = None, limit: int | None = None, offset: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> list[ExceptionRead]:
         """List Exceptions.
 
         GET /api/v1/exceptions
         """
-        return self._c.call("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
+        return self._c.call("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "customer_number": customer_number, "limit": limit, "offset": offset, "updated_since": updated_since, "after_id": after_id})
 
-    def iter_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[ExceptionRead]:
+    def iter_exceptions(self, *, network_code: str | None = None, status_filter: ExceptionStatus | None = None, customer_number: str | None = None, limit: int | None = None, updated_since: str | None = None, after_id: str | None = None) -> Iterator[ExceptionRead]:
         """Every row of list_exceptions, following each page's `Link: rel="next"`.
 
         GET /api/v1/exceptions
         """
-        return self._c.paginate("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "limit": limit, "updated_since": updated_since, "after_id": after_id})
+        return self._c.paginate("GET", "/api/v1/exceptions", query={"network_code": network_code, "status_filter": status_filter, "customer_number": customer_number, "limit": limit, "updated_since": updated_since, "after_id": after_id})
 
     def get_exception(self, exception_id: str) -> ExceptionRead:
         """Get Exception.
@@ -2502,6 +2541,31 @@ class PlatformUsageApi:
         return self._c.call("GET", "/api/v1/platform/usage", query={"period_start": period_start, "period_end": period_end, "tenant_id": tenant_id, "format": format}, auth="platform")
 
 
+class ReturnReasonsApi:
+    """`return-reasons` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def ach_return_reasons(self) -> list[AchReturnReasonRead]:
+        """Ach Return Reasons.
+
+        GET /api/v1/return-reasons/ach
+
+        The bank's reasons for returning an ACH debit, active ones only.
+        """
+        return self._c.call("GET", "/api/v1/return-reasons/ach")
+
+    def check_return_reasons(self) -> list[CheckReturnReasonRead]:
+        """Check Return Reasons.
+
+        GET /api/v1/return-reasons/check
+
+        The bank's reasons for returning a check, active ones only.
+        """
+        return self._c.call("GET", "/api/v1/return-reasons/check")
+
+
 class SecurityEventsApi:
     """`security events` endpoints."""
 
@@ -2656,6 +2720,7 @@ AREAS = {
     "platform_jobs": PlatformJobsApi,
     "platform_ml": PlatformMlApi,
     "platform_usage": PlatformUsageApi,
+    "return_reasons": ReturnReasonsApi,
     "security_events": SecurityEventsApi,
     "stop_payments": StopPaymentsApi,
     "users": UsersApi,

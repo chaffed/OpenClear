@@ -39,6 +39,7 @@ from openclear.api.v1.decision_batches import router as decision_batches_router
 from openclear.api.v1.api_clients import router as api_clients_router
 from openclear.api.v1.bulk_uploads import router as bulk_uploads_router
 from openclear.api.v1.webauthn import router as webauthn_router
+from openclear.api.v1.return_reasons import router as return_reasons_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth_router)
@@ -52,6 +53,7 @@ api_router.include_router(ach_transactions_router)
 api_router.include_router(exceptions_router)
 api_router.include_router(fraud_training_router)
 api_router.include_router(decisions_router)
+api_router.include_router(return_reasons_router)
 api_router.include_router(admin_router)
 api_router.include_router(users_router)
 api_router.include_router(oauth_router)

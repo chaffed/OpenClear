@@ -568,6 +568,37 @@
         "title": "AchMatchStatus",
         "type": "string"
       },
+      "AchReturnReasonRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason_text": {
+            "title": "Reason Text",
+            "type": "string"
+          },
+          "transaction_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Code"
+          }
+        },
+        "required": [
+          "id",
+          "reason_text",
+          "transaction_code"
+        ],
+        "title": "AchReturnReasonRead",
+        "type": "object"
+      },
       "AchSettlementStatus": {
         "enum": [
           "pending",
@@ -2387,6 +2418,37 @@
         "title": "CheckImageRead",
         "type": "object"
       },
+      "CheckReturnReasonRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason_text": {
+            "title": "Reason Text",
+            "type": "string"
+          },
+          "return_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Code"
+          }
+        },
+        "required": [
+          "id",
+          "reason_text",
+          "return_code"
+        ],
+        "title": "CheckReturnReasonRead",
+        "type": "object"
+      },
       "ControlCheck": {
         "properties": {
           "detail": {
@@ -3207,6 +3269,18 @@
             ],
             "title": "Ach Return Reason Id"
           },
+          "check_return_reason_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Return Reason Id"
+          },
           "notes": {
             "anyOf": [
               {
@@ -3433,6 +3507,91 @@
           "decided_at"
         ],
         "title": "DecisionRead",
+        "type": "object"
+      },
+      "DecisionRevisionRead": {
+        "description": "An earlier version of a decision, changed or taken back before the cut-off.",
+        "properties": {
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "decided_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By User Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/DecisionOutcome"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "return_transaction_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Transaction Code"
+          },
+          "revised_at": {
+            "format": "date-time",
+            "title": "Revised At",
+            "type": "string"
+          },
+          "revised_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revised By User Id"
+          },
+          "undone": {
+            "title": "Undone",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason_code",
+          "return_transaction_code",
+          "notes",
+          "decided_by_user_id",
+          "decided_at",
+          "revised_by_user_id",
+          "revised_at",
+          "undone"
+        ],
+        "title": "DecisionRevisionRead",
         "type": "object"
       },
       "DeviationRead": {
@@ -5625,6 +5784,18 @@
               }
             ],
             "title": "Ach Return Reason Id"
+          },
+          "check_return_reason_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Return Reason Id"
           },
           "notes": {
             "anyOf": [
@@ -11613,7 +11784,7 @@
     },
     "/api/v1/decisions": {
       "get": {
-        "description": "Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence\nyou processed and pass it as `after` next time. When a full page comes back, a\n`Link: rel=\"next\"` header points at the next one.",
+        "description": "Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence\nyou processed and pass it as `after` next time. When a full page comes back, a\n`Link: rel=\"next\"` header points at the next one. With `customer_number`, only that\ncustomer's decisions; the sequence numbers are still the bank's, so expect gaps.",
         "operationId": "decision_feed_api_v1_decisions_get",
         "parameters": [
           {
@@ -11639,6 +11810,25 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Only this customer's items (by the bank's customer number)",
+            "in": "query",
+            "name": "customer_number",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this customer's items (by the bank's customer number)",
+              "title": "Customer Number"
             }
           }
         ],
@@ -12005,6 +12195,25 @@
             }
           },
           {
+            "description": "Only this customer's items (by the bank's customer number)",
+            "in": "query",
+            "name": "customer_number",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this customer's items (by the bank's customer number)",
+              "title": "Customer Number"
+            }
+          },
+          {
             "description": "Rows per page (at most 1,000)",
             "in": "query",
             "name": "limit",
@@ -12353,6 +12562,59 @@
           }
         ],
         "summary": "Change Decision",
+        "tags": [
+          "decisions"
+        ]
+      }
+    },
+    "/api/v1/exceptions/{exception_id}/decision/history": {
+      "get": {
+        "description": "Every earlier version of the item's decision, oldest first: each change or take-back made\nbefore its cut-off. Empty when it was decided once.",
+        "operationId": "get_decision_history_api_v1_exceptions__exception_id__decision_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exception_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exception Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DecisionRevisionRead"
+                  },
+                  "title": "Response Get Decision History Api V1 Exceptions  Exception Id  Decision History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Decision History",
         "tags": [
           "decisions"
         ]
@@ -14660,6 +14922,68 @@
         "summary": "Get Usage",
         "tags": [
           "platform-usage"
+        ]
+      }
+    },
+    "/api/v1/return-reasons/ach": {
+      "get": {
+        "description": "The bank's reasons for returning an ACH debit, active ones only.",
+        "operationId": "ach_return_reasons_api_v1_return_reasons_ach_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AchReturnReasonRead"
+                  },
+                  "title": "Response Ach Return Reasons Api V1 Return Reasons Ach Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ach Return Reasons",
+        "tags": [
+          "return-reasons"
+        ]
+      }
+    },
+    "/api/v1/return-reasons/check": {
+      "get": {
+        "description": "The bank's reasons for returning a check, active ones only.",
+        "operationId": "check_return_reasons_api_v1_return_reasons_check_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckReturnReasonRead"
+                  },
+                  "title": "Response Check Return Reasons Api V1 Return Reasons Check Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Check Return Reasons",
+        "tags": [
+          "return-reasons"
         ]
       }
     },

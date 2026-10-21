@@ -40,6 +40,10 @@
   holds it for a person ("Stop on file for another amount") instead of stopping it outright.
 - A paid check can't be voided from anywhere (the API answered 200; it now answers `409`).
 - **API change:** `escalated` is gone from the exception statuses; nothing ever set it.
+- **API additions** (FR6): `customer_number` on `GET /exceptions` and `GET /decisions`;
+  `GET /return-reasons/check` and `/ach`, the ids to send when returning an item;
+  `check_return_reason_id` on recommend, decide and change; and `GET
+  /exceptions/{id}/decision/history`, a decision's earlier versions. The SDKs are regenerated.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

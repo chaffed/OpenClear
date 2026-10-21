@@ -297,3 +297,9 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   a paid candidate as a duplicate at any amount; `CantVoid` (web error, API 409); `escalated`
   removed (no migration: the column is a string and no row ever held it); OpenAPI and the Python
   and TypeScript SDKs regenerated (the .NET SDK has no status enum).
+- 2026-10-21: FR6 built on `fr3-sign-in`: `api/v1/customer_filter.py` (`customer_number` on
+  exceptions and the decision feed; 404 for an unknown number, 403 for a customer naming
+  another); `api/v1/return_reasons.py`; `check_return_reason_id` on the API's decide, recommend
+  and change (it had none, so an API client could only return a check with free text);
+  `GET …/decision/history`. API.md's exceptions section rewritten (it predated 1.26.0's PUT,
+  DELETE and `locked_at`). OpenAPI and all three SDKs regenerated.
