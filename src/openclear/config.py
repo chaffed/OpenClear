@@ -270,15 +270,14 @@ class Settings(BaseSettings):
     platform_operator_id: str = "OPENCLEAR-PLATFORM"
 
     ml_min_new_decisions_for_retrain: int = 20
-    # Minimum time between two retrains of the same (network_code, customer_id) pair —
+    # Minimum time between two retrains of the same bank's model for a network —
     # closes off repeatedly hammering the on-demand retrain endpoint into a self-service
     # compute DoS (ml/train.py::train_model). The nightly scheduled job is already gated
     # by ml_min_new_decisions_for_retrain and won't normally trip this too.
     ml_retrain_cooldown_seconds: int = 60
     # What one training run reads (SCALE_PLAN.md S5): decisions from the last
     # ml_training_window_days (0 = all history), and at most ml_training_max_rows of the
-    # most recent of those. Known-fraud training examples are always included, however
-    # old: they're few, and curated on purpose.
+    # most recent of those.
     ml_training_window_days: int = 365
     ml_training_max_rows: int = 250_000
     # Loaded models each process keeps in memory (one per model slot that has scored
@@ -287,25 +286,10 @@ class Settings(BaseSettings):
     # Which scoring model training builds: "logistic_regression" (built in), or one a
     # plugin provides (plugins/__init__.py).
     ml_scoring_model: str = "logistic_regression"
-    # Fraud-scoring model choice per bank (services/tenant_ml_service.py, FIX_PLAN.md
-    # Phase 5). A newly created bank must stay on the shared model this many days before it
-    # may switch to a bank-only model (banks that predate the setting aren't locked).
-    ml_new_bank_private_switch_lock_days: int = 90
-    # A bank-only model retrain replaces the active model only once the bank has at least
+    # A retrained model replaces the bank's active model only once the bank has at least
     # this many of its own labeled decisions AND the new model beats the active one on the
     # same recent held-out decisions (ml/train.py).
     ml_bank_model_min_decisions: int = 200
-    # Shown, and acknowledged, whenever a bank joins the shared model (onboarding and
-    # Settings). Placeholder wording: have counsel review and replace it. It doesn't block
-    # production startup; the UI flags the placeholder instead.
-    ml_shared_pool_disclosure_text: str = (
-        "PLACEHOLDER — HAVE COUNSEL REVIEW. By joining the shared fraud-scoring model, your "
-        "institution's pay/return decisions and the transaction features used to score them are "
-        "pooled with those of other participating institutions to train a model that scores all "
-        "of their exceptions. Other institutions never see your data, your name, or which "
-        "decisions came from you. You can switch to a bank-only model later; your data then stops "
-        "being used from the next time the shared model is retrained."
-    )
     ml_artifact_dir: str = "./ml_artifacts"  # NOT inside src/openclear/ — that's installed package code, not a place for runtime output
     enable_ml_scheduler: bool = False  # opt-in: off by default so tests/local dev don't spawn a background thread
     ml_retrain_cron_hour: int = 2  # nightly at 2am when enabled

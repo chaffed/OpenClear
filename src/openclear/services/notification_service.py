@@ -21,7 +21,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
-from openclear.domain.decision import Decision, DecisionSource
+from openclear.domain.decision import Decision
 from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.notification import Notification, NotificationChannel, NotificationPreference, NotificationType
 from openclear.domain.security_group import SecurityGroup
@@ -360,7 +360,6 @@ def notify_exception_auto_decided(session: Session, exception_item: ExceptionIte
         "exception_id": str(exception_item.id),
         "outcome": decision.outcome.value,
         "reason_code": decision.reason_code,
-        "is_ml": decision.source == DecisionSource.AUTO_ML,
         "exception_url": _absolute_url(f"/ui/exceptions/{exception_item.id}"),
     }
     for recipient in recipients:

@@ -34,7 +34,6 @@ _NOUNS = {
     BulkUploadKind.ACCOUNTS: ("account", "accounts"),
     BulkUploadKind.CHECK_IMAGES: ("check image", "check images"),
     BulkUploadKind.PAID_ITEMS: ("paid check", "paid checks"),
-    BulkUploadKind.FRAUD_TRAINING_EXAMPLES: ("training example", "training examples"),
 }
 
 
@@ -62,7 +61,6 @@ _BACK_BY_KIND = {
     BulkUploadKind.ACCOUNTS: ("/ui/accounts", "Back to accounts"),
     BulkUploadKind.CHECK_IMAGES: ("/ui/check-images", "Back to check images"),
     BulkUploadKind.PAID_ITEMS: ("/ui/paid-items", "Back to paid items"),
-    BulkUploadKind.FRAUD_TRAINING_EXAMPLES: ("/ui/ml-training/fraud-examples", "Back to fraud training data"),
 }
 
 _FAILURES_SHOWN = 500

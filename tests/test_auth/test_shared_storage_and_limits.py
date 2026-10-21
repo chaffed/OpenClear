@@ -80,13 +80,12 @@ def test_a_bulk_upload_imports_from_object_storage(s3, client, db_session, tenan
 
 
 def test_model_files_live_in_object_storage(s3, db_session, tenant_factory, monkeypatch):
-    from openclear.domain.tenant import MlModelSource
     from openclear.ml.registry import ArtifactStore
     from openclear.ml.train import train_model
-    from tests.test_ml.test_bank_model_choice import _bank
+    from tests.test_ml.test_bank_scoring_switch import _bank
 
     monkeypatch.setattr(get_settings(), "ml_retrain_cooldown_seconds", 0)
-    tenant, _account, _users = _bank(tenant_factory, db_session, "s3-mdl", MlModelSource.PRIVATE)
+    tenant, _account, _users = _bank(tenant_factory, db_session, "s3-mdl")
     row = train_model(db_session, "check", tenant_id=tenant.id).model_row
     assert row.artifact_path.startswith("s3://")
     assert ArtifactStore().load_model(row) is not None

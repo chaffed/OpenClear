@@ -73,7 +73,6 @@ def _registry() -> tuple[Check, ...]:
         Check("customer_sso", "Customers' own sign-on", c.customer_sso),
         Check("scim_sync", "Directories in step", c.scim_sync),
         Check("integration_tls", "Integrations use HTTPS", c.integration_tls),
-        Check("model_pooling_acknowledged", "Model data pooling acknowledged", c.model_pooling_acknowledged),
         # Positive pay operations.
         Check("default_dispositions", "Default dispositions set", c.default_dispositions),
         Check("rejected_rows", "Rejected rows corrected", c.rejected_rows),
@@ -131,7 +130,7 @@ KEYS = (
     "field_encryption", "storage_encryption", "edge", "audit_chain", "segregation_of_duties", "admin_mfa", "anomaly_capture",
     "parser_hardening", "sla", "api_client_secrets", "customer_self_service", "event_delivery", "production_safety",
     "dormant_accounts", "customer_dormant_users", "privileged_accounts", "staff_mfa", "customer_mfa", "customer_sod",
-    "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls", "model_pooling_acknowledged",
+    "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls",
     "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_form", "evidence_export",
     "dual_control", "two_person_changes", "change_impact_replay", "support_access_review", "customer_decision_timeliness",
     "scheduled_jobs", "transport_security", "platform_staff", "software_currency", "installation_settings", "provider_log", "second_approver", "sensitive_settings_protected", "access_review", "customer_access_review", "file_reconciliation",

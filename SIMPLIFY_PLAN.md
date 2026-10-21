@@ -69,9 +69,10 @@ There are no active installations, so the migrations drop what's removed rather 
   - A bank's model trains only on its own live decisions once it has
     `ml_bank_model_min_decisions` (200).
 - **SP-D9. No fraud-training examples.**
-  - The routes, pages, API, service and `ml_training_example:write` go.
-  - Existing `training_backfill` exception rows stay (decisions point at them), are never shown,
-    and are never trained on.
+  - The routes, pages, API, service, bulk upload kind and `ml_training_example:write` go.
+  - Existing training examples go too: their exceptions, decisions, synthetic items and upload
+    files, and exception_item's training columns. (Changed while building SP2: there are no
+    installations, and keeping rows nothing can show or use only kept dead code alive.)
 - **SP-D10. Scoring is a bank switch, off by default.** `tenant.ml_scoring_enabled`, a control
   panel tile (*Fraud scoring*), a protected `sensitive` change. With it off, nothing is trained
   or scored, and the score's column and badges don't show.
@@ -98,3 +99,11 @@ CHANGELOG, docs and compliance crosswalks it touches. One migration each for SP1
   the navigation entry shows to every customer person with `ach_transaction:read`, whether or not
   the bank has a form (the page then says to contact the bank), so no page pays a query to decide.
   Also removed: a `dev_keys/dev_keys` symlink an FR2 worktree committed (it's in PR #31's history).
+- 2026-10-21: SP2 built (migration `5b8e2d4f6a1c`): `tenant.ml_scoring_enabled` and Settings →
+  *Fraud scoring* (protected change `ml_scoring`); training, scoring and the ML admin pages and
+  API by bank only; `ml_model` has row-level security now that every model has a bank; the
+  customer page is *Default decision*; the shared model, customer models, `ML_DETERMINED` and
+  the decision source `auto_ml`,
+  fraud-training examples (and their rows, **change from SP-D9**), the platform ML API, the
+  `shared_model` key scope, control OC-AC-11 / CUEC B-AC-21-01 and the billing metric
+  `customer_model_monthly` removed. The demo bank turns scoring on and trains its own model.

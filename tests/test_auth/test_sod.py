@@ -20,7 +20,6 @@ from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
 from tests.test_auth.test_plugins_bank_choices import example_plugin  # noqa: F401 -- fixture
-from tests.test_web.test_web_customer_ml import _make_customer, _seed_labeled_decisions
 
 
 def _violations(db_session, tenant):
@@ -129,11 +128,11 @@ def test_a_group_combining_duties_cant_be_saved_under_enforcement(client, db_ses
 def test_model_changes_need_a_second_admin_under_enforcement(client, db_session, tenant_factory):
     from openclear.ml.train import train_model
 
-    tenant, _account, users = tenant_factory.make(slug="sod-changes")
-    customer, customer_account = _make_customer(db_session, tenant)
-    _seed_labeled_decisions(db_session, tenant, customer_account, users)
-    first = train_model(db_session, "check", customer_id=customer.id)
-    second = create_model_row(db_session, network_code="check", customer_id=customer.id, version="v-sod", algorithm="logistic_regression",
+    from tests.test_ml.test_bank_scoring_switch import _bank
+
+    tenant, _account, users = _bank(tenant_factory, db_session, "sod-changes")
+    first = train_model(db_session, "check", tenant_id=tenant.id)
+    second = create_model_row(db_session, network_code="check", tenant_id=tenant.id, version="v-sod", algorithm="logistic_regression",
                               artifact_path=first.model_row.artifact_path, trained_from_decision_count=12, metrics_json={},
                               status=MlModelStatus.RETIRED)
     _separate_duties(db_session, tenant)
@@ -153,7 +152,7 @@ def test_model_changes_need_a_second_admin_under_enforcement(client, db_session,
         return csrf
 
     csrf = login(users["admin"].email)
-    client.post(f"/ui/admin/customers/{customer.id}/ml/models/{second.id}/activate", data={"csrf_token": csrf})
+    client.post(f"/ui/admin/ml/models/{second.id}/activate", data={"csrf_token": csrf})
     db_session.expire_all()
     assert db_session.get(type(second), second.id).status == MlModelStatus.RETIRED  # not yet
     page = client.get("/ui/admin/changes")
@@ -198,10 +197,10 @@ def test_a_matching_rule_waits_for_a_second_admin(example_plugin, client, db_ses
 def test_the_api_cant_skip_the_second_admin(client, db_session, tenant_factory):
     from openclear.domain.change_request import ChangeRequest
     from openclear.domain.ml_model import MlModelStatus
-    from tests.test_api.test_admin_ml import _bank_only
+    from tests.test_api.test_admin_ml import _scoring_on
 
     tenant, _account, users = tenant_factory.make(slug="sod-api-model")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     row = create_model_row(db_session, network_code="check", version="v-api", algorithm="logistic_regression", artifact_path="/tmp/x.joblib",
                            trained_from_decision_count=10, metrics_json={}, status=MlModelStatus.RETIRED, tenant_id=tenant.id)
     _separate_duties(db_session, tenant)
@@ -215,6 +214,6 @@ def test_the_api_cant_skip_the_second_admin(client, db_session, tenant_factory):
     db_session.expire_all()
     assert db_session.get(type(row), row.id).status == MlModelStatus.RETIRED
     change = db_session.get(ChangeRequest, uuid.UUID(pending.json()["change_request_id"]))
-    assert change.summary == "Activate check model v-api (bank-only)"
+    assert change.summary == "Activate check model v-api"
     # A model that isn't this bank's can't even be asked for.
     assert client.patch(f"/api/v1/admin/ml/models/{uuid.uuid4()}/activate", headers=headers).status_code == 404

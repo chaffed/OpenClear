@@ -49,7 +49,7 @@ def test_both_inventories_carry_it():
     assert sod["csf"] == [{"id": "PR.AA-05", "title": crosswalks.csf_title("PR.AA-05")}]
     for cuec in cuecs.CUECS:
         assert [k["id"] for k in cuec.as_dict()["csf"]] == list(crosswalks.csf_for(cuec.nist))
-    assert sum(bool(c.as_dict()["csf"]) for c in controls.CONTROLS) == len(controls.CONTROLS) - 1  # all but OC-AC-11 (AC-21)
+    assert all(c.as_dict()["csf"] for c in controls.CONTROLS)
 
 
 def test_the_api_gives_it(client, db_session, tenant_factory):

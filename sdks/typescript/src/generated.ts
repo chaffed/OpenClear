@@ -71,21 +71,6 @@ export type AchAuthorizationStatus = "active" | "revoked";
 
 export type AchDebitBlockMode = "block_all" | "filter_by_authorization";
 
-export interface AchFraudExampleCreate {
-  account_id?: string | null;
-  ach_return_reason_id: string;
-  ach_transaction_id?: string | null;
-  amount?: number | string | null;
-  effective_date?: string | null;
-  notes?: string | null;
-  originator_id?: string | null;
-  originator_name?: string | null;
-  receiver_id?: string | null;
-  sec_code?: string | null;
-  trace_number?: string | null;
-  transaction_type?: AchTransactionType | null;
-}
-
 export type AchMatchStatus = "pending" | "matched" | "exception";
 
 export interface AchReturnReasonRead {
@@ -254,7 +239,7 @@ export interface BulkUploadAccepted {
   upload_id: string;
 }
 
-export type BulkUploadKind = "issued_items" | "ach_transactions" | "users" | "accounts" | "check_images" | "paid_items" | "fraud_training_examples";
+export type BulkUploadKind = "issued_items" | "ach_transactions" | "users" | "accounts" | "check_images" | "paid_items";
 
 export interface BulkUploadRead {
   completed_at: string | null;
@@ -298,16 +283,6 @@ export interface ChangeRead {
   status: "pending" | "approved" | "rejected" | "withdrawn" | "expired" | "applied_alone";
   summary: string;
   title: string;
-}
-
-export interface CheckFraudExampleCreate {
-  account_id?: string | null;
-  check_number?: string | null;
-  notes?: string | null;
-  paid_item_id?: string | null;
-  presented_amount?: number | string | null;
-  presented_date?: string | null;
-  reason_code: string;
 }
 
 export interface CheckImageRead {
@@ -603,14 +578,6 @@ export interface FeeOverrideOutput {
   waived?: boolean;
 }
 
-export interface FraudExampleRead {
-  created_at: string;
-  id: string;
-  is_correction: boolean;
-  network_code: string;
-  retracted_at: string | null;
-}
-
 export interface ImportFormatRead {
   built_in: boolean;
   format: string;
@@ -822,17 +789,6 @@ export interface PaidItemRead {
 
 export type PaidItemSettlementStatus = "pending" | "paid" | "returned" | "reversed";
 
-/** A fraud-training example from a bank on the shared model, awaiting the platform operator's approval before it can train the shared model (api/v1/platform_ml.py). */
-export interface PendingFraudExampleRead {
-  exception_id: string;
-  network_code: string;
-  notes: string | null;
-  outcome: string;
-  reason_code: string | null;
-  submitted_at: string;
-  tenant_slug: string;
-}
-
 export interface RecommendRequest {
   ach_return_reason_id?: string | null;
   check_return_reason_id?: string | null;
@@ -873,15 +829,6 @@ export interface SelfService {
   manages_sign_on: boolean;
 }
 
-/** What a bank may see about the shared model — counts only, never other banks. */
-export interface SharedModelSummaryRead {
-  activated_at: string | null;
-  contributing_bank_count: number;
-  network_code: string;
-  trained_from_decision_count: number | null;
-  version: string | null;
-}
-
 export interface SignedAttestation {
   attestation: Record<string, unknown>;
   signature: Record<string, unknown>;
@@ -911,11 +858,6 @@ export interface StopPaymentRead {
 }
 
 export type StopPaymentStatus = "active" | "expired" | "cancelled";
-
-export interface SwitchLockClearedRead {
-  tenant_id: string;
-  tenant_slug: string;
-}
 
 /** One row per TenantMembership, mirroring web/routers/users.py's list page exactly — a user with several memberships in this tenant (bank-wide plus per-customer scopes) appears once per membership, matching how access is actually granted. */
 export interface TenantUserRead {
@@ -1120,9 +1062,7 @@ export class AdminApi {
    *
    * GET /api/v1/admin/ml/models
    *
-   * This organization's own models: its bank-only models and its customers' models.
-   * (It used to list every organization's models.) For the shared model, see
-   * /admin/ml/shared-model.
+   * This organization's own models.
    */
   listMlModels(query: { network_code?: string | null } = {}): Promise<Array<MlModelRead>> {
     return this.c.call<Array<MlModelRead>>("GET", `/api/v1/admin/ml/models`, { query });
@@ -1133,7 +1073,7 @@ export class AdminApi {
    *
    * PATCH /api/v1/admin/ml/models/{model_id}/activate
    *
-   * Activates one of this organization's bank-only models (404 for any other model). When the
+   * Activates one of this organization's own models (404 for any other model). When the
    * bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
    * "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
    * `POST /api/v1/changes/{id}/approve`).
@@ -1147,22 +1087,11 @@ export class AdminApi {
    *
    * POST /api/v1/admin/ml/retrain
    *
-   * Retrains this organization's bank-only model (403 for a bank on the shared model).
+   * Retrains this organization's own model from its own final decisions (409 while fraud
+   * scoring is off). The score is advisory: it never decides an item.
    */
   retrain(query: { network_code?: string } = {}): Promise<RetrainResponse> {
     return this.c.call<RetrainResponse>("POST", `/api/v1/admin/ml/retrain`, { query });
-  }
-
-  /**
-   * Shared Model Summary.
-   *
-   * GET /api/v1/admin/ml/shared-model
-   *
-   * The shared model's active version per network, with counts only (never which other
-   * banks contribute).
-   */
-  sharedModelSummary(): Promise<Array<SharedModelSummaryRead>> {
-    return this.c.call<Array<SharedModelSummaryRead>>("GET", `/api/v1/admin/ml/shared-model`, {  });
   }
 
   /**
@@ -2369,60 +2298,6 @@ export class ExceptionsApi {
   }
 }
 
-/** `fraud-training` endpoints. */
-export class FraudTrainingApi {
-  private readonly c: Transport;
-
-  constructor(transport: Transport) {
-    this.c = transport;
-  }
-
-  /**
-   * Create Ach Fraud Example.
-   *
-   * POST /api/v1/ml-training/fraud-examples/ach
-   */
-  createAchFraudExample(body: AchFraudExampleCreate): Promise<FraudExampleRead> {
-    return this.c.call<FraudExampleRead>("POST", `/api/v1/ml-training/fraud-examples/ach`, { json: body });
-  }
-
-  /**
-   * Create Ach Fraud Examples Bulk.
-   *
-   * POST /api/v1/ml-training/fraud-examples/ach/bulk
-   */
-  createAchFraudExamplesBulk(body: Array<AchFraudExampleCreate>): Promise<BulkSubmitResponse> {
-    return this.c.call<BulkSubmitResponse>("POST", `/api/v1/ml-training/fraud-examples/ach/bulk`, { json: body });
-  }
-
-  /**
-   * Create Check Fraud Example.
-   *
-   * POST /api/v1/ml-training/fraud-examples/check
-   */
-  createCheckFraudExample(body: CheckFraudExampleCreate): Promise<FraudExampleRead> {
-    return this.c.call<FraudExampleRead>("POST", `/api/v1/ml-training/fraud-examples/check`, { json: body });
-  }
-
-  /**
-   * Create Check Fraud Examples Bulk.
-   *
-   * POST /api/v1/ml-training/fraud-examples/check/bulk
-   */
-  createCheckFraudExamplesBulk(body: Array<CheckFraudExampleCreate>): Promise<BulkSubmitResponse> {
-    return this.c.call<BulkSubmitResponse>("POST", `/api/v1/ml-training/fraud-examples/check/bulk`, { json: body });
-  }
-
-  /**
-   * Retract Fraud Example Api.
-   *
-   * POST /api/v1/ml-training/fraud-examples/{exception_id}/retract
-   */
-  retractFraudExampleApi(exceptionId: string): Promise<FraudExampleRead> {
-    return this.c.call<FraudExampleRead>("POST", `/api/v1/ml-training/fraud-examples/${encodeURIComponent(String(exceptionId))}/retract`, {  });
-  }
-}
-
 /** `issued-items` endpoints. */
 export class IssuedItemsApi {
   private readonly c: Transport;
@@ -2765,94 +2640,6 @@ export class PlatformMetricsApi {
   }
 }
 
-/** `platform-ml` endpoints. */
-export class PlatformMlApi {
-  private readonly c: Transport;
-
-  constructor(transport: Transport) {
-    this.c = transport;
-  }
-
-  /**
-   * Pending Fraud Examples.
-   *
-   * GET /api/v1/platform/ml/fraud-examples/pending
-   *
-   * Fraud-training examples from banks on the shared model that aren't yet approved
-   * for training it (oldest first). Bank-only banks' examples never need approval: they
-   * only ever train that bank's own model.
-   */
-  pendingFraudExamples(): Promise<Array<PendingFraudExampleRead>> {
-    return this.c.call<Array<PendingFraudExampleRead>>("GET", `/api/v1/platform/ml/fraud-examples/pending`, { auth: "platform" });
-  }
-
-  /**
-   * Approve Fraud Example.
-   *
-   * POST /api/v1/platform/ml/fraud-examples/{exception_id}/approve
-   */
-  approveFraudExample(exceptionId: string): Promise<void> {
-    return this.c.call<void>("POST", `/api/v1/platform/ml/fraud-examples/${encodeURIComponent(String(exceptionId))}/approve`, { auth: "platform" });
-  }
-
-  /**
-   * List Shared Models.
-   *
-   * GET /api/v1/platform/ml/models
-   */
-  listSharedModels(query: { network_code?: string | null } = {}): Promise<Array<MlModelRead>> {
-    return this.c.call<Array<MlModelRead>>("GET", `/api/v1/platform/ml/models`, { query, auth: "platform" });
-  }
-
-  /**
-   * Activate Shared Model.
-   *
-   * PATCH /api/v1/platform/ml/models/{model_id}/activate
-   *
-   * Asks for the shared model to be activated: it scores every bank that uses it, so it waits
-   * for a person among the platform's operators to approve it in the operator view (`202` with
-   * `change_request_id`). Already active: `200` with the model.
-   */
-  activateSharedModel(modelId: string): Promise<MlModelRead> {
-    return this.c.call<MlModelRead>("PATCH", `/api/v1/platform/ml/models/${encodeURIComponent(String(modelId))}/activate`, { auth: "platform" });
-  }
-
-  /**
-   * Shared Model Feature Importance.
-   *
-   * GET /api/v1/platform/ml/models/{model_id}/feature-importance
-   *
-   * Model coefficients by feature, largest effect first. Operator-only: banks never
-   * see the shared model's internals.
-   */
-  sharedModelFeatureImportance(modelId: string): Promise<Record<string, number>> {
-    return this.c.call<Record<string, number>>("GET", `/api/v1/platform/ml/models/${encodeURIComponent(String(modelId))}/feature-importance`, { auth: "platform" });
-  }
-
-  /**
-   * Retrain Shared Model.
-   *
-   * POST /api/v1/platform/ml/retrain
-   *
-   * Trains a challenger for the shared model, promoted only by the champion/challenger rule;
-   * activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
-   */
-  retrainSharedModel(query: { network_code?: string } = {}): Promise<RetrainResponse> {
-    return this.c.call<RetrainResponse>("POST", `/api/v1/platform/ml/retrain`, { query, auth: "platform" });
-  }
-
-  /**
-   * Clear Bank Switch Lock.
-   *
-   * POST /api/v1/platform/tenants/{tenant_id}/ml-switch-lock/clear
-   *
-   * Lets a new bank switch to a bank-only model before its 90 days are up.
-   */
-  clearBankSwitchLock(tenantId: string): Promise<SwitchLockClearedRead> {
-    return this.c.call<SwitchLockClearedRead>("POST", `/api/v1/platform/tenants/${encodeURIComponent(String(tenantId))}/ml-switch-lock/clear`, { auth: "platform" });
-  }
-}
-
 /** `platform-usage` endpoints. */
 export class PlatformUsageApi {
   private readonly c: Transport;
@@ -3076,14 +2863,12 @@ export const AREAS = {
   edge: EdgeApi,
   embed: EmbedApi,
   exceptions: ExceptionsApi,
-  fraudTraining: FraudTrainingApi,
   issuedItems: IssuedItemsApi,
   modelRisk: ModelRiskApi,
   paidItems: PaidItemsApi,
   platformBilling: PlatformBillingApi,
   platformJobs: PlatformJobsApi,
   platformMetrics: PlatformMetricsApi,
-  platformMl: PlatformMlApi,
   platformUsage: PlatformUsageApi,
   returnReasons: ReturnReasonsApi,
   securityEvents: SecurityEventsApi,

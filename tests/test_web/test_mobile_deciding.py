@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from openclear.domain.audit_log_entry import AuditLogEntry
 from openclear.domain.exception_item import ExceptionItem
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.items import _make_customer_with_account, _make_exception
 from tests.test_web.test_deciding import _login
 from tests.test_web.test_mobile_components import _sign_in, browser_page  # noqa: F401 -- a fixture
 

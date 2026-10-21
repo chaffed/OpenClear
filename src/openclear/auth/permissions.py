@@ -39,7 +39,6 @@ PERMISSION_CATALOG: dict[str, str] = {
     "data_export:run": "Export all tenant/customer data for migration or offboarding",
     "ach_return_reason:manage": "Manage the catalogs of ACH and check return reasons",
     "bulk_import:run": "Trigger an on-demand auto-import scan of dropped files",
-    "ml_training_example:write": "Submit or retract known-fraud training examples for the ML model",
     "end_user_documentation:read": "View the End User documentation",
     "admin_documentation:read": "View the Bank Administrator documentation",
     # Deliberately NOT in CUSTOMER_SCOPE_MASKED_PERMISSIONS below -- unlike customer:manage
@@ -99,9 +98,7 @@ CUSTOMER_SELF_SERVICE_PERMISSIONS: dict[str, str] = {
 # group must be explicitly edited to add it via /ui/security-groups, rather than getting
 # it "for free" like every other permission does today. This is a one-off exception, not
 # a pattern to extend casually — most new permissions should still join Admin normally.
-# ml_training_example:write joins it for the same reason: a bad or malicious label here
-# silently shapes what the fraud model learns.
-_NOT_ADMIN_DEFAULT = {"data_export:run", "ml_training_example:write"}
+_NOT_ADMIN_DEFAULT = {"data_export:run"}
 
 _ALL = [key for key in PERMISSION_CATALOG if key not in _NOT_ADMIN_DEFAULT]
 

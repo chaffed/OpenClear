@@ -1,28 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
 from openclear.domain.billing import BillingMethod
-
-
-class MlModelSource(str, enum.Enum):
-    """Which fraud-scoring model a bank uses (FIX_PLAN.md Phase 5; ml/predict.py).
-
-    SHARED: the network model trained on every participating (SHARED) bank's decisions,
-    run by the platform operator. Useful from day one.
-    PRIVATE: a bank-only model trained on this bank's own decisions, run by its own
-    admins. Its data never leaves it. Seeded from a copy of the shared model at the moment
-    of switching, so scoring never has a gap (services/tenant_ml_service.py)."""
-
-    SHARED = "shared"
-    PRIVATE = "private"
 
 
 class Tenant(Base):
@@ -129,21 +115,10 @@ class Tenant(Base):
     sandbox_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sandbox_contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    # Fraud-scoring model choice (services/tenant_ml_service.py). Every bank starts on the
-    # shared model. `ml_private_switch_allowed_at` is the 90-day lock for new banks: set at
-    # creation (services/provisioning_service.py), NULL (no lock) for banks that existed
-    # before this setting did. `ml_shared_consent_*` records who acknowledged the
-    # data-pooling disclosure and when (NULL for banks pooled before consent was recorded).
-    ml_model_source: Mapped[MlModelSource] = mapped_column(
-        Enum(MlModelSource, name="ml_model_source", native_enum=False, length=10),
-        nullable=False,
-        default=MlModelSource.SHARED,
-    )
-    ml_source_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ml_source_changed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
-    ml_private_switch_allowed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ml_shared_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ml_shared_consent_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    # Advisory fraud scoring (SIMPLIFY_PLAN.md SP-D10): off until the bank turns it on. Then it
+    # trains its own model from its own final decisions and shows the score beside each item;
+    # the score never decides one.
+    ml_scoring_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Branding — local disk paths (see web/branding_storage.py), never the blob itself in

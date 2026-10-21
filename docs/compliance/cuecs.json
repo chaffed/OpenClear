@@ -1304,26 +1304,6 @@
       "withdrawn": false
     },
     {
-      "id": "B-AC-21-01",
-      "party": "bank",
-      "nist": "AC-21",
-      "nist_title": "Information Sharing",
-      "oscal_id": "ac-21",
-      "related": [
-        "SA-9"
-      ],
-      "title": "Decide on model data pooling",
-      "statement": "Decide whether the bank's labelled decisions are pooled into the shared scoring model, and have someone with the authority to do so acknowledge the disclosure.",
-      "complements": "OpenClear pools nothing until the disclosure is acknowledged, records who acknowledged it, and offers a bank-only model.",
-      "evidence": "automated",
-      "check": "model_pooling_acknowledged",
-      "check_status": "live",
-      "frequency": "Once, and on change",
-      "csf": [],
-      "where": "Settings \u2192 Fraud model",
-      "withdrawn": false
-    },
-    {
       "id": "B-SC-8-01",
       "party": "bank",
       "nist": "SC-8",

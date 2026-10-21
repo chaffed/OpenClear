@@ -298,22 +298,6 @@ def integration_tls(session: Session, tenant_id: uuid.UUID) -> Control:
                    evidence)
 
 
-def model_pooling_acknowledged(session: Session, tenant_id: uuid.UUID) -> Control:
-    from openclear.domain.tenant import Tenant
-
-    tenant = session.get(Tenant, tenant_id)
-    source = getattr(tenant.ml_model_source, "value", tenant.ml_model_source)
-    evidence = {"model": source, "acknowledged_at": _aware(tenant.ml_shared_consent_at).isoformat() if tenant.ml_shared_consent_at else None}
-    title = "Model data pooling acknowledged"
-    if source == "shared" and tenant.ml_shared_consent_at is None:
-        return Control("model_pooling_acknowledged", title, WARN,
-                       "You score with the shared fraud model, which learns from every participating bank's decisions, and nobody has "
-                       "acknowledged its data-pooling disclosure. Do it under Settings → Fraud model.", evidence)
-    if source == "shared":
-        return Control("model_pooling_acknowledged", title, PASS, "On the shared model, with its disclosure acknowledged.", evidence)
-    return Control("model_pooling_acknowledged", title, PASS, "On your own model: your decisions aren't pooled.", evidence)
-
-
 # --- Positive pay operations -------------------------------------------------------------------
 
 

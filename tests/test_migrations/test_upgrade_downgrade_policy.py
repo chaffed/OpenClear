@@ -255,7 +255,7 @@ def test_ml_model_choice_migration_backfills_model_owners_and_keeps_banks_on_sha
     conn.commit()
     conn.close()
 
-    command.upgrade(_alembic_config(), "head")
+    command.upgrade(_alembic_config(), "a9c4e2f1d7b5")
 
     conn = _connect(scratch_db)
     owners = dict(conn.execute("SELECT id, tenant_id FROM ml_model").fetchall())
@@ -266,6 +266,62 @@ def test_ml_model_choice_migration_backfills_model_owners_and_keeps_banks_on_sha
     assert owners[shared_model_id] is None
     assert tenant == ("SHARED", None)
     assert scopes == '["usage"]'
+
+
+def test_advisory_score_migration_keeps_only_bank_models_and_live_items(scratch_db):
+    """5b8e2d4f6a1c (SIMPLIFY_PLAN.md SP2): shared and customer models go and bank models stay;
+    a model-decided default becomes "leave open"; fraud-training exceptions and their decisions
+    go and live ones stay; the training permission and the shared_model key scope go; and
+    scoring starts off."""
+    import json
+
+    command.upgrade(_alembic_config(), "3971bd3709a0")
+    conn = _connect(scratch_db)
+    tenant_id, customer_id = uuid.uuid4().hex, uuid.uuid4().hex
+    bank_model, shared_model, customer_model = uuid.uuid4().hex, uuid.uuid4().hex, uuid.uuid4().hex
+    live_exception, training_exception = uuid.uuid4().hex, uuid.uuid4().hex
+    _insert_with_required_defaults(conn, "tenant", {"id": tenant_id, "name": "Old Bank", "slug": "old-bank"})
+    _insert_with_required_defaults(conn, "customer", {"id": customer_id, "tenant_id": tenant_id, "customer_number": "C1", "name": "Cust"})
+    for model_id, owner_bank, owner_customer in ((bank_model, tenant_id, None), (shared_model, None, None),
+                                                 (customer_model, tenant_id, customer_id)):
+        conn.execute(
+            "INSERT INTO ml_model (id, network_code, tenant_id, customer_id, version, algorithm, artifact_path, trained_from_decision_count, "
+            "status) VALUES (?, 'check', ?, ?, 'v1', 'logistic_regression', '/tmp/x.joblib', 10, 'ACTIVE')",
+            (model_id, owner_bank, owner_customer),
+        )
+    _insert_with_required_defaults(conn, "customer_disposition_setting", {
+        "id": uuid.uuid4().hex, "tenant_id": tenant_id, "customer_id": customer_id, "network_code": "check", "mode": "ML_DETERMINED"})
+    for exception_id, source in ((live_exception, "LIVE"), (training_exception, "TRAINING_BACKFILL")):
+        _insert_with_required_defaults(conn, "exception_item", {
+            "id": exception_id, "tenant_id": tenant_id, "network_code": "check", "source_item_id": uuid.uuid4().hex,
+            "status": "DECIDED", "source": source})
+        _insert_with_required_defaults(conn, "decision", {
+            "id": uuid.uuid4().hex, "tenant_id": tenant_id, "exception_item_id": exception_id, "outcome": "PAY"})
+    _insert_with_required_defaults(conn, "security_group", {
+        "id": uuid.uuid4().hex, "tenant_id": tenant_id, "name": "Admin",
+        "permissions": json.dumps(["admin:manage", "ml_training_example:write"])})
+    conn.execute("INSERT INTO platform_api_key (id, name, key_hash, scopes) VALUES (?, 'ops', 'abc', ?)",
+                 (uuid.uuid4().hex, json.dumps(["usage", "shared_model"])))
+    conn.commit()
+    conn.close()
+
+    command.upgrade(_alembic_config(), "5b8e2d4f6a1c")
+
+    conn = _connect(scratch_db)
+    models = [row[0] for row in conn.execute("SELECT id FROM ml_model")]
+    mode = conn.execute("SELECT mode FROM customer_disposition_setting").fetchone()[0]
+    exceptions = [row[0] for row in conn.execute("SELECT id FROM exception_item")]
+    decisions = [row[0] for row in conn.execute("SELECT exception_item_id FROM decision")]
+    permissions = json.loads(conn.execute("SELECT permissions FROM security_group").fetchone()[0])
+    scopes = json.loads(conn.execute("SELECT scopes FROM platform_api_key").fetchone()[0])
+    scoring = conn.execute("SELECT ml_scoring_enabled FROM tenant").fetchone()[0]
+    conn.close()
+    assert models == [bank_model]
+    assert mode == "NONE"
+    assert exceptions == decisions == [live_exception]
+    assert permissions == ["admin:manage"]
+    assert scopes == ["usage"]
+    assert scoring == 0
 
 
 def test_artifact_sha256_migration_pins_existing_files_and_leaves_missing_ones_null(scratch_db, tmp_path):
@@ -287,7 +343,7 @@ def test_artifact_sha256_migration_pins_existing_files_and_leaves_missing_ones_n
     conn.commit()
     conn.close()
 
-    command.upgrade(_alembic_config(), "head")
+    command.upgrade(_alembic_config(), "c3e8f1a5d9b2")
 
     conn = _connect(scratch_db)
     digests = dict(conn.execute("SELECT id, artifact_sha256 FROM ml_model").fetchall())

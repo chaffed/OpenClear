@@ -55,7 +55,7 @@ def test_pages_have_one_title(client, db_session, tenant_factory):
     db_session.commit()
     _login(client, tenant.slug, users["admin"].email)
     for path in ("/ui/", f"/ui/customers/{customer.id}", "/ui/security", "/ui/security/notifications",
-                 f"/ui/admin/customers/{customer.id}/ml", "/ui/admin/controls", "/ui/admin/model-risk"):
+                 f"/ui/admin/customers/{customer.id}/default-decision", "/ui/admin/controls", "/ui/admin/model-risk"):
         page = client.get(path)
         assert page.status_code == 200, path
         assert _h1_count(page.text) == 1, path

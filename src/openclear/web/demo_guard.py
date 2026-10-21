@@ -42,13 +42,12 @@ _LOCKED_PATTERNS = [
     r"/ui/settings",
     r"/ui/settings/session-timeout",
     # Which fraud-scoring model the organization uses.
-    r"/ui/settings/fraud-model/.*",
+    r"/ui/settings/fraud-model",
     # Heavy background work.
     r"/ui/settings/data-export/start",
     rf"/ui/customers/{_UUID}/data-export/start",
     # ML model retraining/activation.
     r"/ui/admin/ml/.*",
-    rf"/ui/admin/customers/{_UUID}/ml/.*",
     r"/api/v1/admin/ml/.*",
 ]
 _LOCKED = [re.compile(pattern) for pattern in _LOCKED_PATTERNS]

@@ -1,101 +1,33 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Fraud scoring model — {{ ctx.tenant_name }}{% endblock %}
-{% block help_title %}About fraud scoring models{% endblock %}
+{% block title %}Fraud scoring — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About fraud scoring{% endblock %}
 {% block help_body %}
-<p>Fraud scoring estimates how likely each exception is to be paid or returned. Your
-  organization chooses which model does that scoring.</p>
-<ul>
-  <li>The <strong>shared model</strong> learns from the decisions of every participating
-    bank, so it's useful from day one. The platform operator trains it and decides which
-    version is active.</li>
-  <li>A <strong>bank-only model</strong> learns only from your own decisions, so your data
-    never leaves your organization. Your administrators retrain it in Settings → ML models.</li>
-</ul>
-<p>A customer can still have its own model on top of either (Customers → ML scoring).</p>
+<p>Fraud scoring estimates how likely each exception is to be returned. It's advice for the
+  person reviewing the item: it never pays or returns anything.</p>
+<p>The model learns only from your own organization's final decisions. Your data is never
+  shared with another bank.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Fraud scoring model</h1>
+    <h1>Fraud scoring</h1>
     <a href="/ui/settings" class="link-line">Back to settings</a>
   </div>
-  <p>Your organization uses
-    <strong>{{ "a bank-only model" if uses_bank_model else "the shared model" }}</strong>{% if changed_at %},
-    since {{ changed_at.strftime("%Y-%m-%d") }}{% if changed_by %} ({{ changed_by }}){% endif %}{% endif %}.
-    {% if uses_bank_model %}Manage it in <a href="/ui/admin/ml-models">Settings → ML models</a>.{% endif %}</p>
-
-  <table class="comparison">
-    <thead><tr><th></th><th>Shared model</th><th>Bank-only model</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">Learns from</th><td>Every participating bank's decisions</td><td>Only your own decisions</td></tr>
-      <tr><th scope="row">Useful from</th><td>Day one</td><td>Starts as a copy of the shared model, then improves as it learns from at least {{ min_bank_decisions }} of your decisions</td></tr>
-      <tr><th scope="row">Your data</th><td>Pooled with other banks' to train the model (they never see it)</td><td>Never leaves your organization</td></tr>
-      <tr><th scope="row">Run by</th><td>The platform operator</td><td>Your administrators</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="card">
-  <h2>How the shared model uses your data</h2>
-  {% if disclosure_is_placeholder %}
-  <p class="flash flash-warn">This is placeholder wording. The platform operator should have
-    counsel review it and replace it before relying on it.</p>
-  {% endif %}
-  <blockquote class="disclosure">{{ disclosure }}</blockquote>
-  {% if not uses_bank_model %}
-    {% if consent_at %}
-    <p class="hint">Acknowledged {{ consent_at.strftime("%Y-%m-%d") }}{% if consent_by %} by {{ consent_by }}{% endif %}.</p>
-    {% else %}
-    <form method="post" action="/ui/settings/fraud-model/consent">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label><input type="checkbox" name="consent" value="true" required>
-        I've read this and acknowledge it on behalf of my organization.</label>
-      <button type="submit">{{ icon("check_circle") }}Acknowledge</button>
-    </form>
-    {% endif %}
-  {% endif %}
-</div>
-
-{% if not uses_bank_model %}
-<div class="card">
-  <h2>Switch to a bank-only model</h2>
-  {% if switch_available_on %}
-  <p>New organizations use the shared model for their first {{ lock_days }} days. You can
-    switch on <strong>{{ switch_available_on.strftime("%Y-%m-%d") }}</strong>.</p>
-  {% else %}
-  <p>If you switch:</p>
+  <p>Fraud scoring is <strong>{{ "on" if enabled else "off" }}</strong>.</p>
   <ul>
-    <li>Your model starts as an exact copy of today's shared model, so scoring continues
-      without a gap. After that, it no longer receives updates to the shared model.</li>
-    <li>Your decisions stop being used by the shared model from its next retrain.</li>
-    <li>Your administrators retrain your model in Settings → ML models. A retrained version replaces
-      the active one only once it has learned from at least {{ min_bank_decisions }} of your
-      decisions and scores at least as well on your recent ones.</li>
-    <li>You can switch back to the shared model at any time.</li>
+    <li>The score is advisory. It shows on each exception and in the list, and never decides an item.</li>
+    <li>Your model learns only from your own final decisions. A retrained version replaces the active one
+      only once it has learned from at least {{ min_bank_decisions }} of them and scores at least as well
+      on your recent ones.</li>
+    <li>Your administrators retrain and activate models in <a href="/ui/admin/ml-models">Settings → ML models</a>.</li>
+    <li>With scoring off, nothing is trained or scored.</li>
   </ul>
-  <form method="post" action="/ui/settings/fraud-model/switch-to-bank-only"
-        data-confirm="Switch to a bank-only fraud-scoring model?">
+  <form method="post" action="/ui/settings/fraud-model"
+        data-confirm="{{ 'Turn fraud scoring off?' if enabled else 'Turn fraud scoring on?' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label><input type="checkbox" name="confirm" value="true" required>
-      I understand what switching does.</label>
-    <button type="submit">{{ icon("swap_horiz") }}Switch to a bank-only model</button>
-  </form>
-  {% endif %}
-</div>
-{% else %}
-<div class="card">
-  <h2>Switch back to the shared model</h2>
-  <p>Your exceptions will be scored by the shared model straight away, and your decisions
-    will be used to train it from its next retrain. Your bank-only models stay in your history
-    in case you switch again.</p>
-  <form method="post" action="/ui/settings/fraud-model/switch-to-shared"
-        data-confirm="Switch to the shared fraud-scoring model?">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label><input type="checkbox" name="consent" value="true" required>
-      I've read how the shared model uses our data (above) and agree on behalf of my organization.</label>
-    <button type="submit">{{ icon("swap_horiz") }}Switch to the shared model</button>
+    <input type="hidden" name="enabled" value="{{ 'false' if enabled else 'true' }}">
+    <button type="submit">{{ icon("check_circle") }}{{ "Turn fraud scoring off" if enabled else "Turn fraud scoring on" }}</button>
   </form>
 </div>
-{% endif %}
 {% endblock %}

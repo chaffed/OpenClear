@@ -10,7 +10,7 @@ A subcategory that NIST maps to a control also covers its enhancements (`AC-2` c
 `AC-2(1)`), and one mapped to a whole family (`IR`) covers every control in it. A subcategory
 with nothing below isn't one OpenClear's controls or CUECs address.
 
-NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23`, so a control or CUEC filed only under those isn't on this page.
+NIST's mapping links no subcategory to `AU-10`, `MA-4`, `SC-18`, `SC-23`, so a control or CUEC filed only under those isn't on this page.
 
 ## Govern (GV)
 

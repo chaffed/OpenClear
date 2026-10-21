@@ -17,7 +17,7 @@ from openclear.domain.decision import DecisionOutcome
 from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 from openclear.services import api_client_service, conformance_service, sandbox_service, security_group_service, webhook_service
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402

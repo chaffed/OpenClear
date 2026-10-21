@@ -6,14 +6,13 @@ from dataclasses import dataclass
 import time
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
 from openclear.domain.decision import Decision, DecisionOutcome
 from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 from openclear.domain.ml_model import MlModel, MlModelStatus
-from openclear.domain.tenant import MlModelSource, Tenant
 from openclear.ml.registry import ArtifactStore, activate_model, create_model_row, get_active_model_row
 
 MIN_DECISIONS_TO_TRAIN = 10
@@ -54,51 +53,24 @@ class TrainResult:
     metrics: dict[str, float]
 
 
-def _scope_label(tenant_id: uuid.UUID | None, customer_id: uuid.UUID | None) -> str:
-    if customer_id is not None:
-        return f"customer_id={customer_id!r}"
-    if tenant_id is not None:
-        return f"the bank-only model for tenant_id={tenant_id!r}"
-    return "the shared model"
-
-
-def _labeled_decisions(stmt, network_code: str, customer_id: uuid.UUID | None, tenant_id: uuid.UUID | None):
-    """Adds to `stmt` (a select over Decision) the rules for one model slot's training
-    data (see ml/registry.py):
-
-    - a customer's model: that customer's decisions;
-    - a bank-only model: every decision at that bank, fraud-training examples included;
-    - the shared model: decisions from banks on the SHARED model only — a bank that chose
-      a bank-only model never contributes — and, from those banks, fraud-training examples
-      only once the platform operator has approved them (shared_training_approved_at), so
-      one bank can't quietly skew scoring for every other bank."""
-    stmt = stmt.join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id).where(
+def _labeled_decisions(stmt, network_code: str, tenant_id: uuid.UUID):
+    """Adds to `stmt` (a select over Decision) a bank's training data (SIMPLIFY_PLAN.md SP-D8):
+    its own final decisions on this network."""
+    return stmt.join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id).where(
+        ExceptionItem.tenant_id == tenant_id,
         ExceptionItem.network_code == network_code,
+        ExceptionItem.source == ExceptionItemSource.LIVE,
         Decision.features_json.is_not(None),
         # Only final decisions: one that can still change before its cut-off isn't a label yet (UI_PLAN.md UI-D13).
         Decision.locked_at.is_not(None),
-        ExceptionItem.retracted_at.is_(None),
-    )
-    if customer_id is not None:
-        return stmt.where(ExceptionItem.customer_id == customer_id)
-    if tenant_id is not None:
-        return stmt.where(ExceptionItem.tenant_id == tenant_id)
-    return stmt.join(Tenant, Tenant.id == ExceptionItem.tenant_id).where(
-        Tenant.ml_model_source == MlModelSource.SHARED,
-        or_(
-            ExceptionItem.source != ExceptionItemSource.TRAINING_BACKFILL,
-            ExceptionItem.shared_training_approved_at.is_not(None),
-        ),
     )
 
 
-def count_labeled_decisions(
-    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
-) -> int:
+def count_labeled_decisions(session: Session, network_code: str, *, tenant_id: uuid.UUID) -> int:
     """Every decision the slot could learn from, before the training window and row cap:
     what the scheduled retrain compares against the last run's count to see how many are
     new (workers/tasks.py)."""
-    stmt = _labeled_decisions(select(func.count(Decision.id)), network_code, customer_id, tenant_id)
+    stmt = _labeled_decisions(select(func.count(Decision.id)), network_code, tenant_id)
     return session.execute(stmt).scalar_one()
 
 
@@ -115,18 +87,16 @@ class TrainingData:
         return len(self.labels) < self.eligible
 
 
-def _load_training_data(
-    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
-) -> TrainingData:
+def _load_training_data(session: Session, network_code: str, *, tenant_id: uuid.UUID) -> TrainingData:
     """The slot's training rows, oldest first (the holdout is the newest fifth): only the
     two columns training needs, read in batches rather than as Decision objects, from
     the last ml_training_window_days, capped at the newest ml_training_max_rows."""
     settings = get_settings()
     window_days, max_rows = settings.ml_training_window_days, settings.ml_training_max_rows
-    stmt = _labeled_decisions(select(Decision.features_json, Decision.outcome), network_code, customer_id, tenant_id)
+    stmt = _labeled_decisions(select(Decision.features_json, Decision.outcome), network_code, tenant_id)
     if window_days > 0:
         cutoff = session.execute(select(func.now())).scalar_one() - timedelta(days=window_days)
-        stmt = stmt.where(or_(Decision.decided_at >= cutoff, ExceptionItem.source == ExceptionItemSource.TRAINING_BACKFILL))
+        stmt = stmt.where(Decision.decided_at >= cutoff)
     # Newest first so the cap keeps the most recent rows; id breaks ties so the split is
     # reproducible. Reversed below.
     stmt = stmt.order_by(Decision.decided_at.desc(), Decision.id.desc()).limit(max_rows)
@@ -137,7 +107,7 @@ def _load_training_data(
     features.reverse()
     labels.reverse()
     return TrainingData(
-        features, labels, count_labeled_decisions(session, network_code, customer_id, tenant_id=tenant_id), window_days, max_rows
+        features, labels, count_labeled_decisions(session, network_code, tenant_id=tenant_id), window_days, max_rows
     )
 
 
@@ -167,16 +137,14 @@ def _promotion_decision(
     X_holdout,
     y_holdout,
     decision_count: int,
-    is_bank_model: bool,
 ) -> tuple[bool, dict]:
     """Champion/challenger: should the newly trained model replace the active one?
 
     Both models are scored on the SAME held-out decisions (the most recent ones), so the
     comparison is fair — comparing a new model's AUC against the old model's stored AUC,
-    measured on a different holdout, isn't. For a bank-only model there's also a floor on
-    how much of the bank's own data it's learned from (ml_bank_model_min_decisions): a
-    bank's first own-data model has to beat the seeded copy of the shared model, and a
-    small sample can "win" a small holdout by luck. Returns (promote, evaluation details)."""
+    measured on a different holdout, isn't. There's also a floor on how much of the bank's
+    data a replacement has learned from (ml_bank_model_min_decisions): a small sample can
+    "win" a small holdout by luck. Returns (promote, evaluation details)."""
     evaluation: dict = {"holdout_size": len(y_holdout)}
     if champion is None:
         evaluation["reason"] = "No model was active, so this one was activated."
@@ -184,7 +152,7 @@ def _promotion_decision(
 
     evaluation["compared_with_version"] = champion.version
     minimum = get_settings().ml_bank_model_min_decisions
-    if is_bank_model and decision_count < minimum:
+    if decision_count < minimum:
         evaluation["reason"] = (
             f"Not activated: trained on {decision_count} of the bank's own decisions; "
             f"{minimum} are needed before it can replace the active model."
@@ -216,39 +184,14 @@ def _promotion_decision(
     return promote, evaluation
 
 
-def train_model(
-    session: Session,
-    network_code: str,
-    *,
-    customer_id: uuid.UUID | None = None,
-    tenant_id: uuid.UUID | None = None,
-    force_activate_reason: str | None = None,
-) -> TrainResult:
-    """Trains one model slot (ml/registry.py): the shared model (neither id), a bank-only
-    model (`tenant_id`), or a customer's model (`customer_id`; its bank is looked up if
-    not given). The new model is activated only if it wins the champion/challenger
-    comparison (_promotion_decision); otherwise it's kept, not active, with the reason in
-    metrics_json["evaluation"], and an admin can still activate it by hand.
-
-    `force_activate_reason` skips the comparison and activates the new model regardless,
-    recording that reason: used when the active model must be replaced for a reason other
-    than accuracy (a bank left the shared model, so the active model still contains data
-    the bank withdrew)."""
-    if customer_id is not None and tenant_id is None:
-        # From the customer's exceptions, not the customer table: the scheduled retrain
-        # has no bank bound, and under Postgres RLS the customer row isn't visible.
-        tenant_id = session.execute(
-            select(ExceptionItem.tenant_id).where(ExceptionItem.customer_id == customer_id).limit(1)
-        ).scalar_one_or_none()
-    slot_tenant_id = tenant_id if customer_id is None else None  # for the bank vs. shared distinction
-    scope = _scope_label(slot_tenant_id, customer_id)
-
+def train_model(session: Session, network_code: str, *, tenant_id: uuid.UUID) -> TrainResult:
+    """Trains a bank's own model for one network (SIMPLIFY_PLAN.md SP-D8). The new model is
+    activated only if it wins the champion/challenger comparison (_promotion_decision);
+    otherwise it's kept, not active, with the reason in metrics_json["evaluation"], and an
+    admin can still activate it by hand."""
+    scope = f"tenant_id={tenant_id!r}"
     cooldown_seconds = get_settings().ml_retrain_cooldown_seconds
-    slot_models = select(MlModel.created_at).where(MlModel.network_code == network_code)
-    if customer_id is not None:
-        slot_models = slot_models.where(MlModel.customer_id == customer_id)
-    else:
-        slot_models = slot_models.where(MlModel.customer_id.is_(None), MlModel.tenant_id == slot_tenant_id)
+    slot_models = select(MlModel.created_at).where(MlModel.network_code == network_code, MlModel.tenant_id == tenant_id)
     latest = session.execute(slot_models.order_by(MlModel.created_at.desc()).limit(1)).first()
     if latest is not None and _seconds_since(session, latest[0]) < cooldown_seconds:
         raise RetrainCooldownActive(
@@ -257,7 +200,7 @@ def train_model(
         )
 
     started = time.perf_counter()
-    data = _load_training_data(session, network_code, customer_id, tenant_id=slot_tenant_id)
+    data = _load_training_data(session, network_code, tenant_id=tenant_id)
     X, y = data.features, data.labels
     if len(y) < MIN_DECISIONS_TO_TRAIN:
         raise InsufficientTrainingData(
@@ -278,33 +221,20 @@ def train_model(
     model.fit(X_train, y_train)
     metrics = _evaluate(model, X_holdout, y_holdout)
 
-    champion = get_active_model_row(session, network_code, customer_id, tenant_id=slot_tenant_id)
-    if force_activate_reason is not None:
-        promote, evaluation = True, {"holdout_size": len(y_holdout), "reason": force_activate_reason}
-    else:
-        promote, evaluation = _promotion_decision(
-            champion=champion,
-            challenger_metrics=metrics,
-            X_holdout=X_holdout,
-            y_holdout=y_holdout,
-            decision_count=len(y),
-            is_bank_model=customer_id is None and slot_tenant_id is not None,
-        )
+    champion = get_active_model_row(session, network_code, tenant_id=tenant_id)
+    promote, evaluation = _promotion_decision(
+        champion=champion, challenger_metrics=metrics, X_holdout=X_holdout, y_holdout=y_holdout, decision_count=len(y))
 
     existing_count = session.execute(select(func.count()).select_from(slot_models.subquery())).scalar_one()
     version = f"v{existing_count + 1}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
-    if customer_id is not None:
-        artifact_key = f"{network_code}_{customer_id}_{version}"
-    elif slot_tenant_id is not None:
-        artifact_key = f"{network_code}_bank_{slot_tenant_id}_{version}"
-    else:
-        artifact_key = f"{network_code}_{version}"
+    # Unique per run: a file is never overwritten, so an older row's pinned SHA-256 stays true
+    # even when the same bank trains twice in one second (a demo reset does).
+    artifact_key = f"{network_code}_bank_{tenant_id}_{version}_{uuid.uuid4().hex[:8]}"
     artifact_path, artifact_sha256 = ArtifactStore().save(model, key=artifact_key)
 
     model_row = create_model_row(
         session,
         network_code=network_code,
-        customer_id=customer_id,
         tenant_id=tenant_id,
         version=version,
         algorithm=algorithm,
@@ -330,7 +260,7 @@ def train_model(
     )
 
     if promote:
-        activate_model(session, model_row.id, expected_customer_id=customer_id, expected_tenant_id=slot_tenant_id)
+        activate_model(session, model_row.id, expected_tenant_id=tenant_id)
     else:
         model_row.status = MlModelStatus.RETIRED
 

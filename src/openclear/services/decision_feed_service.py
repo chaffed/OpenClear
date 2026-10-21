@@ -27,7 +27,7 @@ from openclear.domain.account import Account
 from openclear.domain.ach_transaction import AchTransaction
 from openclear.domain.customer import Customer
 from openclear.domain.decision import Decision, DecisionFeedCursor
-from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
+from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.paid_item import PaidItem
 from openclear.domain.user import User
 
@@ -41,8 +41,6 @@ def _lock_key(tenant_id: uuid.UUID) -> int:
 
 def assign_sequence(session: Session, decision: Decision, exception: ExceptionItem) -> None:
     """Numbers a new live decision. Call after adding it, in the same transaction."""
-    if exception.source == ExceptionItemSource.TRAINING_BACKFILL:
-        return
     if session.get_bind().dialect.name == "postgresql":
         # Lock order (FULL_REVIEW_PLAN.md FR-D4; docs/ARCHITECTURE.md): the bank's action-log lock
         # before its feed lock, always. Whoever decides then writes an action-log entry, and an API

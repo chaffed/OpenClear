@@ -3,60 +3,31 @@
 {% block title %}ML models — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ML models{% endblock %}
 {% block help_body %}
-<p>ML scoring estimates how likely an exception is to be paid or returned. It's advisory:
-  a person always makes the final call, unless a customer has chosen ML-determined default
-  dispositions.</p>
-<p>Your organization chooses its model in <a href="/ui/settings/fraud-model">Settings → Fraud scoring model</a>. The
-  <strong>shared model</strong> learns from every participating bank and is run by the
-  platform operator. A <strong>bank-only model</strong> learns only from your own decisions,
-  and your administrators retrain it here. A retrained bank-only model replaces the active
+<p>Fraud scoring estimates how likely an exception is to be returned. It's advisory: a person
+  always makes the call.</p>
+<p>Your models learn only from your own final decisions. A retrained model replaces the active
   one only if it does at least as well on the same recent decisions and was trained on at
-  least {{ min_bank_decisions }} of your own. You can always activate an older version by hand.</p>
+  least {{ min_bank_decisions }} of them. You can always activate an older version by hand.
+  Scoring is turned on or off in <a href="/ui/settings/fraud-model">Settings → Fraud scoring</a>.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
   <h1>ML Models</h1>
-  {# Responsive tables written out (a shared model's row has a colspan): see _macros/responsive_table.html. #}
+  {% if not scoring_enabled %}
+  <p class="flash flash-warn">Fraud scoring is off, so nothing is trained or scored. Turn it on in
+    <a href="/ui/settings/fraud-model">Settings → Fraud scoring</a>.</p>
+  {% endif %}
   <table class="responsive">
-    <thead><tr><th>Network</th><th>Your live decisions</th><th>Your fraud training examples</th></tr></thead>
+    <thead><tr><th>Network</th><th>Your final decisions to learn from</th></tr></thead>
     <tbody>
-      {% for network_code, counts in backfill_counts.items() %}
-      <tr><td data-label="Network" class="cell-primary">{{ network_code }}</td><td data-label="Your live decisions" class="cell-meta">{{ counts.live }}</td><td data-label="Your fraud training examples" class="cell-meta">{{ counts.training_backfill }}</td></tr>
+      {% for network_code, count in decision_counts.items() %}
+      <tr><td data-label="Network" class="cell-primary">{{ network_code }}</td><td data-label="Your final decisions to learn from" class="cell-meta">{{ count }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  <p class="hint">Fraud training examples are submitted from
-    {% if can(ctx, "ml_training_example:write") %}<a href="/ui/ml-training/fraud-examples">Fraud Training Data</a>{% else %}Fraud Training
-    Data. That page needs the "Submit or retract known-fraud training examples" permission,
-    which isn't in the Admin group by default; add it in <a href="/ui/security-groups">Security Groups</a>{% endif %}.
-    {% if not uses_bank_model %}They're used by the shared model only after the platform
-    operator reviews and approves them.{% endif %}</p>
 
-  {% if not uses_bank_model %}
-  <h2>Shared model</h2>
-  <p>Your organization uses the shared model, which the platform operator trains and
-    activates. To use a model trained only on your own decisions, switch to a bank-only model
-    in <a href="/ui/settings/fraud-model">Settings → Fraud scoring model</a>.</p>
-  <table class="responsive">
-    <thead><tr><th>Network</th><th>Active version</th><th>Active since</th><th>Trained on</th><th>Banks contributing</th></tr></thead>
-    <tbody>
-      {% for summary in shared_summaries %}
-      <tr>
-        <td data-label="Network" class="cell-primary">{{ summary.network_code }}</td>
-        {% if summary.version %}
-        <td data-label="Active version" class="cell-meta">{{ summary.version }}</td>
-        <td data-label="Active since" class="cell-meta">{{ summary.activated_at.strftime("%Y-%m-%d") if summary.activated_at else "—" }}</td>
-        <td data-label="Trained on" class="cell-meta">{{ summary.trained_from_decision_count }} decisions</td>
-        {% else %}
-        <td colspan="3" class="cell-text">No shared model yet. Exceptions aren't scored until one is trained.</td>
-        {% endif %}
-        <td data-label="Banks contributing" class="cell-meta">{{ summary.contributing_bank_count }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <h2>Your bank-only model</h2>
+  {% if scoring_enabled %}
+  <h2>Your models</h2>
   <form method="post" action="/ui/admin/ml/retrain" class="toolbar">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label class="field-xl">Network
@@ -92,8 +63,8 @@
     </tbody>
   </table>
   {% else %}
-  <p>No bank-only model yet. Exceptions aren't scored until one is trained; matching and
-    exceptions work fully without it.</p>
+  <p>No model yet. Exceptions aren't scored until one is trained; matching and exceptions work
+    fully without it.</p>
   {% endif %}
   {% endif %}
 </div>

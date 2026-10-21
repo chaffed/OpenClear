@@ -14,7 +14,7 @@ from openclear.domain.decision import Decision
 from openclear.domain.exception_item import ExceptionStatus
 from openclear.services import check_return_reason_service, security_group_service, user_service
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.items import _make_customer_with_account, _make_exception
 
 
 def _login(client, tenant, email):

@@ -29,7 +29,7 @@ from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_i
 from openclear.services import security_group_service, user_service  # noqa: E402
 from openclear.web.security import THEME_COOKIE_NAME  # noqa: E402
 from tests.conftest import TenantFactory  # noqa: E402
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account  # noqa: E402
+from tests.items import _make_customer_with_account  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "axe"
 BASELINE = FIXTURES / "baseline.json"

@@ -23,8 +23,6 @@ class DecisionSource(str, enum.Enum):
     # services/auto_disposition_service.py, a fixed pay/return default applied because no
     # one decided before the exception's deadline.
     AUTO_DEFAULT = "auto_default"
-    # services/auto_disposition_service.py, the ML model's own score picked the outcome.
-    AUTO_ML = "auto_ml"
 
 
 class Decision(Base):
@@ -68,8 +66,7 @@ class Decision(Base):
     features_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Its place in the bank's decision feed (services/decision_feed_service.py, SDK_PLAN.md
     # P0): 1, 2, 3... per bank, in the order decisions were committed, so a core reading
-    # "everything after N" never misses one. None for a fraud-training example, which
-    # isn't a real item to pay or return.
+    # "everything after N" never misses one.
     feed_sequence: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     # When the decision became final and went out (feed, webhook, decision files). Until the
     # item's cut-off it can be changed (UI_PLAN.md UI-D13); None means it still can. A decision

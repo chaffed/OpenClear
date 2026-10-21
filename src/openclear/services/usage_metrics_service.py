@@ -79,8 +79,8 @@ def get_tenant_usage(session: Session, tenant: Tenant, period_start: date, perio
     paid_items_ach = _count(session, AchTransaction.tenant_id == tenant.id, AchTransaction.created_at.between(start, end))
 
     exceptions = _count(session, ExceptionItem.tenant_id == tenant.id, ExceptionItem.created_at.between(start, end))
-    # Every finalized return counts regardless of Decision.source (HUMAN/AUTO_DEFAULT/
-    # AUTO_ML) -- all three represent a real return; source is on the row already if the
+    # Every finalized return counts regardless of Decision.source (HUMAN/AUTO_DEFAULT) --
+    # both represent a real return; source is on the row already if the
     # billing system wants to segment further downstream.
     returns = _count(
         session, Decision.tenant_id == tenant.id, Decision.outcome == DecisionOutcome.RETURN, Decision.decided_at.between(start, end)

@@ -18,7 +18,7 @@ from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ac
 from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import ach_authorization_service, auto_disposition_service, decision_service, stop_payment_service
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.items import _make_customer_with_account, _make_exception
 
 
 def _login(client, tenant, email):

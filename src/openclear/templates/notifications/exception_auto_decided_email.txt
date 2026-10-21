@@ -2,7 +2,7 @@ A {{ network_code }} exception was auto-decided because no one decided it by its
 
 Outcome: {{ outcome }}
 Reason: {{ reason_code }}
-{% if is_ml %}This was determined by the ML model, not a fixed default.{% else %}This was the configured fixed default outcome.{% endif %}
+This was the configured default outcome.
 
 View it here: {{ exception_url }}
 

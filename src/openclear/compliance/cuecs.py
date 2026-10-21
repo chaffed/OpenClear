@@ -372,11 +372,6 @@ CUECS: tuple[Cuec, ...] = (
          "a hosting provider) as a third party, and review it each year.",
          "OpenClear turns no outside service on by itself, and shows which ones are on.",
          "assisted", "outside_services", "Yearly", "Settings; docs/compliance/tprm.md", related=("SR-6",)),
-    Cuec("B-AC-21-01", "bank", "AC-21", "Decide on model data pooling",
-         "Decide whether the bank's labelled decisions are pooled into the shared scoring model, and have someone with the "
-         "authority to do so acknowledge the disclosure.",
-         "OpenClear pools nothing until the disclosure is acknowledged, records who acknowledged it, and offers a bank-only model.",
-         "automated", "model_pooling_acknowledged", "Once, and on change", "Settings → Fraud model", related=("SA-9",)),
     Cuec("B-SC-8-01", "bank", "SC-8", "Secure the bank's integrations",
          "Point webhooks and decision delivery at HTTPS endpoints on the bank's systems, and check each webhook's signature "
          "before acting on it.",

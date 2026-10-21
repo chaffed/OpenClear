@@ -113,8 +113,8 @@ A pass over the [LINDDUN GO](https://linddun.org/go/) cards, by category:
 | Identifying | Check images and payee names identify people; access is by customer and account scope, and every view of an item is permission-checked. | OC-AC-03, OC-AC-04 |
 | Non-repudiation | Decisions are deliberately attributable (the action log); that's a requirement of the bank's records, disclosed to its staff and customers. | OC-AU-01 |
 | Detecting | Security events reveal sign-in patterns; they go only to the bank's own SIEM and carry no passwords, tokens or account numbers. | SIEM_PLAN.md, "What's never in an event" |
-| Data disclosure | Outside services (cloud OCR, email, SMS) are off unless the bank turns them on and reviews them; the shared model pools labelled decisions only with the bank's acknowledgement. | OC-AC-11, `services/outside_services.py` |
-| Unawareness | Customers' people see what's kept about their decisions in the action log their admins can read; the pooling disclosure is shown before a bank joins the shared model. | OC-AC-11 |
+| Data disclosure | Outside services (cloud OCR, email, SMS) are off unless the bank turns them on and reviews them. No decisions are pooled across banks: a bank's fraud model, off until the bank turns it on, learns only from its own decisions. | `services/outside_services.py`, OC-AC-09 |
+| Unawareness | Customers' people see what's kept about their decisions in the action log their admins can read; the fraud score shown on an item is labelled advisory. | OC-AU-01 |
 | Non-compliance | Retention periods are installation settings (finished jobs, notifications, upload results, exports, security events); the action log is kept and archived to signed files. Removing a departing bank's data is the service provider's job: there's no in-app offboarding yet. | `config.py` `retention_*`; OC-AU-03 |
 """
 

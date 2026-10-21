@@ -112,7 +112,7 @@ A `ScoringFeature(name, network, build)` adds inputs to the fraud model:
 
 A feature that raises is left out and logged, and scoring carries on.
 
-Features apply to every bank. The shared model is trained on every participating bank's decisions, so its inputs have to be the same for all of them.
+Features apply to every bank. They're installed by the operator, and each bank's own model is trained on them.
 
 A network plugin's own adapter should end `evaluate` with `apply_matching_rules(...)` and add `extra_features(...)` to what `build_features` returns. That way, rule and feature plugins apply to the new network as well. The built-in networks already do this.
 

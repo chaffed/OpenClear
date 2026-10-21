@@ -19,8 +19,7 @@ from openclear.domain.customer_disposition_setting import CustomerDispositionSet
 from openclear.domain.exception_item import ExceptionItem
 from openclear.services.exception_service import NEEDS_ATTENTION
 
-_MODE_LABELS = {DispositionMode.FIXED_PAY: "Pay", DispositionMode.FIXED_RETURN: "Return",
-                DispositionMode.ML_DETERMINED: "The model's call", DispositionMode.NONE: "Stays open"}
+_MODE_LABELS = {DispositionMode.FIXED_PAY: "Pay", DispositionMode.FIXED_RETURN: "Return", DispositionMode.NONE: "Stays open"}
 
 
 @dataclass

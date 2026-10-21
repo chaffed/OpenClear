@@ -12,6 +12,21 @@
   form published. **Removed:** the signed statements and their tables, the WSUD signing key
   pair (`OPENCLEAR_WSUD_SIGNING_*`), the two legal-text settings (production no longer needs
   them), the `wsud:sign` and `wsud:read` permissions, and the billing metric `wsud_statements`.
+- **The fraud score is advisory, from the bank's own model, and off until the bank turns it on**
+  (`SIMPLIFY_PLAN.md` SP2, the product owner's decision). Settings → *Fraud scoring* turns it on
+  or off; turning it on is a protected `sensitive` change. With it on, the bank's own model,
+  trained only on its own final decisions, scores each exception, and the score is shown beside
+  the item. It never decides one. Models live under Settings → ML models as before, and the
+  model table now has row-level security. A customer's admin page is now *Default decision*.
+  **Removed:** the shared cross-bank model and the choice between it and a bank-only model (with
+  its data-pooling disclosure, `OPENCLEAR_ML_NEW_BANK_PRIVATE_SWITCH_LOCK_DAYS` and
+  `OPENCLEAR_ML_SHARED_POOL_DISCLOSURE_TEXT`); customer models and the customer scoring mode;
+  the "ML-determined" default decision (settings using it now leave the item open, and the
+  decision source `auto_ml` is gone: past ones read `auto_default`); fraud-training
+  examples, their pages, API, bulk upload kind and the `ml_training_example:write` permission;
+  the platform ML API (`/api/v1/platform/ml/*`) and the `shared_model` platform key scope;
+  `GET /api/v1/admin/ml/shared-model`; control OC-AC-11 with CUEC B-AC-21-01; and the billing
+  metric `customer_model_monthly`. `POST /api/v1/admin/ml/retrain` answers 409 while scoring is off.
 - **Deciding is safe when two people act at once** (`FULL_REVIEW_PLAN.md` FR1). Every change to an
   item's decision takes the item's lock first, so a recommendation made the moment someone else
   decides is told the item is decided, instead of leaving it waiting for an approval that could

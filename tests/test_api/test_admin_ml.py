@@ -12,12 +12,10 @@ from openclear.services import decision_service, issued_item_service
 from tests.conftest import login_headers
 
 
-def _bank_only(db_session, tenant):
-    """Bank admins retrain/activate only their own bank-only model (FIX_PLAN.md Phase 5);
-    the shared model is the platform operator's (tests/test_api/test_platform_ml.py)."""
-    from openclear.domain.tenant import MlModelSource
-
-    tenant.ml_model_source = MlModelSource.PRIVATE
+def _scoring_on(db_session, tenant):
+    """Bank admins retrain and activate their own model, once the bank has turned fraud
+    scoring on (SIMPLIFY_PLAN.md SP-D10)."""
+    tenant.ml_scoring_enabled = True
     db_session.commit()
 
 
@@ -74,7 +72,7 @@ def _seed_labeled_decisions(db_session, tenant, account, users, count: int = 12)
 
 def test_retrain_endpoint_trains_and_promotes_model(client, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="admin-ml-retrain")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     _seed_labeled_decisions(db_session, tenant, account, users)
 
     headers = login_headers(client, tenant.slug, users["admin"].email)
@@ -89,7 +87,7 @@ def test_retrain_endpoint_trains_and_promotes_model(client, db_session, tenant_f
 
 def test_retrain_endpoint_rejects_insufficient_data(client, db_session, tenant_factory):
     tenant, _account, users = tenant_factory.make(slug="admin-ml-insufficient")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
     resp = client.post("/api/v1/admin/ml/retrain", headers=headers, params={"network_code": "check"})
@@ -99,7 +97,7 @@ def test_retrain_endpoint_rejects_insufficient_data(client, db_session, tenant_f
 
 def test_list_and_activate_ml_models(client, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="admin-ml-list")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     _seed_labeled_decisions(db_session, tenant, account, users)
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
@@ -125,7 +123,7 @@ def test_non_admin_cannot_trigger_retrain(client, tenant_factory):
 
 def test_immediate_reretrain_is_rejected_by_cooldown(client, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="admin-ml-cooldown")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     _seed_labeled_decisions(db_session, tenant, account, users)
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
@@ -136,43 +134,15 @@ def test_immediate_reretrain_is_rejected_by_cooldown(client, db_session, tenant_
     assert second.status_code == 409
 
 
-def test_activate_rejects_a_customer_scoped_model_via_the_bank_wide_route(client, db_session, tenant_factory):
-    from openclear.domain.ml_model import MlModelStatus
-    from openclear.ml.registry import create_model_row
-    from openclear.services import customer_service
-
-    tenant, _account, users = tenant_factory.make(slug="admin-ml-activate-scope")
-    customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="C-1", name="Acme"))
-    row = create_model_row(
-        db_session, network_code="check", version="v1", algorithm="logistic_regression", artifact_path="/tmp/fake.joblib",
-        trained_from_decision_count=10, metrics_json={"auc": 0.9}, status=MlModelStatus.TRAINING, customer_id=customer.id,
-    )
-    db_session.commit()
-    headers = login_headers(client, tenant.slug, users["admin"].email)
-
-    resp = client.patch(f"/api/v1/admin/ml/models/{row.id}/activate", headers=headers)
-    assert resp.status_code == 404
-
-
-def test_bank_on_the_shared_model_cannot_retrain_or_activate_it(client, db_session, tenant_factory):
-    from openclear.domain.ml_model import MlModelStatus
-    from openclear.ml.registry import create_model_row
-
-    tenant, account, users = tenant_factory.make(slug="admin-ml-shared-403")
+def test_retrain_is_refused_while_scoring_is_off(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="admin-ml-off-409")
     _seed_labeled_decisions(db_session, tenant, account, users)
-    shared = create_model_row(
-        db_session, network_code="check", version="shared-v1", algorithm="logistic_regression", artifact_path="/tmp/x.joblib",
-        trained_from_decision_count=10, metrics_json={}, status=MlModelStatus.TRAINING,
-    )
-    db_session.commit()
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
     retrain = client.post("/api/v1/admin/ml/retrain", headers=headers, params={"network_code": "check"})
-    activate = client.patch(f"/api/v1/admin/ml/models/{shared.id}/activate", headers=headers)
 
-    assert retrain.status_code == 403
-    assert "platform operator" in retrain.json()["detail"]
-    assert activate.status_code == 404
+    assert retrain.status_code == 409
+    assert "Fraud scoring is off" in retrain.json()["detail"]
 
 
 def test_model_list_shows_only_this_banks_models(client, db_session, tenant_factory):
@@ -185,7 +155,6 @@ def test_model_list_shows_only_this_banks_models(client, db_session, tenant_fact
                   trained_from_decision_count=10, metrics_json={}, status=MlModelStatus.RETIRED)
     mine = create_model_row(db_session, version="mine", tenant_id=tenant.id, **common)
     create_model_row(db_session, version="theirs", tenant_id=other.id, **common)
-    create_model_row(db_session, version="shared", **common)
     db_session.commit()
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
@@ -199,7 +168,7 @@ def test_bank_cannot_activate_another_banks_model(client, db_session, tenant_fac
     from openclear.ml.registry import create_model_row
 
     tenant, _account, users = tenant_factory.make(slug="admin-ml-activate-other")
-    _bank_only(db_session, tenant)
+    _scoring_on(db_session, tenant)
     other, _a, _u = tenant_factory.make(slug="admin-ml-activate-other-2")
     theirs = create_model_row(
         db_session, network_code="check", version="theirs", algorithm="logistic_regression", artifact_path="/tmp/x.joblib",
@@ -211,11 +180,8 @@ def test_bank_cannot_activate_another_banks_model(client, db_session, tenant_fac
     assert client.patch(f"/api/v1/admin/ml/models/{theirs.id}/activate", headers=headers).status_code == 404
 
 
-def test_shared_model_summary_is_counts_only(client, db_session, tenant_factory):
-    tenant, account, users = tenant_factory.make(slug="admin-ml-summary")
+def test_the_shared_model_summary_is_gone(client, tenant_factory):
+    tenant, _account, users = tenant_factory.make(slug="admin-ml-summary")
     headers = login_headers(client, tenant.slug, users["admin"].email)
 
-    body = client.get("/api/v1/admin/ml/shared-model", headers=headers).json()
-
-    assert {row["network_code"] for row in body} >= {"check", "ach"}
-    assert set(body[0]) == {"network_code", "version", "activated_at", "trained_from_decision_count", "contributing_bank_count"}
+    assert client.get("/api/v1/admin/ml/shared-model", headers=headers).status_code == 404

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 
-import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -168,21 +167,6 @@ def test_auto_decide_exception_fixed_pay(db_session, tenant_factory):
         .all()
     )
     assert len(notif) >= 1
-
-
-def test_auto_decide_exception_ml_determined_no_model_skips(db_session, tenant_factory):
-    tenant, _account, users = tenant_factory.make(slug="disp-auto-decide-ml-no-model")
-    customer, account = _make_customer(db_session, tenant)
-    _paid_item, exception = _mismatched_check_exception(db_session, tenant, account, users)
-    auto_disposition_service.set_disposition_setting(
-        db_session, tenant.id, customer.id, "check",
-        mode=DispositionMode.ML_DETERMINED, response_window_hours=1, default_ach_return_reason_id=None,
-    )
-    db_session.commit()
-
-    result = auto_disposition_service.auto_decide_exception(db_session, exception)
-    assert result is None
-    assert exception.status == ExceptionStatus.OPEN
 
 
 def test_auto_decide_exception_ach_return_without_configured_reason_skips(db_session, tenant_factory):

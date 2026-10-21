@@ -71,9 +71,6 @@
   <div class="toolbar">
     <h1>{{ summary.label if summary else "Exception" }}
       <span class="badge">{{ item.network_code | upper }}</span>
-      {% if item.source.value == "training_backfill" %}
-      <span class="badge badge-warn">{{ "Correction of a prior decision" if item.is_correction else "Training example" }}</span>
-      {% endif %}
     </h1>
     {% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }} fraud risk</span>{% endif %}
   </div>

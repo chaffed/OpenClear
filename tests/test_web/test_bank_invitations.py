@@ -14,7 +14,7 @@ from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+from tests.items import _make_customer_with_account
 from tests.test_web.test_journeys import _sign_in_as
 
 PASSWORD = "A-much-better-passw0rd!"

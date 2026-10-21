@@ -158,7 +158,7 @@ _STATUS_LABELS = {
     "active": "Active", "expired": "Expired", "cancelled": "Cancelled", "revoked": "Revoked",
     "matched": "Matched", "exception": "Exception", "pending": "Pending", "returned": "Returned", "reversed": "Backed out",
     "block_all": "Blocks every debit", "filter_by_authorization": "Allowed originators only",
-    "none": "Leave open", "fixed_pay": "Always pay", "fixed_return": "Always return", "ml_determined": "The model's score decides",
+    "none": "Leave open", "fixed_pay": "Always pay", "fixed_return": "Always return",
     "auto": "Its own model once trained", "customer": "Its own model", "global": "The bank's model",
     "succeeded": "Delivered", "failed": "Failed", "completed": "Done", "queued": "Waiting", "running": "Running",
     "processing": "Processing", "rejected": "Rejected", "candidate": "Candidate", "retired": "Retired",

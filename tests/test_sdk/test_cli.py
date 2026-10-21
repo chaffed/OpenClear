@@ -13,7 +13,7 @@ import httpx
 
 from openclear.domain.decision import DecisionOutcome
 from openclear.services import api_client_service, decision_outbox_service, security_group_service, webhook_service
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 from openclear_sdk import cli  # noqa: E402 -- from sdks/python/src (conftest.py)
 from tests.conftest import login_headers

@@ -59,7 +59,6 @@ class Evidence:
 _DEADLINE_OUTCOMES = {
     DispositionMode.FIXED_PAY: "it will be paid automatically",
     DispositionMode.FIXED_RETURN: "it will be returned automatically",
-    DispositionMode.ML_DETERMINED: "it will be paid or returned automatically, based on the fraud score",
 }
 
 

@@ -1057,7 +1057,7 @@ as a template for a real deployment; use the `docker run` example above instead.
 
 A persistent, fully-functioning sales-demo organization (`services/demo_tenant_service.py`)
 — real accounts, issued/paid items, exceptions, ACH activity, users, and its own trained
-per-customer ML model, safe to hand a prospect or put on the open web, since it resets
+fraud-scoring model (scoring on), safe to hand a prospect or put on the open web, since it resets
 itself. This isn't Docker-specific — the settings below work with the plain one-click
 launcher too, just set them as env vars before running it:
 
@@ -1125,12 +1125,12 @@ Or bring up the whole stack (app + Postgres) with `docker compose up --build`.
 on the single-tenant operational tables (`account`, `issued_item`, `stop_payment`,
 `check_image`, `paid_item`, `ach_authorization_rule`, `ach_transaction`,
 `security_group`, `tenant_membership`, `bulk_upload_file`, `audit_log_entry`,
-`ach_return_reason`, `bank_form`, and every table added since) as
+`ach_return_reason`, `bank_form`, `ml_model`, and every table added since) as
 defense-in-depth alongside the primary
 tenant-isolation mechanism (the repository-layer filter in `repositories/base.py`, which
 is what's actually under test in `tests/test_api/test_cross_tenant_isolation.py`).
-`exception_item`/`decision` (the shared ML model trains across every organization that
-chose it, see `ml/train.py`) and `user` (a global login identity with no single-tenant row-ownership
+`exception_item`/`decision` (the cut-off and default-decision sweeps find every
+organization's due items, then bind to each item's organization) and `user` (a global login identity with no single-tenant row-ownership
 story — see "Users, security groups, and cross-tenant access" above) are deliberately
 excluded.
 
@@ -1456,13 +1456,10 @@ The full picture (and the reasoning behind it) is in [docs/ARCHITECTURE.md](docs
 - `ocr/` — pluggable OCR (`OCRProvider` protocol; Tesseract is the default, cloud
   providers are stubbed behind optional extras)
 - `ml/` — model training/scoring per network, fed by human pay/return decisions
-  (`decision.features_json`). Each organization chooses the **shared model** (trained on
-  every participating organization's decisions, run by the platform operator through
-  `/api/v1/platform/ml/*` with a `shared_model`-scoped platform key) or a **bank-only model**
-  (its own decisions only, seeded from a copy of the shared model when it switches, run by
-  its own admins). Customer models sit on top of either. See `ml/predict.py` for which model
-  scores an exception, `services/tenant_ml_service.py` for switching, and the admin "ML
-  Scoring" docs for the details a bank sees.
+  (`decision.features_json`). Each bank has at most its own model per network, trained only
+  on its own final decisions and run by its own admins. Scoring is off until the bank turns
+  it on (Settings → Fraud scoring), and the score is advisory: it never decides an item. See
+  `ml/predict.py` for scoring and the admin "ML Scoring" docs for the details a bank sees.
 - `plugins/` — the plugin registry and loader; `plugins/builtin.py` registers the built-ins
 - `api/v1/` — FastAPI routers; `exceptions.py`/`decisions.py` are network-agnostic
 - `workers/` — the scheduled jobs (ML retrain, dropbox import, notifications, disposition

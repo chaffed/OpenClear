@@ -5,208 +5,83 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
 from openclear.db.session import get_session_factory
 from openclear.db.tenancy import bind_session_to_tenant
-from openclear.domain.decision import Decision
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.ml_model import MlModelStatus
 from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus
-from openclear.domain.tenant import MlModelSource, Tenant
-from openclear.ml.registry import create_model_row, get_active_model_row, list_slot_models
+from openclear.domain.tenant import Tenant
+from openclear.ml.registry import create_model_row, list_slot_models
 from openclear.ml.train import InsufficientTrainingData, RetrainCooldownActive, count_labeled_decisions, train_model
 from openclear.networks.registry import registered_codes
 from openclear.notifications.email.factory import get_email_provider
 from openclear.notifications.sms.factory import get_sms_provider
-from openclear.services import auto_disposition_service, demo_tenant_service, tenant_ml_service
+from openclear.services import auto_disposition_service, demo_tenant_service
 from openclear.services.dropbox_import_service import tenants_with_a_dropbox
 from openclear.workers import job_handlers, jobs
 
 logger = logging.getLogger(__name__)
 
 
-def _count_labeled_decisions(session: Session, network_code: str, *, tenant_id: uuid.UUID | None = None) -> int:
-    """How many decisions the shared model (tenant_id None) or one bank-only model could
-    learn from — the exact same rules as training itself (ml/train.py::
-    count_labeled_decisions), so e.g. a bank-only bank's decisions never trigger a
-    shared-model retrain. A COUNT, not the rows."""
-    return count_labeled_decisions(session, network_code, tenant_id=tenant_id)
-
-
-def _most_recently_trained_count(
-    session: Session, network_code: str, customer_id: uuid.UUID | None = None, *, tenant_id: uuid.UUID | None = None
-) -> int:
-    """How many eligible decisions the slot's last run saw. Since S5 a run may use fewer
-    rows than that (the training window and row cap), so this is the count it recorded in
-    metrics_json["training"], falling back to the rows used for models trained before."""
-    models = [m for m in list_slot_models(session, network_code, tenant_id=tenant_id, customer_id=customer_id)
-              if m.status != MlModelStatus.FAILED]
+def _most_recently_trained_count(session: Session, network_code: str, *, tenant_id: uuid.UUID) -> int:
+    """How many eligible decisions the bank's last run saw (metrics_json["training"]), falling
+    back to the rows used for models trained before that was recorded."""
+    models = [m for m in list_slot_models(session, network_code, tenant_id=tenant_id) if m.status != MlModelStatus.FAILED]
     if not models:
         return 0
     training = (models[0].metrics_json or {}).get("training") or {}
     return training.get("eligible_decisions", models[0].trained_from_decision_count)
 
 
-def _customers_with_labeled_decisions(session: Session, network_code: str) -> dict[uuid.UUID, int]:
-    """Every customer_id with at least one labeled decision for this network, and how
-    many total — the same shape _count_labeled_decisions works with, just grouped by
-    customer instead of network-wide. Bank-wide (customer_id is None) exceptions are
-    covered by the existing global retrain above, not here."""
-    stmt = (
-        select(ExceptionItem.customer_id, func.count(Decision.id))
-        .select_from(Decision)
-        .join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id)
-        .where(
-            ExceptionItem.network_code == network_code,
-            Decision.features_json.is_not(None),
-            ExceptionItem.customer_id.is_not(None),
-        )
-        .group_by(ExceptionItem.customer_id)
-    )
-    return dict(session.execute(stmt).all())
-
-
-def _bank_left_since_shared_trained(session: Session, network_code: str) -> bool:
-    active = get_active_model_row(session, network_code)
-    # activated_at (set in Python, microsecond precision), not created_at (a database
-    # default, whole seconds on SQLite), so a switch moments before a retrain isn't
-    # mistaken for one after it.
-    return active is not None and tenant_ml_service.banks_left_shared_since(
-        session, active.activated_at or active.created_at
-    )
-
-
-def _train_and_log(
-    session: Session,
-    network_code: str,
-    *,
-    customer_id: uuid.UUID | None = None,
-    tenant_id: uuid.UUID | None = None,
-    label: str = "shared",
-    force_activate_reason: str | None = None,
-) -> None:
-    """Runs train_model for one (network_code, customer_id) pair as part of the
-    unattended scheduled job, and never lets a single network/customer's failure abort
-    the rest of the run — unlike the on-demand web/API routes (where a human is watching
-    the request and an HTTP error is enough), an uncaught exception here would otherwise
-    silently skip every network/customer still left in retrain_job()'s loops. An
-    unexpected failure (not just the two already-expected "nothing to do yet" outcomes)
-    is recorded as a FAILED MlModel row so it's visible on the admin models page, not
-    just a server log line nobody looks at."""
+def _train_and_log(session: Session, network_code: str, *, tenant_id: uuid.UUID) -> None:
+    """Trains one bank's model for one network as part of the unattended job, and never lets
+    one bank's failure stop the others: an unexpected failure is recorded as a FAILED model
+    row, so it shows on the bank's models page, not only in a log."""
     try:
-        result = train_model(
-            session, network_code, customer_id=customer_id, tenant_id=tenant_id, force_activate_reason=force_activate_reason
-        )
-        logger.info("Retrained %s (%s): promoted=%s metrics=%s", network_code, label, result.promoted, result.metrics)
+        result = train_model(session, network_code, tenant_id=tenant_id)
+        logger.info("Retrained %s for bank %s: promoted=%s metrics=%s", network_code, tenant_id, result.promoted, result.metrics)
     except InsufficientTrainingData as exc:
-        logger.info("Skipping retrain for %s (%s): %s", network_code, label, exc)
+        logger.info("Skipping retrain for %s (bank %s): %s", network_code, tenant_id, exc)
     except RetrainCooldownActive as exc:
-        logger.info("Retrain for %s (%s) still in cooldown: %s", network_code, label, exc)
-    except Exception as exc:  # noqa: BLE001 — isolate one network/customer's failure from the rest of the run
-        logger.exception("Retrain failed for %s (%s)", network_code, label)
+        logger.info("Retrain for %s (bank %s) still in cooldown: %s", network_code, tenant_id, exc)
+    except Exception as exc:  # noqa: BLE001 — isolate one bank's failure from the rest of the run
+        logger.exception("Retrain failed for %s (bank %s)", network_code, tenant_id)
         session.rollback()
         create_model_row(
-            session,
-            network_code=network_code,
-            customer_id=customer_id,
-            tenant_id=tenant_id,
-            version=f"failed_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}",
-            algorithm="logistic_regression",
-            artifact_path="",
-            trained_from_decision_count=0,
-            metrics_json={"error": str(exc)},
-            status=MlModelStatus.FAILED,
+            session, network_code=network_code, tenant_id=tenant_id,
+            version=f"failed_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}", algorithm="logistic_regression", artifact_path="",
+            trained_from_decision_count=0, metrics_json={"error": str(exc)}, status=MlModelStatus.FAILED,
         )
         session.commit()
 
 
 def retrain_job() -> None:
-    """Iterates every registered network and retrains each model slot only if enough NEW
-    labeled decisions have accumulated since its last training run — avoids thrashing on
-    tiny batches. In order: the shared model (decisions from banks on the shared model),
-    then each bank-only bank's own model, then per customer: any customer with enough
-    new labeled decisions of their own gets their own model trained too, which is what
-    actually builds a customer's first model and (via ml/predict.py's AUTO mode) puts it
-    into use with no separate action required. Designed to be triggered by an in-process
-    APScheduler cron (see workers/scheduler.py, zero-extra-infra for low-barrier
-    deployments) or an external cron/Celery-beat/k8s CronJob for enterprise deployments —
-    this function is the only thing that needs to be invoked either way."""
+    """Nightly: for every bank with fraud scoring on (SIMPLIFY_PLAN.md SP-D10), retrain its own
+    model for each network once enough new final decisions have built up since the last run
+    (ml_min_new_decisions_for_retrain). One job per bank and network, so they train in
+    parallel on however many workers there are, each bound to its bank."""
     settings = get_settings()
     session = get_session_factory()()
     try:
-        private_bank_ids = session.execute(
-            select(Tenant.id).where(Tenant.ml_model_source == MlModelSource.PRIVATE, Tenant.is_active)
-        ).scalars().all()
-        for network_code in registered_codes():
-            for bank_id in [None, *private_bank_ids]:
-                label = "shared" if bank_id is None else f"bank tenant_id={bank_id}"
-                total = _count_labeled_decisions(session, network_code, tenant_id=bank_id)
-                new_decisions = total - _most_recently_trained_count(session, network_code, tenant_id=bank_id)
-                if bank_id is None and _bank_left_since_shared_trained(session, network_code):
-                    # A bank switched to bank-only since the shared model was trained: its
-                    # data is still inside that model until it's retrained without it.
-                    _queue_retrain(
-                        session, network_code, label="shared (a bank left)",
-                        force_activate_reason=(
-                            "Activated without the usual comparison: a bank switched to a bank-only model, "
-                            "and the previous shared model still contained its data."
-                        ),
-                    )
-                    continue
+        banks = session.execute(select(Tenant.id).where(Tenant.ml_scoring_enabled.is_(True), Tenant.is_active.is_(True))).scalars().all()
+        for tenant_id in banks:
+            bind_session_to_tenant(session, tenant_id)
+            for network_code in registered_codes():
+                new_decisions = (count_labeled_decisions(session, network_code, tenant_id=tenant_id)
+                                 - _most_recently_trained_count(session, network_code, tenant_id=tenant_id))
                 if new_decisions < settings.ml_min_new_decisions_for_retrain:
-                    logger.info(
-                        "Skipping %s retrain for %s: %d new decisions, need %d",
-                        label, network_code, new_decisions, settings.ml_min_new_decisions_for_retrain,
-                    )
                     continue
-                _queue_retrain(session, network_code, tenant_id=bank_id, label=label)
-
-            for customer_id, customer_total in _customers_with_labeled_decisions(session, network_code).items():
-                customer_already_trained_on = _most_recently_trained_count(session, network_code, customer_id)
-                customer_new_decisions = customer_total - customer_already_trained_on
-                if customer_new_decisions < settings.ml_min_new_decisions_for_retrain:
-                    continue
-                _queue_retrain(session, network_code, customer_id=customer_id, label=f"customer_id={customer_id}")
-        session.commit()
+                jobs.enqueue(session, job_handlers.RETRAIN_MODEL_SLOT, tenant_id=tenant_id,
+                             payload={"network_code": network_code, "tenant_id": str(tenant_id)},
+                             dedupe_key=f"retrain:{network_code}:bank:{tenant_id}")
+            session.commit()
         jobs.jobs_queued(session.get_bind())
     finally:
         session.close()
-
-
-def _queue_retrain(
-    session: Session,
-    network_code: str,
-    *,
-    tenant_id: uuid.UUID | None = None,
-    customer_id: uuid.UUID | None = None,
-    label: str,
-    force_activate_reason: str | None = None,
-) -> None:
-    """One job per model slot, so slots train in parallel on however many workers there
-    are. The job is bound to the slot's bank (a customer model's bank is found from its
-    exceptions), so RLS applies while it trains; the shared model has no bank."""
-    job_bank = tenant_id
-    if customer_id is not None:
-        job_bank = session.execute(
-            select(ExceptionItem.tenant_id).where(ExceptionItem.customer_id == customer_id).limit(1)
-        ).scalar_one_or_none()
-    slot = f"customer:{customer_id}" if customer_id else f"bank:{tenant_id}" if tenant_id else "shared"
-    jobs.enqueue(
-        session,
-        job_handlers.RETRAIN_MODEL_SLOT,
-        tenant_id=job_bank,
-        payload={
-            "network_code": network_code,
-            "tenant_id": str(tenant_id) if tenant_id else None,
-            "customer_id": str(customer_id) if customer_id else None,
-            "label": label,
-            "force_activate_reason": force_activate_reason,
-        },
-        dedupe_key=f"retrain:{network_code}:{slot}",
-    )
 
 
 def dropbox_import_job() -> None:

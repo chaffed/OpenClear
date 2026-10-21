@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.tenant import Tenant
-from openclear.services import account_service, audit_log_service, customer_ml_service, customer_service, sso_service
+from openclear.services import account_service, audit_log_service, auto_disposition_service, customer_service, sso_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
 from openclear.web.redirects import see_other
@@ -171,8 +171,8 @@ def customer_detail(
     if customer is None:
         raise WebNotFound()
     accounts = account_service.list_accounts(db, ctx.tenant_id, customer_id=customer.id)
-    ml_summary = (
-        customer_ml_service.get_ml_summary(db, ctx.tenant_id, customer.id) if "admin:manage" in ctx.permissions else None
+    disposition_summary = (
+        auto_disposition_service.get_disposition_summary(db, ctx.tenant_id, customer.id) if "admin:manage" in ctx.permissions else None
     )
     sso_connection_count = len(sso_service.list_connections(db, ctx.tenant_id, customer_id=customer.id))
     from openclear.services import exception_service, reminder_service
@@ -191,7 +191,7 @@ def customer_detail(
     from openclear.services import cutoff_service
 
     return render_template(
-        request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, ml_summary=ml_summary,
+        request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, disposition_summary=disposition_summary,
         sso_connection_count=sso_connection_count, open_count=open_count, nearest_deadline=nearest_deadline,
         reminder_timing=reminder_timing, customer_admins=admins,
         # What applies: the bank's own, else the installation's default (every bank has a cut-off).

@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from openclear.domain.decision import Decision, DecisionOutcome
 from tests.conftest import TEST_DATABASE_URL
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 

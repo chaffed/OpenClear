@@ -114,9 +114,9 @@
 </table>
 {% endif %}
 <table>
-  <thead><tr><th>Scoring model</th><th>Scope</th><th>Trained on</th><th>Artifact SHA-256</th></tr></thead>
-  <tbody>{% for m in b.models %}<tr><td>{{ m.network }} {{ m.version }} ({{ m.algorithm }})</td><td>{{ m.scope }}</td><td>{{ m.trained_from_decisions }} decisions</td><td class="mono">{{ m.artifact_sha256 or "—" }}</td></tr>
-  {% else %}<tr><td colspan="4">No active scoring models.</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>Scoring model</th><th>Trained on</th><th>Artifact SHA-256</th></tr></thead>
+  <tbody>{% for m in b.models %}<tr><td>{{ m.network }} {{ m.version }} ({{ m.algorithm }})</td><td>{{ m.trained_from_decisions }} decisions</td><td class="mono">{{ m.artifact_sha256 or "—" }}</td></tr>
+  {% else %}<tr><td colspan="3">No active scoring models.</td></tr>{% endfor %}</tbody>
 </table>
 
 <h2>Model risk tests</h2>

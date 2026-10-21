@@ -16,9 +16,8 @@ pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_T
 
 # Each left out on purpose, with the reason in the migration named.
 DELIBERATELY_UNPROTECTED = {
-    "decision": "the shared model trains on every bank's decisions (6b9b23b81e31)",
-    "exception_item": "the same (6b9b23b81e31)",
-    "ml_model": "the same: the shared model's rows belong to no bank (6b9b23b81e31)",
+    "decision": "the cut-off sweep finds every bank's due decisions, then binds to each (6b9b23b81e31, decision_service.lock_due)",
+    "exception_item": "the same, and the default-decision sweep (6b9b23b81e31)",
     "job": "workers claim every bank's jobs, then bind to the job's bank (c4f6a8b0d2e5)",
     "notification": "tenant_id is nullable, like user's (c3d4e5f6a7b8)",
     "security_event": "some events belong to no bank, and delivery reads every bank's (b9d1f3a5c7e0)",

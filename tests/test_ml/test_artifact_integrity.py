@@ -14,10 +14,9 @@ from openclear.config import get_settings
 from openclear.domain.exception_item import ExceptionItem
 from openclear.ml import predict, registry
 from openclear.ml.predict import score_exception
-from openclear.ml.registry import ArtifactIntegrityError, ArtifactStore, get_active_model_row
+from openclear.ml.registry import ArtifactIntegrityError, ArtifactStore
 from openclear.ml.train import train_model
-from openclear.services import tenant_ml_service
-from tests.test_ml.test_bank_model_choice import _bank, _row
+from tests.test_ml.test_bank_scoring_switch import _bank, _row
 
 
 @pytest.fixture(autouse=True)
@@ -28,9 +27,9 @@ def _fresh(monkeypatch):
     predict.reset_model_cache()
 
 
-def _trained_shared_model(db_session, tenant_factory, slug):
+def _trained_model(db_session, tenant_factory, slug):
     tenant, _account, users = _bank(tenant_factory, db_session, slug, decisions=12)
-    row = train_model(db_session, "check").model_row
+    row = train_model(db_session, "check", tenant_id=tenant.id).model_row
     db_session.commit()
     return tenant, users, row
 
@@ -47,14 +46,14 @@ def _no_unpickling(monkeypatch):
 
 
 def test_training_records_the_sha256_of_the_file_it_wrote(db_session, tenant_factory):
-    _tenant, _users, row = _trained_shared_model(db_session, tenant_factory, "sha-rec")
+    _tenant, _users, row = _trained_model(db_session, tenant_factory, "sha-rec")
 
     assert row.artifact_sha256 == hashlib.sha256(Path(row.artifact_path).read_bytes()).hexdigest()
     assert ArtifactStore().load_model(row) is not None
 
 
 def test_a_changed_file_is_refused_without_being_unpickled(db_session, tenant_factory, monkeypatch):
-    _tenant, _users, row = _trained_shared_model(db_session, tenant_factory, "sha-chg")
+    _tenant, _users, row = _trained_model(db_session, tenant_factory, "sha-chg")
     _tamper(row)
     calls = _no_unpickling(monkeypatch)
 
@@ -63,8 +62,9 @@ def test_a_changed_file_is_refused_without_being_unpickled(db_session, tenant_fa
     assert calls == []
 
 
-def test_a_row_with_no_recorded_fingerprint_is_refused(db_session, monkeypatch):
-    row = _row(db_session)
+def test_a_row_with_no_recorded_fingerprint_is_refused(db_session, tenant_factory, monkeypatch):
+    tenant, _account, _users = _bank(tenant_factory, db_session, "sha-none", decisions=0)
+    row = _row(db_session, tenant_id=tenant.id)
     calls = _no_unpickling(monkeypatch)
 
     with pytest.raises(ArtifactIntegrityError, match="No fingerprint"):
@@ -73,7 +73,7 @@ def test_a_row_with_no_recorded_fingerprint_is_refused(db_session, monkeypatch):
 
 
 def test_scoring_skips_a_tampered_model_instead_of_failing(db_session, tenant_factory, caplog):
-    tenant, _users, row = _trained_shared_model(db_session, tenant_factory, "sha-scr")
+    tenant, _users, row = _trained_model(db_session, tenant_factory, "sha-scr")
     exception_item = db_session.execute(select(ExceptionItem).where(ExceptionItem.tenant_id == tenant.id)).scalars().first()
     exception_item.ml_score = None
     _tamper(row)
@@ -84,21 +84,10 @@ def test_scoring_skips_a_tampered_model_instead_of_failing(db_session, tenant_fa
 
 
 def test_scoring_skips_a_missing_model_file_instead_of_failing(db_session, tenant_factory, caplog):
-    tenant, _users, row = _trained_shared_model(db_session, tenant_factory, "sha-missing")
+    tenant, _users, row = _trained_model(db_session, tenant_factory, "sha-missing")
     exception_item = db_session.execute(select(ExceptionItem).where(ExceptionItem.tenant_id == tenant.id)).scalars().first()
     exception_item.ml_score = None
     Path(row.artifact_path).unlink()
 
     assert score_exception(db_session, exception_item) is None
     assert "can't be read" in caplog.text
-
-
-def test_switching_to_bank_only_never_copies_a_tampered_shared_model(db_session, tenant_factory):
-    tenant, users, shared = _trained_shared_model(db_session, tenant_factory, "sha-swt")
-    _tamper(shared)
-
-    seeded = tenant_ml_service.switch_to_bank_only(db_session, tenant.id, actor_user_id=users["admin"].id)
-    db_session.commit()
-
-    assert seeded == []
-    assert get_active_model_row(db_session, "check", tenant_id=tenant.id) is None

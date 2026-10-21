@@ -24,10 +24,9 @@ def _hash_key(raw_key: str) -> str:
 
 # What a platform key may be allowed to do (PlatformApiKey.scopes):
 #   usage        — the usage-metering API (api/v1/platform_usage.py)
-#   shared_model — operating the shared fraud-scoring model (api/v1/platform_ml.py)
 #   operations   — watching and retrying background jobs (api/v1/platform_jobs.py)
 #   billing      — the operator's fee schedule and invoices to banks (api/v1/platform_billing.py)
-SCOPES = ("usage", "shared_model", "operations", "billing")
+SCOPES = ("usage", "operations", "billing")
 
 
 def check_scopes(scopes: tuple[str, ...]) -> list[str]:
@@ -55,7 +54,7 @@ def generate_and_create(session: Session, name: str, scopes: tuple[str, ...] = (
     """Mints a new key and returns (row, raw_key) — raw_key is shown to the caller
     exactly once here; only its hash is ever persisted, so it can't be recovered later,
     only revoked and replaced with a new one. Give each integration only the scopes it
-    needs: a billing system gets "usage", never "shared_model"."""
+    needs: a billing system gets "usage", never "operations"."""
     raw_key, key_hash = mint()
     return create_from_hash(session, name, scopes, key_hash), raw_key
 

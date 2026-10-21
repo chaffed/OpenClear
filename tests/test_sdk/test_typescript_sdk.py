@@ -19,7 +19,7 @@ import pytest
 from openclear.config import get_settings
 from openclear.domain.decision import DecisionOutcome
 from openclear.services import api_client_service, security_group_service, webhook_service
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 SDK = Path(__file__).resolve().parents[2] / "sdks" / "typescript"
 

@@ -13,8 +13,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from openclear.db.base import Base
-from openclear.domain.customer import Customer
-from openclear.domain.ml_model import MlModel
 from openclear.domain.notification import NotificationPreference
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
@@ -54,18 +52,7 @@ def table_record_counts(db: Session, tenant_id: uuid.UUID) -> list[tuple[str, in
         )
     )
 
-    # ml_model has no tenant_id column (a null customer_id is the one genuinely global,
-    # tenant-agnostic model, deliberately excluded here to avoid leaking any cross-tenant
-    # signal) -- same customer_id-via-Customer scoping as _wipe_tenant_children.
-    customer_ids = select(Customer.id).where(Customer.tenant_id == tenant_id)
-    counts.append(
-        (
-            "ml_model",
-            db.execute(select(func.count()).select_from(MlModel).where(MlModel.customer_id.in_(customer_ids))).scalar_one(),
-        )
-    )
-
-    already_counted = {"tenant", "user", "notification_preference", "ml_model"}
+    already_counted = {"tenant", "user", "notification_preference"}
     for table in Base.metadata.sorted_tables:
         if table.name in already_counted:
             continue
