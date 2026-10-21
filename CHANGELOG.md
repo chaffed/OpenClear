@@ -26,6 +26,10 @@
   raises a high-severity `auth.session.reuse_detected` security event. **API change:** clients must
   keep the refresh token each refresh returns; one that refreshes with its first token again is
   signed out.
+- **A customer's default decision and scoring model are protected settings** (FR4): with
+  "sensitive settings need a second admin" on, making a customer's default *pay* (or the model's
+  score), or changing which model scores its items, waits for another admin, like its cut-off.
+  The retired response-window field is gone from that form's handler.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

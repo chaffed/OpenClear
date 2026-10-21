@@ -211,6 +211,32 @@ def customer_ml_detail(
     )
 
 
+def _protected_customer_change(db: Session, ctx: TenantContext, customer_id: uuid.UUID, kind: str, payload: dict, *,
+                               summary: str, done: str) -> RedirectResponse:
+    """A customer's default decision or scoring model (FULL_REVIEW_PLAN.md FR4): applied at once
+    when it doesn't move money, otherwise waiting for a second admin under the bank's rule."""
+    from openclear.services import audit_log_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    back = f"/ui/admin/customers/{customer_id}/ml"
+    try:
+        outcome = change_request_service.request_or_apply(db, kind, {"customer_id": str(customer_id), **payload}, tenant_id=ctx.tenant_id,
+                                                         user_id=ctx.user_id, summary=f"{summary} for {customer.name}")
+    except ValueError as exc:
+        db.rollback()
+        return see_other(back, error=str(exc))
+    if outcome.waiting:
+        db.commit()
+        return see_other(back, flash=waiting_message(outcome))
+    if outcome.summary != "Nothing changed.":
+        action = "customer.update_disposition" if kind == "customer.disposition" else "customer.update_ml_mode"
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action=action,
+                                        summary=outcome.summary, resource_type="customer", resource_id=customer_id)
+    db.commit()
+    return see_other(back, flash=done)
+
+
 @router.post("/customers/{customer_id}/ml/mode")
 def set_customer_ml_mode(
     customer_id: uuid.UUID,
@@ -220,10 +246,8 @@ def set_customer_ml_mode(
     ctx: TenantContext = Depends(require_web_permission("admin:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    _get_customer_or_404(db, ctx.tenant_id, customer_id)
-    customer_ml_service.set_mode(db, ctx.tenant_id, customer_id, network_code, mode)
-    db.commit()
-    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Scoring mode updated.")
+    return _protected_customer_change(db, ctx, customer_id, "customer.ml_mode", {"network_code": network_code, "mode": mode.value},
+                                      summary=f"Score {network_code} items by: {mode.value}", done="Scoring mode updated.")
 
 
 @router.post("/customers/{customer_id}/disposition")
@@ -231,26 +255,19 @@ def set_customer_disposition(
     customer_id: uuid.UUID,
     network_code: str = Form(...),
     mode: DispositionMode = Form(...),
-    response_window_hours: str = Form(""),
     default_ach_return_reason_id: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("admin:manage")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    _get_customer_or_404(db, ctx.tenant_id, customer_id)
     try:
-        hours = int(response_window_hours) if response_window_hours else None
-        if hours is not None and hours <= 0:
-            raise ValueError("response_window_hours must be positive")
+        reason_id = str(uuid.UUID(default_ach_return_reason_id)) if default_ach_return_reason_id else None
     except ValueError:
-        return see_other(f"/ui/admin/customers/{customer_id}/ml", error='Response window must be a positive whole number of hours, or blank.')
-    reason_id = uuid.UUID(default_ach_return_reason_id) if default_ach_return_reason_id else None
-    auto_disposition_service.set_disposition_setting(
-        db, ctx.tenant_id, customer_id, network_code,
-        mode=mode, response_window_hours=hours, default_ach_return_reason_id=reason_id,
-    )
-    db.commit()
-    return see_other(f"/ui/admin/customers/{customer_id}/ml", flash="Default disposition updated.")
+        return see_other(f"/ui/admin/customers/{customer_id}/ml", error="Choose a return reason from the list.")
+    return _protected_customer_change(
+        db, ctx, customer_id, "customer.disposition",
+        {"network_code": network_code, "mode": mode.value, "ach_return_reason_id": reason_id},
+        summary=f"Default decision for {network_code}: {mode.value.replace('_', ' ')}", done="Default disposition updated.")
 
 
 @router.post("/customers/{customer_id}/ml/retrain")

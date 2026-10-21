@@ -239,6 +239,8 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_decision_files": "settings.changed",
     "tenant.update_cutoffs": "settings.changed",  # when decisions become final (UI_PLAN.md UI-D13)
     "customer.update_cutoff": "settings.changed",
+    "customer.update_disposition": "settings.changed",
+    "customer.update_ml_mode": "settings.changed",
     "tenant.update_closures": "settings.changed",
     "customer.update_password_policy": "settings.changed",
     "tenant.update_sod_mode": "sod.mode.changed",

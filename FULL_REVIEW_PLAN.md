@@ -286,3 +286,8 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   before the route. ASVS: V6.3.1's evidence gains `auth/lockout.py`; refresh rotation isn't
   claimed against a row (7.2.4 is about new tokens at sign-in). Also fixed: `revoke_session`'s
   clean-up compared in-memory datetimes, which failed on SQLite once a refresh had retired a token.
+- 2026-10-21: FR4 built on `fr3-sign-in` (small, so with FR3): `customer.disposition` (loosening
+  only when the new default pays: fixed pay or the model's score) and `customer.ml_mode` (any
+  change), both `sensitive` under `admin:manage`; the two routes go through `request_or_apply`
+  and record `customer.update_disposition` / `customer.update_ml_mode` (security events
+  `settings.changed`); the route's `response_window_hours` is gone. Admin docs updated.

@@ -1433,3 +1433,78 @@ register(Kind(
     loosens=lambda before, after: before != after, apply=_customer_cutoff_apply,
     setting=lambda payload: f"customer_cutoff:{payload['customer_id']}", action="customer.update_cutoff",
 ))
+
+
+# --- A customer's default decision and scoring (FULL_REVIEW_PLAN.md FR4, S3) ---------------------
+# What happens to a customer's items nobody decides by the cut-off, and which model scores them:
+# "always pay" pays every one, so it's as protected as the cut-off itself.
+
+_PAYING_MODES = {"fixed_pay", "ml_determined"}
+
+
+def _disposition_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.services import auto_disposition_service
+
+    setting = auto_disposition_service._get_setting(session, tenant_id, uuid.UUID(payload["customer_id"]), payload["network_code"])
+    return {"mode": setting.mode.value if setting else "none",
+            "ach_return_reason_id": str(setting.default_ach_return_reason_id) if setting and setting.default_ach_return_reason_id else None}
+
+
+def _disposition_value(payload: dict) -> dict:
+    return {"mode": payload["mode"], "ach_return_reason_id": payload.get("ach_return_reason_id") or None}
+
+
+def _disposition_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_disposition_setting import DispositionMode
+    from openclear.services import auto_disposition_service
+
+    customer = session.get(Customer, uuid.UUID(payload["customer_id"]))
+    if customer is None or customer.tenant_id != tenant_id:
+        raise ChangeError("That customer no longer exists.")
+    reason = payload.get("ach_return_reason_id")
+    auto_disposition_service.set_disposition_setting(
+        session, tenant_id, customer.id, payload["network_code"], mode=DispositionMode(payload["mode"]), response_window_hours=None,
+        default_ach_return_reason_id=uuid.UUID(reason) if reason else None)
+    return f"{customer.name}'s default decision for {payload['network_code']}: {payload['mode'].replace('_', ' ')}"
+
+
+register(Kind(
+    "customer.disposition", "A customer's default decision", "sensitive", "admin:manage", _disposition_current, _disposition_value,
+    # Paying by default, or by the model's score, decides money nobody looked at; leaving items
+    # open or returning them doesn't pay anything.
+    loosens=lambda before, after: before != after and after["mode"] in _PAYING_MODES, apply=_disposition_apply,
+    setting=lambda payload: f"customer_disposition:{payload['customer_id']}:{payload['network_code']}",
+    action="customer.update_disposition",
+))
+
+
+def _ml_mode_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.customer_ml_setting import MlScoringMode
+    from openclear.repositories.customer_ml_setting_repo import CustomerMlSettingRepository
+
+    rows = CustomerMlSettingRepository(session, tenant_id).list(customer_id=uuid.UUID(payload["customer_id"]),
+                                                                network_code=payload["network_code"])
+    return {"mode": rows[0].mode.value if rows else MlScoringMode.AUTO.value}
+
+
+def _ml_mode_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_ml_setting import MlScoringMode
+    from openclear.services import customer_ml_service
+
+    customer = session.get(Customer, uuid.UUID(payload["customer_id"]))
+    if customer is None or customer.tenant_id != tenant_id:
+        raise ChangeError("That customer no longer exists.")
+    customer_ml_service.set_mode(session, tenant_id, customer.id, payload["network_code"], MlScoringMode(payload["mode"]))
+    return f"{customer.name}'s {payload['network_code']} items scored by: {payload['mode']}"
+
+
+register(Kind(
+    "customer.ml_mode", "A customer's scoring model", "sensitive", "admin:manage", _ml_mode_current,
+    lambda payload: {"mode": payload["mode"]},
+    # Which model scores the items is what "decide by the model's score" acts on.
+    loosens=lambda before, after: before != after, apply=_ml_mode_apply,
+    setting=lambda payload: f"customer_ml_mode:{payload['customer_id']}:{payload['network_code']}",
+    action="customer.update_ml_mode",
+))

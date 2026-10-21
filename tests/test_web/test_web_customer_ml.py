@@ -242,7 +242,7 @@ def test_set_customer_disposition_fixed_pay(client, db_session, tenant_factory):
 
     resp = client.post(
         f"/ui/admin/customers/{customer.id}/disposition",
-        data={"network_code": "check", "mode": "fixed_pay", "response_window_hours": "12", "csrf_token": _csrf(client)},
+        data={"network_code": "check", "mode": "fixed_pay", "csrf_token": _csrf(client)},
         follow_redirects=False,
     )
     assert resp.status_code == 303
@@ -253,7 +253,6 @@ def test_set_customer_disposition_fixed_pay(client, db_session, tenant_factory):
 
     db_session.expire_all()
     assert auto_disposition_service.get_disposition_mode(db_session, tenant.id, customer.id, "check") == DispositionMode.FIXED_PAY
-    assert auto_disposition_service.get_response_window_hours(db_session, tenant.id, customer.id, "check") == 12
 
 
 def test_set_customer_disposition_with_ach_return_reason(client, db_session, tenant_factory):
@@ -282,19 +281,35 @@ def test_set_customer_disposition_with_ach_return_reason(client, db_session, ten
     assert summary["ach"].default_ach_return_reason_id == reason.id
 
 
-def test_set_customer_disposition_rejects_non_positive_window(client, db_session, tenant_factory):
-    tenant, _account, users = tenant_factory.make(slug="web-cust-disp-bad-window")
+def test_paying_by_default_waits_for_a_second_admin(client, db_session, tenant_factory):
+    """FULL_REVIEW_PLAN.md FR4: "always pay" pays what nobody looked at, so under the bank's
+    second-admin rule it waits, as the cut-off beside it does; leaving items open doesn't."""
+    from openclear.domain.customer_disposition_setting import DispositionMode
+    from openclear.domain.tenant import Tenant
+    from openclear.services import auto_disposition_service
+    from tests.test_auth.test_dual_control import _second_admin
+
+    tenant, _account, users = tenant_factory.make(slug="web-cust-disp-protected")
     customer, _account2 = _make_customer(db_session, tenant)
+    _second_admin(db_session, tenant)
+    db_session.get(Tenant, tenant.id).sensitive_changes_need_approval = True
+    db_session.commit()
     _login(client, tenant.slug, users["admin"].email)
     client.get(f"/ui/admin/customers/{customer.id}/ml")
 
-    resp = client.post(
-        f"/ui/admin/customers/{customer.id}/disposition",
-        data={"network_code": "check", "mode": "fixed_pay", "response_window_hours": "0", "csrf_token": _csrf(client)},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 303
-    assert "error" in resp.headers["location"]
+    def post(mode):
+        return client.post(f"/ui/admin/customers/{customer.id}/disposition",
+                           data={"network_code": "check", "mode": mode, "csrf_token": _csrf(client)}, follow_redirects=False)
+
+    assert "approv" in post("fixed_pay").headers["location"].lower()
+    db_session.expire_all()
+    assert auto_disposition_service.get_disposition_mode(db_session, tenant.id, customer.id, "check") == DispositionMode.NONE
+    from openclear.domain.change_request import ChangeRequest
+    from sqlalchemy import select as _select
+
+    waiting = db_session.execute(_select(ChangeRequest).where(ChangeRequest.kind == "customer.disposition")).scalar_one()
+    assert waiting.status == "pending"
+
 
 
 def test_customer_detail_page_shows_ml_scoring_card_for_admin_only(client, db_session, tenant_factory):
