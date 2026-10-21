@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.26.0 — 2026-10-21
 
 - Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages
   after an action are encoded the same way everywhere (a space is now `+` in the address).
