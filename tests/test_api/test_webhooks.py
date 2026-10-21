@@ -168,7 +168,7 @@ def test_the_admin_pages(receiver, client, db_session, tenant_factory):
     jobs.drain(db_session.get_bind())
     assert json.loads(receiver.requests[-1]["body"])["type"] == "webhook.test"
     detail = client.get(f"/ui/admin/webhooks/{endpoint.id}")
-    assert "webhook.test" in detail.text and "succeeded" in detail.text and "whsec_" not in detail.text
+    assert "webhook.test" in detail.text and "Delivered" in detail.text and "whsec_" not in detail.text
 
     bad = client.post("/ui/admin/webhooks", data={"csrf_token": csrf, "url": receiver.url})
     assert bad.status_code == 422 and "at least one event" in bad.text
