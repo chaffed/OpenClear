@@ -332,3 +332,5 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   group permissions per process (FR-D17) would make a permission or branding change take up
   to 30 seconds to reach other instances, which is worse than the query it saves; the
   revocation checks were never going to be cached. Measure first (`scripts/perf/measure.py`).
+- 2026-10-21: FR-D20's product plans written: PAID_ITEM_LAYOUTS_PLAN.md (M1), REVERSE_POSITIVE_PAY_PLAN.md
+  (M2), and TELLER_PLAN.md brought up to date (M3). None started.
