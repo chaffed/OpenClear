@@ -4,7 +4,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -32,6 +32,8 @@ class DecisionBatch(Base):
     layout, stored with its SHA-256, until the bank's core acknowledges it."""
 
     __tablename__ = "decision_batch"
+    # Two batches never start at the same decision (FULL_REVIEW_PLAN.md FR-D3).
+    __table_args__ = (UniqueConstraint("tenant_id", "from_sequence", name="uq_decision_batch_tenant_from_sequence"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

@@ -181,6 +181,29 @@ def _backoff(attempts: int) -> timedelta:
     return timedelta(seconds=seconds * random.uniform(0.8, 1.2))
 
 
+class LeaseLost(RuntimeError):
+    """This worker's claim on the job was given to another worker (its heartbeat looked stale)."""
+
+
+_LEASE_KEY = "openclear_job_lease"
+
+
+def check_lease(session: Session) -> None:
+    """Before a handler commits work part-way (a bulk import's chunk): confirm this worker still
+    owns the job, and refresh its heartbeat in the same transaction (FULL_REVIEW_PLAN.md FR-D6).
+    A worker whose job was queued again for another raises LeaseLost here, so the two never both
+    commit. A no-op outside a job."""
+    lease = session.info.get(_LEASE_KEY)
+    if lease is None:
+        return
+    job_id, worker_id = lease
+    owned = session.execute(
+        update(Job).where(Job.id == job_id, Job.locked_by == worker_id, Job.status == JobStatus.RUNNING).values(heartbeat_at=_now())
+    ).rowcount
+    if owned != 1:
+        raise LeaseLost(f"Job {job_id} was given to another worker")
+
+
 def _execute(engine: Engine, job: Job, worker_id: str) -> None:
     from openclear.workers import job_handlers  # noqa: F401 -- registers every handler
 
@@ -188,6 +211,7 @@ def _execute(engine: Engine, job: Job, worker_id: str) -> None:
     job_id, tenant_id, kind = job.id, job.tenant_id, job.kind
     error: str | None = None
     session = Session(bind=engine)
+    session.info[_LEASE_KEY] = (job_id, worker_id)
     try:
         if handler_fn is None:
             raise LookupError(f"No handler registered for job kind {kind!r}")
@@ -209,6 +233,10 @@ def _execute(engine: Engine, job: Job, worker_id: str) -> None:
 
     with Session(bind=engine) as control:
         row = control.get(Job, job_id)
+        if row is None or row.locked_by != worker_id:
+            # Queued again for another worker while this one ran: that worker owns the outcome.
+            logger.warning("Job %s (%s) finished on %s after it was given to another worker; leaving it be", job_id, kind, worker_id)
+            return
         row.locked_by = None
         if error is None:
             row.status, row.finished_at, row.last_error = JobStatus.SUCCEEDED, _now(), None

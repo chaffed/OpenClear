@@ -299,8 +299,18 @@ def open_invitation(session: Session, token: str) -> OpenInvitation | None:
                           password_sign_in=bool(tenant.password_login_enabled and customer.password_login_enabled))
 
 
+class InvitationTaken(PeopleError):
+    """Accepted by another request a moment ago: the caller rolls back everything this one did."""
+
+
 def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembership:
+    from openclear.db.claims import AlreadyUsed, claim_once
+
     invitation = opened.invitation
+    try:
+        claim_once(session, invitation, "accepted_at")  # before anything is made: a second accept stops here
+    except AlreadyUsed:
+        raise InvitationTaken("This invitation has already been accepted.") from None
     group = session.get(SecurityGroup, invitation.security_group_id)
     if group is None or not (group.offered_to_customers or _no_access(group)):
         raise PeopleError("This invitation's role is no longer offered. Ask for a new invitation.")
@@ -311,7 +321,7 @@ def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembers
     if not invitation.all_accounts:
         account_access_service.set_access(session, invitation.tenant_id, membership.id, all_accounts=False,
                                           account_ids=[uuid.UUID(a) for a in invitation.account_ids])
-    invitation.accepted_at, invitation.accepted_user_id = _now(), user.id
+    invitation.accepted_user_id = user.id
     session.flush()
     from openclear.services import customer_approval_service
 

@@ -253,3 +253,25 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
 - 2026-10-21: Plan written from a review of `v1.26.0` (`04d915d9`) on four axes. Every finding
   checked against the code; the money-path races (R1–R4) and the lockout counter (S1) traced end
   to end. The earlier reviews' fixes spot-checked and found in place.
+- 2026-10-21: FR1 built on `fr1-item-lock`: `ExceptionRepository.get_for_update` at every decision
+  entry point and in the sweep (`skip_locked`); `lock_due` per decision, every minute
+  (`decision_lock_job`, `decision_lock_interval_seconds`); the action-log lock before the feed
+  lock, taken in `assign_sequence`, so act-as requests can't deadlock with decides. Postgres
+  tests hold the item in one session and show the other waiting (recommend vs decide, two
+  decides, a change vs the lock) or the cut-off skipping it (undo vs lock). SQLite suite: 2138
+  passed, one failure (a test listing the scheduled jobs exactly), fixed in FR2.
+- 2026-10-21: FR2 built on `fr2-presentments` (stacked on FR1; one pull request for both):
+  the candidate issued item locked while a check is matched; the outbox's per-bank lock and
+  `uq_decision_batch_tenant_from_sequence` (migration `07203f56ed30`, which keeps the first of
+  any duplicate pair); change requests locked to decide, withdraw and settle (the sweep locks
+  only those due); `db/claims.py::claim_once` for reset, email-change, invitation and embed
+  links; the act-as headers in the idempotency fingerprint (only when sent, so existing keys
+  still match); job leases (`jobs.check_lease` before each import chunk commits, and a
+  superseded worker leaves the job's state alone).
+  **Deviations, and why:** no partial unique index on `paid_item` (FR-D2's second half): a
+  check that isn't in the file is never paid automatically, so two presentments of it are two
+  exceptions a person sees, not a double payment, and a unique index would have made the second
+  presentment fail as a row error instead of being recorded. Data-export and dropbox jobs aren't
+  fenced: a second run of either repeats work but doesn't double a payment (the export writes
+  another archive; the dropbox skips files by hash).
+

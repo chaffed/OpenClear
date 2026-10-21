@@ -41,6 +41,7 @@ _METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _SKIPPED_PREFIXES = ("/api/v1/auth/", "/api/v1/oauth/")
 _MAX_KEY_LENGTH = 255
 _MAX_STORED_BYTES = 5 * 1024 * 1024
+_ACT_AS_HEADERS = ("openclear-act-as", "openclear-act-as-customer", "openclear-act-as-subject")
 
 
 def _caller(request: Request) -> tuple[uuid.UUID, uuid.UUID] | None:
@@ -108,8 +109,12 @@ def install(app: FastAPI) -> None:
         tenant_id, user_id = caller
 
         body = await request.body()
+        # Who an API client acts for is part of the request (FULL_REVIEW_PLAN.md FR2, R10): the
+        # same key and body for two people are two different requests.
+        # Only when one is sent, so a request without them fingerprints as it always has.
+        acting_for = [h.encode() + b"=" + request.headers[h].encode() for h in _ACT_AS_HEADERS if h in request.headers]
         request_hash = hashlib.sha256(
-            b"\n".join([request.method.encode(), path.encode(), request.url.query.encode(), body])
+            b"\n".join([request.method.encode(), path.encode(), request.url.query.encode(), *acting_for, body])
         ).hexdigest()
 
         session, generator = _open_session(request.app)

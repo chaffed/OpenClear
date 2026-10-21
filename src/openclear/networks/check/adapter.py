@@ -87,11 +87,15 @@ class CheckAdapter:
 
     @staticmethod
     def _find_candidate_issued_item(session: Session, paid_item: PaidItem) -> IssuedItem | None:
+        """Locked until this presentment commits (FULL_REVIEW_PLAN.md FR-D2): two presentments of
+        one check at once (a file uploaded twice, an API retry) take turns, so the second sees
+        the first one paid and is caught as a duplicate instead of paying again. Read fresh, as
+        the first may have changed it while this one waited."""
         stmt = select(IssuedItem).where(
             IssuedItem.tenant_id == paid_item.tenant_id,
             IssuedItem.account_id == paid_item.account_id,
             IssuedItem.check_number == paid_item.check_number,
-        )
+        ).with_for_update().execution_options(populate_existing=True)
         return session.execute(stmt).scalar_one_or_none()
 
     @staticmethod

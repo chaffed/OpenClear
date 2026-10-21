@@ -10,6 +10,14 @@
 - **Decisions reach the bank within a minute of the cut-off.** They're locked and sent every
   minute (`OPENCLEAR_DECISION_LOCK_INTERVAL_SECONDS`, 60), each on its own, so one that fails is
   retried without holding the rest back. They used to wait for the five-minute deadline sweep.
+- **A check presented twice at the same moment is paid once** (FR2): the second presentment waits
+  for the first and is caught as a duplicate. Two decision files can no longer carry the same
+  decisions (a scheduled run and an API request at once), and two people approving a settings
+  change at once apply it once. Reset, email-change and invitation links, and online banking
+  launch codes, work exactly once even when opened twice together. A background import handed
+  to another worker (its heartbeat looked stale) can no longer commit alongside it.
+- API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
+  different request instead of replaying the first person's answer.
 
 ## 1.26.0 — 2026-10-21
 

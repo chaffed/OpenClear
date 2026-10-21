@@ -447,6 +447,9 @@ def accept(request: Request, token: str, password: str = Form(""), password_conf
             if opened.password_sign_in and password != password_confirm:
                 raise PeopleError("The two passwords don't match.")
             user, membership = customer_people_service.accept_as_new(db, opened, password)
+    except customer_people_service.InvitationTaken as exc:
+        db.rollback()  # nothing this request made survives
+        return _accept_page(request, None, error=str(exc), status_code=410)
     except ValueError as exc:  # PeopleError, or a password the policy refuses
         db.commit()  # keeps a wrong password's count toward the lockout
         return _accept_page(request, opened, error=str(exc), status_code=422)

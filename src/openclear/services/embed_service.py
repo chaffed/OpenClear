@@ -134,7 +134,12 @@ def redeem(session: Session, code: str) -> tuple[EmbedLaunch, User, TenantMember
     expires = launch.expires_at if launch.expires_at.tzinfo else launch.expires_at.replace(tzinfo=timezone.utc)
     if expires < now:
         raise EmbedError("This link has expired.")
-    launch.used_at = now
+    from openclear.db.claims import AlreadyUsed, claim_once
+
+    try:
+        claim_once(session, launch, when=now)
+    except AlreadyUsed:
+        raise EmbedError("This link has already been used, or isn't valid.") from None
     user, membership = session.get(User, launch.user_id), session.get(TenantMembership, launch.membership_id)
     if user is None or not user.is_active or membership is None or not membership.is_active or membership.user_id != user.id:
         raise EmbedError("That person no longer has access.")
