@@ -14,7 +14,7 @@ from openclear.domain.job import Job, JobStatus
 from openclear.workers import jobs
 from tests.conftest import TEST_DATABASE_URL
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
+pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 
 _WORKERS = 4
 _JOBS = 40

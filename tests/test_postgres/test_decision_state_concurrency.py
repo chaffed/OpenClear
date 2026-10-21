@@ -24,7 +24,7 @@ from tests.conftest import TEST_DATABASE_URL
 from tests.test_decisions.test_changeable import _item
 from tests.test_web.test_web_exception_review import _ctx
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
+pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 
 
 class _Second:

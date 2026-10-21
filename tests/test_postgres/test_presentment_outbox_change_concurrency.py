@@ -25,7 +25,7 @@ from tests.test_auth.test_dual_control import _policy, _second_admin
 from tests.test_decisions.test_changeable import _decide, _item
 from tests.test_postgres.test_decision_state_concurrency import _Second, _sessions
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
+pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 
 
 def _present(session, tenant, account, number="7001", amount="250.00"):

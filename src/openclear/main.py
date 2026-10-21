@@ -306,6 +306,9 @@ def create_app() -> FastAPI:
             response.headers["X-Request-ID"] = context.request_id
             if request.url.path.startswith("/static/") and "cache-control" not in response.headers:
                 response.headers["Cache-Control"] = _static_cache_control(request)
+            from openclear import metrics
+
+            metrics.observe(request.method, response.status_code, time.perf_counter() - started)
             access_logger.info(
                 "%s %s %s", request.method, request.url.path, response.status_code,
                 extra={"http": {"method": request.method, "path": request.url.path, "status": response.status_code,

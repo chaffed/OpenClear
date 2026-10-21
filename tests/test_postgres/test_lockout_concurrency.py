@@ -16,7 +16,7 @@ from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 from tests.conftest import TEST_DATABASE_URL
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
+pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 
 _GUESSES = 10
 

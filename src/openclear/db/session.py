@@ -33,13 +33,31 @@ def _pool_args(settings: Settings) -> dict:
 
 def create_db_engine(settings: Settings | None = None) -> Engine:
     settings = settings or get_settings()
-    return create_engine(
+    engine = create_engine(
         settings.database_url,
         connect_args=_connect_args(settings.database_url),
         pool_pre_ping=True,
         future=True,
         **_pool_args(settings),
     )
+    if settings.database_url.startswith("sqlite") and ":memory:" not in settings.database_url:
+        _sqlite_waits_and_shares(engine)
+    return engine
+
+
+def _sqlite_waits_and_shares(engine: Engine) -> None:
+    """A single-process SQLite installation still has two writers, the web requests and the
+    in-process worker thread (FULL_REVIEW_PLAN.md FR-D18, R9). Write-ahead logging lets readers
+    carry on while one writes, and busy_timeout makes a writer wait up to five seconds for the
+    other instead of failing at once with "database is locked"."""
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def _pragmas(dbapi_connection, _record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 
 
 _engine: Engine | None = None

@@ -58,6 +58,12 @@
 - **"Don't know your organization?"** (FR8): the plain sign-in page links to *Find your sign-in*,
   which emails your address a sign-in link for each organization (and customer) you belong to.
   It answers the same whatever address is typed, so it reveals nothing about who has an account.
+- **Monitoring** (FR9): `GET /api/v1/platform/metrics`, in the Prometheus format, for a platform
+  API key with the `operations` scope: failed jobs, decisions past their cut-off not yet sent,
+  unacknowledged decision files, webhook deliveries and requests (RUNBOOK, "Monitoring").
+- API requests no longer work out the navigation's counts (approvals waiting, other
+  organizations): three fewer queries per call. SQLite installations use write-ahead logging and
+  wait for a write lock instead of failing.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from openclear.services import audit_log_service
 from tests.conftest import TEST_DATABASE_URL
 
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
+pytestmark = [pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)"), pytest.mark.concurrency]
 
 _WRITERS = 8
 _ENTRIES_EACH = 5

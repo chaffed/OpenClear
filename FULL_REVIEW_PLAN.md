@@ -323,3 +323,12 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   guide's sign-in section updated (it still described temporary passwords, gone since 1.22.0).
   Also on this branch: `.venv` is no longer tracked. A worktree's symlink to the virtualenv was
   committed in FR2, because `.gitignore` had `.venv/`, which matches a folder but not a link.
+- 2026-10-21: FR9 built on `fr8-find-organization`: the navigation's counts (`pending_approval_count`,
+  `other_organizations`, including the cross-bank membership probe) moved from every token
+  check to web pages only (`web/deps.py::_navigation_counts`); `openclear/metrics.py` and
+  `GET /api/v1/platform/metrics` (operations scope); SQLite WAL and `busy_timeout` for file
+  databases; the `concurrency` marker on the six Postgres concurrency modules (`pytest -m
+  concurrency`, 11 tests). RUNBOOK "Monitoring". **Not done, and why:** caching branding and
+  group permissions per process (FR-D17) would make a permission or branding change take up
+  to 30 seconds to reach other instances, which is worse than the query it saves; the
+  revocation checks were never going to be cached. Measure first (`scripts/perf/measure.py`).
