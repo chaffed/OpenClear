@@ -25,8 +25,8 @@
         {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} ({{ a.account_number }})</option>{% endfor %}
       </select>
     </label>
-    <label>Check number <input type="text" name="check_number"></label>
-    <label>Amount <input type="text" name="presented_amount" placeholder="0.00"></label>
+    <label>Check number <input inputmode="numeric" type="text" name="check_number"></label>
+    <label>Amount <input inputmode="decimal" type="text" name="presented_amount" placeholder="0.00"></label>
     <label>Presented date <input type="date" name="presented_date"></label>
     <label>Reason <input type="text" name="reason_code" required placeholder="e.g. confirmed check kiting"></label>
     <label>Notes <input type="text" name="notes"></label>
@@ -50,7 +50,7 @@
     <label>Originator ID <input type="text" name="originator_id"></label>
     <label>Originator name <input type="text" name="originator_name"></label>
     <label>Receiver ID <input type="text" name="receiver_id"></label>
-    <label>Amount <input type="text" name="amount" placeholder="0.00"></label>
+    <label>Amount <input inputmode="decimal" type="text" name="amount" placeholder="0.00"></label>
     <label>Type
       <select name="transaction_type">
         <option value="debit">Debit</option>

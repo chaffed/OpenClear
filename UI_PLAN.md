@@ -30,7 +30,7 @@ navigation, then type, colour and forms.
 | # | Finding | Evidence | Severity |
 |---|---|---|---|
 | F1 | **In dark mode the bank's accent colour is used as text on the dark background**: the bank name, the active navigation item and hover states. | Demo accent `#0f5b8a` on `#0f172a` is **2.45:1**; the default `#2563eb` is 3.45:1. Both need 4.5:1. (`app.css` `.sidenav a.active`, `.brand`) | Critical |
-| F2 | **Any accent colour a bank picks is accepted unchecked.** Buttons put white text on it, and so do the navigation count and the skip link. | `tenant_service._validate_accent_color` only checks the hex format. White on a light brand colour such as `#f59e0b` is 2.15:1. | Critical |
+| F2 | ~~Any accent colour a bank picks is accepted unchecked.~~ **Wrong (corrected 2026-10-19, building UI1):** `tenant_service._validate_accent_color` already refuses an accent under 4.5:1 against white, so white button text is always readable. What's left is F1, plus a borderline accent as text on the light grey of the selected navigation item. | `tenant_service.py` | — |
 | F3 | **The axe check only sees one case:** light mode, desktop width, a bank admin, the default accent. It never sees dark mode, a phone, a customer's session or a bank's own colour. That's why F1 went unnoticed. | `test_accessibility.py`: no theme, viewport or accent parameter; 19 pages, all as the bank. | High |
 | F4 | **Headings are upside down.** `h1` is set to 1.4rem, but `h2` has no size, so it renders at the browser's 1.5em. Section headings come out bigger than the page title. | On the exception page, "What was expected vs. what was presented" is larger than "Check #10025". | High |
 | F5 | **There are two link styles.** No rule sets link colour, so links in tables, "Back to exceptions" and "Upload an image" are the browser's own blue (and purple once visited). Other links ("Review queue →", "More filters") use the bank's accent. | `app.css` has no `a {}` rule. Visible on every list and detail page. | Medium |
@@ -45,7 +45,7 @@ navigation, then type, colour and forms.
 | F14 | **The exceptions list on a phone.** The filter summary is a grey (disabled-looking) button, sorting is a lone "Status ↕" chip, and the cards leave out the date. On desktop, Network and Status sit at opposite edges, and "Page 1 of 1" doesn't line up with Prev and Next. | Exceptions, desktop and phone. | Low |
 | F15 | **The bank's dashboard puts everything in one card.** It has a "Logged in as" line, and a tile that shows text ("Under 1 hour") where the others show numbers. It counts what's waiting but doesn't show any of it. | Bank dashboard. | Low |
 | F16 | **The footer's licence notice takes five lines on a phone, on every page.** | Every page. | Low |
-| F17 | **Smaller inconsistencies:** settings states written differently ("Warn" and "18 WARN"); some tiles have no state; the exception page's comparison table has an empty fourth column; 52 raw hex colours in `app.css` and 35 inline `style=` attributes in templates. | Settings panel; exception detail; `app.css`. | Low |
+| F17 | **Smaller inconsistencies:** settings states written differently ("Warn" and "18 WARN"); some tiles have no state; the exception page's comparison table has an empty fourth column; a handful of raw hex colours in `app.css` rules (most of the 52 are the token definitions themselves) and 35 inline `style=` attributes in templates. | Settings panel; exception detail; `app.css`. | Low |
 | F18 | **Still to be done by a person (from UX_PLAN.md):** the screen-reader and keyboard-only pass, and the user-testing sessions. Neither has happened. | UX_PLAN.md progress log, 2026-10-10 and 2026-10-11. | — |
 
 ## User flows
@@ -87,14 +87,16 @@ each action was checked in the routes.
   - What's taken from the skill: one heading scale, semantic colour tokens, 4.5:1 contrast in
     both themes, visible focus, empty states with a next step, and 44 px touch targets (already
     met on phones and tablets).
-- **UI-D2. The bank's colour is adjusted, not refused.** Banks have brand colours they won't
-  change. From the one colour, the server works out:
-  - `--on-accent`: white or near-black, whichever reaches 4.5:1 on it.
-  - `--accent-text-light` and `--accent-text-dark`: the accent darkened or lightened until it
-    reaches 4.5:1 on each theme's background.
-  - Text uses the text tokens; fills use the accent itself.
-  - The Branding setting shows a preview of both themes, and says when the colour was adjusted
-    for legibility.
+- **UI-D2. The bank's colour fills; a readable shade of it is the text.**
+  - Banks keep their brand colour. The existing rule stays: an accent too light for white
+    button text is refused.
+  - From that colour, `colors.accent_text` works out the shade to use as text, links and focus
+    rings in each theme: the least change toward black (light theme) or white (dark theme)
+    that reaches 4.5:1 on both of that theme's backgrounds.
+  - Fills (`--accent`, with `--on-accent` text) use the colour itself; text uses
+    `--accent-text`.
+  - The Branding setting shows a preview of both themes, and says when the shade was adjusted
+    from the bank's colour.
   - It's a small pure function in Python with tests; no JavaScript, and nothing stored.
 - **UI-D3. One link style.**
   - `a { color: var(--link) }`, where `--link` is the accent's text colour for that theme.
@@ -300,3 +302,137 @@ doesn't have.
   - deadlines from the first cut-off after a minimum review time, on a business day;
   - the response window kept only until a bank sets its cut-off.
   Stage UI3 gains the settings, the calendar and their tests.
+- 2026-10-19: UI1 built on `ui1-contrast` (stacked on `rf-review-fixes`):
+  - `openclear/colors.py`, also used by the accent check, so the contrast maths has one home;
+  - `accent_style` in both page heads; `--accent-text`, `--on-accent` and `--link`, with every
+    text, outline and border use of the accent moved to the readable shade;
+  - one link colour;
+  - tokens for the secondary, Pay and Return fills;
+  - the Branding preview;
+  - the axe check in five views: desktop, dark with a dark accent, phone with a borderline
+    accent, a customer's user, and customer dark on a phone. Run against the old CSS, the dark
+    views fail on the bank name, the dashboard links and "More filters"; with UI1 every view
+    passes.
+  F2 turned out wrong (the accent's refusal rule already existed) and F17 overstated; both are
+  corrected above. The desktop reference pictures were rewritten for the link colour.
+- 2026-10-19: UI2 built on `ui2-journeys`:
+  - **After a decision, the next item:** Pay or Return moves on to the oldest item still open
+    in the queue it was opened from (its network and customer filters), with a toast naming
+    what was done. With nothing left it goes to the list ("Nothing else is waiting for you
+    here"). The tablet's two-pane queue does the same, and Back returns to the decided item.
+  - **Recommendations stay on their item for now,** because the toast's Undo withdraws that
+    item's recommendation. UI3's Undo will carry the item, and then they move on too.
+  - **The page's top row:** the decide banner and Help in the flow of the page; the theme in
+    the navigation (or the top row where there's no navigation). The floating controls, and
+    the CSS that kept content clear of them, are gone.
+  - **Home** at the top of the navigation.
+  - **The customer's checklist** links with the customer chosen, and saving returns to it.
+    Its states are in words ("Done", "To do", "Optional"), and its buttons read
+    "Mark done" / "Mark not done".
+  - **The stop payment's effective date** starts as today. The form keeps what was typed when
+    it comes back with an error (it came back empty before).
+  - **The upload result:** the outcome first ("1 issued check added. 1 row needs fixing."),
+    "What this upload added" with each check's number, amount and payee, the file's details
+    under a disclosure, and "Back out" in its own danger-styled section.
+  - **`tests/test_web/test_journeys.py`** walks the journeys in a browser: deciding three in a
+    row; "Decide now" not covered at 1280 and 390 px; Home; a stop payment from the check
+    number alone; the checklist round trip; an upload with a bad row, fixed.
+  **Not done, and why:** UI-D12's invitations for a customer's people from the bank side.
+  Users the bank adds go through the bank's second-person rule for access changes
+  (`access_changes.hold_new`). An invitation creates the membership only when it's accepted,
+  so as things stand it would bypass that rule. It needs its own design: hold the invitation,
+  or hold the membership on acceptance. It's left as a follow-up, and until then "Add a user"
+  opens the bank's form with the customer chosen.
+- 2026-10-19: UI3 built on `ui3-cutoff`, in four commits:
+  - **UI3a, the cut-offs:**
+    - the bank's time zone, cut-off per network and minimum review time (a control-panel
+      tile), and a cut-off agreed with a customer (on its page), both protected changes
+      (`decision_cutoff`, `customer_cutoff`);
+    - closures;
+    - `services/cutoff_service.py`, with the Federal Reserve holidays worked out from their
+      rules and tested against 2026's published list;
+    - deadlines from the cut-off for every item, the bank's own too, falling back to the
+      response window until a bank sets one;
+    - the hub's Cut-off column; the evidence export.
+  - **UI3b, the decision lifecycle:** decisions stay unlocked before the cut-off, so nothing
+    goes out. They lock at it (the deadline sweep), or at once with no cut-off ahead. Change,
+    undo, and a recommended change under dual control. Training learns only from locked
+    decisions.
+  - **UI3c, the API:** `locked_at`, `changeable_until`, `change_pending`; PUT and DELETE
+    `…/decision`. OpenAPI and SDKs regenerated. End-user and admin docs.
+  - **UI3d, the screens:**
+    - the item says until when it can change (or "Final since");
+    - Change decision and "Take it back", or under dual control "Recommend a change" and
+      "Approve the change";
+    - the earlier versions of the decision;
+    - Undo in the toast after moving on to the next item, checked server-side to be the
+      person's own decision, still changeable, and not under dual control;
+    - "Decided, changeable" in the list;
+    - waiting changes in Approvals and its count;
+    - recommendations now move on to the next item too.
+
+  **Deviation from UI-D13, and why:** every earlier version is kept in `decision_revision`,
+  and the decision row is changed in place, not superseded by new rows.
+  `decision.exception_item_id` is unique, and twenty modules (billing, the feed, exports,
+  training) assume one decision per item. History rows give the same audit trail without
+  touching them.
+
+  **Also:** `exception_item.change_recommended_at` was added, because a change waiting under
+  dual control can't be marked with the `recommended_*` fields alone (they still describe the
+  original recommendation after it's approved). And the next item is now one this person can
+  act on: under dual control the checker gets recommended items and the maker gets open ones.
+- 2026-10-19: UI4 built on `ui4-components`:
+  - one heading scale (h1 1.5rem, h2 1.2rem, h3 1rem), so section headings no longer outgrow
+    the page title;
+  - secondary buttons outlined in the link colour, and a disabled look of their own;
+  - the pager's "Page 1 of 1" in line with Prev and Next;
+  - the comparison table's "Doesn't match" beside the row's name, with the empty fourth column
+    gone (on phones too);
+  - 24 inline `style="max-width:…"` attributes replaced by `.field-xs` to `.field-xl`. The 13
+    left are computed values (the colour preview, a percentage bar) or one-offs.
+  Network and Status still sit at opposite edges of the exceptions toolbar; that's for UI5's
+  pass over the list.
+- 2026-10-20: UI5 built on `ui5-customer`:
+  - **The customer's dashboard leads with its jobs:**
+    - "N items to decide" with when the first is due and "Decide now", or "Nothing to decide.
+      You're all caught up.";
+    - how many decisions can still change, and until when;
+    - "Upload issued checks" with the last file's date and result.
+    It's titled with the customer's name. "Logged in as Admin" is gone from both dashboards.
+  - **The account menu** at the foot of the navigation, under the person's email, holds
+    Security, the theme, Switch organization (only when they belong somewhere else, counted
+    through `memberships_elsewhere` so row-level security doesn't hide it) and Log out. The
+    docs links read "Help and guides" and "Admin guides".
+  - **The scope label** reads "For Maple Street Dental" in neutral colours.
+  - **The upload page** opens with the file field. The column reference is under "File format,
+    without a layout", with what each column is.
+  - **The exceptions list:** cards show the date; Network and Status sit together.
+  Two full-suite runs under machine load failed browser tests with timeouts. Each passed run
+  alone, and the next full run passed (2127).
+- 2026-10-20: UI6 built on `ui6-forms`:
+  - **Number keyboards on phones:** `inputmode="decimal"` on 12 amount fields and
+    `inputmode="numeric"` on check and account numbers, including the fix-rows form's
+    computed fields. `tests/test_web/test_forms.py` fails on a new one without it.
+  - **Sign-in:**
+    - `autocomplete` values (`username`, `current-password`, `organization`);
+    - "Organization" with a hint, instead of "Organization slug";
+    - on a bank's own sign-in link, the organization is known and not asked for;
+    - a line saying what to do about a forgotten password, under the current policy (an
+      administrator resets it).
+- 2026-10-20: UI7 built on `ui7-bank`:
+  - **The bank's dashboard** lists the five items due soonest under its counts, each with its
+    customer, amount and deadline; "Logged in as" went in UI5.
+  - **Settings tiles:** Controls says "1 failing" or "18 warnings" in words, like every other
+    tile. Getting started shows its progress ("3 of 5 done", or "Done"). Tiles for pages with no
+    single state (Action log, Model risk, Billing, Plugins) stay without one.
+  **Not done, waiting for the product owner:** the shorter footer (UI-D9). The AGPL's §5(d)
+  notice wording needs the owner's check before it changes.
+- 2026-10-20: The footer (UI-D9), approved by the product owner after a preview:
+  - one line: "OpenClear © 2026 Chaffed · Free software under the GNU AGPL, with no warranty ·
+    License · Source code";
+  - the license page opens with the standard notice (copyright, license, no warranty) and the
+    source link above the full text;
+  - a new `source_code_url` setting (default the GitHub repository), for an installation
+    running its own changes.
+  This fixes two gaps the old footer had: it showed no copyright notice or no-warranty
+  statement (AGPL §5(d)), and nothing offered the source code to network users (§13).

@@ -740,7 +740,7 @@ function initQueuePane() {
       if (fresh) old.closest("tr").replaceWith(document.importNode(fresh.closest("tr"), true));
       else old.closest("tr").remove();
       initLocalTimes(table);
-      markCurrent(itemUrl);
+      markCurrent((history.state && history.state.queuePane) || itemUrl);
       document.dispatchEvent(new Event("openclear:rows-changed"));
     })
     .catch(() => {});
@@ -783,7 +783,14 @@ function initQueuePane() {
     const body = new URLSearchParams(new FormData(form, event.submitter));
     fetch(form.action, { method: "POST", body, credentials: "same-origin" })
       .then((response) => response.text().then((html) => {
-        show(itemUrl, html);
+        // A decision moves on to the next item (UI_PLAN.md UI-D11): show the one it landed on
+        // (Back returns to the item just decided), and refresh the decided item's row.
+        const view = new DOMParser().parseFromString(html, "text/html").querySelector("[data-item-view]");
+        const landed = view && view.dataset.itemUrl ? new URL(view.dataset.itemUrl, location.href).href : itemUrl;
+        if (new URL(landed).pathname !== new URL(itemUrl, location.href).pathname) {
+          history.pushState({ queuePane: landed }, "", landed);
+        }
+        show(landed, html);
         refreshRow(itemUrl);
       }))
       // Never sent again (it may have been done): show the item's page as it now is.

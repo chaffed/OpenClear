@@ -187,10 +187,15 @@ def customer_detail(
     from openclear.services import customer_people_service
 
     admins = [db.get(User, m.user_id).email for m in customer_people_service.administrators(db, ctx.tenant_id, customer.id)]
+    from openclear.networks.registry import registered_codes
+    from openclear.services import cutoff_service
+
     return render_template(
         request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, ml_summary=ml_summary,
         sso_connection_count=sso_connection_count, open_count=open_count, nearest_deadline=nearest_deadline,
         reminder_timing=reminder_timing, customer_admins=admins,
+        bank_cutoffs=dict(tenant.decision_cutoffs or {}), bank_time_zone=tenant.time_zone,
+        customer_cutoffs=cutoff_service.customer_cutoffs(db, ctx.tenant_id, customer.id), networks=registered_codes(),
         offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
     )
 
@@ -234,6 +239,37 @@ def set_self_service(
     )
     db.commit()
     return see_other(f"/ui/customers/{customer.id}", flash="Self-service saved.")
+
+
+@router.post("/{customer_id}/cutoff")
+async def set_cutoff(request: Request, customer_id: uuid.UUID, db: Session = Depends(get_db),
+                     ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """A cut-off agreed with this customer, per network, in place of the bank's (UI_PLAN.md
+    UI-D13). A protected change: it moves when this customer's decisions become final."""
+    from openclear.networks.registry import registered_codes
+    from openclear.services import change_request_service, customer_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    form = await request.form()
+    cutoffs = {code: (str(form.get(f"cutoff_{code}") or "").strip() or None) for code in registered_codes()}
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "customer_cutoff", {"customer_id": str(customer.id), "cutoffs": cutoffs}, tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            summary=f"Change the cut-off agreed with {customer.name}")
+    except ValueError as exc:
+        db.rollback()
+        return see_other(f"/ui/customers/{customer_id}", error=str(exc))
+    if outcome.waiting:
+        db.commit()
+        return see_other(f"/ui/customers/{customer_id}", flash=waiting_message(outcome))
+    if outcome.summary != "Nothing changed.":
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer.update_cutoff",
+                                        summary=outcome.summary, resource_type="customer", resource_id=customer.id)
+    db.commit()
+    return see_other(f"/ui/customers/{customer.id}", flash="Cut-off saved.")
 
 
 @router.post("/{customer_id}/approval")

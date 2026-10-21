@@ -24,7 +24,7 @@
       </select>
     </label>
     <label>Why access is needed <input type="text" name="reason" required minlength="5" maxlength="500" placeholder="Ticket 4821: the ACH import is stuck"></label>
-    <label>For how long (hours, up to {{ max_hours }}) <input type="number" name="hours" min="1" max="{{ max_hours }}" value="4" style="max-width:6em;" required></label>
+    <label>For how long (hours, up to {{ max_hours }}) <input type="number" name="hours" min="1" max="{{ max_hours }}" value="4" class="field-s" required></label>
     <label><input type="checkbox" name="write_access" value="true"> Also let them enter and correct items (needs a second admin's approval)</label>
     <div class="form-actions"><button type="submit">{{ icon("vpn_key") }}Grant access</button></div>
     {% else %}

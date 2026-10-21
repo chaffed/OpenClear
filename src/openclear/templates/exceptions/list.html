@@ -25,23 +25,24 @@
   <h1>Exceptions</h1>
   {{ slot("exceptions.toolbar") }}
   {# On a phone, Network and Status are in a bottom sheet; the button says what's chosen. #}
-  <form method="get" action="/ui/exceptions" class="toolbar">
-    {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else status_filter | exception_status)
+  <form method="get" action="/ui/exceptions" class="toolbar toolbar-start">
+    {{ sheet_trigger("queue-filters", ("Needs attention" if not status_filter else "All statuses" if status_filter == "all" else "Decided, changeable" if status_filter == "changeable" else status_filter | exception_status)
                      ~ " · " ~ ({"check": "Checks", "ach": "ACH"}.get(network_filter) or "Checks and ACH"), "tune") }}
     {% call bottom_sheet("queue-filters", "Network and status") %}
-    <label style="max-width:180px;">Network
+    <label class="field-l">Network
       <select name="network_code" data-auto-submit>
         <option value="">All</option>
         <option value="check" {{ "selected" if network_filter == "check" else "" }}>Check</option>
         <option value="ach" {{ "selected" if network_filter == "ach" else "" }}>ACH</option>
       </select>
     </label>
-    <label style="max-width:240px;">Status
+    <label class="field-xl">Status
       <select name="status" data-auto-submit>
         <option value="" {{ "selected" if not status_filter else "" }}>Needs attention</option>
         {% for s in statuses %}
         <option value="{{ s }}" {{ "selected" if status_filter == s else "" }}>{{ s | exception_status }}</option>
         {% endfor %}
+        <option value="changeable" {{ "selected" if status_filter == "changeable" else "" }}>Decided, changeable</option>
         <option value="all" {{ "selected" if status_filter == "all" else "" }}>All</option>
       </select>
     </label>
@@ -59,7 +60,7 @@
     {"key": "account", "label": "Account", "hide": "tablet"},
   ] + ([{"key": "customer", "label": "Customer"}] if show_customers else []) + [
     {"key": "amount", "label": "Amount", "role": "money", "numeric": True},
-    {"key": "date", "label": "Date", "hide": "tablet"},
+    {"key": "date", "label": "Date"},
     {"key": "why", "label": "Why it's here"},
   ] + ([{"key": "risk", "label": "Fraud risk", "sort": "score"}] if show_scores else [])
     + ([{"key": "deadline", "label": "Decide by", "sort": "deadline"}] if show_deadlines else [])
@@ -108,8 +109,11 @@
   {{ ls.empty_state(True, "") }}
   {% elif not status_filter %}
   <p>Nothing needs attention right now. <a href="/ui/exceptions?status=all">See all exceptions</a>.</p>
+  {% elif status_filter == "changeable" %}
+  <p>No decisions are waiting for their cut-off.</p>
   {% else %}
   <p>No exceptions with this status.</p>
   {% endif %}
 </div>
+{% include "exceptions/_undo_last.html" %}
 {% endblock %}

@@ -189,6 +189,14 @@ class Tenant(Base):
     # before each exception's decision deadline, comma-separated ("120,30"). Null uses the
     # installation's default (config.Settings.reminder_offsets_minutes); "" turns them off.
     reminder_offsets_minutes: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The decision cut-off (UI_PLAN.md UI-D13; services/cutoff_service.py): each network's time
+    # of day ({"check": "11:00", "ach": "15:00"}) in the bank's time zone (an IANA name), by
+    # which items are decided; a customer may have its own (CustomerDispositionSetting.cutoff_time).
+    # An item's deadline is the first cut-off on a business day at least cutoff_min_review_minutes
+    # after it arrives. Without a cut-off for a network, deadlines come from the response window.
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision_cutoffs: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict, server_default="{}")
+    cutoff_min_review_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=120, server_default="120")
     # When the bank last read its security events through the pull API (SIEM_PLAN.md S5):
     # with no destination configured, the "Security events delivered" control warns once
     # nobody has read them for a day.

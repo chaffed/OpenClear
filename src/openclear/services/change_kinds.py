@@ -1344,3 +1344,80 @@ register(Kind(
     apply=_fee_apply, scope="provider", setting=lambda payload: f"fee:{payload.get('fee_item_id') or payload['data'].get('code')}",
     describe=lambda before, after: "Change what banks are billed", action="platform.fee_item",
 ))
+
+
+# Decision cut-offs (UI_PLAN.md UI-D13): when decisions become final and go to the bank's core.
+# Moving one either way changes how long customers have, so every change is protected.
+
+def _cutoff_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.tenant import Tenant
+
+    tenant = session.get(Tenant, tenant_id)
+    return {"time_zone": tenant.time_zone, "cutoffs": dict(tenant.decision_cutoffs or {}),
+            "min_review_minutes": tenant.cutoff_min_review_minutes}
+
+
+def _cutoff_value(payload: dict) -> dict:
+    from openclear.services import cutoff_service
+
+    try:
+        cutoffs = {n: v for n, v in ((n, cutoff_service.parse_time(v)) for n, v in (payload.get("cutoffs") or {}).items()) if v}
+        return {"time_zone": cutoff_service.parse_time_zone(payload.get("time_zone")), "cutoffs": cutoffs,
+                "min_review_minutes": int(payload.get("min_review_minutes"))}
+    except (cutoff_service.CutoffError, TypeError, ValueError) as exc:
+        raise ChangeError(str(exc) if isinstance(exc, cutoff_service.CutoffError) else "The minimum review time is a number of minutes.") from None
+
+
+def _cutoff_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import cutoff_service
+
+    value = _cutoff_value(payload)
+    try:
+        tenant = cutoff_service.apply_bank_cutoffs(session, tenant_id, time_zone=value["time_zone"], cutoffs=value["cutoffs"],
+                                                   min_review_minutes=value["min_review_minutes"])
+    except cutoff_service.CutoffError as exc:
+        raise ChangeError(str(exc)) from None
+    return f"Decision cut-off: {cutoff_service.describe(tenant)}, at least {value['min_review_minutes']} minutes to review"
+
+
+register(Kind(
+    "decision_cutoff", "Decision cut-off", "sensitive", _BANK_ADMIN, _cutoff_current, _cutoff_value,
+    loosens=lambda before, after: before != after, apply=_cutoff_apply, action="tenant.update_cutoffs",
+))
+
+
+def _customer_cutoff_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.services import cutoff_service
+
+    return {"cutoffs": cutoff_service.customer_cutoffs(session, tenant_id, uuid.UUID(payload["customer_id"]))}
+
+
+def _customer_cutoff_value(payload: dict) -> dict:
+    from openclear.services import cutoff_service
+
+    try:
+        return {"cutoffs": {n: v for n, v in ((n, cutoff_service.parse_time(v)) for n, v in (payload.get("cutoffs") or {}).items()) if v}}
+    except cutoff_service.CutoffError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+def _customer_cutoff_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.domain.customer import Customer
+    from openclear.services import cutoff_service
+
+    customer = session.get(Customer, uuid.UUID(payload["customer_id"]))
+    if customer is None or customer.tenant_id != tenant_id:
+        raise ChangeError("That customer no longer exists.")
+    try:
+        cutoff_service.apply_customer_cutoffs(session, tenant_id, customer.id, payload.get("cutoffs") or {})
+    except cutoff_service.CutoffError as exc:
+        raise ChangeError(str(exc)) from None
+    agreed = cutoff_service.customer_cutoffs(session, tenant_id, customer.id)
+    return f"Cut-off agreed with {customer.name}: " + (", ".join(f"{n} {v}" for n, v in sorted(agreed.items())) or "the bank's")
+
+
+register(Kind(
+    "customer_cutoff", "A customer's cut-off", "sensitive", _BANK_ADMIN, _customer_cutoff_current, _customer_cutoff_value,
+    loosens=lambda before, after: before != after, apply=_customer_cutoff_apply,
+    setting=lambda payload: f"customer_cutoff:{payload['customer_id']}", action="customer.update_cutoff",
+))

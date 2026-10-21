@@ -17,6 +17,7 @@
   {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
   <form method="post" action="/ui/users">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if return_to %}<input type="hidden" name="return" value="{{ return_to }}">{% endif %}
     <label>Email <input type="email" name="email" required autofocus></label>
     <label>Password <input type="password" name="password"></label>
     <p class="hint">Only used if this email doesn't already belong to an existing user.
@@ -33,7 +34,7 @@
       <select name="customer_id">
         <option value="">— bank-wide (all customers) —</option>
         {% for customer in customers %}
-        <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.customer_number }})</option>
+        <option value="{{ customer.id }}"{{ " selected" if chosen_customer_id == customer.id | string else "" }}>{{ customer.name }} ({{ customer.customer_number }})</option>
         {% endfor %}
       </select>
     </label>

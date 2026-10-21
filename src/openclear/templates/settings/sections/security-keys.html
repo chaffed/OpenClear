@@ -8,7 +8,7 @@
   <label><input type="checkbox" name="require_security_key" value="true" {{ "checked" if require_security_key else "" }}>
     Require a security key or passkey for password sign-ins</label>
   <label>Grace period (days)
-    <input type="number" name="security_key_grace_days" min="0" max="{{ max_grace_days }}" value="{{ security_key_grace_days }}" required style="max-width:8em;">
+    <input type="number" name="security_key_grace_days" min="0" max="{{ max_grace_days }}" value="{{ security_key_grace_days }}" required class="field-m">
   </label>
   <p class="hint">During the grace period, people without a key can still sign in and see a reminder; after it,
     they add one as part of signing in.{% if security_key_required_since %} Required since

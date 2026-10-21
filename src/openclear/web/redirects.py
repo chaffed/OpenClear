@@ -14,6 +14,7 @@
 A test (tests/test_web/test_redirects.py) fails if a route builds a RedirectResponse itself."""
 
 import logging
+import re
 from urllib.parse import urlencode, urlsplit
 
 from fastapi.responses import RedirectResponse
@@ -32,6 +33,15 @@ def is_local(url: str | None) -> bool:
         return False
     parts = urlsplit(url)
     return not parts.scheme and not parts.netloc
+
+
+_CHECKLIST = re.compile(r"^/ui/customers/[0-9a-f-]{36}/wizard$")
+
+
+def checklist_return(path: str | None) -> str | None:
+    """A customer's Getting Started checklist, when a form was opened from one of its steps
+    (UI_PLAN.md UI-D12): saving goes back there. Only that exact shape of path is accepted."""
+    return path if path and _CHECKLIST.match(path) else None
 
 
 def see_other(path: str, /, **query: object) -> RedirectResponse:

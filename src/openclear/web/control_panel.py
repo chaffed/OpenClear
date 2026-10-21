@@ -82,10 +82,14 @@ def bank_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
 
 
 def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
-    from openclear.services import decision_outbox_service, reminder_service, sso_service
+    from openclear.services import cutoff_service, decision_outbox_service, reminder_service, sso_service
     from openclear.services.siem import delivery
 
     contact_set = any((tenant.support_email, tenant.support_phone, tenant.website))
+    from openclear.services import wizard_service
+
+    done, required = wizard_service.bank_progress(db, ctx.tenant_id)
+    wizard_state = "Done" if done == required else f"{done} of {required} done"
     policy_rules = sum(bool(x) for x in (tenant.password_require_uppercase, tenant.password_require_lowercase,
                                          tenant.password_require_number, tenant.password_require_symbol))
     origins = [o for o in (tenant.embed_allowed_origins or "").splitlines() if o.strip()]
@@ -117,7 +121,8 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
              ("Showing " + " and ".join(messages) + " message") if messages else "None", modal=True,
              keywords="login banner announcement"),
         Tile("getting-started", "Organization", "Getting started", "checklist", "/ui/wizard/bank",
-             "The checklist for setting up a new bank.", keywords="wizard setup onboarding"),
+             "The checklist for setting up a new bank.", wizard_state, tone="" if wizard_state == "Done" else "warn",
+             keywords="wizard setup onboarding"),
         Tile("password-policy", "Security & access", "Password policy", "password", "/ui/settings/password-policy",
              "Minimum length and required characters for new passwords.",
              f"{tenant.password_min_length}+ characters" + (f", {_plural(policy_rules, 'rule')}" if policy_rules else ""),
@@ -156,6 +161,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("dual-control", "Decisions & rules", "Dual control", "how_to_reg", "/ui/settings/dual-control",
              "A second person approves each pay or return decision.", "On" if tenant.require_dual_control else "Off",
              tone="ok" if tenant.require_dual_control else "", modal=True, keywords="maker checker approval four eyes"),
+        Tile("cutoff", "Decisions & rules", "Decision cut-off", "schedule", "/ui/settings/cutoff",
+             "When items must be decided by; decisions can change until then.", cutoff_service.describe(tenant), modal=True,
+             keywords="cutoff deadline time zone holidays closed business day final"),
         Tile("reminders", "Decisions & rules", "Reminders", "notifications_active", "/ui/settings/reminders",
              "Email and text reminders before the cutoff for items still to decide.", reminders, modal=True,
              keywords="cutoff deadline notify notifications sms email"),

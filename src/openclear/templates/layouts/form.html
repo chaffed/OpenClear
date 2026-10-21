@@ -60,7 +60,7 @@
             <option value="other" {{ "selected" if delim not in delimiters else "" }}>Other</option>
           </select>
         </label>
-        <label>Other delimiter <input type="text" name="delimiter_other" maxlength="1" style="max-width:4em;" value="{{ delim if delim not in delimiters else '' }}"></label>
+        <label>Other delimiter <input type="text" name="delimiter_other" maxlength="1" class="field-xs" value="{{ delim if delim not in delimiters else '' }}"></label>
       </div>
       <div data-layout-for="excel">
         <label>Sheet (blank for the first) <input type="text" name="sheet" value="{{ settings.sheet or '' }}"></label>
@@ -69,11 +69,11 @@
         <label><input type="checkbox" name="has_header" value="true" {{ "checked" if settings.has_header else "" }}> The first row names the columns</label>
       </div>
       <div data-layout-for="fixed">
-        <label>Only lines starting with (optional, e.g. D for detail records) <input type="text" name="line_prefix" value="{{ settings.line_prefix or '' }}" style="max-width:8em;"></label>
+        <label>Only lines starting with (optional, e.g. D for detail records) <input type="text" name="line_prefix" value="{{ settings.line_prefix or '' }}" class="field-m"></label>
       </div>
       <div class="inline-fields">
-        <label>Lines to skip at the top <input type="number" name="skip_rows" min="0" value="{{ settings.skip_rows or 0 }}" style="max-width:6em;"></label>
-        <label>Lines to skip at the bottom <input type="number" name="skip_footer" min="0" value="{{ settings.skip_footer or 0 }}" style="max-width:6em;"></label>
+        <label>Lines to skip at the top <input type="number" name="skip_rows" min="0" value="{{ settings.skip_rows or 0 }}" class="field-s"></label>
+        <label>Lines to skip at the bottom <input type="number" name="skip_footer" min="0" value="{{ settings.skip_footer or 0 }}" class="field-s"></label>
       </div>
     </fieldset>
 
@@ -137,8 +137,8 @@
             {% set spot = (settings.positions or {}).get(key) or {} %}
             <tr>
               <th scope="row">{{ label }}{% if key in required %} <span class="hint">(required)</span>{% endif %}</th>
-              <td><input type="number" min="1" name="start_{{ key }}" value="{{ spot.start or '' }}" aria-label="{{ label }} start" style="max-width:6em;"></td>
-              <td><input type="number" min="1" name="length_{{ key }}" value="{{ spot.length or '' }}" aria-label="{{ label }} length" style="max-width:6em;"></td>
+              <td><input type="number" min="1" name="start_{{ key }}" value="{{ spot.start or '' }}" aria-label="{{ label }} start" class="field-s"></td>
+              <td><input type="number" min="1" name="length_{{ key }}" value="{{ spot.length or '' }}" aria-label="{{ label }} length" class="field-s"></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -154,7 +154,7 @@
       <label>Dates
         <select name="date_format">{% for value in date_formats %}<option value="{{ value }}" {{ "selected" if (settings.date_format or "auto") == value else "" }}>{{ "Recognize it (2026-01-15, 01/15/2026)" if value == "auto" else value }}</option>{% endfor %}</select>
       </label>
-      <label>A void is marked by (comma-separated, e.g. V, Y) <input type="text" name="void_values" value="{{ settings.void_values or '' }}" style="max-width:12em;"></label>
+      <label>A void is marked by (comma-separated, e.g. V, Y) <input type="text" name="void_values" value="{{ settings.void_values or '' }}" class="field-l"></label>
       <label><input type="checkbox" name="strip_zeros" value="check_number" {{ "checked" if "check_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from check numbers</label>
       <label><input type="checkbox" name="strip_zeros" value="account_number" {{ "checked" if "account_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from account numbers</label>
     </fieldset>

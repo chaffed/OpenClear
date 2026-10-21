@@ -3,10 +3,11 @@
 
 import uuid
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
@@ -45,10 +46,48 @@ _DECISION_ERROR_MESSAGES = {
     DecisionError.INVALID_RETURN_REASON: "That return reason no longer exists or has been deactivated — pick another.",
     DecisionError.NOT_PENDING_APPROVAL: "There's no recommendation awaiting approval to withdraw; it may have been decided already.",
     DecisionError.NOT_YOUR_RECOMMENDATION: "Only the person who made a recommendation can withdraw it.",
+    DecisionError.NOT_DECIDED: "There's no decision to change; it may have been taken back.",
+    DecisionError.LOCKED: "The cut-off has passed: this decision is final.",
+    DecisionError.CHANGE_NEEDS_APPROVAL: "Under dual control, recommend the change; someone else approves it.",
 }
+
+# A pseudo-status for the list: decided, but still changeable before the cut-off (UI_PLAN.md UI-D13).
+_CHANGEABLE = "changeable"
 
 
 _CHOOSE_OUTCOME = "Choose Pay or Return."
+
+
+def _merged(filters: dict, where) -> dict:
+    """The list's own filters, with a search's conditions added to any of its own."""
+    merged = dict(filters)
+    merged["where"] = [*(filters.get("where") or ()), *(where or ())] or None
+    return merged
+
+
+def _undo_last(request: Request, db: Session, ctx: TenantContext) -> dict | None:
+    """The toast's Undo after moving on to the next item (UI_PLAN.md UI-D11, UI-D13): the form
+    to take back what this person just did on the item before, if it can still be taken back.
+    Checked here, not trusted from the link: only their own decision before its cut-off (and not
+    under dual control), or their own recommendation still waiting."""
+    kind, raw = request.query_params.get("undo_kind"), request.query_params.get("undo_item")
+    if request.query_params.get("undo") != "undo-last" or kind not in ("decision", "recommendation") or not raw:
+        return None
+    try:
+        item_id = uuid.UUID(raw)
+    except ValueError:
+        return None
+    item = exception_service.get_exception(db, ctx.tenant_id, item_id, customer_id=ctx.customer_id)
+    if item is None:
+        return None
+    if kind == "recommendation":
+        ok = item.status == ExceptionStatus.PENDING_APPROVAL and item.recommended_by_user_id == ctx.user_id
+        return {"action": f"/ui/exceptions/{item.id}/recommendation/withdraw"} if ok else None
+    decision = decision_service.get_decision_for_exception(db, ctx.tenant_id, item.id, customer_id=ctx.customer_id)
+    tenant = db.get(Tenant, ctx.tenant_id)
+    ok = (decision is not None and decision.locked_at is None and decision.decided_by_user_id == ctx.user_id
+          and decision_service.changeable_until(item) is not None and not tenant.require_dual_control)
+    return {"action": f"/ui/exceptions/{item.id}/decision/undo"} if ok else None
 
 
 def _parse_outcome(raw: str) -> DecisionOutcome | None:
@@ -142,8 +181,11 @@ def list_exceptions(
 ):
     """Defaults to what still needs a person (open, or awaiting approval), oldest first:
     a work queue. Choosing a decided status, or "All", shows newest first instead."""
+    changeable_only = status == _CHANGEABLE
     if status == _ALL_STATUSES:
         statuses, oldest_first = None, False
+    elif changeable_only:
+        statuses, oldest_first = (ExceptionStatus.PAY, ExceptionStatus.RETURN), True
     elif status in {s.value for s in ExceptionStatus}:
         statuses = (ExceptionStatus(status),)
         oldest_first = statuses[0] in exception_service.NEEDS_ATTENTION
@@ -161,14 +203,19 @@ def list_exceptions(
         except ValueError:
             customer_id = None
     filters = dict(network_code=network_code or None, statuses=statuses, customer_id=customer_id)
+    if changeable_only:
+        from openclear.domain.decision import Decision
+
+        unlocked = select(Decision.exception_item_id).where(Decision.tenant_id == ctx.tenant_id, Decision.locked_at.is_(None))
+        filters["where"] = [ExceptionItem.id.in_(unlocked)]
     search = list_search.parse(request, extra=("status", "network_code", "customer"))
     spec = list_search.exceptions_spec()
     # A work queue (open or awaiting approval) is oldest first, unless another sort is chosen.
     spec.default_order = lambda: [ExceptionItem.created_at.asc() if oldest_first else ExceptionItem.created_at.desc()]
     page_obj = list_search.page_or_export(
         request=request, db=db, ctx=ctx, search=search, spec=spec, page=page, list_name="exceptions",
-        count=lambda where: exception_service.count_exceptions(db, ctx.tenant_id, **filters, where=where),
-        fetch=lambda **kw: exception_service.list_exceptions(db, ctx.tenant_id, **filters, **kw),
+        count=lambda where: exception_service.count_exceptions(db, ctx.tenant_id, **_merged(filters, where)),
+        fetch=lambda **kw: exception_service.list_exceptions(db, ctx.tenant_id, **_merged(filters, kw.pop("where", None)), **kw),
     )
     if not hasattr(page_obj, "items"):
         return page_obj
@@ -189,6 +236,7 @@ def list_exceptions(
         )
     return render_template(
         request, "exceptions/list.html", ctx=ctx, rows=rows, page_obj=page_obj, network_filter=network_code,
+        undo_last=_undo_last(request, db, ctx),
         status_filter=status, statuses=[s.value for s in ExceptionStatus], search=search,
         can_act=bool({"exception:decide", "exception:recommend"} & set(ctx.permissions)),
         bulk_check_reasons=check_return_reason_service.list_check_return_reasons(db, ctx.tenant_id),
@@ -218,13 +266,14 @@ def list_approvals(
     purpose -- FastAPI resolves that path param's uuid.UUID conversion during request
     handling, not route matching, so "approvals" would otherwise 422 against it instead
     of falling through to this route."""
+    # Recommendations waiting, and changes to decisions waiting before their cut-off (UI_PLAN.md UI-D13).
+    waiting = [or_(ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL, ExceptionItem.change_recommended_at.is_not(None))]
     page_obj = paginate(
         page=page,
-        count_fn=lambda: ExceptionRepository(db, ctx.tenant_id, ctx.customer_id).count(
-            network_code=network_code, status=ExceptionStatus.PENDING_APPROVAL
-        ),
+        count_fn=lambda: exception_service.count_exceptions(db, ctx.tenant_id, network_code=network_code, customer_id=ctx.customer_id,
+                                                            where=waiting),
         list_fn=lambda **kw: exception_service.list_exceptions(
-            db, ctx.tenant_id, network_code=network_code, status=ExceptionStatus.PENDING_APPROVAL,
+            db, ctx.tenant_id, network_code=network_code, where=waiting,
             customer_id=ctx.customer_id,
             # Oldest-waiting-first, not newest-first like the general list -- this is a
             # queue meant to be worked through, not a feed of what just happened.
@@ -288,6 +337,11 @@ def exception_detail(
     # The item's own action log (MOBILE_PLAN.md R2), for those who may read the action log;
     # never in a customer's session (it names the bank's people).
     history = _history(db, ctx.tenant_id, item.id) if "audit_log:read" in ctx.permissions and ctx.customer_id is None else []
+    # Changeable until the cut-off (UI_PLAN.md UI-D13), and every earlier version.
+    changeable_until = decision_service.changeable_until(item) if decision is not None and decision.locked_at is None else None
+    revisions = decision_service.revisions(db, ctx.tenant_id, item.id)
+    people = {u.id: u.email for u in db.execute(select(User).where(User.id.in_(
+        {r.decided_by_user_id for r in revisions} | {r.revised_by_user_id for r in revisions} - {None}))).scalars()} if revisions else {}
 
     return render_template(
         request,
@@ -305,6 +359,10 @@ def exception_detail(
         recommended_return_reason_id=recommended_ach_return_reason_id or next(
             (r.id for r in return_reasons if r.reason_text == item.recommended_reason_code), None),
         history=history,
+        changeable_until=changeable_until,
+        revisions=revisions,
+        people=people,
+        undo_last=_undo_last(request, db, ctx),
     )
 
 
@@ -417,6 +475,7 @@ def recommend(
     notes: str = Form(""),
     ach_return_reason_id: str = Form(""),
     return_reason_id: str = Form(""),
+    from_list: str = Form("", alias="from"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:recommend")),
     _csrf: None = Depends(verify_csrf),
@@ -450,8 +509,16 @@ def recommend(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return see_other(f"/ui/exceptions/{exception_id}", error=message)
-    return see_other(f"/ui/exceptions/{exception_id}", flash="Recommendation submitted.", event="exception-recommended",
-                     undo="withdraw-recommendation" if fresh else None)
+    # On to the next item, as after a decision (UI_PLAN.md UI-D11); a fresh recommendation can be
+    # withdrawn from the toast there.
+    undo = {"undo": "undo-last", "undo_kind": "recommendation", "undo_item": str(exception_id)} if fresh else {}
+    queue = _queue_path(from_list)
+    following = _next_to_decide(db, ctx, exception_id, queue) if queue else None
+    if following is None:
+        return see_other(f"/ui/exceptions/{exception_id}", flash="Recommendation submitted.", event="exception-recommended",
+                         undo="withdraw-recommendation" if fresh else None)
+    return see_other(f"/ui/exceptions/{following.id}", flash="Recommendation submitted.", event="exception-recommended",
+                     **{"from": queue}, **undo)
 
 
 @router.post("/{exception_id}/recommendation/withdraw")
@@ -483,6 +550,7 @@ def decide(
     notes: str = Form(""),
     ach_return_reason_id: str = Form(""),
     return_reason_id: str = Form(""),
+    from_list: str = Form("", alias="from"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:decide")),
     _csrf: None = Depends(verify_csrf),
@@ -512,5 +580,130 @@ def decide(
     if result.error is not None:
         message = _DECISION_ERROR_MESSAGES[result.error]
         return see_other(f"/ui/exceptions/{exception_id}", error=message)
+    # On to the next item still to decide, in the queue it was opened from (UI_PLAN.md UI-D11).
     # `event` tells an embedding online banking page (static/js/app.js); ignored otherwise.
-    return see_other(f"/ui/exceptions/{exception_id}", flash="Decision recorded.", event="exception-decided")
+    label = _short_label(db, result.exception)
+    done = f"{label[:1].upper()}{label[1:]}: {'paid' if outcome == DecisionOutcome.PAY else 'returned'}."
+    queue = _queue_path(from_list)
+    # Undo in the toast while it can still change (UI-D13); the page it lands on checks it.
+    undo = {"undo": "undo-last", "undo_kind": "decision", "undo_item": str(exception_id)} if result.decision.locked_at is None else {}
+    if queue is None:
+        return see_other(f"/ui/exceptions/{exception_id}", flash=done, event="exception-decided", **undo)
+    following = _next_to_decide(db, ctx, exception_id, queue)
+    if following is None:
+        return see_other(queue, flash=f"{done} Nothing else is waiting for you here.", event="exception-decided", **undo)
+    return see_other(f"/ui/exceptions/{following.id}", flash=done, event="exception-decided", **{"from": queue}, **undo)
+
+
+@router.post("/{exception_id}/decision/change")
+def change_decision(
+    exception_id: uuid.UUID,
+    outcome: str = Form(""),
+    reason_code: str = Form(""),
+    notes: str = Form(""),
+    ach_return_reason_id: str = Form(""),
+    return_reason_id: str = Form(""),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("exception:read")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Change a decision before its cut-off (UI_PLAN.md UI-D13). Under dual control: recommend
+    the change, or approve one someone else recommended."""
+    back = f"/ui/exceptions/{exception_id}"
+    parsed = _parse_outcome(outcome)
+    if parsed is None:
+        return see_other(back, error=_CHOOSE_OUTCOME)
+    item = exception_service.get_exception(db, ctx.tenant_id, exception_id, customer_id=ctx.customer_id)
+    if item is None:
+        raise WebNotFound()
+    proposing = db.get(Tenant, ctx.tenant_id).require_dual_control and item.change_recommended_at is None
+    if ("exception:recommend" if proposing else "exception:decide") not in ctx.permissions:
+        raise WebNotFound()
+    reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, parsed, reason_code, return_reason_id or ach_return_reason_id)
+    if problem:
+        return see_other(back, error=problem)
+    if proposing:
+        result = decision_service.recommend_change(db, ctx.tenant_id, exception_id, ctx, outcome=parsed, reason_code=reason_code,
+                                                   notes=notes or None, ach_return_reason_id=reason_id, check_return_reason_id=reason_id)
+    else:
+        result = decision_service.change_decision(db, ctx.tenant_id, exception_id, ctx, outcome=parsed, reason_code=reason_code,
+                                                  notes=notes or None, ach_return_reason_id=reason_id, check_return_reason_id=reason_id,
+                                                  channel="web")
+    if result.error is not None:
+        db.rollback()
+        return see_other(back, error=_DECISION_ERROR_MESSAGES[result.error])
+    verb = "Recommended changing" if proposing else "Changed"
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
+        action="exception.recommend_change" if proposing else "exception.change_decision",
+        summary=f"{verb} the decision to {parsed.value} before the cut-off ({reason_code})",
+        resource_type="exception_item", resource_id=exception_id,
+    )
+    db.commit()
+    word = "paying" if parsed == DecisionOutcome.PAY else "returning"
+    return see_other(back, flash=f"Recommended {word} instead: someone else approves the change." if proposing
+                     else f"Changed to {parsed.value}.")
+
+
+@router.post("/{exception_id}/decision/undo")
+def undo_decision(
+    exception_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("exception:decide")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Take a decision back before its cut-off: the item is open to decide again."""
+    back = f"/ui/exceptions/{exception_id}"
+    result = decision_service.undo_decision(db, ctx.tenant_id, exception_id, ctx)
+    if result.error is not None:
+        db.rollback()
+        return see_other(back, error=_DECISION_ERROR_MESSAGES[result.error])
+    audit_log_service.record_action(
+        db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="exception.undo_decision",
+        summary="Took the decision back before the cut-off", resource_type="exception_item", resource_id=exception_id,
+    )
+    db.commit()
+    return see_other(back, flash="Decision taken back: the item is open to decide again.")
+
+
+def _queue_path(from_list: str) -> str | None:
+    """The exceptions list an item was opened from, if it's a work queue (what still needs a
+    person); None for a list of decided items, or anything that isn't the exceptions list."""
+    from openclear.web.security import safe_next_path
+
+    path = safe_next_path(from_list, default="")
+    if not (path == "/ui/exceptions" or path.startswith("/ui/exceptions?")):
+        return None
+    status = parse_qs(urlsplit(path).query).get("status", [""])[0]
+    return path if status in ("", *(s.value for s in exception_service.NEEDS_ATTENTION)) else None
+
+
+def _next_to_decide(db: Session, ctx: TenantContext, current_id: uuid.UUID, queue: str) -> ExceptionItem | None:
+    """The oldest other item in that queue (its network and customer filters) this person can
+    still act on: not one waiting on their own recommendation."""
+    params = parse_qs(urlsplit(queue).query)
+    status = params.get("status", [""])[0]
+    wanted = {ExceptionStatus(status)} if status else set(exception_service.NEEDS_ATTENTION)
+    # What this person can act on: under dual control the maker recommends open items and the
+    # checker approves recommended ones; otherwise a decider decides either.
+    can_decide, can_recommend = "exception:decide" in ctx.permissions, "exception:recommend" in ctx.permissions
+    if db.get(Tenant, ctx.tenant_id).require_dual_control:
+        actable = ({ExceptionStatus.PENDING_APPROVAL} if can_decide else set()) | ({ExceptionStatus.OPEN} if can_recommend else set())
+    else:
+        actable = set(exception_service.NEEDS_ATTENTION) if can_decide else {ExceptionStatus.OPEN}
+    statuses = tuple(wanted & actable)
+    if not statuses:
+        return None
+    customer_id = ctx.customer_id
+    if customer_id is None and params.get("customer"):
+        try:
+            customer_id = uuid.UUID(params["customer"][0])
+        except ValueError:
+            customer_id = None
+    found = exception_service.list_exceptions(
+        db, ctx.tenant_id, network_code=params.get("network_code", [""])[0] or None, statuses=statuses, customer_id=customer_id,
+        where=[ExceptionItem.id != current_id,
+               or_(ExceptionItem.recommended_by_user_id.is_(None), ExceptionItem.recommended_by_user_id != ctx.user_id)],
+        order_by=ExceptionItem.created_at.asc(), limit=1,
+    )
+    return found[0] if found else None

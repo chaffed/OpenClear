@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, UniqueConstraint, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -48,6 +48,9 @@ class CustomerDispositionSetting(Base):
     # Tenant.access_token_expire_minutes/data_export_timeout_seconds
     # (services/tenant_service.py::set_session_timeouts/set_data_export_timeout).
     response_window_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # A cut-off agreed with this customer ("14:00", the bank's time zone), in place of the
+    # bank's for this network (UI_PLAN.md UI-D13). Set by bank staff; None uses the bank's.
+    cutoff_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
     # Only meaningful when `mode` could produce an ACH RETURN (FIXED_RETURN, or
     # ML_DETERMINED landing on RETURN) — an ACH return needs a reason from the tenant's own
     # AchReturnReason catalog, same rule decision_service.decide() enforces for a human. If

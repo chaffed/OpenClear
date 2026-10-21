@@ -45,7 +45,9 @@ def new_stop_payment_form(
     ctx: TenantContext = Depends(require_web_permission("stop_payment:write")),
 ) -> HTMLResponse:
     accounts = account_service.list_accounts(db, ctx.tenant_id, customer_id=ctx.customer_id)
-    return render_template(request, "stop_payments/form.html", ctx=ctx, accounts=accounts)
+    # Effective today unless changed (UI_PLAN.md FL6): nearly every stop payment is.
+    return render_template(request, "stop_payments/form.html", ctx=ctx, accounts=accounts,
+                           form={"effective_date": date.today().isoformat()})
 
 
 @router.post("")
@@ -61,6 +63,9 @@ def create_stop_payment(
     ctx: TenantContext = Depends(require_web_permission("stop_payment:write")),
     _csrf: None = Depends(verify_csrf),
 ) -> HTMLResponse:
+    # What was typed comes back with an error, rather than an empty form.
+    form = {"account_id": str(account_id), "check_number": check_number, "amount": amount, "effective_date": effective_date,
+            "expiration_date": expiration_date, "reason": reason}
     try:
         parsed_amount = Decimal(amount) if amount else None
         parsed_effective = date.fromisoformat(effective_date)
@@ -68,7 +73,7 @@ def create_stop_payment(
     except (InvalidOperation, ValueError):
         accounts = account_service.list_accounts(db, ctx.tenant_id, customer_id=ctx.customer_id)
         return render_template(
-            request, "stop_payments/form.html", ctx=ctx, accounts=accounts, error="Invalid amount or date.", status_code=422
+            request, "stop_payments/form.html", ctx=ctx, accounts=accounts, form=form, error="Invalid amount or date.", status_code=422
         )
 
     try:
@@ -94,6 +99,7 @@ def create_stop_payment(
             "stop_payments/form.html",
             ctx=ctx,
             accounts=accounts,
+            form=form,
             error=friendly_error(exc, action="Could not create stop payment"),
             status_code=422,
         )

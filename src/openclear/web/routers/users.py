@@ -33,7 +33,7 @@ from openclear.services import (
 )
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
-from openclear.web.redirects import see_other
+from openclear.web.redirects import checklist_return, see_other
 from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/users", tags=["web-users"])
@@ -140,14 +140,17 @@ def export_users_json(
 
 @router.get("/new")
 def new_user_form(
-    request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("user:manage"))
+    request: Request, customer_id: str = "", db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("user:manage")),
 ) -> HTMLResponse:
     groups = security_group_service.list_security_groups(db, ctx.tenant_id)
     customers = customer_service.list_customers(db, ctx.tenant_id)
     tenant = db.get(Tenant, ctx.tenant_id)
     password_policy_hint = describe_password_policy(effective_policy(tenant, None))
+    # From a customer's checklist: that customer chosen, and saving goes back to the checklist.
     return render_template(
-        request, "users/new.html", ctx=ctx, groups=groups, customers=customers, password_policy_hint=password_policy_hint
+        request, "users/new.html", ctx=ctx, groups=groups, customers=customers, password_policy_hint=password_policy_hint,
+        chosen_customer_id=customer_id, return_to=checklist_return(request.query_params.get("return")) or "",
     )
 
 
@@ -158,6 +161,7 @@ def create_user(
     password: str = Form(""),
     security_group_id: uuid.UUID = Form(...),
     customer_id: str = Form(""),
+    return_to: str = Form("", alias="return"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("user:manage")),
     _csrf: None = Depends(verify_csrf),
@@ -183,7 +187,7 @@ def create_user(
             resource_id=created_user.id if created_user else None,
         )
         db.commit()
-        return see_other("/ui/users", flash=('User created. ' + held) if held else 'User created.')
+        return see_other(checklist_return(return_to) or "/ui/users", flash=('User created. ' + held) if held else 'User created.')
     if result.outcome == "already_member":
         db.rollback()
         return see_other("/ui/users", flash="That person already has access to this organization.")
@@ -207,6 +211,7 @@ def create_user(
     return render_template(
         request, "users/new.html", ctx=ctx, groups=groups, customers=customers, error=result.error, status_code=422,
         password_policy_hint=describe_password_policy(effective_policy(tenant, None)),
+        chosen_customer_id=customer_id, return_to=checklist_return(return_to) or "",
     )
 
 
@@ -799,6 +804,7 @@ def update_user(
     membership_id: uuid.UUID,
     security_group_id: uuid.UUID = Form(...),
     customer_id: str = Form(""),
+    return_to: str = Form("", alias="return"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("user:manage")),
     _csrf: None = Depends(verify_csrf),

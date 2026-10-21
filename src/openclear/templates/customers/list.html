@@ -39,6 +39,7 @@
     {"key": "due", "label": "Due today", "th": 'scope="col"'},
     {"key": "deadline", "label": "Next deadline", "th": 'scope="col"'},
     {"key": "file", "label": "Last issue file", "th": 'scope="col"'},
+    {"key": "cutoff", "label": "Cut-off", "th": 'scope="col"'},
     {"key": "default", "label": "At the deadline", "th": 'scope="col"'},
     {"key": "status", "label": "Status", "role": "status", "th": 'scope="col"'},
   ] %}
@@ -48,6 +49,7 @@
     {%- elif col.key == "due" %}{% if r.due_today %}<span class="badge badge-warn">{{ r.due_today }}</span>{% else %}0{% endif %}
     {%- elif col.key == "deadline" %}{% if r.nearest_deadline %}<time datetime="{{ r.nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ r.nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}
     {%- elif col.key == "file" %}{% set days = r.days_since_issue_file(now) %}{% if days is none %}<span class="hint">never</span>{% elif days == 0 %}today{% else %}{{ days }} day{{ "s" if days != 1 }} ago{% endif %}
+    {%- elif col.key == "cutoff" %}{% for network, value in (r.cutoffs or {}).items() | sort %}{{ {"check": "Checks", "ach": "ACH"}.get(network, network) }} {{ value }}{% if network in r.negotiated %} <span class="badge">agreed</span>{% endif %}{{ "<br>" | safe if not loop.last }}{% else %}—{% endfor %}
     {%- elif col.key == "default" %}{{ r.decision_default }}
     {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if r.customer.is_active else '' }}">{{ 'active' if r.customer.is_active else 'inactive' }}</span>
     {%- endif %}

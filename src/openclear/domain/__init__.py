@@ -15,6 +15,7 @@ from openclear.domain import (  # noqa: F401
     ach_transaction,
     api_client,
     audit_log_entry,
+    bank_closure,
     billing,
     bulk_upload_created_record,
     bulk_upload_file,

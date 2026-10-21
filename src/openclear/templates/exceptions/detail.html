@@ -19,6 +19,7 @@
   {% if risk %}<p class="decision-score"><span class="fact-label">Fraud risk</span> <span class="badge {{ risk.badge }}">{{ risk.level }} · {{ risk.return_percent }}%</span></p>{% endif %}
   <form method="post" action="{{ action }}" class="decision-pay"{% if pay_confirm %} data-confirm="{{ pay_confirm }}" data-confirm-title="Pay a high-risk item?" data-confirm-yes="Pay it"{% endif %}>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="from" value="{{ list_return(request, '/ui/exceptions') }}">
     <input type="hidden" name="outcome" value="pay">
     <button type="submit" class="button-pay" data-key="p">{{ icon("check_circle") }}{{ "Recommend paying" if mode == "recommend" else "Pay" }}{% if recommended == "pay" %} <span class="recommended-tag">recommended</span>{% endif %}</button>
     <details class="decision-note"><summary>Add a note</summary>
@@ -30,6 +31,7 @@
     <summary class="button button-return" data-key="r">{{ icon("block") }}{{ return_label }}…{% if recommended == "return" %} <span class="recommended-tag">recommended</span>{% endif %}</summary>
     <form method="post" action="{{ action }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="from" value="{{ list_return(request, '/ui/exceptions') }}">
       <input type="hidden" name="outcome" value="return">
       {% if return_reasons %}
       <fieldset class="reason-list">
@@ -60,7 +62,7 @@
 {% endblock %}
 {% block content %}
 {# data-item-view: what the queue's pane on a landscape tablet shows (static/js/app.js initQueuePane). #}
-<div class="item-view" data-item-view>
+<div class="item-view" data-item-view data-item-url="{{ request.url.path }}?from={{ list_return(request, '/ui/exceptions') | urlencode }}">
 {% set risk = fraud_risk(item.ml_score) %}
 {% set actionable = item.status.value in ["open", "pending_approval"] %}
 <p class="back-link"><a href="{{ list_return(request, '/ui/exceptions') }}">Back to exceptions</a></p>
@@ -96,6 +98,32 @@
   {% endif %}
   {% if decision %}
   <p class="recommendation">Decision: <strong>{{ decision.outcome.value | capitalize }}</strong> ({{ decision.reason_code }}{% if decision.return_transaction_code %}, code {{ decision.return_transaction_code }}{% endif %}){% if decision.notes %}. {{ decision.notes }}{% endif %}, decided {{ decision.decided_at.strftime("%Y-%m-%d %H:%M") }}</p>
+  {# Changeable until the cut-off, then final (UI_PLAN.md UI-D13). #}
+  {% if changeable_until %}
+  <p class="decision-state" data-decision-state="changeable">{{ icon("schedule") }}You can change this until
+    <time datetime="{{ changeable_until | iso_utc }}" data-local-time>{{ changeable_until.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    (<time datetime="{{ changeable_until | iso_utc }}" data-relative-time>{{ changeable_until.strftime("%Y-%m-%d %H:%M") }} UTC</time>).
+    At the cut-off it becomes final and goes to the bank.</p>
+  {% elif decision.locked_at %}
+  <p class="decision-state" data-decision-state="final">{{ icon("check_circle") }}Final since
+    <time datetime="{{ decision.locked_at | iso_utc }}" data-local-time>{{ decision.locked_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.</p>
+  {% endif %}
+  {% if item.change_recommended_at %}
+  <p class="recommendation">A change is waiting for approval: <strong>{{ item.recommended_outcome | capitalize }}</strong>
+    ({{ item.recommended_reason_code }}), recommended by {{ recommended_by.email if recommended_by else "someone no longer on this account" }}.
+    Until someone else approves it, the decision above stands.</p>
+  {% endif %}
+  {% if revisions %}
+  <details class="decision-history"><summary>Earlier versions of this decision</summary>
+    <ul>
+      {% for r in revisions %}
+      <li>{{ r.outcome.value | capitalize }} ({{ r.reason_code }}) by {{ people.get(r.decided_by_user_id, "automatic") }},
+        {{ r.decided_at.strftime("%Y-%m-%d %H:%M") }} · {{ "taken back" if r.undone else "changed" }} by {{ people.get(r.revised_by_user_id, "someone") }},
+        <time datetime="{{ r.revised_at | iso_utc }}" data-local-time>{{ r.revised_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
   {% endif %}
 </div>
 
@@ -105,14 +133,13 @@
     <div class="card">
       <h2>What was expected vs. what was presented</h2>
       <table class="evidence">
-        <thead><tr><th></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th><th></th></tr></thead>
+        <thead><tr><th><span class="visually-hidden">What</span></th><th>{{ evidence.expected_heading }}</th><th>{{ evidence.presented_heading }}</th></tr></thead>
         <tbody>
           {% for row in evidence.rows %}
           <tr class="{{ 'mismatch' if row.mismatch else '' }}">
-            <th scope="row">{{ row.label }}</th>
+            <th scope="row">{{ row.label }}{% if row.mismatch %} <span class="badge badge-danger">Doesn't match</span>{% endif %}</th>
             <td>{{ value(row.expected, row.kind) }}</td>
             <td>{{ value(row.presented, row.kind) }}</td>
-            <td>{% if row.mismatch %}<span class="badge badge-danger">Doesn't match</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -123,6 +150,36 @@
       {% endif %}
       {% for note in evidence.notes %}<p class="flash flash-warn">{{ note }}</p>{% endfor %}
     </div>
+    {% endif %}
+
+    {# Changing a decision before the cut-off (UI_PLAN.md UI-D13): outright, or under dual control
+       by recommending the change and having someone else approve it. #}
+    {% if changeable_until %}
+      {% set pending_change = item.change_recommended_at is not none %}
+      {% set own_change = pending_change and item.recommended_by_user_id == ctx.user_id %}
+      {% if require_dual_control and not pending_change and can(ctx, "exception:recommend") %}
+      <details class="card decision-card change-decision">
+        <summary class="button secondary">{{ icon("edit") }}Recommend a change</summary>
+        <p class="hint">The decision stands until someone else approves the change, before the cut-off.</p>
+        {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decision/change", "recommend", return_reasons, None, "", risk) }}
+      </details>
+      {% elif require_dual_control and pending_change and not own_change and can(ctx, "exception:decide") %}
+      <div class="card decision-card">
+        <h2 class="decision-heading">Approve the change</h2>
+        {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decision/change", "approve", return_reasons, recommended_return_reason_id, "", risk) }}
+      </div>
+      {% elif own_change %}
+      <div class="card"><p class="text-muted">You recommended this change; someone else approves it before the cut-off.</p></div>
+      {% elif not require_dual_control and can(ctx, "exception:decide") %}
+      <details class="card decision-card change-decision">
+        <summary class="button secondary">{{ icon("edit") }}Change decision</summary>
+        {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decision/change", "decide", return_reasons, None, "", risk) }}
+        <form method="post" action="/ui/exceptions/{{ item.id }}/decision/undo" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="link-button">Take it back: decide it later</button>
+        </form>
+      </details>
+      {% endif %}
     {% endif %}
 
     {% if actionable %}
@@ -154,7 +211,8 @@
       {% else %}
       <div class="card decision-card">
         <h2 class="decision-heading">{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
-        {% if item.status.value != "pending_approval" %}<p class="hint decision-hint">Pay releases it as if it had matched; Return sends it back unpaid. A decision can't be changed afterwards.</p>{% endif %}
+        {% if item.status.value != "pending_approval" %}<p class="hint decision-hint">Pay releases it as if it had matched; Return sends it back unpaid.
+          {% if evidence and evidence.deadline %}You can change your decision until the cut-off.{% else %}A decision can't be changed afterwards.{% endif %}</p>{% endif %}
         {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decide", "approve" if item.status.value == "pending_approval" else "decide",
                           return_reasons, recommended_return_reason_id, pay_confirm, risk) }}
       </div>
@@ -217,4 +275,5 @@
   {% endif %}
 </details>
 </div>
+{% include "exceptions/_undo_last.html" %}
 {% endblock %}

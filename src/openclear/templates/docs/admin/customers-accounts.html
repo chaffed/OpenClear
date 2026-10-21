@@ -8,6 +8,19 @@ between your organization (the tenant) and the individual bank accounts you're p
 Customer records hold contact information and identifying details, and every account,
 issued item, exception, and setting ultimately belongs to one.</p>
 
+<h2 id="cutoff">Decision cut-off</h2>
+<p>Items are decided by the <strong>cut-off</strong>: a time of day for each kind of item (checks,
+ACH), in the bank's time zone, set under Settings → Decision cut-off. Each item is due at the first
+cut-off on a business day that leaves at least the minimum review time; weekends, the Federal
+Reserve's holidays and the days you add as closed are skipped. Until the cut-off a decision can
+be changed or taken back; at the cut-off it becomes final and goes to your core through the
+decision feed, webhooks and decision files, never before.</p>
+<p>A customer can have its own cut-off, agreed with you: set it on the customer's page, under
+<em>To decide</em>; blank uses the bank's. The Customers list shows each customer's cut-off and
+marks the agreed ones. Changing either is a protected setting when sensitive settings need a
+second admin, and affects only items that arrive afterwards. Until the bank sets a cut-off, items
+follow each customer's response window, and decisions are final when made.</p>
+
 {{ docs.screenshot("customers", "Customers list") }}
 
 <h2>How to</h2>

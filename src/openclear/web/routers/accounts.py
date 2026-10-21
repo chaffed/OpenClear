@@ -17,7 +17,7 @@ from openclear.services import account_service, audit_log_service, customer_serv
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.pagination import paginate
-from openclear.web.redirects import see_other
+from openclear.web.redirects import checklist_return, see_other
 from openclear.web.security import verify_csrf
 
 router = APIRouter(prefix="/ui/accounts", tags=["web-accounts"])
@@ -44,9 +44,12 @@ def list_accounts(
 
 @router.get("/new")
 def new_account_form(
-    request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("account:write"))
+    request: Request, customer_id: str = "", db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("account:write")),
 ) -> HTMLResponse:
-    return _render_account_form(request, db, ctx)
+    # From a customer's checklist: that customer chosen, and saving goes back to the checklist.
+    return _render_account_form(request, db, ctx, form={"customer_id": customer_id,
+                                                        "return": checklist_return(request.query_params.get("return")) or ""})
 
 
 def _render_account_form(
@@ -66,11 +69,13 @@ def create_account(
     name: str = Form(...),
     customer_id: str = Form(""),
     external_account_id: str = Form(""),
+    return_to: str = Form("", alias="return"),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("account:write")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    form = {"account_number": account_number, "name": name, "external_account_id": external_account_id, "customer_id": customer_id}
+    form = {"account_number": account_number, "name": name, "external_account_id": external_account_id, "customer_id": customer_id,
+            "return": checklist_return(return_to) or ""}
     if ctx.customer_id is not None:
         resolved_customer_id = ctx.customer_id
     elif customer_id:
@@ -109,7 +114,7 @@ def create_account(
         resource_id=account.id,
     )
     db.commit()
-    return see_other("/ui/accounts", flash="Account created.")
+    return see_other(checklist_return(return_to) or "/ui/accounts", flash="Account created.")
 
 
 @router.get("/bulk")

@@ -59,7 +59,7 @@
   <h2>Your bank-only model</h2>
   <form method="post" action="/ui/admin/ml/retrain" class="toolbar">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label style="max-width:220px;">Network
+    <label class="field-xl">Network
       <select name="network_code" required>
         {% for n in networks %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
       </select>

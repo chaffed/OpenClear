@@ -1,0 +1,56 @@
+{% from "_macros/icon.html" import icon %}
+{% set network_names = {"check": "Checks", "ach": "ACH"} %}
+<p class="hint">Items are decided by the cut-off. Until then a decision can be changed; at the cut-off
+  it becomes final and goes to your core. Each item is due at the first cut-off on a business day
+  that leaves at least the review time below. A customer can have its own time, agreed with you, on
+  its page. Changing a cut-off affects items that arrive afterwards.</p>
+<form method="post" action="/ui/settings/cutoff">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Time zone
+    <select name="time_zone" required>
+      <option value="" {{ "selected" if not time_zone else "" }} disabled>Choose…</option>
+      <optgroup label="United States">
+        {% for zone in zones_first %}<option value="{{ zone }}" {{ "selected" if zone == time_zone else "" }}>{{ zone | replace("_", " ") }}</option>{% endfor %}
+      </optgroup>
+      <optgroup label="Everywhere else">
+        {% for zone in zones_other %}<option value="{{ zone }}" {{ "selected" if zone == time_zone else "" }}>{{ zone | replace("_", " ") }}</option>{% endfor %}
+      </optgroup>
+    </select>
+  </label>
+  <fieldset>
+    <legend>Cut-off for each kind of item</legend>
+    {% for code in networks %}
+    <label>{{ network_names.get(code, code) }}
+      <input type="time" name="cutoff_{{ code }}" value="{{ cutoffs.get(code) or '' }}" step="60">
+    </label>
+    {% endfor %}
+    <p class="hint">Leave one blank to keep that kind of item on its customers' response windows.</p>
+  </fieldset>
+  <label>Minimum time to review, in minutes
+    <input type="number" name="min_review_minutes" value="{{ min_review_minutes }}" min="0" max="1440" inputmode="numeric">
+  </label>
+  <p class="hint">An item arriving closer to the cut-off than this is due at the next business day's.</p>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>
+
+<h3>Days the bank is closed</h3>
+<p class="hint">Besides weekends and the Federal Reserve's holidays, which are always skipped.</p>
+{% if closures %}
+<table>
+  <thead><tr><th>Day</th><th>Why</th><th><span class="visually-hidden">Remove</span></th></tr></thead>
+  <tbody>
+    {% for closure in closures %}
+    <tr><td>{{ closure.closed_on.strftime("%A, %B %-d, %Y") }}</td><td>{{ closure.name }}</td>
+      <td><form method="post" action="/ui/settings/cutoff/closures/{{ closure.id }}/delete" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link-button">Remove</button></form></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<form method="post" action="/ui/settings/cutoff/closures">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Day <input type="date" name="closed_on" required></label>
+  <label>Why <input type="text" name="name" maxlength="120" placeholder="Founder's Day" required></label>
+  <div class="form-actions"><button type="submit" class="secondary">{{ icon("add") }}Add a closed day</button></div>
+</form>

@@ -482,10 +482,13 @@ public sealed record DecisionBatchRead
 
 public sealed record DecisionRead
 {
+    [JsonPropertyName("change_pending")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? ChangePending { get; init; }
+    [JsonPropertyName("changeable_until")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ChangeableUntil { get; init; }
     [JsonPropertyName("decided_at")] public string DecidedAt { get; init; } = default!;
     [JsonPropertyName("decided_by_user_id")] public string DecidedByUserId { get; init; } = default!;
     [JsonPropertyName("exception_item_id")] public string ExceptionItemId { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("locked_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? LockedAt { get; init; }
     [JsonPropertyName("notes")] public string Notes { get; init; } = default!;
     [JsonPropertyName("outcome")] public string Outcome { get; init; } = default!;
     [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
@@ -2139,12 +2142,36 @@ public sealed partial class DecisionsApi
         _c.CallAsync<DecisionRead>("POST", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decide", json: body, cancellationToken: cancellationToken);
 
     /// <summary>
+    /// Undo Decision.
+    ///
+    /// DELETE /api/v1/exceptions/{exception_id}/decision
+    ///
+    /// Take a decision back before its item's cut-off: the item is open to decide again. Not
+    /// under dual control (409), where a change is recommended and approved instead.
+    /// </summary>
+    public Task<JsonElement> UndoDecisionAsync(string exceptionId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<JsonElement>("DELETE", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decision", cancellationToken: cancellationToken);
+
+    /// <summary>
     /// Get Decision.
     ///
     /// GET /api/v1/exceptions/{exception_id}/decision
     /// </summary>
     public Task<DecisionRead> GetDecisionAsync(string exceptionId, CancellationToken cancellationToken = default) =>
         _c.CallAsync<DecisionRead>("GET", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decision", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Change Decision.
+    ///
+    /// PUT /api/v1/exceptions/{exception_id}/decision
+    ///
+    /// Change a decision before its item's cut-off (`changeable_until`); afterwards it's final
+    /// and this answers 409. It follows a first decision's rules. Under dual control, someone with
+    /// `exception:recommend` proposes the change (`change_pending` is then true and the decision
+    /// in place stands), and someone else with `exception:decide` approves it the same way.
+    /// </summary>
+    public Task<DecisionRead> ChangeDecisionAsync(string exceptionId, DecideRequest body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<DecisionRead>("PUT", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decision", json: body, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Recommend Decision.

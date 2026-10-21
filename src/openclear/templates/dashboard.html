@@ -19,8 +19,40 @@
 </div>
 {% endif %}
 <div class="card">
-  <h1>Dashboard</h1>
-  <p>Logged in as <strong>{{ security_group_name or "—" }}</strong>{% if ctx.customer_name %} ({{ ctx.customer_name }}){% endif %}.</p>
+  <h1>{{ ctx.customer_name if ctx.customer_name else "Dashboard" }}</h1>
+  {% if jobs %}
+  {# A customer's two jobs first (UI_PLAN.md UI-D8): deciding, and sending the issued checks. #}
+  <div class="jobs">
+    {% if jobs.can_decide %}
+    <section class="job">
+      {% if jobs.to_decide %}
+      <h2>{{ jobs.to_decide }} {{ "item" if jobs.to_decide == 1 else "items" }} to decide</h2>
+      <p>{% if jobs.first_due %}The first is due <time datetime="{{ jobs.first_due | iso_utc }}" data-local-time data-relative-time>{{ jobs.first_due.strftime("%Y-%m-%d %H:%M") }} UTC</time>.{% endif %}</p>
+      <a href="/ui/exceptions" class="button">{{ icon("flag") }}Decide now</a>
+      {% else %}
+      <h2>Nothing to decide</h2>
+      <p>You're all caught up.</p>
+      {% endif %}
+      {% if jobs.changeable %}
+      <p class="hint"><a href="/ui/exceptions?status=changeable">{{ jobs.changeable }} {{ "decision" if jobs.changeable == 1 else "decisions" }} can still change</a>,
+        until <time datetime="{{ jobs.change_until | iso_utc }}" data-local-time>{{ jobs.change_until.strftime("%Y-%m-%d %H:%M") }} UTC</time>.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% if jobs.can_upload %}
+    <section class="job">
+      <h2>Issued checks</h2>
+      {% if jobs.last_upload %}
+      <p>Last sent <time datetime="{{ jobs.last_upload.uploaded_at | iso_utc }}" data-local-time data-relative-time>{{ jobs.last_upload.uploaded_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% if jobs.last_upload.succeeded_count is not none %}:
+        <a href="/ui/bulk-uploads/{{ jobs.last_upload.id }}">{{ jobs.last_upload.succeeded_count }} added{% if jobs.last_upload.failed_count %}, {{ jobs.last_upload.failed_count }} to fix{% endif %}</a>{% endif %}.</p>
+      {% else %}
+      <p>No file sent yet. Send your issued checks so the bank can match what's presented.</p>
+      {% endif %}
+      <a href="/ui/issued-items/bulk" class="button{{ ' secondary' if jobs.to_decide else '' }}">{{ icon("upload") }}Upload issued checks</a>
+    </section>
+    {% endif %}
+  </div>
+  {% endif %}
 
   {% if attention is not none or outstanding_issued_items_count is not none or active_stop_payments_count is not none %}
   <div class="stat-cards">
@@ -63,6 +95,24 @@
     </a>
     {% endif %}
   </div>
+  {% endif %}
+  {% if due_soonest %}
+  {# What's waiting, not only how much (UI_PLAN.md F15). #}
+  <h2>Due soonest</h2>
+  <table class="due-soonest">
+    <thead><tr><th>Item</th><th>Customer</th><th class="numeric">Amount</th><th>Decide by</th></tr></thead>
+    <tbody>
+      {% for row in due_soonest %}
+      <tr>
+        <td><a href="/ui/exceptions/{{ row.item.id }}?from=/ui/exceptions">{{ row.summary.label if row.summary else "Exception" }}</a></td>
+        <td>{{ row.customer or "—" }}</td>
+        <td class="numeric">{{ row.summary.amount | currency if row.summary and row.summary.amount is not none else "—" }}</td>
+        <td>{% if row.deadline %}<time datetime="{{ row.deadline | iso_utc }}" data-local-time data-relative-time>{{ row.deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}<span class="text-muted">No deadline</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="/ui/exceptions">All items to decide</a></p>
   {% endif %}
 </div>
 {{ slot("dashboard.panel") }}

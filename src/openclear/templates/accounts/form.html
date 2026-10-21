@@ -13,7 +13,8 @@
   {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
   <form method="post" action="/ui/accounts">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Account number <input type="text" name="account_number" value="{{ form.account_number or '' }}" required></label>
+    {% if form.get("return") %}<input type="hidden" name="return" value="{{ form["return"] }}">{% endif %}
+    <label>Account number <input inputmode="numeric" type="text" name="account_number" value="{{ form.account_number or '' }}" required></label>
     <label>Name <input type="text" name="name" value="{{ form.name or '' }}" required></label>
     <label>External account ID (optional) <input type="text" name="external_account_id" value="{{ form.external_account_id or '' }}"></label>
     {% if not ctx.customer_id %}

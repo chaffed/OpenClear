@@ -50,14 +50,15 @@ def controls_page(request: Request, db: Session = Depends(get_db),
 
 @router.get("/ui/admin/controls/summary")
 def controls_summary(db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("audit_log:read"))):
-    """The Controls tile's state on the control panel: "All pass", "1 FAIL", "2 WARN"."""
+    """The Controls tile's state on the control panel: "All pass", "1 failing", "2 warnings",
+    in words like every other tile's (UI_PLAN.md F17)."""
     from fastapi.responses import JSONResponse
 
     counts = controls_service.summary(controls_service.status(db, ctx.tenant_id))["counts"]
     if counts.get("FAIL"):
-        return JSONResponse({"state": f"{counts['FAIL']} FAIL", "tone": "danger"})
+        return JSONResponse({"state": f"{counts['FAIL']} failing", "tone": "danger"})
     if counts.get("WARN"):
-        return JSONResponse({"state": f"{counts['WARN']} WARN", "tone": "warn"})
+        return JSONResponse({"state": f"{counts['WARN']} warning" + ("" if counts["WARN"] == 1 else "s"), "tone": "warn"})
     return JSONResponse({"state": "All pass", "tone": "ok"})
 
 

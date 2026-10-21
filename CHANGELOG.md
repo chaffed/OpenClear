@@ -5,6 +5,47 @@
 - Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages
   after an action are encoded the same way everywhere (a space is now `+` in the address).
   Release metrics now count the release's own advisory. No change to what pages show.
+- **Readable in dark mode with any bank colour** (`UI_PLAN.md` UI1): text, links and focus
+  rings in a bank's accent use a shade of it that reaches WCAG AA contrast in each theme. The
+  bank name and links were too dark to read on the dark theme before. Links all share that
+  colour, and the Branding setting previews it in both themes.
+- **Deciding moves on to the next item** (`UI_PLAN.md` UI2): after Pay or Return, the next item
+  still to decide opens, with a note of what was just done; after the last, the list says
+  nothing else is waiting.
+- The "Decide now" link is no longer hidden behind the theme and Help controls. The theme
+  choice moved into the navigation, which also gains **Home**.
+- A customer's Getting Started checklist: "Add an account" and "Add a user" open with the
+  customer already chosen, and saving comes back to the checklist. Steps say "Done" or "To do".
+- A new stop payment is effective today unless changed, and a form with an error keeps what was
+  typed.
+- **Decisions can be changed until the cut-off** (`UI_PLAN.md` UI3, the product owner's
+  decision). Each bank sets a decision cut-off per kind of item (checks, ACH) in its time zone,
+  with a minimum review time; a customer can have its own cut-off, agreed with the bank. Items
+  are due at the first cut-off on a business day (weekends, Federal Reserve holidays and the
+  bank's closed days skipped). Until then a decision can be changed or taken back (under dual
+  control, a change is recommended and someone else approves it); at the cut-off it becomes
+  final. Every earlier version is kept.
+- **Integrations: decisions now reach the decision feed, the `exception.decided` webhook and
+  decision files at the cut-off, not when they're made**, for banks that set a cut-off. Banks
+  without one see no change. The API's decisions gain `locked_at`, `changeable_until` and
+  `change_pending`; `PUT` and `DELETE /api/v1/exceptions/{id}/decision` change or take back a
+  decision before its cut-off.
+- A customer's home page leads with its two jobs: what's left to decide (or that nothing is),
+  and uploading issued checks, with the last file's result. An account menu under your email
+  holds Security, the theme and Log out; "Switch organization" shows only if you belong to
+  another. The upload page starts with the file, with the format reference folded away.
+- Phones show a number keyboard for amounts and check and account numbers. Sign-in works with
+  password managers, asks for the "Organization" in plain words (and not at all on a bank's own
+  sign-in link), and says what to do about a forgotten password.
+- A bank's home page lists the five items due soonest, with their customers. The Controls tile
+  says "1 failing" or "2 warnings", and Getting started shows how far along it is.
+- The footer's license notice is one line, with the copyright, the no-warranty statement and a
+  link to the source code (`OPENCLEAR_SOURCE_CODE_URL`, for an installation running its own
+  changes); the license page opens with the full notice.
+- Section headings are smaller than the page title, as they should be; secondary buttons are
+  outlined rather than grey (which looked disabled); "Doesn't match" sits with the row it's about.
+- An upload's result leads with what happened ("1 issued check added. 1 row needs fixing."),
+  lists the checks it added, and keeps "Back out this upload" apart from the other buttons.
 
 ## 1.25.1 — 2026-10-19
 

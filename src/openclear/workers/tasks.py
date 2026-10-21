@@ -331,6 +331,17 @@ def sweep_expired_dispositions_job() -> None:
 
         if rows:
             logger.info("Disposition sweep: %d auto-decided, %d skipped (no model/reason configured yet)", decided, skipped)
+
+        # Decisions made before their cut-off lock at it, and go out (UI_PLAN.md UI-D13).
+        try:
+            from openclear.services import decision_service
+
+            if locked := decision_service.lock_due(session):
+                logger.info("Locked %d decisions at their cut-off", locked)
+            session.commit()
+        except Exception:  # noqa: BLE001 -- tried again on the next sweep
+            session.rollback()
+            logger.exception("Locking decisions at the cut-off failed")
     finally:
         session.close()
 

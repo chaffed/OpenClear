@@ -123,7 +123,27 @@ def _settings(session: Session, tenant_id: uuid.UUID) -> dict:
               for g in security_group_service.list_security_groups(session, tenant_id)]
     return {"require_dual_control": tenant.require_dual_control, "segregation_of_duties": tenant.sod_mode,
             "stale_date_threshold_days": tenant.stale_date_threshold_days, "password_login_enabled": tenant.password_login_enabled,
-            "security_groups": groups}
+            "security_groups": groups, "decision_cutoff": _cutoffs(session, tenant)}
+
+
+def _cutoffs(session: Session, tenant) -> dict:
+    """When decisions become final (UI_PLAN.md UI-D13): the bank's cut-offs, its closures, and
+    each cut-off agreed with a customer, with when it was last set."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
+    from openclear.services import cutoff_service
+
+    agreed = session.execute(
+        select(Customer.customer_number, Customer.name, CustomerDispositionSetting.network_code, CustomerDispositionSetting.cutoff_time,
+               CustomerDispositionSetting.updated_at)
+        .join(Customer, Customer.id == CustomerDispositionSetting.customer_id)
+        .where(CustomerDispositionSetting.tenant_id == tenant.id, CustomerDispositionSetting.cutoff_time.is_not(None))
+        .order_by(Customer.customer_number, CustomerDispositionSetting.network_code)).all()
+    return {"time_zone": tenant.time_zone, "cutoffs": dict(tenant.decision_cutoffs or {}),
+            "min_review_minutes": tenant.cutoff_min_review_minutes,
+            "closures": [{"day": c.closed_on.isoformat(), "name": c.name} for c in cutoff_service.closures(session, tenant.id)],
+            "agreed_with_customers": [{"customer_number": number, "customer": name, "network": network, "cutoff": cutoff,
+                                       "set_at": _iso(updated)} for number, name, network, cutoff, updated in agreed]}
 
 
 def _audit(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> dict:
@@ -170,8 +190,17 @@ def _decisions(session: Session, tenant_id: uuid.UUID, start: datetime, end: dat
     def who(user_id):
         return emails.get(user_id) if user_id else None
 
+    from sqlalchemy import func
+
+    from openclear.domain.decision import DecisionRevision
+
+    ids = [e.id for _d, e in rows]
+    changes = dict(session.execute(select(DecisionRevision.exception_item_id, func.count(DecisionRevision.id))
+                                   .where(DecisionRevision.exception_item_id.in_(ids)).group_by(DecisionRevision.exception_item_id)).all()) if ids else {}
+
     items = [{"decision_id": str(d.id), "exception_id": str(e.id), "network": e.network_code, "exception_types": e.exception_types,
               "outcome": d.outcome.value, "reason_code": d.reason_code, "source": d.source.value, "decided_at": _iso(d.decided_at),
+              "locked_at": _iso(d.locked_at), "changes_before_cutoff": changes.get(e.id, 0),
               "decided_by": who(d.decided_by_user_id), "submitted_by": who(d.submitted_by_user_id),
               "recommended_by": who(e.recommended_by_user_id), "ml_score": e.ml_score, "ml_model_version": e.ml_model_version}
              for d, e in rows]

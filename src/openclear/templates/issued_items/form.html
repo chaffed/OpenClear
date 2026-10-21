@@ -18,8 +18,8 @@
         {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} ({{ a.account_number }})</option>{% endfor %}
       </select>
     </label>
-    <label>Check number <input type="text" name="check_number" required></label>
-    <label>Amount <input type="text" name="amount" placeholder="0.00" required></label>
+    <label>Check number <input inputmode="numeric" type="text" name="check_number" required></label>
+    <label>Amount <input inputmode="decimal" type="text" name="amount" placeholder="0.00" required></label>
     <label>Payee name <input type="text" name="payee_name" required></label>
     <label>Issue date <input type="date" name="issue_date" required></label>
     <button type="submit">{{ icon("add") }}Create</button>

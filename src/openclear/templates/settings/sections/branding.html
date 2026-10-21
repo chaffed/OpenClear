@@ -5,8 +5,18 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Display name <input type="text" name="name" value="{{ tenant_display_name }}" required></label>
   <label>Accent color
-    <input type="color" name="accent_color" value="{{ accent_color if accent_color else '#2563eb' }}">
+    <input type="color" name="accent_color" value="{{ accent_color if accent_color else '#2563eb' }}" aria-describedby="accent-hint">
   </label>
+  {% set accent = accent_color if accent_color else '#2563eb' %}
+  {% set shades = accent_text(accent) if accent | length == 7 else (accent, accent) %}
+  <p class="hint" id="accent-hint">Buttons show white text on it, so it has to be dark enough for that. As text and links, each
+    theme uses a shade of it that stays readable{% if shades[0] != accent | lower or shades[1] != accent | lower %}, adjusted from yours{% endif %}:</p>
+  <div class="accent-preview" aria-hidden="true">
+    <span class="accent-preview-light"><span class="accent-swatch" style="background:{{ accent }}">Button</span>
+      <span style="color:{{ shades[0] }}">Link text</span></span>
+    <span class="accent-preview-dark"><span class="accent-swatch" style="background:{{ accent }}">Button</span>
+      <span style="color:{{ shades[1] }}">Link text</span></span>
+  </div>
   <label>Logo
     {% if ctx.has_logo %}<p><img src="/ui/branding/{{ ctx.tenant_slug }}/logo" alt="Current logo" class="brand-logo"></p>{% endif %}
     <input type="file" name="logo" accept="image/png,image/jpeg">

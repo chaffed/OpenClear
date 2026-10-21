@@ -160,7 +160,7 @@ CUSTOMER_STEPS: list[WizardStep] = [
         title="Add this customer's accounts",
         description="The accounts belonging to this customer that OpenClear will monitor.",
         link_text="Add an account",
-        link_url="/ui/accounts/new",
+        link_url="/ui/accounts/new?customer_id={customer_id}&return=/ui/customers/{customer_id}/wizard",
         auto_check=_customer_has_accounts,
     ),
     WizardStep(
@@ -168,7 +168,7 @@ CUSTOMER_STEPS: list[WizardStep] = [
         title="Add this customer's users",
         description="Staff — the bank's own or this customer's employees — scoped to just this customer's data.",
         link_text="Add a user",
-        link_url="/ui/users/new",
+        link_url="/ui/users/new?customer_id={customer_id}&return=/ui/customers/{customer_id}/wizard",
         auto_check=_customer_has_users,
     ),
     WizardStep(
@@ -215,11 +215,17 @@ def get_bank_wizard_steps(session: Session, tenant_id: uuid.UUID) -> list[Wizard
 def get_customer_wizard_steps(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> list[WizardStepView]:
     views = []
     for step in CUSTOMER_STEPS:
-        # .format() is a no-op for steps whose link_url has no {customer_id} placeholder
-        # (accounts/users reuse the exact same plain URLs the bank wizard uses).
+        # Each step's link names the customer, and the account and user forms come back to
+        # this checklist ({customer_id} in link_url; UI_PLAN.md UI-D12).
         scoped_step = dataclasses.replace(step, link_url=step.link_url.format(customer_id=customer_id))
         views.append(_resolve(session, tenant_id, customer_id, scoped_step))
     return views
+
+
+def bank_progress(session: Session, tenant_id: uuid.UUID) -> tuple[int, int]:
+    """(required steps done, required steps), for the control panel's tile."""
+    required = [view for view in get_bank_wizard_steps(session, tenant_id) if not view.step.optional]
+    return sum(view.is_complete for view in required), len(required)
 
 
 def is_bank_wizard_complete(session: Session, tenant_id: uuid.UUID) -> bool:

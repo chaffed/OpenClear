@@ -1,0 +1,6 @@
+{# The toast's Undo after moving on (UI_PLAN.md UI-D11, UI-D13): the route checked it can still be done. #}
+{% if undo_last %}
+<form method="post" action="{{ undo_last.action }}" id="undo-last" data-undo hidden>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+</form>
+{% endif %}

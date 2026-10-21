@@ -31,6 +31,10 @@ class HubRow:
     nearest_deadline: datetime | None
     last_issue_file_at: datetime | None
     decision_default: str
+    # Its cut-off per network ("check": "11:00") and the networks agreed with it rather than the
+    # bank's (UI_PLAN.md UI-D13).
+    cutoffs: dict = None
+    negotiated: frozenset = frozenset()
 
     @property
     def needs_action(self) -> bool:
@@ -73,16 +77,25 @@ def rows(session: Session, tenant_id: uuid.UUID, *, q: str = "", quiet_days: int
                BulkUploadFile.customer_id.is_not(None))
         .group_by(BulkUploadFile.customer_id)).all())
     modes: dict[uuid.UUID, set] = {}
-    for cid, mode in session.execute(select(CustomerDispositionSetting.customer_id, CustomerDispositionSetting.mode)
-                                     .where(CustomerDispositionSetting.tenant_id == tenant_id)).all():
+    agreed: dict[uuid.UUID, dict] = {}
+    for cid, mode, network, cutoff in session.execute(
+            select(CustomerDispositionSetting.customer_id, CustomerDispositionSetting.mode, CustomerDispositionSetting.network_code,
+                   CustomerDispositionSetting.cutoff_time).where(CustomerDispositionSetting.tenant_id == tenant_id)).all():
         modes.setdefault(cid, set()).add(mode)
+        if cutoff:
+            agreed.setdefault(cid, {})[network] = cutoff
+    from openclear.domain.tenant import Tenant
+
+    bank_cutoffs = dict(session.get(Tenant, tenant_id).decision_cutoffs or {})
 
     result = []
     for customer in customers:
         count, due, nearest = open_stats.get(customer.id, (0, 0, None))
         customer_modes = (modes.get(customer.id) or {DispositionMode.NONE}) - ({DispositionMode.NONE} if len(modes.get(customer.id) or ()) > 1 else set())
         default = _MODE_LABELS[next(iter(customer_modes))] if len(customer_modes) == 1 else "Varies by network"
-        row = HubRow(customer, count or 0, int(due or 0), _aware(nearest), _aware(last_files.get(customer.id)), default)
+        own = agreed.get(customer.id, {})
+        row = HubRow(customer, count or 0, int(due or 0), _aware(nearest), _aware(last_files.get(customer.id)), default,
+                     cutoffs={**bank_cutoffs, **own}, negotiated=frozenset(own))
         if quiet_days is not None:
             days = row.days_since_issue_file(now)
             if days is not None and days < quiet_days:

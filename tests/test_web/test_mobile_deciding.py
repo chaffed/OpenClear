@@ -115,7 +115,7 @@ def test_the_decision_bar_on_a_phone(client, db_session, tenant_factory, browser
     sheet.get_by_label("Stop payment").check()
     with page.expect_response(f"**/ui/exceptions/{item.id}/decide") as answer:
         sheet.get_by_role("button", name="Return it").click()
-    assert "Decision+recorded" in answer.value.headers["location"]
+    assert "returned." in answer.value.headers["location"].replace("+", " ")
     db_session.expire_all()
     assert db_session.get(ExceptionItem, item.id).status.value == "return"
 
@@ -337,19 +337,26 @@ def test_two_panes_on_a_landscape_tablet(client, db_session, tenant_factory, bro
     pay = pane.get_by_role("button", name="Pay", exact=True)
     assert pay.bounding_box()["height"] >= 44
 
-    # Deciding in the pane: the list stays, the item shows its decision, its row goes.
+    # Deciding in the pane: the list stays, its row goes, and the pane moves on to the next
+    # item to decide (UI_PLAN.md UI-D11).
     pay.click()
     page.wait_for_selector(".toast")
-    assert "Decision recorded." in page.locator(".toast").inner_text()
-    assert "Decision: Pay" in pane.inner_text() and page.locator(".queue-split").count() == 1
+    assert "paid." in page.locator(".toast").inner_text()
+    assert "Decision: Pay" not in pane.inner_text() and page.locator(".queue-split").count() == 1
+    assert pane.get_by_role("button", name="Pay", exact=True).is_visible()
     page.wait_for_function("document.querySelectorAll('table[data-queue] tbody tr').length === 2")
     db_session.expire_all()
     assert sorted(db_session.get(ExceptionItem, i.id).status.value for i in items) == ["open", "open", "pay"]
 
-    # Back: the pane empties and the address is the list's again.
-    second = page.locator("td.cell-primary a").first
-    second.click()
+    # The pane moved on to the next item, the oldest still open; Back returns to the one just
+    # decided, then to the list, where the pane empties.
     page.wait_for_function("(label) => !document.querySelector('.queue-pane h1').textContent.includes(label)", arg=label)
+    assert page.evaluate("location.pathname") != first_path
+    # The row of the item now in the pane is the current one (items made in the same second tie
+    # on age, so it needn't be the first row).
+    page.wait_for_function("() => { const a = document.querySelector('table[data-queue] a[aria-current=true]');"
+                           " return a && document.querySelector('.queue-pane h1').textContent.includes(a.textContent.trim()); }",
+                           polling=100)
     page.go_back()  # to the first item, decided
     page.wait_for_function("(path) => location.pathname === path", arg=first_path)
     page.wait_for_function("() => document.querySelector('.queue-pane').textContent.includes('Decision: Pay')")
@@ -358,6 +365,7 @@ def test_two_panes_on_a_landscape_tablet(client, db_session, tenant_factory, bro
     assert "Choose an item" in pane.inner_text()
 
     # Turned upright with an item open, the item becomes its own page.
+    second = page.locator("td.cell-primary a").first
     second.click()
     page.wait_for_selector(".queue-pane [data-item-view]")
     item_path = page.evaluate("location.pathname")

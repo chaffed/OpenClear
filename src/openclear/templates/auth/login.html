@@ -3,7 +3,7 @@
 {% block title %}Log in — {{ branding.name if branding else "OpenClear" }}{% endblock %}
 {% block favicon %}{% if branding and branding.has_favicon %}<link rel="icon" href="/ui/branding/{{ branding.slug }}/favicon">{% else %}<link rel="icon" type="image/svg+xml" href="/static/img/openclear-badge.svg">{% endif %}{% endblock %}
 {% block head_extra %}
-{% if branding and branding.accent_color %}<style>:root{ --accent: {{ branding.accent_color }}; }</style>{% endif %}
+{% if branding %}{{ accent_style(branding.accent_color) }}{% endif %}
 {% endblock %}
 {% block content %}
 {% set password_enabled = customer_password_login_enabled if customer_password_login_enabled is defined else (branding.password_login_enabled if branding else true) %}
@@ -31,20 +31,29 @@
   <form method="post" action="/ui/login">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="next" value="{{ next_path or '' }}">
+    {# Sign-in (UI_PLAN.md F13): on a bank's own sign-in page the organization is already known;
+       elsewhere it's asked for in plain words. autocomplete lets password managers fill it in. #}
+    {% if branding and tenant_slug %}
+    <input type="hidden" name="tenant_slug" value="{{ tenant_slug }}">
+    {% else %}
     <label>
-      Organization slug
-      <input type="text" name="tenant_slug" value="{{ tenant_slug or '' }}" required autofocus>
+      Organization
+      <input type="text" name="tenant_slug" value="{{ tenant_slug or '' }}" required autofocus autocomplete="organization"
+        autocapitalize="none" spellcheck="false" aria-describedby="org-hint">
     </label>
+    <p class="hint" id="org-hint">The short name in your organization's sign-in link, such as <code>riverside-bank</code>.</p>
+    {% endif %}
     <label>
       Email
-      <input type="email" name="email" value="{{ email or '' }}" required>
+      <input type="email" name="email" value="{{ email or '' }}" required autocomplete="username"{% if branding and tenant_slug %} autofocus{% endif %}>
     </label>
     <label>
       Password
-      <input type="password" name="password" required>
+      <input type="password" name="password" required autocomplete="current-password">
     </label>
     <button type="submit">{{ icon("login") }}Log in</button>
   </form>
+  <p class="hint">Forgotten your password? Ask your organization's administrator to reset it; you'll get an email with a link.</p>
   {% elif not sso_connections %}
   <p>No sign-in method is currently available. Contact your administrator.</p>
   {% endif %}

@@ -16,7 +16,7 @@ from openclear.auth.security import decode_token
 from openclear.config import get_settings
 from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
-from openclear.db.tenancy import TenantContext, bind_session_to_tenant
+from openclear.db.tenancy import TenantContext, bind_session_to_tenant, memberships_elsewhere
 from openclear.domain.customer import Customer
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.security_group import SecurityGroup
@@ -46,7 +46,8 @@ class AccessRevoked(Exception):
 def _pending_approval_count(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, user_id: uuid.UUID) -> int:
     stmt = select(func.count(ExceptionItem.id)).where(
         ExceptionItem.tenant_id == tenant_id,
-        ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL,
+        # A recommendation waiting, or a change to a decision waiting before its cut-off (UI_PLAN.md UI-D13).
+        or_(ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL, ExceptionItem.change_recommended_at.is_not(None)),
         or_(ExceptionItem.recommended_by_user_id.is_(None), ExceptionItem.recommended_by_user_id != user_id),
     )
     if customer_id is not None:
@@ -208,6 +209,8 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         is_demo=branding.is_demo,
         customer_banner_message=customer_banner_message,
         must_change_password=user.must_change_password,
+        user_email=user.email,
+        other_organizations=0 if user.is_service_account else memberships_elsewhere(db, user_id, tenant_id),
         session_id=uuid.UUID(payload["sid"]) if payload.get("sid") else None,
         access_expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
         session_expires_at=datetime.fromtimestamp(payload["sxp"], tz=timezone.utc) if payload.get("sxp") else None,

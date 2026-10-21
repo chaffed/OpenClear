@@ -7,6 +7,8 @@ settings. Each setting has its own URL, /ui/settings/<key>: a plain page, or wit
 Saving redirects to the panel with a message; an error shows the setting again with it."""
 
 
+import uuid
+
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -54,6 +56,7 @@ SECTIONS = {
     "outside-services": "Outside services",
     "standards": "Your standards",
     "reminders": "Reminders",
+    "cutoff": "Decision cut-off",
     "embedding": "Embedding in online banking",
     "decision-files": "Decision files",
     "security-events": "Security event forwarding",
@@ -64,7 +67,7 @@ SECTIONS = {
 SECTION_KINDS = {
     "password-policy": ("password_policy",), "security-keys": ("security_keys",), "access-rules": ("access_rules",), "dual-control": ("dual_control", "approval_switches"),
     "customer-approval": ("customer_approval",), "embedding": ("embedding",), "decision-files": ("decision_files",),
-    "security-events": ("security_event_forwarding",),
+    "security-events": ("security_event_forwarding",), "cutoff": ("decision_cutoff",),
 }
 
 
@@ -176,6 +179,8 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         }
     if key == "reminders":
         return _reminder_kwargs(db, ctx, tenant)
+    if key == "cutoff":
+        return _cutoff_kwargs(db, tenant)
     if key == "security-events":
         destination = delivery.bank_destination(db, ctx.tenant_id)
         return {
@@ -205,6 +210,17 @@ def _reminder_kwargs(db: Session, ctx: TenantContext, tenant: Tenant) -> dict:
     offsets = safe(lambda: reminder_service.parse_offsets(stored)) if stored else []
     return {"reminder_mode": mode, "reminder_offsets": ", ".join(str(m) for m in offsets) or "120, 30",
             "reminder_inherited": inherited, "customer_level": ctx.customer_id is not None}
+
+
+def _cutoff_kwargs(db: Session, tenant: Tenant, **typed) -> dict:
+    from openclear.networks.registry import registered_codes
+    from openclear.services import cutoff_service
+
+    zones = cutoff_service.us_time_zones()
+    return {"time_zone": tenant.time_zone or "", "cutoffs": dict(tenant.decision_cutoffs or {}),
+            "min_review_minutes": tenant.cutoff_min_review_minutes, "networks": registered_codes(),
+            "zones_first": zones, "zones_other": sorted(cutoff_service.available_time_zones() - set(zones)),
+            "closures": cutoff_service.closures(db, tenant.id), **typed}
 
 
 def render_section(request: Request, db: Session, ctx: TenantContext, key: str, *, error: str | None = None,
@@ -779,3 +795,52 @@ def update_security_events(
 def tile_states(db: Session = Depends(get_db), ctx: TenantContext = Depends(require_panel)) -> JSONResponse:
     """Each tile's state, so the panel can update its tiles after a modal saves."""
     return JSONResponse({t.key: {"state": t.state, "tone": t.tone} for t in control_panel.tiles_for(db, ctx)})
+
+
+# --- The decision cut-off (UI_PLAN.md UI-D13) ----------------------------------------------------
+
+
+@router.post("/cutoff")
+async def update_cutoff(request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+                        _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """The bank's time zone, each network's cut-off and the minimum review time: a protected
+    change, since it moves when decisions become final."""
+    from openclear.networks.registry import registered_codes
+
+    form = await request.form()
+    payload = {"time_zone": str(form.get("time_zone") or ""), "min_review_minutes": str(form.get("min_review_minutes") or "0"),
+               "cutoffs": {code: str(form.get(f"cutoff_{code}") or "") for code in registered_codes()}}
+    typed = {"time_zone": payload["time_zone"], "cutoffs": payload["cutoffs"], "min_review_minutes": payload["min_review_minutes"]}
+    return _change(request, db, ctx, "decision_cutoff", payload, key="cutoff",
+                   record=("tenant.update_cutoffs", "Decision cut-off changed"), error_overrides=typed)
+
+
+@router.post("/cutoff/closures")
+def add_closure(request: Request, closed_on: str = Form(""), name: str = Form(""), db: Session = Depends(get_db),
+                ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """A day the bank is closed: no cut-off falls on it."""
+    from datetime import date
+
+    from openclear.services import cutoff_service
+
+    try:
+        closure = cutoff_service.add_closure(db, ctx.tenant_id, date.fromisoformat(closed_on), name)
+    except ValueError as exc:
+        db.rollback()
+        message = str(exc) if isinstance(exc, cutoff_service.CutoffError) else "Choose the day the bank is closed."
+        return render_section(request, db, ctx, "cutoff", error=message)
+    _record(db, ctx, "tenant.update_closures", f"Closed on {closure.closed_on.isoformat()}: {closure.name}")
+    db.commit()
+    return _saved(request, f"Closed on {closure.closed_on.isoformat()}: no cut-off that day.", key="cutoff")
+
+
+@router.post("/cutoff/closures/{closure_id}/delete")
+def remove_closure(request: Request, closure_id: uuid.UUID, db: Session = Depends(get_db),
+                   ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    from openclear.services import cutoff_service
+
+    closure = cutoff_service.remove_closure(db, ctx.tenant_id, closure_id)
+    if closure is not None:
+        _record(db, ctx, "tenant.update_closures", f"No longer closed on {closure.closed_on.isoformat()} ({closure.name})")
+    db.commit()
+    return _saved(request, "Closure removed.", key="cutoff")
