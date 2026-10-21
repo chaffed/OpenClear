@@ -2,7 +2,7 @@
 {% import "_macros/pagination.html" as pg %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}ACH Return Reasons — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}ACH return reasons — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ACH return reasons{% endblock %}
 {% block help_body %}
 <p>Every ACH exception finalized as a return must select one of these reasons — no
@@ -17,7 +17,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>ACH Return Reasons</h1>
+    <h1>ACH return reasons</h1>
     <a href="/ui/ach-return-reasons/new" class="button">{{ icon("add") }}New return reason</a>
   </div>
   {% if page_obj.total_count > 0 %}

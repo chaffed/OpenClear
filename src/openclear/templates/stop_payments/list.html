@@ -2,7 +2,7 @@
 {% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Stop Payments — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Stop payments — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About stop payments{% endblock %}
 {% block help_body %}
 <p>A stop payment blocks a specific check from clearing — a presented check matching
@@ -19,7 +19,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Stop Payments</h1>
+    <h1>Stop payments</h1>
     {% if can(ctx, "stop_payment:write") %}<a href="/ui/stop-payments/new" class="button">{{ icon("add") }}New stop payment</a>{% endif %}
   </div>
   <form method="get" action="/ui/stop-payments" class="toolbar toolbar-start">

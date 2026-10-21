@@ -3,7 +3,7 @@
 {% import "_macros/list_search.html" as ls with context %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Issued Items — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Issued items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About issued items{% endblock %}
 {% block help_body %}
 <p>An issued item is a check you told the bank to expect — the "positive pay" file.
@@ -21,7 +21,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Issued Items</h1>
+    <h1>Issued items</h1>
     {% if can(ctx, "issued_item:write") %}
     <div class="actions">
       <a href="/ui/issued-items/new" class="button">{{ icon("add") }}New issued item</a>

@@ -31,7 +31,7 @@ def test_nav_is_grouped_into_labeled_sections(client, tenant_factory):
 
     resp = client.get("/ui/")
     assert resp.status_code == 200
-    for section in ["Positive Pay", "ACH", "Review", "Organization"]:
+    for section in ["Positive pay", "ACH", "Review", "Organization"]:
         assert f'class="nav-section">{section}</p>' in resp.text
 
 

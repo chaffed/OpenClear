@@ -141,7 +141,7 @@ def test_customer_users_see_only_their_own_statement(client, db_session, tenant_
     assert overview.status_code == 303 and overview.headers["location"].startswith("/ui/billing/statement")
     mine = client.get(f"/ui/billing/statement?period={PERIOD_PARAM}&customer={analysis.id}")
     assert "Hard Charge Co" in mine.text and "Analysis Co" not in mine.text
-    assert "Billing Statement" in mine.text  # its own nav link
+    assert "Billing statement" in mine.text  # its own nav link
     assert client.get(f"/ui/billing/export/hard-charge-postings.csv?period={PERIOD_PARAM}").status_code == 403
     assert client.get("/ui/billing/fees").status_code == 403
 

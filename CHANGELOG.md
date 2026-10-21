@@ -12,6 +12,9 @@
   form published. **Removed:** the signed statements and their tables, the WSUD signing key
   pair (`OPENCLEAR_WSUD_SIGNING_*`), the two legal-text settings (production no longer needs
   them), the `wsud:sign` and `wsud:read` permissions, and the billing metric `wsud_statements`.
+- **Names read the same everywhere.** The navigation, page headings, tab titles and guide titles
+  are sentence case: "Action log", "Issued items", "Security groups", "Positive pay". The
+  admin guide formerly titled "Audit Log" is "Action log", like the page.
 - **The fraud score is advisory, from the bank's own model, and off until the bank turns it on**
   (`SIMPLIFY_PLAN.md` SP2, the product owner's decision). Settings → *Fraud scoring* turns it on
   or off; turning it on is a protected `sensitive` change. With it on, the bank's own model,

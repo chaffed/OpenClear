@@ -334,3 +334,8 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   revocation checks were never going to be cached. Measure first (`scripts/perf/measure.py`).
 - 2026-10-21: FR-D20's product plans written: PAID_ITEM_LAYOUTS_PLAN.md (M1), REVERSE_POSITIVE_PAY_PLAN.md
   (M2), and TELLER_PLAN.md brought up to date (M3). None started.
+- 2026-10-21: The product owner's answers on what was left open. **Item 8 (no partial unique index
+  on `paid_item`):** leave as is. **U8:** the whole navigation, page headings, tab titles and guide
+  titles are sentence case ("Action log", "Issued items", "Positive pay"); addresses and
+  permission names are unchanged. Built on `product-simplify`. **PR #31:** its history was
+  rewritten to drop the `dev_keys/dev_keys` symlink an FR2 worktree committed, and force-pushed.

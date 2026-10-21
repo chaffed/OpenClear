@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Single Sign-On — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Single sign-on — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this customer's SSO{% endblock %}
 {% block help_body %}
 <p>Configure federated login for this customer's own employees, entirely independent of
@@ -14,7 +14,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Single Sign-On — {{ customer.name }}</h1>
+    <h1>Single sign-on — {{ customer.name }}</h1>
     <a href="/ui/customers/{{ customer.id }}/sso/new" class="button">{{ icon("add_link") }}Add connection</a>
   </div>
   {% if connections %}

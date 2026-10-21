@@ -123,9 +123,9 @@ def test_global_search_and_navigation(client, db_session, tenant_factory):
 
     dashboard = client.get("/ui/").text
     nav = dashboard.split('class="nav-links"')[1]
-    assert nav.index("Exceptions") < nav.index("Issued Items")  # the work first
+    assert nav.index("Exceptions") < nav.index("Issued items")  # the work first
     assert 'class="nav-count" aria-label="1 waiting">1<' in dashboard  # one exception needs attention
-    assert "Action Log" in dashboard and "Audit Log" not in dashboard
+    assert "Action log" in dashboard and "Audit Log" not in dashboard
 
 
 def test_page_only_filters_say_so(client, db_session, tenant_factory):

@@ -92,25 +92,25 @@
 
         {# Only what this person may open (UI_PLAN.md UI-D14: someone with no access yet sees none of it). #}
         {% if can(ctx, "account:read") or can(ctx, "issued_item:read") or can(ctx, "stop_payment:read") or can(ctx, "paid_item:read") or can(ctx, "check_image:read") %}
-        <p class="nav-section">Positive Pay</p>
+        <p class="nav-section">Positive pay</p>
         {% endif %}
         {% if can(ctx, "account:read") %}{{ nav_link("/ui/accounts", "Accounts", "account_balance") }}{% endif %}
-        {% if can(ctx, "issued_item:read") %}{{ nav_link("/ui/issued-items", "Issued Items", "receipt_long") }}{% endif %}
-        {% if can(ctx, "stop_payment:read") %}{{ nav_link("/ui/stop-payments", "Stop Payments", "block") }}{% endif %}
-        {% if can(ctx, "paid_item:read") %}{{ nav_link("/ui/paid-items", "Paid Items", "paid") }}{% endif %}
-        {% if can(ctx, "check_image:read") %}{{ nav_link("/ui/check-images", "Check Images", "image") }}{% endif %}
+        {% if can(ctx, "issued_item:read") %}{{ nav_link("/ui/issued-items", "Issued items", "receipt_long") }}{% endif %}
+        {% if can(ctx, "stop_payment:read") %}{{ nav_link("/ui/stop-payments", "Stop payments", "block") }}{% endif %}
+        {% if can(ctx, "paid_item:read") %}{{ nav_link("/ui/paid-items", "Paid items", "paid") }}{% endif %}
+        {% if can(ctx, "check_image:read") %}{{ nav_link("/ui/check-images", "Check images", "image") }}{% endif %}
 
         {% if can(ctx, "ach_authorization:read") or can(ctx, "ach_transaction:read") or show_ach_return_reasons %}
         <p class="nav-section">ACH</p>
         {% endif %}
-        {% if can(ctx, "ach_authorization:read") %}{{ nav_link("/ui/ach/authorizations", "ACH Authorizations", "fact_check") }}{% endif %}
-        {% if can(ctx, "ach_transaction:read") %}{{ nav_link("/ui/ach/transactions", "ACH Transactions", "sync_alt") }}{% endif %}
-        {% if show_ach_return_reasons %}{{ nav_link("/ui/ach-return-reasons", "ACH Return Reasons", "assignment_return") }}{% endif %}
+        {% if can(ctx, "ach_authorization:read") %}{{ nav_link("/ui/ach/authorizations", "ACH authorizations", "fact_check") }}{% endif %}
+        {% if can(ctx, "ach_transaction:read") %}{{ nav_link("/ui/ach/transactions", "ACH transactions", "sync_alt") }}{% endif %}
+        {% if show_ach_return_reasons %}{{ nav_link("/ui/ach-return-reasons", "ACH return reasons", "assignment_return") }}{% endif %}
 
         {% if show_settings and ctx.customer_id is not none %}
         <p class="nav-section">More</p>
         {% endif %}
-        {% if ctx.customer_id is not none and can(ctx, "billing:read") %}{{ nav_link("/ui/billing/statement", "Billing Statement", "request_quote") }}{% endif %}
+        {% if ctx.customer_id is not none and can(ctx, "billing:read") %}{{ nav_link("/ui/billing/statement", "Billing statement", "request_quote") }}{% endif %}
         {% if show_settings and ctx.customer_id is not none %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
         {% for page in plugin_pages() %}{{ nav_link("/ui/plugin-pages/" ~ page.name, page.label, "extension") }}{% endfor %}
 
@@ -118,10 +118,10 @@
         <p class="nav-section">Organization</p>
         {% if can(ctx, "customer:manage") %}{{ nav_link("/ui/customers", "Customers", "groups") }}{% endif %}
         {% if can(ctx, "user:manage") %}{{ nav_link("/ui/users", "Users", "person") }}{% endif %}
-        {% if can(ctx, "security_group:manage") %}{{ nav_link("/ui/security-groups", "Security Groups", "admin_panel_settings") }}{% endif %}
-        {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/wizard/bank", "Getting Started", "checklist") }}{% endif %}
+        {% if can(ctx, "security_group:manage") %}{{ nav_link("/ui/security-groups", "Security groups", "admin_panel_settings") }}{% endif %}
+        {% if can(ctx, "tenant:manage") %}{{ nav_link("/ui/wizard/bank", "Getting started", "checklist") }}{% endif %}
         {% if show_settings and ctx.customer_id is none %}{{ nav_link("/ui/settings", "Settings", "settings") }}{% endif %}
-        {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Action Log", "history") }}{% endif %}
+        {% if can(ctx, "audit_log:read") %}{{ nav_link("/ui/audit-log", "Action log", "history") }}{% endif %}
         {% if can(ctx, "billing:read") and ctx.customer_id is none %}{{ nav_link("/ui/billing", "Billing", "request_quote") }}{% endif %}
         {% endif %}
       </div>

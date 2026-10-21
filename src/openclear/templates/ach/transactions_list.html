@@ -3,7 +3,7 @@
 {% import "_macros/list_search.html" as ls with context %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}ACH Transactions — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}ACH transactions — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ACH transactions{% endblock %}
 {% block help_body %}
 <p>An ACH transaction is a debit or credit presented against one of your accounts.
@@ -14,7 +14,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>ACH Transactions</h1>
+    <h1>ACH transactions</h1>
     {% if can(ctx, "ach_transaction:write") %}
     <div class="actions">
       <a href="/ui/ach/transactions/new" class="button">{{ icon("send") }}Submit transaction</a>

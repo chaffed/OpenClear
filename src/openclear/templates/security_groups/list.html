@@ -2,7 +2,7 @@
 {% import "_macros/pagination.html" as pg %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Security Groups — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Security groups — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About security groups{% endblock %}
 {% block help_body %}
 <p>A security group is a named, editable set of permissions — not a fixed role. Every
@@ -16,7 +16,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Security Groups</h1>
+    <h1>Security groups</h1>
     <a href="/ui/security-groups/new" class="button">{{ icon("add") }}New security group</a>
   </div>
   {% if page_obj.total_count > 0 %}
