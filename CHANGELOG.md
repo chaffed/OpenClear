@@ -55,6 +55,9 @@
 - Emails: a new exception says which check (or ACH debit), the amount and when it's due; reminders
   give the time in the bank's time zone beside "due in 2 hours".
 - A missing permission to change a decision shows "not allowed", not "not found".
+- **"Don't know your organization?"** (FR8): the plain sign-in page links to *Find your sign-in*,
+  which emails your address a sign-in link for each organization (and customer) you belong to.
+  It answers the same whatever address is typed, so it reveals nothing about who has an account.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

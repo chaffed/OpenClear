@@ -39,7 +39,7 @@ _PREFERENCE_TYPES = [
                                              NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
                                              NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.EMAIL_CHANGE_CONFIRM,
                                              NotificationType.EMAIL_CHANGED, NotificationType.MALWARE_DETECTED,
-                                             NotificationType.INACTIVITY_WARNING)
+                                             NotificationType.INACTIVITY_WARNING, NotificationType.SIGN_IN_LINKS)
 ]
 
 _NOTIFICATION_TYPE_LABELS = {

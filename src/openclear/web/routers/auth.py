@@ -548,6 +548,29 @@ def finish_sso_login(request: Request, db: Session, tenant_id: uuid.UUID, connec
 # real reason this ordering matters.)
 
 
+# "Which organization?" (FULL_REVIEW_PLAN.md FR8). Before /login/{tenant_slug}, which would
+# otherwise take "find" for an organization's short name.
+@router.get("/login/find")
+def find_organization_form(request: Request) -> HTMLResponse:
+    return render_template(request, "auth/find_organization.html")
+
+
+@router.post("/login/find")
+def find_organization(
+    request: Request,
+    email: str = Form(""),
+    db: Session = Depends(get_db),
+    _csrf: None = Depends(verify_csrf),
+    _limit: None = Depends(rate_limit("login", limit_setting="login_attempts_per_minute")),
+) -> HTMLResponse:
+    """Emails the address its sign-in links, if it has any; the page says the same either way."""
+    from openclear.services import sign_in_links
+
+    sign_in_links.send_links(db, email, base_url=get_settings().public_base_url or str(request.base_url))
+    db.commit()
+    return render_template(request, "auth/find_organization.html", sent_to=(email or "").strip()[:320])
+
+
 @router.get("/login/{tenant_slug}")
 def branded_login_form(request: Request, tenant_slug: str, next: str | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
     """A bookmarkable/shareable branded login link for one organization

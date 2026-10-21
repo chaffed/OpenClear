@@ -313,3 +313,13 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   `/ui/list-search` keeps only account numbers out of it, so posting the search's "See all"
   would change nothing. U8 (one name for the action log) is left: the navigation's title case is
   shared by every entry, and changing one would be its own inconsistency.
+- 2026-10-21: FR8 built on `fr8-find-organization`. **Deviation from FR-D13:** email first, then
+  choosing the organization only when there are several, tells anyone which addresses have an
+  account (a known one skips a step an unknown one doesn't). Built instead: *Find your sign-in*
+  (`/ui/login/find`, `services/sign_in_links.py`), which emails the address its branded sign-in
+  links and answers the same for any address (ASVS 6.3.8's evidence gains it), rate-limited
+  like sign-in. The plain sign-in form keeps its Organization field, with the link beside it.
+  Tested under row-level security (signed out, across two banks and a customer). The end-user
+  guide's sign-in section updated (it still described temporary passwords, gone since 1.22.0).
+  Also on this branch: `.venv` is no longer tracked. A worktree's symlink to the virtualenv was
+  committed in FR2, because `.gitignore` had `.venv/`, which matches a folder but not a link.

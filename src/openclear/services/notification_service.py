@@ -35,7 +35,7 @@ from openclear.web.templates import templates
 # SMS for every type, including these) stays fully preference-controlled.
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
                                  NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
-                                 NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED})
+                                 NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED, NotificationType.SIGN_IN_LINKS})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -58,6 +58,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.CHANGE_REQUESTED: "A change is waiting for your approval",
     NotificationType.CHANGE_DECIDED: "Your change was decided",
     NotificationType.APPROVER_GONE: "Nobody else can approve some changes",
+    NotificationType.SIGN_IN_LINKS: "Your OpenClear sign-in links",
 }
 
 
