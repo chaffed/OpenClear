@@ -44,6 +44,17 @@
   `GET /return-reasons/check` and `/ach`, the ids to send when returning an item;
   `check_return_reason_id` on recommend, decide and change; and `GET
   /exceptions/{id}/decision/history`, a decision's earlier versions. The SDKs are regenerated.
+- **Lists bank staff can narrow** (FR7): a Customer filter on Exceptions and Approvals (which
+  also gains Customer and Decide-by columns); Stop payments by status and check number; Check
+  images by how reading the image went.
+- Statuses read as words everywhere ("Active", "Allowed originators only", "Always pay"), not codes.
+- The exception page no longer says a decision can't be changed; the bank's own items show their
+  cut-off too. Each page has one title. The Security page is "Sign-in and security", with a heading
+  per section. A customer's page shows the cut-off that applies (the installation's default
+  included), not "set the bank's first".
+- Emails: a new exception says which check (or ACH debit), the amount and when it's due; reminders
+  give the time in the bank's time zone beside "due in 2 hours".
+- A missing permission to change a decision shows "not allowed", not "not found".
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

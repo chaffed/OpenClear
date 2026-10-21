@@ -30,7 +30,7 @@
 </div>
 
 <div class="card">
-  <h1>Past exports</h1>
+  <h2>Past exports</h2>
   {% if jobs %}
   <table data-sortable>
     <thead><tr><th>Requested</th><th>Status</th><th data-type="number">Size</th><th></th></tr></thead>
@@ -40,7 +40,7 @@
         <td>{{ job.requested_at }}</td>
         <td>
           <span class="badge {{ 'badge-ok' if job.status.value == 'completed' else ('badge-danger' if job.status.value == 'failed' else '') }}">
-            {{ job.status.value }}
+            {{ job.status | status_label }}
           </span>
         </td>
         <td>{{ (job.size_bytes / 1048576) | round(1) ~ ' MB' if job.size_bytes else '—' }}</td>

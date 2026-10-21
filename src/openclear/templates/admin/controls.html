@@ -69,7 +69,7 @@
 <div class="card"><p class="flash flash-error" role="alert">{{ export_run.summary }}</p></div>
 {% endif %}
 <div class="card not-phone">
-  <h1>Export evidence</h1>
+  <h2>Export evidence</h2>
   <form method="post" action="/ui/admin/controls/evidence">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="ev-start">From</label><input id="ev-start" type="date" name="start" required value="{{ default_start }}">

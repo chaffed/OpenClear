@@ -33,12 +33,17 @@ router = APIRouter(prefix="/ui/check-images", tags=["web-check-images"])
 
 @router.get("")
 def list_check_images(
-    request: Request, page: int = 1, db: Session = Depends(get_db),
+    request: Request, page: int = 1, ocr: str = "", db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("check_image:read")),
 ) -> HTMLResponse:
+    """Filtered by how reading the image went (FULL_REVIEW_PLAN.md FR-D14): the failed ones are
+    the ones a person has to look at."""
+    chosen = OcrStatus(ocr) if ocr in {s.value for s in OcrStatus} else None
     repo = CheckImageRepository(db, ctx.tenant_id, ctx.customer_id)
-    page_obj = paginate(page=page, count_fn=repo.count, list_fn=lambda **kw: repo.list(order_by=CheckImage.created_at.desc(), **kw))
-    return render_template(request, "check_images/list.html", ctx=ctx, page_obj=page_obj)
+    page_obj = paginate(page=page, count_fn=lambda: repo.count(ocr_status=chosen),
+                        list_fn=lambda **kw: repo.list(order_by=CheckImage.created_at.desc(), ocr_status=chosen, **kw))
+    return render_template(request, "check_images/list.html", ctx=ctx, page_obj=page_obj, ocr_filter=ocr if chosen else "",
+                           ocr_statuses=[s.value for s in OcrStatus])
 
 
 @router.get("/upload")

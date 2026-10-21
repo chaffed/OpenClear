@@ -29,7 +29,7 @@ from openclear.services import (
 )
 from openclear.services import check_return_reason_service
 from openclear.services.decision_service import DecisionError
-from openclear.web.deps import WebNotFound, render_template, require_web_permission
+from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
@@ -244,13 +244,26 @@ def list_exceptions(
         show_scores=any(r["exception"].ml_score is not None for r in rows),
         show_deadlines=any(r["exception"].decision_deadline is not None for r in rows),
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),
+        customer_filter=str(customer_id) if customer_id and ctx.customer_id is None else "",
+        customer_choices=_customer_choices(db, ctx),
     )
+
+
+def _customer_choices(db: Session, ctx: TenantContext) -> list[tuple[str, str]]:
+    """For bank staff's Customer filter (FULL_REVIEW_PLAN.md FR-D14): every active customer, by
+    name. A customer's own people have no choice to make."""
+    if ctx.customer_id is not None:
+        return []
+    return [(str(c_id), name) for c_id, name in db.execute(
+        select(Customer.id, Customer.name).where(Customer.tenant_id == ctx.tenant_id, Customer.is_active.is_(True))
+        .order_by(Customer.name)).all()]
 
 
 @router.get("/approvals")
 def list_approvals(
     request: Request,
     network_code: str | None = None,
+    customer: str = "",
     page: int = 1,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:decide")),
@@ -268,13 +281,19 @@ def list_approvals(
     of falling through to this route."""
     # Recommendations waiting, and changes to decisions waiting before their cut-off (UI_PLAN.md UI-D13).
     waiting = [or_(ExceptionItem.status == ExceptionStatus.PENDING_APPROVAL, ExceptionItem.change_recommended_at.is_not(None))]
+    customer_id = ctx.customer_id
+    if customer_id is None and customer:
+        try:
+            customer_id = uuid.UUID(customer)
+        except ValueError:
+            customer_id = None
     page_obj = paginate(
         page=page,
-        count_fn=lambda: exception_service.count_exceptions(db, ctx.tenant_id, network_code=network_code, customer_id=ctx.customer_id,
+        count_fn=lambda: exception_service.count_exceptions(db, ctx.tenant_id, network_code=network_code, customer_id=customer_id,
                                                             where=waiting),
         list_fn=lambda **kw: exception_service.list_exceptions(
             db, ctx.tenant_id, network_code=network_code, where=waiting,
-            customer_id=ctx.customer_id,
+            customer_id=customer_id,
             # Oldest-waiting-first, not newest-first like the general list -- this is a
             # queue meant to be worked through, not a feed of what just happened.
             order_by=ExceptionItem.created_at.asc(), **kw,
@@ -286,6 +305,7 @@ def list_approvals(
     } if recommender_ids else {}
 
     sources = _load_sources(db, page_obj.items)
+    _accounts, customers = _names_for_page(db, ctx, page_obj.items, sources)
     rows = []
     for item in page_obj.items:
         source_item = sources[item.id]
@@ -295,10 +315,12 @@ def list_approvals(
                 "summary": _summarize_source_item(item.network_code, source_item) if source_item else {"label": "(missing)", "amount": None, "date": ""},
                 "recommended_by_email": recommender_emails.get(item.recommended_by_user_id),
                 "is_own_recommendation": item.recommended_by_user_id == ctx.user_id,
+                "customer": customers.get(item.customer_id, ""),
             }
         )
     return render_template(
-        request, "exceptions/approvals.html", ctx=ctx, rows=rows, page_obj=page_obj, network_filter=network_code
+        request, "exceptions/approvals.html", ctx=ctx, rows=rows, page_obj=page_obj, network_filter=network_code,
+        customer_filter=str(customer_id) if customer_id and ctx.customer_id is None else "", customer_choices=_customer_choices(db, ctx),
     )
 
 
@@ -618,7 +640,7 @@ def change_decision(
         raise WebNotFound()
     proposing = db.get(Tenant, ctx.tenant_id).require_dual_control and item.change_recommended_at is None
     if ("exception:recommend" if proposing else "exception:decide") not in ctx.permissions:
-        raise WebNotFound()
+        raise WebForbidden()
     reason_id, reason_code, problem = _reason_for(db, ctx, exception_id, parsed, reason_code, return_reason_id or ach_return_reason_id)
     if problem:
         return see_other(back, error=problem)

@@ -303,3 +303,13 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   and change (it had none, so an API client could only return a check with free text);
   `GET …/decision/history`. API.md's exceptions section rewritten (it predated 1.26.0's PUT,
   DELETE and `locked_at`). OpenAPI and all three SDKs regenerated.
+- 2026-10-21: FR7 built on `fr3-sign-in`: help copy (F3, U3), `status_label` (U4), the Customer
+  filter on Exceptions and Approvals, filters on Stop payments and Check images (U1), "Sign-in
+  and security" (U6), one `<h1>` per page in 12 templates (U7), emails with the item and the
+  bank's time (U9), the customer page's effective cut-off (U10), 403 not 404 (S4), the README
+  screenshots and the desktop viewport references rewritten (U11; the accessibility baseline
+  didn't grow). `exception_evidence` now gives the bank's own items their deadline.
+  **Not done, and why:** S5 was wrong: the lists carry `q=` in their address by design, and
+  `/ui/list-search` keeps only account numbers out of it, so posting the search's "See all"
+  would change nothing. U8 (one name for the action log) is left: the navigation's title case is
+  shared by every entry, and changing one would be its own inconsistency.

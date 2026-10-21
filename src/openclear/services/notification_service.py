@@ -266,6 +266,7 @@ def notify_exception_created(session: Session, exception_item: ExceptionItem) ->
         "exception_types": exception_item.exception_types.replace(",", ", "),
         "exception_id": str(exception_item.id),
         "exception_url": _absolute_url(f"/ui/exceptions/{exception_item.id}"),
+        **_item_facts(session, exception_item),
     }
     for recipient in recipients:
         _queue(
@@ -277,6 +278,44 @@ def notify_exception_created(session: Session, exception_item: ExceptionItem) ->
             resource_type="exception_item",
             resource_id=exception_item.id,
         )
+
+
+def bank_time(session: Session, tenant_id: uuid.UUID | None, when) -> str | None:
+    """A moment as the bank's people read it, in its time zone: "11:00 AM EDT, Tue Oct 21"
+    (FULL_REVIEW_PLAN.md FR-D16)."""
+    if when is None or tenant_id is None:
+        return None
+    from datetime import timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    from openclear.domain.tenant import Tenant
+    from openclear.services.cutoff_service import time_zone_for
+
+    tenant = session.get(Tenant, tenant_id)
+    try:
+        zone = ZoneInfo(time_zone_for(tenant)) if tenant is not None else ZoneInfo("UTC")
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo("UTC")
+    moment = when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+    local = moment.astimezone(zone)
+    return f"{local.strftime('%I:%M %p').lstrip('0')} {local.tzname()}, {local.strftime('%a %b')} {local.day}"
+
+
+def _item_facts(session: Session, exception_item: ExceptionItem) -> dict:
+    """What the item is, for an email: the check or trace number and amount, and its deadline
+    in the bank's time. Never an account number."""
+    from openclear.networks.registry import get_adapter
+
+    facts = {"item_label": None, "amount": None, "decide_by": bank_time(session, exception_item.tenant_id, exception_item.decision_deadline)}
+    try:
+        source = get_adapter(exception_item.network_code).load_source_item(session, exception_item.source_item_id)
+    except ValueError:
+        source = None
+    if source is not None and exception_item.network_code == "check":
+        facts.update(item_label=f"Check {source.check_number}", amount=f"${source.presented_amount:,.2f}")
+    elif source is not None and exception_item.network_code == "ach":
+        facts.update(item_label=f"ACH debit from {source.originator_name}", amount=f"${source.amount:,.2f}")
+    return facts
 
 
 def notify_recommendation_awaiting_approval(session: Session, exception_item: ExceptionItem) -> None:

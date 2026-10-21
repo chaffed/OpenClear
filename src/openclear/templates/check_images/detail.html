@@ -13,7 +13,7 @@
 {% block content %}
 <div class="card">
   <h1>Check image</h1>
-  <p>OCR status: <span class="badge {{ 'badge-ok' if image.ocr_status.value == 'completed' else 'badge-danger' if image.ocr_status.value == 'failed' else 'badge-warn' }}">{{ image.ocr_status.value }}</span>
+  <p>OCR status: <span class="badge {{ 'badge-ok' if image.ocr_status.value == 'completed' else 'badge-danger' if image.ocr_status.value == 'failed' else 'badge-warn' }}">{{ image.ocr_status | status_label }}</span>
     {% if image.ocr_status.value == "pending" %}<a href="/ui/check-images/{{ image.id }}">(refresh)</a>{% endif %}
   </p>
   {% if image.ocr_status.value == "completed" %}

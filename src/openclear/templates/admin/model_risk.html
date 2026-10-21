@@ -36,17 +36,17 @@
 
 {% if shown and shown_state in ("queued", "running") %}
 <div class="card" data-poll-seconds="3" aria-busy="true">
-  <h1>Replay</h1>
+  <h2>Replay</h2>
   <p>{{ shown.summary }}. This page refreshes until the report is ready; you can leave and come back from Recent runs.</p>
 </div>
 {% elif shown and shown_state == "failed" %}
 <div class="card">
-  <h1>Replay</h1>
+  <h2>Replay</h2>
   <p class="flash flash-error" role="alert">{{ shown.summary }}</p>
 </div>
 {% elif shown %}
 <div class="card">
-  <h1>{{ "Replay" if shown.kind == "mrm_replay" else "Anomaly capture" }}</h1>
+  <h2>{{ "Replay" if shown.kind == "mrm_replay" else "Anomaly capture" }}</h2>
   <p>{{ shown.summary }}</p>
   {% set r = shown.report %}
   {% if shown.kind == "mrm_replay" %}
@@ -82,7 +82,7 @@
 {% endif %}
 
 <div class="card">
-  <h1>Recent runs</h1>
+  <h2>Recent runs</h2>
   {% if runs %}
   <table>
     <thead><tr><th>When</th><th>Test</th><th>Result</th><th></th></tr></thead>

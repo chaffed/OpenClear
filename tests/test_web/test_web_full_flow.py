@@ -71,7 +71,7 @@ def test_check_image_upload_and_ocr_via_web(client, tenant_factory):
     detail = client.get(upload_resp.headers["location"])
     assert detail.status_code == 200
     assert "Web UI Vendor" in detail.text  # background task ran synchronously under TestClient
-    assert "completed" in detail.text
+    assert ">Done<" in detail.text
 
 
 def test_ach_authorization_and_transaction_via_web(client, tenant_factory):

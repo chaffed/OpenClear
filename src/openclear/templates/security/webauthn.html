@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Security — {{ ctx.tenant_name }}{% endblock %}
-{% block help_title %}About security keys{% endblock %}
+{% block title %}Sign-in and security — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About your sign-in{% endblock %}
 {% block help_body %}
+<p>This page is yours, whatever your role: your password, your security keys, the address you sign
+  in with, where you're signed in now, and what you're emailed about.</p>
 <p>A security key (WebAuthn/FIDO2 — a hardware key, or your device's built-in
   fingerprint/face unlock) is a second factor: once you register one, future logins
   need your password <em>and</em> the key. Keys are registered per organization
@@ -10,9 +12,10 @@
   organization, you register separately in each.</p>
 {% endblock %}
 {% block content %}
+<h1>Sign-in and security</h1>
 <div class="card">
   <div class="toolbar">
-    <h1>Security keys</h1>
+    <h2>Security keys</h2>
     <div class="actions">
       <a href="/ui/security/password" class="button secondary">{{ icon("vpn_key") }}Change password</a>
       <a href="/ui/security/notifications" class="button secondary">{{ icon("notifications") }}Notification preferences</a>

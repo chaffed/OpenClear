@@ -12,10 +12,10 @@
   <h1>ACH transaction</h1>
   <p>Originator: {{ txn.originator_name }} ({{ txn.originator_id }})</p>
   <p>Receiver: {{ txn.receiver_id or "—" }}</p>
-  <p>Amount: {{ txn.amount }} ({{ txn.transaction_type.value }})</p>
+  <p>Amount: {{ txn.amount }} ({{ txn.transaction_type | status_label }})</p>
   <p>SEC code: {{ txn.sec_code }}</p>
   <p>Effective date: {{ txn.effective_date }}</p>
-  <p>Match status: <span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status.value }}</span></p>
+  <p>Match status: <span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status | status_label }}</span></p>
   {% if txn.match_status.value == "exception" %}
   <p class="link-line"><a href="/ui/exceptions">View in exceptions queue</a></p>
   {% endif %}

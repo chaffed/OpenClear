@@ -14,7 +14,7 @@
   <p>Amount: {{ item.amount }}</p>
   <p>Payee: {{ item.payee_name }}</p>
   <p>Issue date: {{ item.issue_date }}</p>
-  <p>Status: <span class="badge">{{ item.status.value }}</span></p>
+  <p>Status: <span class="badge">{{ item.status | status_label }}</span></p>
   {% if item.void_reason %}<p>Void reason: {{ item.void_reason }}</p>{% endif %}
 
   {% if item.status.value == "outstanding" and can(ctx, "issued_item:write") %}

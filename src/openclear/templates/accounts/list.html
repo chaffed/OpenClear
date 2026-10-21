@@ -36,7 +36,7 @@
     {%- if col.key == "number" %}{{ a.account_number }}
     {%- elif col.key == "name" %}{{ a.name }}
     {%- elif col.key == "customer" %}{{ customer_names.get(a.customer_id, "—") }}
-    {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode.value }}</span>
+    {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode | status_label }}</span>
     {%- elif col.key == "external" %}{{ a.external_account_id or "—" }}
     {%- endif %}
   {%- endcall %}

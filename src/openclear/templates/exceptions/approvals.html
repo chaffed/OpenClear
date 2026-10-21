@@ -20,18 +20,28 @@
         <option value="ach" {{ "selected" if network_filter == "ach" else "" }}>ACH</option>
       </select>
     </label>
+    {% if customer_choices %}
+    <label class="field-xl">Customer
+      <select name="customer" data-auto-submit>
+        <option value="">All customers</option>
+        {% for value, name in customer_choices %}<option value="{{ value }}" {{ "selected" if customer_filter == value else "" }}>{{ name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
   </form>
 
   {% if page_obj.total_count > 0 %}
   <table data-sortable>
-    <thead><tr><th>Network</th><th>Item</th><th data-type="number">Amount</th><th>Recommended</th><th>Recommended by</th><th data-no-sort></th></tr></thead>
+    <thead><tr><th>Network</th><th>Item</th>{% if customer_choices %}<th>Customer</th>{% endif %}<th data-type="number">Amount</th><th>Decide by</th><th>Recommended</th><th>Recommended by</th><th data-no-sort></th></tr></thead>
     <tbody>
       {% for row in rows %}
       <tr>
         <td><span class="badge">{{ row.exception.network_code }}</span></td>
         <td><a href="/ui/exceptions/{{ row.exception.id }}">{{ row.summary.label }}</a></td>
+        {% if customer_choices %}<td>{{ row.customer or "—" }}</td>{% endif %}
         <td>{{ row.summary.amount | currency }}</td>
-        <td><span class="badge {{ 'badge-ok' if row.exception.recommended_outcome == 'pay' else 'badge-danger' }}">{{ row.exception.recommended_outcome }}</span></td>
+        <td>{% if row.exception.decision_deadline %}<time datetime="{{ row.exception.decision_deadline | iso_utc }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% else %}—{% endif %}</td>
+        <td><span class="badge {{ 'badge-ok' if row.exception.recommended_outcome == 'pay' else 'badge-danger' }}">{{ row.exception.recommended_outcome | status_label }}</span></td>
         <td>{{ row.recommended_by_email or "someone no longer on this account" }}</td>
         <td>{% if row.is_own_recommendation %}<span class="badge badge-warn">your recommendation</span>{% endif %}</td>
       </tr>

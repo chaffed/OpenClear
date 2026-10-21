@@ -1,7 +1,8 @@
-A new {{ network_code }} exception needs review.
+{% if item_label %}{{ item_label }}{% if amount %}, {{ amount }},{% endif %} needs a decision{% else %}A new {{ network_code }} exception needs a decision{% endif %}.
 
-Type(s): {{ exception_types }}
-
+Why: {{ exception_types }}
+{% if decide_by %}Decide by: {{ decide_by }}
+{% endif %}
 View it here: {{ exception_url }}
 
 You're receiving this because your role can recommend a decision on exceptions like

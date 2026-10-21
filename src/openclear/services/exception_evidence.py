@@ -77,11 +77,14 @@ def _account_and_customer(session: Session, item: ExceptionItem, scope: uuid.UUI
 
 
 def _deadline(session: Session, item: ExceptionItem, evidence: Evidence) -> None:
-    if item.decision_deadline is None or item.customer_id is None:
+    """Every item has a cut-off since 1.26.0, the bank's own items too; only a customer's has a
+    default decision to describe."""
+    if item.decision_deadline is None:
         return
-    mode = auto_disposition_service.get_disposition_mode(session, item.tenant_id, item.customer_id, item.network_code)
     evidence.deadline = item.decision_deadline
-    evidence.deadline_outcome = _DEADLINE_OUTCOMES.get(mode)
+    if item.customer_id is not None:
+        mode = auto_disposition_service.get_disposition_mode(session, item.tenant_id, item.customer_id, item.network_code)
+        evidence.deadline_outcome = _DEADLINE_OUTCOMES.get(mode)
 
 
 def _check_evidence(session: Session, item: ExceptionItem, paid, scope: uuid.UUID | None) -> Evidence:
