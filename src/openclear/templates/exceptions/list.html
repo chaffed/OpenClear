@@ -76,7 +76,7 @@
     {%- elif col.key == "why" %}{{ row.exception.exception_types | exception_types }}
     {%- elif col.key == "risk" %}{% set risk = fraud_risk(row.exception.ml_score) %}{% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
     {%- elif col.key == "deadline" %}{% if row.exception.decision_deadline and row.exception.status.value in ["open", "pending_approval"] %}<time datetime="{{ row.exception.decision_deadline | iso_utc }}" data-local-time data-relative-time>{{ row.exception.decision_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}
-    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value in ['return','escalated'] else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span>
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if row.exception.status.value == 'pay' else 'badge-danger' if row.exception.status.value == 'return' else '' if row.exception.status.value == 'withdrawn' else 'badge-warn' }}">{{ row.exception.status | exception_status }}</span>
     {%- endif %}
   {%- endcall %}
   {% if can_act %}

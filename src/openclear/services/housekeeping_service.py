@@ -153,6 +153,13 @@ def run(session: Session) -> HousekeepingResult:
             expired += 1
         result.deleted["data_export_archives"] = expired
 
+    # Stops past their expiry and checks past the stale date (services/lifecycle_service.py).
+    from openclear.services import lifecycle_service
+
+    for name, count in lifecycle_service.roll(session).items():
+        if count:
+            result.deleted[name] = count  # "deleted" is the summary's name; these are status changes
+
     if settings.audit_archive_after_days > 0:
         from openclear.services import audit_archive_service
 

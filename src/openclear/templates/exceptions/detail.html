@@ -260,7 +260,7 @@
   <summary><h2>More about this exception</h2></summary>
   <div class="fact-grid">
     <div><span class="fact-label">Status</span>
-      <span class="badge {{ 'badge-ok' if item.status.value == 'pay' else 'badge-danger' if item.status.value in ['return','escalated'] else '' if item.status.value == 'withdrawn' else 'badge-warn' }}">{{ item.status | exception_status }}</span></div>
+      <span class="badge {{ 'badge-ok' if item.status.value == 'pay' else 'badge-danger' if item.status.value == 'return' else '' if item.status.value == 'withdrawn' else 'badge-warn' }}">{{ item.status | exception_status }}</span></div>
     <div><span class="fact-label">Why it's here</span> {{ item.exception_types | exception_types }}</div>
     <div><span class="fact-label">Fraud risk</span>
       {% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>

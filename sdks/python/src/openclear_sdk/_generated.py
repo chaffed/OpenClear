@@ -540,7 +540,7 @@ class ExceptionRead(TypedDict):
     updated_at: NotRequired[str | None]
 
 
-ExceptionStatus = Literal["open", "pending_approval", "pay", "return", "escalated", "withdrawn"]
+ExceptionStatus = Literal["open", "pending_approval", "pay", "return", "withdrawn"]
 
 
 class FeeItemCreate(TypedDict):

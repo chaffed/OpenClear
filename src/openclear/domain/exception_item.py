@@ -25,10 +25,9 @@ class ExceptionStatus(str, enum.Enum):
     PENDING_APPROVAL = "pending_approval"  # maker recommendation submitted, awaiting checker
     PAY = "pay"
     RETURN = "return"
-    ESCALATED = "escalated"
     # Set only by services/bulk_upload_reversal_service.py when the underlying paid_item
     # is backed out and this exception hadn't been decided yet (still OPEN or
-    # PENDING_APPROVAL) — an already-PAY/RETURN/ESCALATED exception is never overridden
+    # PENDING_APPROVAL) — an already-PAY/RETURN exception is never overridden
     # this way, since a human decision already happened.
     WITHDRAWN = "withdrawn"
 

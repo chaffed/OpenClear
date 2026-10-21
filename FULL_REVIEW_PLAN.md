@@ -291,3 +291,9 @@ gaps in section C are sized, not built; each gets a plan of its own once the own
   change), both `sensitive` under `admin:manage`; the two routes go through `request_or_apply`
   and record `customer.update_disposition` / `customer.update_ml_mode` (security events
   `settings.changed`); the route's `response_window_hours` is gone. Admin docs updated.
+- 2026-10-21: FR5 built on `fr3-sign-in`: `services/lifecycle_service.py` (expired stops, stale
+  checks; nightly from housekeeping, per bank, then unbound again); `stop_payment_service.
+  sync_issued_status` (stopped while an active stop covers the check); `STOP_AMOUNT_MISMATCH` and
+  a paid candidate as a duplicate at any amount; `CantVoid` (web error, API 409); `escalated`
+  removed (no migration: the column is a string and no row ever held it); OpenAPI and the Python
+  and TypeScript SDKs regenerated (the .NET SDK has no status enum).

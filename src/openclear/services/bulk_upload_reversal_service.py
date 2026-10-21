@@ -106,7 +106,7 @@ def _withdraw_exception_if_open(
     session: Session, tenant_id: uuid.UUID, paid_item_id: uuid.UUID, *, actor_user_id: uuid.UUID, channel: Literal["web", "api"]
 ) -> str | None:
     """Returns a note describing what happened, or None if there was nothing to do
-    (no exception, or it was already decided/escalated and was left as-is)."""
+    (no exception, or it was already decided and was left as-is)."""
     exception = (
         session.query(ExceptionItem)
         .filter(ExceptionItem.source_item_id == paid_item_id, ExceptionItem.network_code == "check")

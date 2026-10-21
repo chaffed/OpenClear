@@ -515,7 +515,7 @@ export interface ExceptionRead {
   updated_at?: string | null;
 }
 
-export type ExceptionStatus = "open" | "pending_approval" | "pay" | "return" | "escalated" | "withdrawn";
+export type ExceptionStatus = "open" | "pending_approval" | "pay" | "return" | "withdrawn";
 
 export interface FeeItemCreate {
   afp_code?: string | null;

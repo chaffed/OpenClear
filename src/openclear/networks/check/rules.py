@@ -25,9 +25,13 @@ def evaluate_check_rules(inputs: CheckMatchInputs) -> tuple[list[CheckExceptionT
         exceptions.append(CheckExceptionType.DUPLICATE_PAID)
 
     if inputs.active_stop_found:
-        exceptions.append(CheckExceptionType.STOPPED)
-        related_id = inputs.candidate_issued_item.id if inputs.candidate_issued_item else None
-        return exceptions, related_id
+        if inputs.active_stop_amount is None or inputs.active_stop_amount == inputs.presented_amount:
+            exceptions.append(CheckExceptionType.STOPPED)
+            related_id = inputs.candidate_issued_item.id if inputs.candidate_issued_item else None
+            return exceptions, related_id
+        # A stop for another amount: maybe not this check. It's still held for a person, with
+        # the usual checks below so they see everything else that's wrong too.
+        exceptions.append(CheckExceptionType.STOP_AMOUNT_MISMATCH)
 
     candidate = inputs.candidate_issued_item
     if candidate is None:
@@ -36,6 +40,11 @@ def evaluate_check_rules(inputs: CheckMatchInputs) -> tuple[list[CheckExceptionT
 
     if candidate.status == "voided":
         exceptions.append(CheckExceptionType.VOIDED)
+
+    # The issued check was already paid: whatever the amount now, this is a second presentment
+    # (FULL_REVIEW_PLAN.md FR-D11). is_duplicate_paid only catches an equal amount.
+    if candidate.status == "paid" and CheckExceptionType.DUPLICATE_PAID not in exceptions:
+        exceptions.append(CheckExceptionType.DUPLICATE_PAID)
 
     if inputs.presented_amount != candidate.amount:
         exceptions.append(CheckExceptionType.AMOUNT_MISMATCH)

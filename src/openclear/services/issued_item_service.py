@@ -95,13 +95,21 @@ def create_issued_items_bulk(
     return results
 
 
+class CantVoid(ValueError):
+    """The message is fit to show."""
+
+
 def void_issued_item(
     session: Session, tenant_id: uuid.UUID, item_id: uuid.UUID, reason: str, *, scoped_customer_id: uuid.UUID | None = None
 ) -> IssuedItem | None:
+    """Voids an issued check; None if it isn't found. A paid check can't be voided (it has
+    cleared), wherever the request comes from (FULL_REVIEW_PLAN.md F4)."""
     repo = IssuedItemRepository(session, tenant_id, scoped_customer_id)
     item = repo.get(item_id)
     if item is None:
         return None
+    if item.status == IssuedItemStatus.PAID:
+        raise CantVoid(f"Check {item.check_number} has already been paid, so it can't be voided.")
     item.status = IssuedItemStatus.VOIDED
     item.void_reason = reason
     item.voided_at = datetime.now(timezone.utc)

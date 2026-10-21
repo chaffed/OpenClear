@@ -173,3 +173,29 @@ def test_various_exact_amounts_match_cleanly(presented, issued):
     exceptions, _ = evaluate_check_rules(base_inputs(presented_amount=presented, candidate_issued_item=candidate))
 
     assert CheckExceptionType.AMOUNT_MISMATCH not in exceptions
+
+
+def test_a_paid_check_presented_again_at_another_amount_is_a_duplicate():
+    """FULL_REVIEW_PLAN.md FR-D11: is_duplicate_paid only matches an equal amount; the issued
+    check's own "paid" status catches the rest."""
+    import dataclasses
+
+    from openclear.networks.check.rules import evaluate_check_rules
+
+    exceptions, _ = evaluate_check_rules(base_inputs(candidate_issued_item=dataclasses.replace(ISSUED, status="paid"),
+                                                     presented_amount=Decimal("900.00")))
+    assert CheckExceptionType.DUPLICATE_PAID in exceptions and CheckExceptionType.AMOUNT_MISMATCH in exceptions
+
+
+def test_a_stop_for_the_same_amount_stops_it():
+    from openclear.networks.check.rules import evaluate_check_rules
+
+    assert evaluate_check_rules(base_inputs(active_stop_found=True, active_stop_amount=Decimal("100.00")))[0] == [CheckExceptionType.STOPPED]
+
+
+def test_a_stop_for_another_amount_is_held_for_a_person():
+    from openclear.networks.check.rules import evaluate_check_rules
+
+    exceptions, related = evaluate_check_rules(base_inputs(active_stop_found=True, active_stop_amount=Decimal("55.00")))
+    assert exceptions == [CheckExceptionType.STOP_AMOUNT_MISMATCH]
+    assert related == ISSUED.id

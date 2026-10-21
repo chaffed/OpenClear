@@ -44,6 +44,7 @@ class CheckAdapter:
             payee_fuzzy_threshold=settings.payee_match_fuzzy_threshold,
             ocr_payee=check_image.ocr_extracted_payee if check_image else None,
             ocr_confidence=check_image.ocr_confidence if check_image else None,
+            active_stop_amount=active_stop.amount if active_stop is not None else None,
         )
 
         exception_types, related_id = evaluate_check_rules(inputs)

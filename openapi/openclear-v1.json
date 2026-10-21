@@ -3764,7 +3764,6 @@
           "pending_approval",
           "pay",
           "return",
-          "escalated",
           "withdrawn"
         ],
         "title": "ExceptionStatus",

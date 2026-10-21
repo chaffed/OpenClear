@@ -30,6 +30,16 @@
   "sensitive settings need a second admin" on, making a customer's default *pay* (or the model's
   score), or changing which model scores its items, waits for another admin, like its cut-off.
   The retired response-window field is gone from that form's handler.
+- **Statuses that were never set now are** (FR5): a stop payment past its expiration date shows as
+  *expired* (nightly), so it no longer offers Cancel or counts as active; an issued check with an
+  active stop shows as *stopped*, and as *outstanding* again when the stop is cancelled or runs
+  out; an outstanding check past the bank's stale-date threshold shows as *stale*. Matching is
+  unchanged: it always read the dates.
+- **Matching** (FR5): a check already paid and presented again is a duplicate whatever the amount
+  (it was caught only at the same amount). A stop for a different amount than the check presented
+  holds it for a person ("Stop on file for another amount") instead of stopping it outright.
+- A paid check can't be voided from anywhere (the API answered 200; it now answers `409`).
+- **API change:** `escalated` is gone from the exception statuses; nothing ever set it.
 - API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
   different request instead of replaying the first person's answer.
 

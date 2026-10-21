@@ -94,6 +94,7 @@ _EXCEPTION_TYPE_LABELS = {
     "amount_mismatch": "Amount mismatch",
     "payee_mismatch": "Payee mismatch",
     "stale_dated": "Stale-dated",
+    "stop_amount_mismatch": "Stop on file for another amount",
     "unauthorized_originator": "Unauthorized originator",
     "receiver_id_not_permitted": "Receiver not authorized",
     "amount_exceeds_limit": "Over authorized amount",
@@ -123,7 +124,6 @@ _EXCEPTION_STATUS_LABELS = {
     "pending_approval": "Awaiting approval",
     "pay": "Paid",
     "return": "Returned",
-    "escalated": "Escalated",
     "withdrawn": "Withdrawn",
 }
 
