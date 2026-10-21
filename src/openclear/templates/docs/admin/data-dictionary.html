@@ -490,6 +490,7 @@ checks every bank's, and no page reads it.</p>
 <tr><td>name</td><td>String(100)</td><td>no</td><td>UK (with tenant_id)</td><td></td></tr>
 <tr><td>permissions</td><td>JSON</td><td>no</td><td></td><td>List of permission keys from the app's fixed catalog (auth/permissions.py).</td></tr>
 <tr><td>offered_to_customers</td><td>Boolean</td><td>no</td><td></td><td>Customers' own administrators may give this role to their people.</td></tr>
+<tr><td>system_role</td><td>String(30)</td><td>yes</td><td></td><td>A built-in group that can't be edited. <code>no_access</code>: "No access yet", with no permissions, which people a bank invites join until someone other than whoever invited them gives them a role.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>

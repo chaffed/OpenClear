@@ -28,4 +28,11 @@ class SecurityGroup(Base):
     # Whether a customer's own administrators may give this group to their people
     # (CUSTOMER_ADMIN_PLAN.md). They can't edit groups, only choose among these.
     offered_to_customers: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # A built-in group that can't be edited or given permissions. "no_access" holds people a bank
+    # invited (UI_PLAN.md UI-D14): signed in, with nothing else until someone else gives them a role.
+    system_role: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+NO_ACCESS = "no_access"
+NO_ACCESS_NAME = "No access yet"

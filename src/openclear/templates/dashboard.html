@@ -10,6 +10,16 @@
   you're scoped to one customer, you only ever see that customer's own data.</p>
 {% endblock %}
 {% block content %}
+{% if not ctx.permissions %}
+{# Someone a bank invited, before anyone has given them a role (UI_PLAN.md UI-D14). #}
+<div class="card">
+  <h1>Welcome{% if ctx.customer_name %} to {{ ctx.customer_name }}{% endif %}</h1>
+  <p>You're signed in, but you don't have access to anything yet. Someone at {{ ctx.tenant_name }} gives you a role;
+    you'll see more here once they have.</p>
+  {% if ctx.support_email or ctx.support_phone %}<p>Questions? {% if ctx.support_email %}<a href="mailto:{{ ctx.support_email }}">{{ ctx.support_email }}</a>{% endif %}{% if ctx.support_email and ctx.support_phone %} · {% endif %}{{ ctx.support_phone or "" }}</p>{% endif %}
+  <p>Meanwhile, you can <a href="/ui/security">set up your sign-in</a>: your password, a security key, your email and notifications.</p>
+</div>
+{% endif %}
 {% if show_getting_started %}
 <div class="card">
   <div class="toolbar">
@@ -18,6 +28,7 @@
   </div>
 </div>
 {% endif %}
+{% if ctx.permissions %}
 <div class="card">
   <h1>{{ ctx.customer_name if ctx.customer_name else "Dashboard" }}</h1>
   {% if jobs %}
@@ -115,5 +126,6 @@
   <p><a href="/ui/exceptions">All items to decide</a></p>
   {% endif %}
 </div>
+{% endif %}
 {{ slot("dashboard.panel") }}
 {% endblock %}

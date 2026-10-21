@@ -82,22 +82,29 @@
       <div class="nav-links">
         {# Home (UI_PLAN.md FL4): ?home=1 opens the dashboard even when a customer's items to decide would land them on the list. #}
         {{ nav_link("/ui/?home=1", "Home", "home", match="/ui/") }}
+        {% if can(ctx, "exception:read") or ctx.customer_users_waiting or show_wsud %}
         <p class="nav-section">Review</p>
+        {% endif %}
         {% if can(ctx, "exception:read") %}{{ nav_link("/ui/exceptions", "Exceptions", "flag", badge=ctx.needs_attention_count) }}{% endif %}
         {% if can(ctx, "exception:decide") %}{{ nav_link("/ui/exceptions/approvals", "Approvals", "check_circle", badge=ctx.pending_approval_count) }}{% endif %}
         {% if ctx.customer_users_waiting %}{{ nav_link("/ui/approvals/customer-users", "New customer users", "how_to_reg", badge=ctx.customer_users_waiting) }}{% endif %}
         {% if show_wsud %}{{ nav_link("/ui/wsud", "Unauthorized Debit Statement", "gavel") }}{% endif %}
 
+        {# Only what this person may open (UI_PLAN.md UI-D14: someone with no access yet sees none of it). #}
+        {% if can(ctx, "account:read") or can(ctx, "issued_item:read") or can(ctx, "stop_payment:read") or can(ctx, "paid_item:read") or can(ctx, "check_image:read") %}
         <p class="nav-section">Positive Pay</p>
-        {{ nav_link("/ui/accounts", "Accounts", "account_balance") }}
-        {{ nav_link("/ui/issued-items", "Issued Items", "receipt_long") }}
-        {{ nav_link("/ui/stop-payments", "Stop Payments", "block") }}
-        {{ nav_link("/ui/paid-items", "Paid Items", "paid") }}
-        {{ nav_link("/ui/check-images", "Check Images", "image") }}
+        {% endif %}
+        {% if can(ctx, "account:read") %}{{ nav_link("/ui/accounts", "Accounts", "account_balance") }}{% endif %}
+        {% if can(ctx, "issued_item:read") %}{{ nav_link("/ui/issued-items", "Issued Items", "receipt_long") }}{% endif %}
+        {% if can(ctx, "stop_payment:read") %}{{ nav_link("/ui/stop-payments", "Stop Payments", "block") }}{% endif %}
+        {% if can(ctx, "paid_item:read") %}{{ nav_link("/ui/paid-items", "Paid Items", "paid") }}{% endif %}
+        {% if can(ctx, "check_image:read") %}{{ nav_link("/ui/check-images", "Check Images", "image") }}{% endif %}
 
+        {% if can(ctx, "ach_authorization:read") or can(ctx, "ach_transaction:read") or show_ach_return_reasons %}
         <p class="nav-section">ACH</p>
-        {{ nav_link("/ui/ach/authorizations", "ACH Authorizations", "fact_check") }}
-        {{ nav_link("/ui/ach/transactions", "ACH Transactions", "sync_alt") }}
+        {% endif %}
+        {% if can(ctx, "ach_authorization:read") %}{{ nav_link("/ui/ach/authorizations", "ACH Authorizations", "fact_check") }}{% endif %}
+        {% if can(ctx, "ach_transaction:read") %}{{ nav_link("/ui/ach/transactions", "ACH Transactions", "sync_alt") }}{% endif %}
         {% if show_ach_return_reasons %}{{ nav_link("/ui/ach-return-reasons", "ACH Return Reasons", "assignment_return") }}{% endif %}
 
         {% if (show_settings and ctx.customer_id is not none) or can(ctx, "ml_training_example:write") %}

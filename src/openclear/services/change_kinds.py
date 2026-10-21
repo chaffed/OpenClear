@@ -436,6 +436,10 @@ def _group_apply(session, tenant_id, customer_id, payload, user_id) -> str:
             return f"Created security group {group.name} ({len(group.permissions)} permissions)"
     except IntegrityError:
         raise ChangeError("A security group with that name already exists.") from None
+    except ValueError as exc:  # a built-in group (security_group_service.update_security_group)
+        if isinstance(exc, ChangeError):
+            raise
+        raise ChangeError(str(exc)) from None
 
 
 register(Kind(
@@ -827,6 +831,11 @@ def _entitlements_apply(session, tenant_id, customer_id, payload, user_id) -> st
     from openclear.services import user_service
 
     membership = _membership(session, tenant_id, payload)
+    from openclear.services import customer_people_service
+
+    # Someone a bank invited gets a role from someone else (UI_PLAN.md UI-D14).
+    if refusal := customer_people_service.access_grant_refusal(session, membership, user_id, uuid.UUID(payload["security_group_id"])):
+        raise ChangeError(refusal)
     try:
         user_service.update_membership(session, tenant_id, membership.id, security_group_id=uuid.UUID(payload["security_group_id"]),
                                        customer_id=uuid.UUID(payload["customer_id"]) if payload.get("customer_id") else None)
@@ -1055,6 +1064,9 @@ def _person_current(session, tenant_id, customer_id, payload) -> dict:
 def _person_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     from openclear.services import customer_people_service
 
+    membership = _membership(session, tenant_id, payload)
+    if refusal := customer_people_service.access_grant_refusal(session, membership, user_id, uuid.UUID(payload["security_group_id"])):
+        raise ChangeError(refusal)
     try:
         customer_people_service.update_person(session, tenant_id, customer_id, uuid.UUID(payload["membership_id"]),
                                               security_group_id=uuid.UUID(payload["security_group_id"]), require_webauthn=bool(payload["require_webauthn"]),

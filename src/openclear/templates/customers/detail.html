@@ -140,6 +140,18 @@
   {% elif customer.self_manages_users %}
   <p class="flash flash-warn">No one at {{ customer.name }} can manage its people yet: give someone a role with <code>customer_user:manage</code> from Users.</p>
   {% endif %}
+  {# The bank invites someone with no access (UI_PLAN.md UI-D14); someone else gives them a role from Users. #}
+  {% if can(ctx, "user:manage") %}
+  <h3 id="invite">Invite someone from {{ customer.name }}</h3>
+  <p class="hint">They get an email link to choose their own password. They can sign in and look after their own
+    sign-in, and nothing else, until someone other than you gives them a role under Users.</p>
+  <form method="post" action="/ui/customers/{{ customer.id }}/invite" class="invite-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if request.query_params.get("return") %}<input type="hidden" name="return" value="{{ request.query_params.get('return') }}">{% endif %}
+    <label>Email <input type="email" name="email" required autocomplete="off"></label>
+    <div class="form-actions"><button type="submit" class="secondary">{{ icon("person_add") }}Send the invitation</button></div>
+  </form>
+  {% endif %}
 </div>
 
 <div class="card">

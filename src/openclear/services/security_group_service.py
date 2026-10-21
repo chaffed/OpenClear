@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from openclear.auth.permissions import DEFAULT_SECURITY_GROUPS, PERMISSION_CATALOG
+from openclear.domain.security_group import NO_ACCESS, NO_ACCESS_NAME
 from openclear.domain.security_group import SecurityGroup
 from openclear.repositories.security_group_repo import SecurityGroupRepository
 
@@ -39,8 +40,24 @@ def seed_default_security_groups(session: Session, tenant_id: uuid.UUID) -> dict
         group = SecurityGroup(name=name, permissions=list(permissions))
         repo.add(group)
         groups[name] = group
+    # Built in, for people a bank invites (UI_PLAN.md UI-D14): signed in, nothing else.
+    groups[NO_ACCESS_NAME] = SecurityGroup(name=NO_ACCESS_NAME, permissions=[], system_role=NO_ACCESS)
+    repo.add(groups[NO_ACCESS_NAME])
     session.flush()
     return groups
+
+
+def no_access_group(session: Session, tenant_id: uuid.UUID) -> SecurityGroup:
+    """The bank's built-in "No access yet" group; created if a bank somehow lacks it."""
+    from sqlalchemy import select
+
+    group = session.execute(select(SecurityGroup).where(SecurityGroup.tenant_id == tenant_id,
+                                                        SecurityGroup.system_role == NO_ACCESS)).scalar_one_or_none()
+    if group is None:
+        group = SecurityGroup(tenant_id=tenant_id, name=NO_ACCESS_NAME, permissions=[], system_role=NO_ACCESS)
+        session.add(group)
+        session.flush()
+    return group
 
 
 def list_security_groups(
@@ -79,6 +96,8 @@ def update_security_group(
     group = repo.get(group_id)
     if group is None:
         return None
+    if group.system_role:
+        raise ValueError(f"{group.name} is built in and can't be changed: it holds people until someone gives them a role.")
     group.name = data.name
     group.permissions = _clean_permissions(data.permissions)
     if data.offered_to_customers is not None:
