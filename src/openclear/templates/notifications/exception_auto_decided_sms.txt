@@ -1,1 +1,1 @@
-OpenClear: A {{ network_code }} exception was auto-decided ({{ outcome }}) after no response within its window.
+OpenClear: A {{ network_code }} exception was auto-decided ({{ outcome }}) because no one decided it by the cut-off.

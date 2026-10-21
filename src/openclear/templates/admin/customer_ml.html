@@ -16,8 +16,8 @@
 </ul>
 <p>"Scoring with now" shows which model is actually in use. Retraining and activating below
   apply only to this customer's own model.</p>
-<p>Default disposition decides what happens to an exception if no one responds within
-  its response window: "None" (default) leaves it open indefinitely; "Always pay"/
+<p>Default disposition decides what happens to an exception if no one decides it by its
+  cut-off: "None" (default) leaves it open; "Always pay"/
   "Always return" apply a fixed outcome; "ML-determined" re-scores the exception at the
   deadline and picks pay/return from the model's own probability. An ACH return
   (fixed or ML-determined) needs a return reason from this tenant's own catalog — if
@@ -86,7 +86,7 @@
 <div class="card">
   <h1>Default disposition — {{ customer.name }}</h1>
   <table>
-    <thead><tr><th>Network</th><th>Mode</th><th>Response window (hours)</th><th>ACH return reason</th><th></th></tr></thead>
+    <thead><tr><th>Network</th><th>Mode</th><th>ACH return reason</th><th></th></tr></thead>
     <tbody>
       {% for row in disposition_summary %}
       {% set form_id = "disposition-form-" ~ row.network_code %}
@@ -103,7 +103,6 @@
             {% endfor %}
           </select>
         </td>
-        <td><input type="number" name="response_window_hours" min="1" value="{{ row.response_window_hours }}" style="width:6em;" form="{{ form_id }}"></td>
         <td>
           {% if row.network_code == "ach" %}
           <select name="default_ach_return_reason_id" form="{{ form_id }}">

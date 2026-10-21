@@ -3620,6 +3620,18 @@
       },
       "ExceptionRead": {
         "properties": {
+          "changeable_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changeable Until"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3648,6 +3660,17 @@
               }
             ],
             "title": "Decision Deadline"
+          },
+          "decision_final": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Final"
           },
           "exception_types": {
             "items": {

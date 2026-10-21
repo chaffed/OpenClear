@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from openclear.domain.bank_closure import BankClosure
 from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
+from openclear.config import get_settings
 from openclear.domain.tenant import Tenant
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -112,12 +113,18 @@ def customer_cutoffs(session: Session, tenant_id: uuid.UUID, customer_id: uuid.U
 
 
 def cutoff_for(session: Session, tenant: Tenant, customer_id: uuid.UUID | None, network_code: str) -> str | None:
-    """The cut-off time that applies: the customer's own, else the bank's, else none."""
+    """The cut-off time that applies: the customer's own, else the bank's for this network, else
+    the installation's default. Every bank has one; only the tests run without a default."""
     if customer_id is not None:
         own = customer_cutoffs(session, tenant.id, customer_id).get(network_code)
         if own:
             return own
-    return (tenant.decision_cutoffs or {}).get(network_code)
+    return (tenant.decision_cutoffs or {}).get(network_code) or (get_settings().default_decision_cutoff or "").strip() or None
+
+
+def time_zone_for(tenant: Tenant) -> str:
+    """The bank's time zone, else the installation's default."""
+    return tenant.time_zone or get_settings().default_time_zone
 
 
 # --- Deadlines ----------------------------------------------------------------------------------
@@ -140,30 +147,32 @@ def next_cutoff(arrived: datetime, cutoff: str, zone: str, min_review_minutes: i
 
 def deadline_for(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, network_code: str,
                  arrived: datetime | None = None) -> datetime | None:
-    """An item's deadline from the cut-off, or None when this network has no cut-off (or the
-    bank has no time zone yet)."""
+    """An item's deadline from the cut-off: the customer's, the bank's or the installation's
+    default. None only where there's no default (the tests)."""
     tenant = session.get(Tenant, tenant_id)
-    if tenant is None or not tenant.time_zone:
+    if tenant is None:
         return None
     cutoff = cutoff_for(session, tenant, customer_id, network_code)
     if not cutoff:
         return None
     try:
-        zone = ZoneInfo(tenant.time_zone)
+        zone = ZoneInfo(time_zone_for(tenant))
     except ZoneInfoNotFoundError:
-        return None
+        zone = ZoneInfo("UTC")
     closed = frozenset(c.closed_on for c in closures(session, tenant_id))
     return next_cutoff(arrived or datetime.now(timezone.utc), cutoff, zone.key, tenant.cutoff_min_review_minutes, closed)
 
 
 def describe(tenant: Tenant) -> str:
-    """The control-panel tile's state: "Checks 11:00 · ACH 15:00 ET" or "Not set"."""
+    """The control-panel tile's state: "Checks 11:00 · ACH 15:00 (New York)", or the default."""
     cutoffs = tenant.decision_cutoffs or {}
-    if not tenant.time_zone or not cutoffs:
-        return "Not set"
+    zone = time_zone_for(tenant).split("/")[-1].replace("_", " ")
+    default = (get_settings().default_decision_cutoff or "").strip()
+    if not cutoffs:
+        return f"{default} ({zone}, the default)" if default else "Not set"
     names = {"check": "Checks", "ach": "ACH"}
     parts = [f"{names.get(network, network)} {value}" for network, value in sorted(cutoffs.items())]
-    return " · ".join(parts) + f" ({tenant.time_zone.split('/')[-1].replace('_', ' ')})"
+    return " · ".join(parts) + f" ({zone})"
 
 
 def apply_bank_cutoffs(session: Session, tenant_id: uuid.UUID, *, time_zone: str, cutoffs: dict[str, str | None],

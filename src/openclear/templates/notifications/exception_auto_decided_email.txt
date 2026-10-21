@@ -1,5 +1,4 @@
-A {{ network_code }} exception was auto-decided because no one responded within its
-configured window.
+A {{ network_code }} exception was auto-decided because no one decided it by its cut-off.
 
 Outcome: {{ outcome }}
 Reason: {{ reason_code }}

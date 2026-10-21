@@ -38,10 +38,10 @@ model), or <strong>This customer's model</strong>. The page shows which model is
 customer right now. Customer models are retrained and activated there too.</p>
 
 <h2>Default disposition</h2>
-<p>Set what happens when an exception's response window closes with no human decision: a
+<p>Set what happens when an exception's decision cut-off passes with no human decision: a
 fixed <strong>pay</strong> or <strong>return</strong> outcome, or let the ML model's score
-decide. You also configure the response window itself (in hours) and, for ACH, the default
-return reason to use. If ML-determined disposition is selected but there isn't yet enough
+decide. For ACH, set the default return reason to use. The cut-off itself is the bank's, or
+one agreed with the customer (see <a href="/ui/docs/admin/customers-accounts#cutoff">Decision cut-off</a>). If ML-determined disposition is selected but there isn't yet enough
 model data to score an item, it's skipped rather than guessed — it stays open for a human
 to review rather than risk an under-informed automatic decision.</p>
 

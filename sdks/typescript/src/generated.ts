@@ -499,9 +499,11 @@ export interface EmbedLaunchRead {
 }
 
 export interface ExceptionRead {
+  changeable_until?: string | null;
   created_at: string;
   customer_id?: string | null;
   decision_deadline: string | null;
+  decision_final?: boolean | null;
   exception_types: Array<string>;
   id: string;
   ml_model_version: string | null;

@@ -546,6 +546,11 @@ class Settings(BaseSettings):
     # doesn't forward the original scheme/host correctly — same class of caveat as
     # webauthn_origin. None (default) derives it from the live request instead.
     public_base_url: str | None = None
+    # Every bank has a decision cut-off (UI_PLAN.md UI-D13; services/cutoff_service.py): until it
+    # sets its own, this one, in this time zone. Production refuses to start without it (below);
+    # only the tests leave it empty, so their decisions are final when made unless a test sets one.
+    default_decision_cutoff: str = "11:00"
+    default_time_zone: str = "America/New_York"
     # Where this installation's source code is (AGPL-3.0 §13: anyone using it over a network is
     # offered the source of the version running). An installation running changes of its own
     # points this at its own copy. Linked from every page's footer and the license page.
@@ -595,6 +600,9 @@ _WSUD_TEXT_FIELDS: tuple[str, ...] = (
 def assert_production_safe(settings: Settings) -> None:
     if settings.environment != "production":
         return
+    if not (settings.default_decision_cutoff or "").strip():
+        raise RuntimeError("Refusing to start with OPENCLEAR_ENVIRONMENT=production and no OPENCLEAR_DEFAULT_DECISION_CUTOFF: "
+                           "every bank needs a decision cut-off (HH:MM, such as 11:00).")
     defaults = Settings.model_fields
     still_default = [name for name in _DEFAULT_FIELDS if getattr(settings, name) == defaults[name].default]
     if still_default:
