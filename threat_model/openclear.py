@@ -51,6 +51,7 @@ def build() -> TM:
     # --- Outside systems ---
     online_banking = ExternalEntity(name="Embedding host (online banking)", inBoundary=bank)
     core = ExternalEntity(name="Bank core and API clients", inBoundary=bank)
+    teller = ExternalEntity(name="Teller platform (branches)", inBoundary=bank)
     idp = ExternalEntity(name="Identity provider (OIDC / SAML)", inBoundary=bank)
     directory = ExternalEntity(name="Directory (SCIM client)", inBoundary=bank)
     siem = ExternalEntity(name="SIEM", inBoundary=bank)
@@ -135,6 +136,7 @@ def build() -> TM:
     flow(platform_staff, waf, "Platform staff use the operator view", [credentials, session_tokens])
     flow(online_banking, waf, "Embedded session launched from online banking", [sso, session_tokens])
     flow(core, waf, "Core and API clients call the API", [api_credentials, account_data, payment_files, decisions])
+    flow(teller, waf, "A check verified before cash is paid at a branch, then recorded cashed", [api_credentials, account_data])
     flow(idp, waf, "SSO sign-in responses (browser-relayed)", [sso])
     flow(directory, waf, "SCIM provisioning", [api_credentials, people])
     flow(waf, app, "Edge forwards to the origin", [credentials, session_tokens, account_data, payment_files, decisions],
@@ -240,10 +242,17 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "OC-CM-01, OC-SC-01; auth/crypto.py; issue #10", "Service provider's (CUEC)"),
     Threat("OC-T21", "T", "Bank's network", "An ACH debit from an unauthorized originator is paid.",
            "Debits checked against the customer's authorized originators; unauthorized debits go to exception with a "
-           "signed Written Statement of Unauthorized Debit.",
+           "Written Statement of Unauthorized Debit, which the bank collects on its own form.",
            "OC-AC-12, OC-SI-07; docs/compliance/nacha.md", "Mitigated"),
     Threat("OC-T22", "I", "Embedding host", "OpenClear is framed by a site that isn't the bank's online banking "
            "(clickjacking) or leaks messages to it.",
            "frame-ancestors limited to the bank's configured origin; messages posted only to that origin.",
            "web/security_headers.py; static/js/app.js; ASVS 3.4.6", "Mitigated"),
+    Threat("OC-T23", "I", "Bank's network", "A teller platform's credentials are used to probe for valid check numbers, or the "
+           "same check is cashed at two branches.",
+           "check:verify can only verify and record a cash-out, never list issued items; what was issued is returned only "
+           "to explain a decline; every call is logged, rate-limited, and many not-issued answers raise a high security "
+           "event; a verification is cashed once, within 15 minutes, under the issued check's lock, and the paid check "
+           "is a duplicate anywhere after.",
+           "OC-SI-09; services/teller_service.py; TELLER_PLAN.md", "Mitigated"),
 )

@@ -718,9 +718,32 @@ erDiagram
 <tr><td>matched_issued_item_id</td><td>UUID</td><td>yes</td><td>FK → issued_item.id</td><td>Set when the matching engine finds a clean match.</td></tr>
 <tr><td>match_status</td><td>String(20) enum</td><td>no</td><td></td><td>matched / exception.</td></tr>
 <tr><td>settlement_status</td><td>String(20) enum</td><td>no</td><td></td><td>pending / paid / returned / reversed.</td></tr>
-<tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>manual / bulk upload / auto-import.</td></tr>
+<tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td>api / bulk_file / manual / teller (cashed at a branch, recorded by the teller platform).</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
+</tbody>
+</table>
+
+<h3>teller_verification</h3>
+<p>A check verified by a teller platform before cash is paid at a branch, and, once paid, the record of it
+(services/teller_service.py, TELLER_PLAN.md). Row-level security.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td>The verification_id the platform sends back to record it cashed.</td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>account_id / customer_id</td><td>UUID</td><td>yes</td><td>FK → account.id / customer.id</td><td>Null when OpenClear doesn't know the account.</td></tr>
+<tr><td>routing_number / account_number / check_number</td><td>String</td><td>routing yes</td><td></td><td>From the MICR line, as sent.</td></tr>
+<tr><td>amount</td><td>Numeric(14,2)</td><td>no</td><td></td><td></td></tr>
+<tr><td>payee_name</td><td>String(255)</td><td>yes</td><td></td><td>As the teller read it, if sent.</td></tr>
+<tr><td>result</td><td>String(30)</td><td>no</td><td></td><td>match, or the first problem (not_issued, amount_differs, stopped, already_paid…).</td></tr>
+<tr><td>problems</td><td>JSON</td><td>no</td><td></td><td>Every problem found.</td></tr>
+<tr><td>issued_item_id</td><td>UUID</td><td>yes</td><td>FK → issued_item.id</td><td>The issued check it was compared with.</td></tr>
+<tr><td>teller_id / branch</td><td>String(64)</td><td>yes</td><td></td><td>Who asked, as the teller platform identifies them.</td></tr>
+<tr><td>api_client_id</td><td>UUID</td><td>yes</td><td></td><td>The teller platform's API client.</td></tr>
+<tr><td>created_at / expires_at</td><td>Timestamp</td><td>no</td><td></td><td>A match can be recorded cashed for 15 minutes.</td></tr>
+<tr><td>cashed_at</td><td>Timestamp</td><td>yes</td><td></td><td>When it was recorded cashed; set once.</td></tr>
+<tr><td>paid_item_id</td><td>UUID</td><td>yes</td><td>FK → paid_item.id</td><td>The paid item the cash-out presented (source teller).</td></tr>
 </tbody>
 </table>
 

@@ -141,3 +141,15 @@ sequenceDiagram
   duplicate-paid and stop-amount rules and lifecycle, SP2's paid-item sources), and a section
   on how FR1–FR5 and SP2 change the decisions. Still not started; its stages follow the paid-item
   layouts and reverse positive pay plans.
+- 2026-10-22: TL-1 and TL-2 built (migration `4c47d3f3a975`, `teller_verification` with RLS):
+  `POST /api/v1/checks/verify` and `/cashed` (`services/teller_service.py`), `check:verify` and the
+  **Teller platform** group, `PaidItemSource.TELLER`, the action log and security events
+  (`teller.verify`, `teller.verify.declined`, `teller.cashed`, `teller.verify.probing`), declined
+  checks as information on the customer's Exceptions, `docs/guides/teller.md`, CUEC B-CP-2-02
+  (moved up from TL-3), control OC-SI-09, threat OC-T23. Choices on the questions for the first
+  bank, until one answers: an account OpenClear doesn't know answers `not_on_positive_pay`; a
+  reverse positive pay account answers `customer_review`; the payee is optional. **Changes:** the
+  matching-rule plugins aren't run on a verification (they read a presented item); `check:verify`
+  is kept from Admin's default grant, like `data_export:run`. TL-3 waits for a bank's teller
+  platform, and TL-4 for a bank to ask.
+

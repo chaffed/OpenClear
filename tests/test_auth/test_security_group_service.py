@@ -9,13 +9,15 @@ def test_seed_default_security_groups_matches_old_role_behavior(db_session, tena
     tenant, _account, _users = tenant_factory.make(slug="sg-seed-defaults")
     groups = {g.name: g for g in security_group_service.list_security_groups(db_session, tenant.id)}
 
-    # The five defaults, plus the built-in "No access yet" for people a bank invites (UI_PLAN.md UI-D14).
-    assert set(groups) == {"Admin", "Preparer", "Approver", "Viewer", "Bookkeeper", "No access yet"}
+    # The defaults, the teller platform's (TELLER_PLAN.md TL-D2), and the built-in "No access yet" for
+    # people a bank invites (UI_PLAN.md UI-D14).
+    assert set(groups) == {"Admin", "Preparer", "Approver", "Viewer", "Bookkeeper", "Teller platform", "No access yet"}
+    assert groups["Teller platform"].permissions == ["check:verify"]
     assert groups["No access yet"].permissions == [] and groups["No access yet"].system_role == "no_access"
-    # Every catalog permission except data_export:run, deliberately excluded from Admin's
-    # default grant (see auth/permissions.py::_NOT_ADMIN_DEFAULT) — a bank must explicitly
-    # add it to a security group, even its own Admin group.
-    assert set(groups["Admin"].permissions) == set(PERMISSION_CATALOG) - {"data_export:run"}
+    # Every catalog permission except data_export:run and check:verify, deliberately excluded
+    # from Admin's default grant (see auth/permissions.py::_NOT_ADMIN_DEFAULT) — a bank must
+    # explicitly add them to a security group, even its own Admin group.
+    assert set(groups["Admin"].permissions) == set(PERMISSION_CATALOG) - {"data_export:run", "check:verify"}
     assert "issued_item:write" in groups["Preparer"].permissions
     assert "exception:decide" not in groups["Preparer"].permissions
     assert "exception:decide" in groups["Approver"].permissions

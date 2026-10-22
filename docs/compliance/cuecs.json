@@ -1134,6 +1134,59 @@
       "withdrawn": false
     },
     {
+      "id": "B-CP-2-02",
+      "party": "bank",
+      "nist": "CP-2",
+      "nist_title": "Contingency Plan",
+      "oscal_id": "cp-2",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Set the teller fallback",
+      "statement": "Decide what the teller platform does when OpenClear doesn't answer a verification in time (for example, decline above an amount), configure it in the teller platform, and train tellers on it.",
+      "complements": "OpenClear answers a verification quickly and says plainly when a check can't be cashed, but can't enforce what a teller does when it can't be reached.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "ID.IM-04",
+          "title": "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved"
+        },
+        {
+          "id": "PR.IR-02",
+          "title": "The organization's technology assets are protected from environmental threats"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RC.RP-03",
+          "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
+        },
+        {
+          "id": "RC.CO-04",
+          "title": "Public updates on incident recovery are shared using approved methods and messaging"
+        }
+      ],
+      "where": "The teller platform; docs/guides/teller.md",
+      "withdrawn": false
+    },
+    {
       "id": "B-CP-2-01",
       "party": "bank",
       "nist": "CP-2",

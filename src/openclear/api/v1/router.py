@@ -8,6 +8,7 @@ from openclear.api.v1.ach_transactions import router as ach_transactions_router
 from openclear.api.v1.admin import router as admin_router
 from openclear.api.v1.auth import router as auth_router
 from openclear.api.v1.check_images import router as check_images_router
+from openclear.api.v1.checks import router as checks_router
 from openclear.api.v1.decisions import router as decisions_router
 from openclear.api.v1.dropbox_import import router as dropbox_import_router
 from openclear.api.v1.exceptions import router as exceptions_router
@@ -46,6 +47,7 @@ api_router.include_router(webauthn_router)
 api_router.include_router(issued_items_router)
 api_router.include_router(stop_payments_router)
 api_router.include_router(paid_items_router)
+api_router.include_router(checks_router)
 api_router.include_router(check_images_router)
 api_router.include_router(ach_authorizations_router)
 api_router.include_router(ach_transactions_router)

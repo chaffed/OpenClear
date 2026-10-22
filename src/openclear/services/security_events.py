@@ -134,6 +134,12 @@ CATALOG: dict[str, EventType] = {
     # A posted-check file whose trailer doesn't match its lines (PAID_ITEM_LAYOUTS_PLAN.md PIL-D8): checks the
     # bank paid may never be reviewed.
     "bulk_upload.refused": EventType("integrity", "high"),
+    # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
+    # what looks like someone trying check numbers.
+    "teller.verify": EventType("data", "low"),
+    "teller.verify.declined": EventType("data", "medium"),
+    "teller.cashed": EventType("data", "medium"),
+    "teller.verify.probing": EventType("integrity", "high"),
     "anomaly_capture.failed": EventType("integrity", "high"),
     "secrets.reencrypted": EventType("integrity", "medium"),
     "control.status.changed": EventType("integrity", "high"),
@@ -185,6 +191,9 @@ AUDIT_EVENTS: dict[str, str] = {
     "user.email.changed": "user.email.changed",
     "file.malware_detected": "file.malware_detected",
     "bulk_upload.refused": "bulk_upload.refused",
+    "teller.verify": "teller.verify",
+    "teller.verify.declined": "teller.verify.declined",
+    "teller.cashed": "teller.cashed",
     "customer_sign_on.scim_token": "sso_connection.scim_token.issued",
     "customer_sign_on.scim_revoked": "sso_connection.changed",
     "customer_sign_on.password_sign_in": "settings.changed",

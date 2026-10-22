@@ -359,6 +359,12 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear puts an account on reverse positive pay only as a protected change, and lists the accounts on it and those "
          "put on it in the last 30 days.",
          "assisted", "reverse_accounts_agreed", "On change", "Customers → an account's Check review", related=("SA-9",)),
+    Cuec("B-CP-2-02", "bank", "CP-2", "Set the teller fallback",
+         "Decide what the teller platform does when OpenClear doesn't answer a verification in time (for example, decline "
+         "above an amount), configure it in the teller platform, and train tellers on it.",
+         "OpenClear answers a verification quickly and says plainly when a check can't be cashed, but can't enforce what a "
+         "teller does when it can't be reached.",
+         "attested", None, "Yearly", "The teller platform; docs/guides/teller.md", related=("SI-4",)),
     Cuec("B-CP-2-01", "bank", "CP-2", "Plan for an outage at the cutoff",
          "Include positive pay in the bank's business continuity plan: what happens to exceptions and decisions if OpenClear or "
          "the core is unavailable at the cutoff, and who decides by hand.",

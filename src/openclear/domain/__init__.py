@@ -64,6 +64,7 @@ from openclear.domain import (  # noqa: F401
     support_access_grant,
     tenant,
     tenant_extension,
+    teller_verification,
     tenant_membership,
     user,
     user_device,

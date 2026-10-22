@@ -26,6 +26,7 @@ from openclear.services import (
     decision_service,
     exception_evidence,
     exception_service,
+    teller_service,
 )
 from openclear.services import check_return_reason_service
 from openclear.services.decision_service import DecisionError
@@ -251,6 +252,9 @@ def list_exceptions(
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),
         customer_filter=str(customer_id) if customer_id and ctx.customer_id is None else "",
         customer_choices=_customer_choices(db, ctx), to_review=to_review, max_pay_all=MAX_PAY_ALL,
+        # Checks presented at a branch and declined (TELLER_PLAN.md TL-D4): information, nothing to decide.
+        branch_declines=teller_service.declined_recently(db, ctx.tenant_id, customer_id) if statuses == exception_service.NEEDS_ATTENTION
+        and not search.active else [],
     )
 
 
