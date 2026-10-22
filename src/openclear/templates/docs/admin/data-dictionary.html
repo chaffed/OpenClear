@@ -1218,18 +1218,18 @@ records, so backing the upload out reverses it.</p>
 </table>
 
 <h3>import_layout</h3>
-<p>How to read an issued-check file in a customer's own format (bulk_import/layouts.py): delimited,
-fixed-width or Excel, where each field is, and how amounts and dates are written. An upload keeps a
-copy of the settings it used, in its options.</p>
+<p>How to read a file in its own format (bulk_import/layouts.py): a customer's issued-check file, or
+the bank's posted-check file from its core. Delimited, fixed-width or Excel, where each field is, and
+how amounts and dates are written. An upload keeps a copy of the settings it used, in its options.</p>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
 <tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
-<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>That customer's own; null for one any of the bank's customers can use.</td></tr>
-<tr><td>kind</td><td>String(30)</td><td>no</td><td></td><td>issued_items.</td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>yes</td><td>FK → customer.id</td><td>That customer's own; null for one any of the bank's customers can use. Always null for a posted-check layout.</td></tr>
+<tr><td>kind</td><td>String(30)</td><td>no</td><td>CHECK</td><td>issued_items, or paid_items (the bank's posted-check file).</td></tr>
 <tr><td>name</td><td>String(100)</td><td>no</td><td></td><td></td></tr>
-<tr><td>settings</td><td>JSON</td><td>no</td><td></td><td>file_type, columns or positions, amount_format, date_format, void_values, lines to skip, strip_zeros.</td></tr>
+<tr><td>settings</td><td>JSON</td><td>no</td><td></td><td>kind, file_type, columns or positions, amount_format, date_format, void_values, lines to skip, strip_zeros. A posted-check layout also: onus_mode, onus_separator, onus_order, onus_account, onus_serial (the MICR on-us field), debit_values (transaction codes that are check debits), routing_numbers, and trailer (how to find it, and where its item count and total are).</td></tr>
 <tr><td>is_default</td><td>Boolean</td><td>no</td><td></td><td>Chosen for uploads; one per bank or customer.</td></tr>
 <tr><td>created_by_user_id / created_at / updated_at</td><td>UUID / Timestamp</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 </tbody>

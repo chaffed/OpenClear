@@ -100,3 +100,25 @@ flowchart LR
 ## Progress log
 
 - 2026-10-21: Plan written (FULL_REVIEW_PLAN.md M1, FR-D20). Not started.
+- 2026-10-22: PIL1 built (migration `f847d741d618`, the `kind` check constraint). `layouts.py` reads
+  posted checks: `PAID_FIELDS`, the three templates, MICR on-us by separator or positions,
+  transaction codes, reversals (`RowSkipped`), and `check_trailer` (built here rather than in PIL2,
+  so the builder's preview shows it). The service, builder and API listing take a kind; the tile
+  is *File layouts*. **Change from PIL-D3:** a bank has no routing numbers on record, so a
+  posted-check layout lists the bank's own (`routing_numbers`), and a line for another fails.
+- 2026-10-22: PIL2 built. `BUILTIN_SPECS[(PAID_ITEMS, "layout")]`: the trailer is checked when the
+  file arrives, and a mismatch rejects it whole (`TrailerMismatch`), audited as
+  `bulk_upload.refused` with a `high` security event. Skipped lines are counted on the upload
+  (`skipped_rows`) and shown on its page. The paid-items upload page and the API take a
+  posted-check layout; the bank's `checks/tabular/inbox/` reads with its default, and each layout
+  has `checks/layout/<name, lowercase with dashes>/inbox/` (two layouts whose names give one
+  folder: neither is read, and it's logged). **Changes:** the fixed-width template keeps the
+  account as written (space-padded): dropping leading zeros broke accounts that have them. The
+  "same check in two files" test runs in order rather than at once: FR2's concurrency test already
+  covers two presentments at the same moment.
+- 2026-10-22: PIL3 written: the data dictionary (`import_layout.kind`, the posted-check settings), the
+  bulk-uploads guide's *Your core's posted-check file*, the README's layouts, the CHANGELOG. **Change:**
+  the bank CUEC B-SI-7-01 (*Reconcile presented items*) already covered reconciling files, so it says
+  a layout with a trailer does this and the bank reconciles files without one, rather than a new CUEC.
+  M1 is done.
+

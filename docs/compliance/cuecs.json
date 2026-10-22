@@ -1061,8 +1061,8 @@
         "CA-3"
       ],
       "title": "Reconcile presented items",
-      "statement": "Reconcile each presented-items file OpenClear loads (its item count and total) against what the core sent, and investigate a difference.",
-      "complements": "OpenClear stores each file with its SHA-256 and a signature, and reports the items and total it loaded.",
+      "statement": "Reconcile each presented-items file OpenClear loads (its item count and total) against what the core sent, and investigate a difference. A posted-check layout that names the file's trailer does this for you; reconcile the files without one yourself.",
+      "complements": "OpenClear stores each file with its SHA-256 and a signature, and reports the items and total it loaded. A file read by a posted-check layout with a trailer is refused whole, and raised as a security event, when its lines don't add up to the trailer.",
       "evidence": "assisted",
       "check": "file_reconciliation",
       "check_status": "live",

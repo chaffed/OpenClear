@@ -346,8 +346,11 @@ CUECS: tuple[Cuec, ...] = (
          "Settings → Decision delivery; Controls → Decisions and imports on time", related=("SI-7",)),
     Cuec("B-SI-7-01", "bank", "SI-7", "Reconcile presented items",
          "Reconcile each presented-items file OpenClear loads (its item count and total) against what the core sent, and "
-         "investigate a difference.",
-         "OpenClear stores each file with its SHA-256 and a signature, and reports the items and total it loaded.",
+         "investigate a difference. A posted-check layout that names the file's trailer does this for you; reconcile the "
+         "files without one yourself.",
+         "OpenClear stores each file with its SHA-256 and a signature, and reports the items and total it loaded. A file read "
+         "by a posted-check layout with a trailer is refused whole, and raised as a security event, when its lines don't "
+         "add up to the trailer.",
          "assisted", "file_reconciliation", "Daily",
          "Bulk uploads; the file's details", related=("SI-10", "CA-3")),
     Cuec("B-CP-2-01", "bank", "CP-2", "Plan for an outage at the cutoff",

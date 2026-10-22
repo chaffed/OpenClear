@@ -308,19 +308,33 @@ def _billing_tiles(db, ctx, tenant, settings) -> list[Tile]:
 
 
 def _layout_tile(db, ctx) -> Tile:
+    from openclear.bulk_import import layouts
     from openclear.services import import_layout_service
 
-    rows = import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id)
-    default = next((r for r in rows if r.is_default and (ctx.customer_id is None or r.customer_id == ctx.customer_id)), None) \
-        or next((r for r in rows if r.is_default), None)
-    state = (_plural(len(rows), "layout") + (f" · default {default.name}" if default else "")) if rows else "None"
-    return Tile("layouts", "Integrations" if ctx.customer_id is None else "Organization", "Issue-file layouts", "description",
-                "/ui/layouts", "How to read issued-check files in your own columns or a fixed-width format.", state,
-                keywords="issue file arp mapping columns fixed width excel upload import")
+    if ctx.customer_id is not None:
+        rows = import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id)
+        default = next((r for r in rows if r.is_default and r.customer_id == ctx.customer_id), None) or next((r for r in rows if r.is_default), None)
+        state = (_plural(len(rows), "layout") + (f" · default {default.name}" if default else "")) if rows else "None"
+        return Tile("layouts", "Organization", "Issue-file layouts", "description", "/ui/layouts",
+                    "How to read issued-check files in your own columns or a fixed-width format.", state,
+                    keywords="issue file arp mapping columns fixed width excel upload import")
+    # The bank's staff: issued-check and posted-check layouts, as far as they may build each.
+    kinds = [k for k, permission in import_layout_service.PERMISSION.items() if permission in ctx.permissions]
+    rows = [r for k in kinds for r in import_layout_service.visible(db, ctx.tenant_id, None, k)]
+    posted_default = layouts.PAID_ITEMS in kinds and import_layout_service.default_for(db, ctx.tenant_id, None, layouts.PAID_ITEMS)
+    state = (_plural(len(rows), "layout") + (f" · posted checks: {posted_default.name}" if posted_default else "")) if rows else "None"
+    return Tile("layouts", "Integrations", "File layouts", "description", "/ui/layouts",
+                "How to read issued-check files and your core's posted-check file in their own columns or a fixed-width format.",
+                state, keywords="issue file arp posted paid presented core mapping columns fixed width trailer excel upload import")
 
 
 def _layout_tiles(db, ctx, tenant, settings) -> list[Tile]:
     return [_layout_tile(db, ctx)]
+
+
+def _posted_layout_tiles(db, ctx, tenant, settings) -> list[Tile]:
+    """The same tile for someone who builds only posted-check layouts."""
+    return [] if "issued_item:write" in ctx.permissions else [_layout_tile(db, ctx)]
 
 
 def _cuec_tile(db, ctx, *_args) -> Tile:
@@ -351,6 +365,7 @@ _BANK_BUILDERS: list[tuple[str, Callable]] = [
     ("data_export:run", _export_tiles),
     ("billing:read", _billing_tiles),
     ("issued_item:write", _layout_tiles),
+    ("paid_item:write", _posted_layout_tiles),
 ]
 
 

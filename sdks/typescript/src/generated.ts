@@ -589,6 +589,7 @@ export interface ImportLayoutRead {
   file_type: string;
   id: string;
   is_default: boolean;
+  kind: "issued_items" | "paid_items";
   name: string;
 }
 
@@ -1365,8 +1366,9 @@ export class BulkUploadsApi {
    *
    * Uploads a file to import in the background. Poll `status_url` for progress. A file
    * that can't be read at all comes back `rejected`, with the reason in `error`. An
-   * issued-check file in the customer's own columns or a fixed-width format is sent with
-   * `format=layout` and its `layout_id`.
+   * issued-check file in the customer's own columns or a fixed-width format, or the core's
+   * posted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.
+   * A posted-check file whose trailer doesn't match its lines comes back `rejected`.
    */
   uploadFile(form: { create_missing_accounts?: boolean; file: Blob; format: string; kind: BulkUploadKind; layout_id?: string | null }): Promise<BulkUploadAccepted> {
     return this.c.call<BulkUploadAccepted>("POST", `/api/v1/bulk-uploads`, { multipart: form });
@@ -1390,12 +1392,13 @@ export class BulkUploadsApi {
    *
    * GET /api/v1/bulk-uploads/layouts
    *
-   * The issued-check file layouts the caller can upload with (Settings → Issue-file
-   * layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-   * `kind=issued_items` and `format=layout`.
+   * The file layouts the caller can upload with (Settings → File layouts). Issued-check
+   * layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+   * bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+   * and `format=layout`.
    */
-  listImportLayouts(): Promise<Array<ImportLayoutRead>> {
-    return this.c.call<Array<ImportLayoutRead>>("GET", `/api/v1/bulk-uploads/layouts`, {  });
+  listImportLayouts(query: { kind?: "issued_items" | "paid_items" } = {}): Promise<Array<ImportLayoutRead>> {
+    return this.c.call<Array<ImportLayoutRead>>("GET", `/api/v1/bulk-uploads/layouts`, { query });
   }
 
   /**

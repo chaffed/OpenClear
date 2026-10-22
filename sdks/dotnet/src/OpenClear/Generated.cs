@@ -631,6 +631,7 @@ public sealed record ImportLayoutRead
     [JsonPropertyName("file_type")] public string FileType { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
     [JsonPropertyName("is_default")] public bool IsDefault { get; init; } = default!;
+    [JsonPropertyName("kind")] public string Kind { get; init; } = default!;
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
 }
 
@@ -1392,8 +1393,9 @@ public sealed partial class BulkUploadsApi
     ///
     /// Uploads a file to import in the background. Poll `status_url` for progress. A file
     /// that can't be read at all comes back `rejected`, with the reason in `error`. An
-    /// issued-check file in the customer's own columns or a fixed-width format is sent with
-    /// `format=layout` and its `layout_id`.
+    /// issued-check file in the customer's own columns or a fixed-width format, or the core's
+    /// posted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.
+    /// A posted-check file whose trailer doesn't match its lines comes back `rejected`.
     /// </summary>
     public Task<BulkUploadAccepted> UploadFileAsync(FilePart file, string format, string kind, bool? createMissingAccounts = null, string? layoutId = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<BulkUploadAccepted>("POST", "/api/v1/bulk-uploads", form: new Dictionary<string, object?> { ["create_missing_accounts"] = createMissingAccounts, ["file"] = file, ["format"] = format, ["kind"] = kind, ["layout_id"] = layoutId }, cancellationToken: cancellationToken);
@@ -1415,12 +1417,13 @@ public sealed partial class BulkUploadsApi
     ///
     /// GET /api/v1/bulk-uploads/layouts
     ///
-    /// The issued-check file layouts the caller can upload with (Settings → Issue-file
-    /// layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-    /// `kind=issued_items` and `format=layout`.
+    /// The file layouts the caller can upload with (Settings → File layouts). Issued-check
+    /// layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+    /// bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+    /// and `format=layout`.
     /// </summary>
-    public Task<IReadOnlyList<ImportLayoutRead>> ListImportLayoutsAsync(CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<ImportLayoutRead>>("GET", "/api/v1/bulk-uploads/layouts", cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<ImportLayoutRead>> ListImportLayoutsAsync(string? kind = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<ImportLayoutRead>>("GET", "/api/v1/bulk-uploads/layouts", query: new Dictionary<string, object?> { ["kind"] = kind }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Get Bulk Upload.

@@ -146,14 +146,17 @@ def bulk_upload_detail(
     options = record.options or {}
     # A file in someone's own columns fails on every row (or is rejected): offer to describe
     # it with a layout, starting from this very file.
-    offer_layout = (record.kind == BulkUploadKind.ISSUED_ITEMS and options.get("format", "tabular") == "tabular"
-                    and "issued_item:write" in ctx.permissions
+    layout_kind = {BulkUploadKind.ISSUED_ITEMS: "issued_items", BulkUploadKind.PAID_ITEMS: "paid_items"}.get(record.kind)
+    offer_layout = (layout_kind is not None and options.get("format", "tabular") == "tabular"
+                    and ({"issued_items": "issued_item:write", "paid_items": "paid_item:write"}[layout_kind] in ctx.permissions)
+                    and (layout_kind == "issued_items" or ctx.customer_id is None)
                     and (record.status.value == "rejected" or (finished and record.failed_count and not record.succeeded_count)))
     return render_template(
         request, "bulk_uploads/detail.html", ctx=ctx, record=record, verified=verified, tracked_records=tracked_records,
         finished=finished, failures=failures, has_row_results=has_row_results, back_url=back_url, back_label=back_label,
         corrections=[c for c in corrections if c.success], fixed_rows=fixed_rows, correctable=bulk_import_service.correctable(record),
-        layout_name=(options.get("layout") or {}).get("name"), offer_layout=offer_layout,
+        layout_name=(options.get("layout") or {}).get("name"), offer_layout=offer_layout, layout_kind=layout_kind,
+        skipped_rows=options.get("skipped_rows", 0),
         nouns=_NOUNS.get(record.kind, ("row", "rows")), record_details=_record_details(db, ctx, tracked_records),
     )
 

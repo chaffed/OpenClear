@@ -192,7 +192,7 @@ def test_the_api_and_the_drop_folder_use_layouts(client, db_session, tenant_fact
     db_session.commit()
     headers = login_headers(client, tenant.slug, users["admin"].email)
     listed = client.get("/api/v1/bulk-uploads/layouts", headers=headers).json()
-    assert listed == [{"id": str(layout.id), "name": "Pipes", "customer_id": None, "is_default": True, "file_type": "delimited"}]
+    assert listed == [{"id": str(layout.id), "kind": "issued_items", "name": "Pipes", "customer_id": None, "is_default": True, "file_type": "delimited"}]
     resp = client.post("/api/v1/bulk-uploads", headers=headers, data={"kind": "issued_items", "format": "layout", "layout_id": str(layout.id)},
                        files={"file": ("f.txt", f"{account.account_number}|8001|10.00|2026-10-15|Zed\n".encode(), "text/plain")})
     assert resp.status_code == 202
@@ -255,7 +255,7 @@ def test_a_file_in_other_columns_offers_a_layout_from_itself(client, db_session,
     tenant, _account, users = tenant_factory.make(slug="fix-offer")
     csrf = _login(client, tenant.slug, users["admin"].email)
     resp, upload_id = _upload(client, csrf, SAMPLE, "acme.csv")
-    assert f"/ui/layouts/new?from_upload={upload_id}" in resp.text
+    assert f"/ui/layouts/new?kind=issued_items&amp;from_upload={upload_id}" in resp.text
     builder = client.get(f"/ui/layouts/new?from_upload={upload_id}").text
     assert "acme.csv" in builder and 'name="assign_4"' in builder and "Pay To" in builder
 

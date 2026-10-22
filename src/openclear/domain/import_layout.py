@@ -4,22 +4,26 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
 
 
 class ImportLayout(Base):
-    """How to read a customer's own issued-check file (UX_PLAN.md U1; bulk_import/layouts.py):
-    delimited, fixed-width or Excel, which column or positions hold each field, and the
-    amount and date formats. An upload that uses one keeps a copy of its settings in the
-    upload's options, so a later edit never changes what an old upload meant.
+    """How to read a file in someone else's format (UX_PLAN.md U1; bulk_import/layouts.py): a
+    customer's issued-check file (`kind` "issued_items"), or the posted-check file the bank's
+    core sends ("paid_items", PAID_ITEM_LAYOUTS_PLAN.md). Delimited, fixed-width or Excel,
+    which column or positions hold each field, and the amount and date formats. An upload that
+    uses one keeps a copy of its settings in the upload's options, so a later edit never
+    changes what an old upload meant.
 
     `customer_id` null is a bank-wide layout any of its customers can use; otherwise it's
-    that customer's own. One default per bank or customer, and kind."""
+    that customer's own. A posted-check layout is always the bank's. One default per bank or
+    customer, and kind."""
 
     __tablename__ = "import_layout"
+    __table_args__ = (CheckConstraint("kind IN ('issued_items', 'paid_items')", name="kind"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)

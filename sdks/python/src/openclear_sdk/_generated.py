@@ -616,6 +616,7 @@ class ImportLayoutRead(TypedDict):
     file_type: str
     id: str
     is_default: bool
+    kind: Literal["issued_items", "paid_items"]
     name: str
 
 
@@ -1321,8 +1322,9 @@ class BulkUploadsApi:
 
         Uploads a file to import in the background. Poll `status_url` for progress. A file
         that can't be read at all comes back `rejected`, with the reason in `error`. An
-        issued-check file in the customer's own columns or a fixed-width format is sent with
-        `format=layout` and its `layout_id`.
+        issued-check file in the customer's own columns or a fixed-width format, or the core's
+        posted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.
+        A posted-check file whose trailer doesn't match its lines comes back `rejected`.
         """
         return self._c.call("POST", "/api/v1/bulk-uploads", data={"create_missing_accounts": create_missing_accounts, "format": format, "kind": kind, "layout_id": layout_id}, files={"file": file})
 
@@ -1337,16 +1339,17 @@ class BulkUploadsApi:
         """
         return self._c.call("GET", "/api/v1/bulk-uploads/formats")
 
-    def list_import_layouts(self) -> list[ImportLayoutRead]:
+    def list_import_layouts(self, *, kind: Literal["issued_items", "paid_items"] | None = None) -> list[ImportLayoutRead]:
         """List Import Layouts.
 
         GET /api/v1/bulk-uploads/layouts
 
-        The issued-check file layouts the caller can upload with (Settings → Issue-file
-        layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-        `kind=issued_items` and `format=layout`.
+        The file layouts the caller can upload with (Settings → File layouts). Issued-check
+        layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+        bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+        and `format=layout`.
         """
-        return self._c.call("GET", "/api/v1/bulk-uploads/layouts")
+        return self._c.call("GET", "/api/v1/bulk-uploads/layouts", query={"kind": kind})
 
     def get_bulk_upload(self, upload_id: str) -> BulkUploadRead:
         """Get Bulk Upload.

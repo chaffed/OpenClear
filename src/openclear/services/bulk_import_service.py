@@ -75,6 +75,11 @@ class BulkFileRejected(Exception):
     """The whole file failed validation; nothing in it is imported."""
 
 
+class TrailerMismatch(BulkFileRejected):
+    """A posted-check file whose trailer doesn't match its lines (PAID_ITEM_LAYOUTS_PLAN.md
+    PIL-D4): refused whole, audited and raised as a security event (PIL-D8)."""
+
+
 @dataclass(frozen=True, slots=True)
 class SourceRow:
     label: str
@@ -88,6 +93,8 @@ class LoadedFile:
     # cash letter it reads check images from.
     images: Any = None
     content: Any = None
+    # Lines left out on purpose: a posted-check line that isn't a check debit, or a reversal.
+    skipped: int = 0
     _closers: list[Callable[[], None]] = field(default_factory=list)
 
     def close(self) -> None:
@@ -200,20 +207,37 @@ def _load_zip(ref: str, filename: str) -> LoadedFile:
 
 
 def _load_layout(path: str, filename: str, options: dict) -> LoadedFile:
-    """An issued-check file read by the layout the upload chose (bulk_import/layouts.py); the
-    upload keeps a copy of the layout's settings, so this always reads it the same way."""
+    """A file read by the layout the upload chose (bulk_import/layouts.py); the upload keeps a
+    copy of the layout's settings, so this always reads it the same way. A posted-check file
+    with a trailer is refused whole when the trailer doesn't match (PAID_ITEM_LAYOUTS_PLAN.md
+    PIL-D4), and its lines that aren't checks to present are left out and counted."""
     from openclear.bulk_import import layouts
 
     settings = ((options or {}).get("layout") or {}).get("settings")
     if not settings:
         raise BulkFileRejected("No layout was chosen for this file.")
+    content = _read(path)
     try:
-        items = layouts.extract(settings, filename, _read(path))
+        items = layouts.extract(settings, filename, content)
+        trailer = layouts.check_trailer(settings, filename, content)
     except layouts.LayoutError as exc:
         raise BulkFileRejected(str(exc)) from None
-    if not items:
-        raise BulkFileRejected("The layout found no items in that file.")
-    return LoadedFile([SourceRow(label, values) for label, values in items], content=settings)
+    if trailer is not None and not trailer.ok:
+        raise TrailerMismatch(f"{trailer.problem} Nothing in the file was imported.")
+    rows, skipped = [], 0
+    for label, values in items:
+        try:
+            layouts.convert(settings, values)
+        except layouts.RowSkipped:
+            skipped += 1
+            continue
+        except Exception:  # noqa: BLE001 -- a bad row fails on its own when it's imported
+            pass
+        rows.append(SourceRow(label, values))
+    if not rows:
+        raise BulkFileRejected("The layout found no items in that file." if not skipped
+                               else f"None of the file's {skipped} lines is a check to present.")
+    return LoadedFile(rows, content=settings, skipped=skipped)
 
 
 def _load_json(path: str, filename: str) -> LoadedFile:
@@ -260,6 +284,16 @@ def _paid_item_json(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uuid
     payload = _validated(PaidItemCreate, row.data)
     submission = PaidItemSubmission(**payload.model_dump(), source=PaidItemSource.BULK_FILE)
     return ingest_paid_item(ctx.session, ctx.tenant_id, submission, scoped_customer_id=ctx.scoped_customer_id).id
+
+
+def _paid_item_layout(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uuid.UUID:
+    from openclear.bulk_import import layouts
+    from openclear.networks.check.bulk_import import ingest_paid_item_tabular_row
+
+    return ingest_paid_item_tabular_row(
+        ctx.session, ctx.tenant_id, layouts.convert(loaded.content, row.data), auto_create_accounts=_create_missing(ctx),
+        scoped_customer_id=ctx.scoped_customer_id,
+    )
 
 
 def _issued_item_tabular(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uuid.UUID:
@@ -348,6 +382,7 @@ _CHECK_IMAGE = dict(
 BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
     (BulkUploadKind.PAID_ITEMS, "tabular"): ImportSpec(_load_tabular, _paid_item_tabular, **_PAID),
     (BulkUploadKind.PAID_ITEMS, "json"): ImportSpec(_load_json, _paid_item_json, **_PAID),
+    (BulkUploadKind.PAID_ITEMS, "layout"): ImportSpec(_load_layout, _paid_item_layout, load_takes_options=True, **_PAID),
     (BulkUploadKind.ISSUED_ITEMS, "tabular"): ImportSpec(_load_tabular, _issued_item_tabular, **_ISSUED),
     (BulkUploadKind.ISSUED_ITEMS, "json"): ImportSpec(_load_json, _issued_item_json, **_ISSUED),
     (BulkUploadKind.ISSUED_ITEMS, "layout"): ImportSpec(_load_layout, _issued_item_layout, load_takes_options=True, **_ISSUED),
@@ -433,8 +468,16 @@ def receive_upload(
     try:
         with _loaded(spec, record) as loaded:
             record.total_rows = len(loaded.rows)
+            if loaded.skipped:
+                record.options = {**record.options, "skipped_rows": loaded.skipped}  # reassigned, so the JSON column is saved
     except BulkFileRejected as exc:
         record.status, record.error, record.completed_at = BulkUploadStatus.REJECTED, str(exc), datetime.now(timezone.utc)
+        if isinstance(exc, TrailerMismatch):
+            audit_log_service.record_action(
+                session, tenant_id, actor_user_id=uploaded_by_user_id, channel=_channel(record) or "system", action="bulk_upload.refused",
+                summary=f"Refused the posted-check file {filename}: {exc}"[:500], resource_type="bulk_upload_file", resource_id=record.id,
+                metadata={"filename": filename, "layout": ((record.options or {}).get("layout") or {}).get("name")},
+            )
         session.commit()
         return record
     record.status = BulkUploadStatus.QUEUED
