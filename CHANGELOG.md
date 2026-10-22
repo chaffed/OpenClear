@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.28.0 — 2026-10-22
+
 - **Verifying checks at a branch** (`TELLER_PLAN.md` TL-1, TL-2). A teller platform asks
   `POST /api/v1/checks/verify` before cash is paid: OpenClear runs the clearing rules over the
   check now and answers `match` or the first problem (not issued, another amount or payee,
