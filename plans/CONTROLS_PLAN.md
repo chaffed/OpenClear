@@ -386,7 +386,7 @@ One merge per phase, at most one migration each, the three full suites once per 
   check is run by a test. CSF 2.0 subcategories are in the API, the attestations CSV and, as
   `csf-subcategory` properties, the component definition. Next: SOC 2 when AICPA's file is in hand; CT-D13
   and `software_currency` remain.
-- 2026-10-17 Checked against the original specification ([`docs/specs/openclear_compliance_control_testing_suite_specification.md`](docs/specs/openclear_compliance_control_testing_suite_specification.md),
+- 2026-10-17 Checked against the original specification ([`docs/specs/openclear_compliance_control_testing_suite_specification.md`](../docs/specs/openclear_compliance_control_testing_suite_specification.md),
   mapped in COMPLIANCE_PLAN.md): every requirement is built, with the differences recorded there
   (ECDSA rather than HMAC, no RTP network to replay, SoD starting in warn). Two more found: an
   SoD breach is a `high` security event where the spec says critical, and the daily anomaly

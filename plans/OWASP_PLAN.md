@@ -9,7 +9,7 @@ Rule Set, and SAMM. This plan applies that guidance to OpenClear.
 **Purpose: hardening first, then evidence.** The assessment is honest, fixes come before
 claims, and anything shown to a bank states only what's proven. Banks' third-party risk
 reviews ask for this by name ("Which ASVS level?", "Send us your SBOM", "Do you run SAST and
-DAST?"), so the results also go into the [TPRM due-diligence pack](docs/compliance/tprm.md).
+DAST?"), so the results also go into the [TPRM due-diligence pack](../docs/compliance/tprm.md).
 That pack has no penetration-test report, SBOM or disclosure policy today.
 
 **Scheduling.** OW1 and OW2 run now. They're mostly documents and CI and don't block feature
@@ -193,7 +193,7 @@ The ASVS assessment (OW1) will add to this list.
   protected change under the service provider's dual control (DC4). The bank's other
   administrators (or the person, if there are none) are emailed, and the same event is
   raised. It's the only time platform staff act on a bank's user without a support access
-  grant ([ADR 0004](docs/adr/0004-who-must-use-a-security-key-and-who-can-reset-one.md)).
+  grant ([ADR 0004](../docs/adr/0004-who-must-use-a-security-key-and-who-can-reset-one.md)).
 - **OW-D22. Exemptions:**
 
   | Who | Why |
@@ -207,7 +207,7 @@ The ASVS assessment (OW1) will add to this list.
 - **OW-D23. Platform staff's security keys live in their own table,** `platform_webauthn_credential`,
   read only by the platform pages and without row-level security (it holds no bank's data).
   A bank's keys stay in `webauthn_credential`, whose policies are unchanged. New platform staff
-  register a key at their first sign-in ([ADR 0005](docs/adr/0005-platform-staff-keys-in-their-own-table.md)).
+  register a key at their first sign-in ([ADR 0005](../docs/adr/0005-platform-staff-keys-in-their-own-table.md)).
 - **OW-D24. The minimum password length stays a stored number** (OW-D16 as built in 1.22.0).
   When a bank requires a security key, its password-policy page says NIST allows 8 characters
   and offers to lower it; lowering is a loosening, under dual control.
@@ -242,7 +242,7 @@ The ASVS assessment (OW1) will add to this list.
 - **OW-D31. An email address can change; the person is their UUID.** Email stays what people
   type to sign in. It can change by four routes, each emailing both the old and new address
   and raising `user.email.changed`
-  ([ADR 0006](docs/adr/0006-email-is-a-changeable-attribute.md)):
+  ([ADR 0006](../docs/adr/0006-email-is-a-changeable-attribute.md)):
   - the person, from Security, after a recent sign-in, confirmed by a link to the new address;
   - an administrator, for someone only in their organization, also confirmed by the new address;
   - the bank's directory (SCIM), applied directly;
@@ -260,7 +260,7 @@ The ASVS assessment (OW1) will add to this list.
   standard malware detection. The hooks, each optional:
   - **ClamAV** (`clamd`): scans every upload; if it can't answer, the upload is refused.
   - **VirusTotal: hash lookups only, never uploads,** since anything uploaded there is shared with
-    third parties ([ADR 0007](docs/adr/0007-virustotal-hash-lookups-only.md)). If it can't answer,
+    third parties ([ADR 0007](../docs/adr/0007-virustotal-hash-lookups-only.md)). If it can't answer,
     the upload is accepted, logged, and the hash re-checked later. Each can be set to refuse
     instead.
   - On a detection: the upload is refused (or, found later, the file is quarantined), with a

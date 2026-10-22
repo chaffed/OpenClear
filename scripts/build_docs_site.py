@@ -52,8 +52,8 @@ PAGES = [
     ("docs/compliance/asvs.md", "compliance/asvs.md", "OWASP ASVS 5.0"),
     ("docs/ARCHITECTURE.md", "reference/architecture.md", "Architecture"),
     ("CHANGELOG.md", "reference/changelog.md", "Changelog"),
-    ("SDK_PLAN.md", "reference/sdk-plan.md", "SDK plan"),
-    ("PLUGIN_PLAN.md", "reference/plugin-plan.md", "Plugin plan"),
+    ("plans/SDK_PLAN.md", "reference/sdk-plan.md", "SDK plan"),
+    ("plans/PLUGIN_PLAN.md", "reference/plugin-plan.md", "Plugin plan"),
 ]
 
 NAV = """nav:

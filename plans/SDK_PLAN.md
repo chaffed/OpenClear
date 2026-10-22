@@ -124,7 +124,7 @@ then client libraries, an embeddable experience and a core integration kit on to
      `openclear webhooks tail`).
 5. **Sandbox and certification (P4):**
    - a self-service sandbox bank per vendor, backed by an Apache Fineract core;
-   - synthetic data from [CheckSim](../CheckSim) (synthetic checks with a ground-truth
+   - synthetic data from [CheckSim](../../CheckSim) (synthetic checks with a ground-truth
      manifest) and the volume seeder, packaged as real X9.37 and NACHA files with Moov;
    - a conformance test suite an integration must pass;
    - a docs site with guides per integrator.

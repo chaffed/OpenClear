@@ -1,5 +1,5 @@
 > An outside review of positive pay's user experience, kept as written. What OpenClear took from
-> it, and what it didn't, is in [UX_PLAN.md](../../UX_PLAN.md).
+> it, and what it didn't, is in [UX_PLAN.md](../../plans/UX_PLAN.md).
 
 # UX Analysis and Recommendations: Multi-Tenant Positive Pay System
 

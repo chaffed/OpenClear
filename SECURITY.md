@@ -58,4 +58,4 @@ reasonable time to fix the problem before anything is made public.
 ## How OpenClear approaches security
 
 See the [risk profile](docs/security/risk-profile.md), the [threat model](docs/security/threat-model.md),
-and [OWASP_PLAN.md](OWASP_PLAN.md) for the ASVS 5.0 target and how it's checked.
+and [OWASP_PLAN.md](plans/OWASP_PLAN.md) for the ASVS 5.0 target and how it's checked.

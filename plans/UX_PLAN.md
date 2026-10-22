@@ -1,6 +1,6 @@
 # User experience plan
 
-This plan comes from a review of [`docs/specs/positive_pay_ux_analysis_recommendations.md`](docs/specs/positive_pay_ux_analysis_recommendations.md) (an outside
+This plan comes from a review of [`docs/specs/positive_pay_ux_analysis_recommendations.md`](../docs/specs/positive_pay_ux_analysis_recommendations.md) (an outside
 UX analysis) against what OpenClear actually does. The analysis was written about positive pay
 products in general, so about half of it describes things OpenClear already has; those are
 listed below so they aren't rebuilt. The rest, plus a few gaps the analysis missed, are the

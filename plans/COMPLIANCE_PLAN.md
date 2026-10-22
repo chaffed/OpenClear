@@ -1,6 +1,6 @@
 # OpenClear compliance, control and model risk testing plan
 
-This plan implements [`docs/specs/openclear_compliance_control_testing_suite_specification.md`](docs/specs/openclear_compliance_control_testing_suite_specification.md) (the spec). The spec describes a Go layout (`pkg/controls/rbac.go`, `cmd/openclear-cli`); OpenClear is Python. This plan maps each component onto what OpenClear already has, and notes where it deliberately differs from the spec.
+This plan implements [`docs/specs/openclear_compliance_control_testing_suite_specification.md`](../docs/specs/openclear_compliance_control_testing_suite_specification.md) (the spec). The spec describes a Go layout (`pkg/controls/rbac.go`, `cmd/openclear-cli`); OpenClear is Python. This plan maps each component onto what OpenClear already has, and notes where it deliberately differs from the spec.
 
 ## What already exists
 
