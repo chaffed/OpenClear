@@ -95,6 +95,7 @@ _EXCEPTION_TYPE_LABELS = {
     "payee_mismatch": "Payee mismatch",
     "stale_dated": "Stale-dated",
     "stop_amount_mismatch": "Stop on file for another amount",
+    "review": "To review",
     "unauthorized_originator": "Unauthorized originator",
     "receiver_id_not_permitted": "Receiver not authorized",
     "amount_exceeds_limit": "Over authorized amount",

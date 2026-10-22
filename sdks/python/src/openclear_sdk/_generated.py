@@ -42,6 +42,7 @@ false for just `account_ids` (at least one, all the customer's)."""
 class AccountRead(TypedDict):
     account_number: str
     ach_debit_block_mode: AchDebitBlockMode
+    check_review_mode: CheckReviewMode
     customer_id: str | None
     external_account_id: str | None
     id: str
@@ -51,6 +52,7 @@ class AccountRead(TypedDict):
 
 class AccountUpsert(TypedDict):
     ach_debit_block_mode: NotRequired[AchDebitBlockMode | None]
+    check_review_mode: NotRequired[CheckReviewMode | None]
     customer_number: NotRequired[str | None]
     external_account_id: NotRequired[str | None]
     name: str
@@ -325,6 +327,9 @@ class CheckReturnReasonRead(TypedDict):
     id: str
     reason_text: str
     return_code: str | None
+
+
+CheckReviewMode = Literal["positive", "reverse"]
 
 
 class ControlCheck(TypedDict):
@@ -972,13 +977,15 @@ class AccountsApi:
         """
         return self._c.paginate("GET", "/api/v1/accounts", query={"limit": limit, "updated_since": updated_since, "after_id": after_id})
 
-    def upsert_account(self, account_number: str, body: AccountUpsert) -> AccountRead:
+    def upsert_account(self, account_number: str, body: AccountUpsert) -> AccountRead | Any:
         """Upsert Account.
 
         PUT /api/v1/accounts/{account_number}
 
         Creates the account with this number, or updates it to match. `200` when it existed,
-        `201` when it was created.
+        `201` when it was created. Putting an account on reverse positive pay (`check_review_mode`)
+        needs admin:manage and a bank-level caller; when the bank's sensitive changes need a second
+        admin, the rest is saved and this answers `202` with `{"status": "pending", "change_request_id"}`.
         """
         return self._c.call("PUT", f"/api/v1/accounts/{_path(account_number)}", json=body)
 

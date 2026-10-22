@@ -90,11 +90,14 @@
   {% set columns = [
     {"key": "number", "label": "Account number", "role": "primary"},
     {"key": "name", "label": "Name"},
+    {"key": "checks", "label": "Checks"},
     {"key": "mode", "label": "ACH debit mode"},
   ] %}
   {% call(a, col, part="cell") rt.responsive_table(columns, accounts, attrs="data-sortable", id="account") -%}
     {%- if col.key == "number" %}{{ a.account_number }}
     {%- elif col.key == "name" %}{{ a.name }}
+    {%- elif col.key == "checks" %}{% set label = "Reverse positive pay" if a.check_review_mode.value == "reverse" else "Positive pay" %}
+      {%- if can(ctx, "admin:manage") %}<a href="/ui/accounts/{{ a.id }}/check-review">{{ label }}</a>{% else %}{{ label }}{% endif %}
     {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode | status_label }}</span>
     {%- endif %}
   {%- endcall %}

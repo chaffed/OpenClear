@@ -244,6 +244,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_cutoffs": "settings.changed",  # when decisions become final (UI_PLAN.md UI-D13)
     "customer.update_cutoff": "settings.changed",
     "customer.update_disposition": "settings.changed",
+    "account.check_review_mode": "settings.changed",  # reverse positive pay on or off (REVERSE_POSITIVE_PAY_PLAN.md RPP-D4)
     "tenant.update_closures": "settings.changed",
     "customer.update_password_policy": "settings.changed",
     "tenant.update_sod_mode": "sod.mode.changed",

@@ -105,3 +105,11 @@ sequenceDiagram
 ## Progress log
 
 - 2026-10-21: Plan written (FULL_REVIEW_PLAN.md M2, FR-D20). Not started.
+- 2026-10-22: RPP1 built (migration `7f7bc3cb2b34`): `account.check_review_mode`, `CheckExceptionType.REVIEW`
+  (labelled *To review*), `CheckMatchInputs.review_all` from the account's mode, the protected change
+  `account.check_review_mode` (`admin:manage`, loosens on `reverse`, `settings.changed`), the account's
+  *Check review* page linked from the customer's accounts, and `check_review_mode` in the accounts
+  API (`202` while reverse waits for a second admin). **Changes from RPP-D1:** setting it is for the
+  bank's administrators only (`admin:manage`, never a customer's people), and the accounts bulk file
+  has no column for it: a protected change can't arrive in a file without its approval.
+

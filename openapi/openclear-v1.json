@@ -67,6 +67,9 @@
           "ach_debit_block_mode": {
             "$ref": "#/components/schemas/AchDebitBlockMode"
           },
+          "check_review_mode": {
+            "$ref": "#/components/schemas/CheckReviewMode"
+          },
           "customer_id": {
             "anyOf": [
               {
@@ -118,6 +121,7 @@
           "name",
           "customer_id",
           "ach_debit_block_mode",
+          "check_review_mode",
           "external_account_id"
         ],
         "title": "AccountRead",
@@ -134,6 +138,17 @@
                 "type": "null"
               }
             ]
+          },
+          "check_review_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckReviewMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "positive, or reverse positive pay: the customer reviews every check and unreturned ones are paid at the cut-off. Bank staff with admin:manage only; turning reverse on may wait for a second admin (202)."
           },
           "customer_number": {
             "anyOf": [
@@ -2220,6 +2235,14 @@
         ],
         "title": "CheckReturnReasonRead",
         "type": "object"
+      },
+      "CheckReviewMode": {
+        "enum": [
+          "positive",
+          "reverse"
+        ],
+        "title": "CheckReviewMode",
+        "type": "string"
       },
       "ControlCheck": {
         "properties": {
@@ -6285,7 +6308,7 @@
     },
     "/api/v1/accounts/{account_number}": {
       "put": {
-        "description": "Creates the account with this number, or updates it to match. `200` when it existed,\n`201` when it was created.",
+        "description": "Creates the account with this number, or updates it to match. `200` when it existed,\n`201` when it was created. Putting an account on reverse positive pay (`check_review_mode`)\nneeds admin:manage and a bank-level caller; when the bank's sensitive changes need a second\nadmin, the rest is saved and this answers `202` with `{\"status\": \"pending\", \"change_request_id\"}`.",
         "operationId": "upsert_account_api_v1_accounts__account_number__put",
         "parameters": [
           {
@@ -6328,6 +6351,18 @@
               }
             },
             "description": "Created"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "change_request_id": "\u2026",
+                  "detail": "\u2026",
+                  "status": "pending"
+                }
+              }
+            },
+            "description": "Saved, except reverse positive pay, which waits for a second admin (Settings \u2192 Changes)"
           },
           "422": {
             "content": {

@@ -24,6 +24,7 @@ export interface AccountAccessUpdate {
 export interface AccountRead {
   account_number: string;
   ach_debit_block_mode: AchDebitBlockMode;
+  check_review_mode: CheckReviewMode;
   customer_id: string | null;
   external_account_id: string | null;
   id: string;
@@ -33,6 +34,7 @@ export interface AccountRead {
 
 export interface AccountUpsert {
   ach_debit_block_mode?: AchDebitBlockMode | null;
+  check_review_mode?: CheckReviewMode | null;
   customer_number?: string | null;
   external_account_id?: string | null;
   name: string;
@@ -302,6 +304,8 @@ export interface CheckReturnReasonRead {
   reason_text: string;
   return_code: string | null;
 }
+
+export type CheckReviewMode = "positive" | "reverse";
 
 export interface ControlCheck {
   detail: string | null;
@@ -940,10 +944,12 @@ export class AccountsApi {
    * PUT /api/v1/accounts/{account_number}
    *
    * Creates the account with this number, or updates it to match. `200` when it existed,
-   * `201` when it was created.
+   * `201` when it was created. Putting an account on reverse positive pay (`check_review_mode`)
+   * needs admin:manage and a bank-level caller; when the bank's sensitive changes need a second
+   * admin, the rest is saved and this answers `202` with `{"status": "pending", "change_request_id"}`.
    */
-  upsertAccount(accountNumber: string, body: AccountUpsert): Promise<AccountRead> {
-    return this.c.call<AccountRead>("PUT", `/api/v1/accounts/${encodeURIComponent(String(accountNumber))}`, { json: body });
+  upsertAccount(accountNumber: string, body: AccountUpsert): Promise<AccountRead | unknown> {
+    return this.c.call<AccountRead | unknown>("PUT", `/api/v1/accounts/${encodeURIComponent(String(accountNumber))}`, { json: body });
   }
 }
 

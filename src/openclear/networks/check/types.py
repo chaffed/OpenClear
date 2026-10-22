@@ -19,6 +19,9 @@ class CheckExceptionType(str, enum.Enum):
     # A stop is on file for this check number, but for a different amount: a stop order names
     # the amount, so it may not be this check; a person decides (FULL_REVIEW_PLAN.md FR-D11).
     STOP_AMOUNT_MISMATCH = "stop_amount_mismatch"
+    # On a reverse positive pay account, every check is for the customer to review
+    # (REVERSE_POSITIVE_PAY_PLAN.md RPP-D2). Alone, it means no known problem: paid at the cut-off.
+    REVIEW = "review"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,3 +49,5 @@ class CheckMatchInputs:
     ocr_confidence: float | None = None
     # The active stop's amount, when it names one.
     active_stop_amount: Decimal | None = None
+    # The account is on reverse positive pay: every check is an item to review (RPP-D2).
+    review_all: bool = False
