@@ -28,7 +28,7 @@ backing the upload out reverses what the fixes created too.</p>
 <h2>Your own file format: layouts</h2>
 <p>An issued-check file that isn't in OpenClear's own columns (a different header, no header,
 a fixed-width file, or a spreadsheet) can be read with a <strong>layout</strong>. Build one
-under <a href="/ui/layouts">Settings → Issue-file layouts</a>:</p>
+under <a href="/ui/layouts">Settings → File layouts</a>:</p>
 <ol>
   <li>Choose a sample of your file and press <strong>Show sample</strong>.</li>
   <li>For a delimited or Excel file, choose what each column holds from the list above it. For a
@@ -42,6 +42,27 @@ under <a href="/ui/layouts">Settings → Issue-file layouts</a>:</p>
 bank's drop folder use your default layout too. A file that fails because its columns don't
 match offers to start a layout from that very file. A void line in an issue file voids the
 check already issued with that number, or records it as voided if it isn't on file yet.</p>
+
+<h2>Your core's posted-check file</h2>
+<p>For your bank's staff: the file of checks your core posts each day can be read the same way,
+with a <strong>posted-check layout</strong> (Settings → File layouts → <em>Posted checks</em>).
+Start from <em>Fixed-width with header and trailer</em>, <em>CSV with column names</em> or
+<em>MICR on-us line</em>, and match it to a sample of your file. A posted-check layout can
+also:</p>
+<ul>
+  <li>split the MICR on-us field into the account and check number, at a character such as /,
+    or by position;</li>
+  <li>read a transaction code, and leave out the lines that aren't check debits;</li>
+  <li>list your routing numbers, so a line for another one fails;</li>
+  <li>name the file's trailer and where its item count and total are. When they don't match
+    the lines, the whole file is refused and nothing in it is presented, so a truncated file
+    never presents half a day's checks.</li>
+</ul>
+<p>An amount written negative (a minus sign, or in brackets) is a reversal: it's left out and
+counted, never presented. The upload's page says how many lines were left out. Choose the layout
+on the paid-items upload page, or let the drop folder use it: the default posted-check layout
+reads <code>checks/tabular/inbox/</code>, and each layout has its own folder,
+<code>checks/layout/&lt;its name, lowercase with dashes&gt;/inbox/</code>.</p>
 
 <p>Start a bulk upload from the relevant feature's own page (for example,
 <a href="/ui/issued-items">Issued Items</a> or <a href="/ui/ach/transactions">ACH

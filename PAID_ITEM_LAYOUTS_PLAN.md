@@ -116,4 +116,9 @@ flowchart LR
   account as written (space-padded): dropping leading zeros broke accounts that have them. The
   "same check in two files" test runs in order rather than at once: FR2's concurrency test already
   covers two presentments at the same moment.
+- 2026-10-22: PIL3 written: the data dictionary (`import_layout.kind`, the posted-check settings), the
+  bulk-uploads guide's *Your core's posted-check file*, the README's layouts, the CHANGELOG. **Change:**
+  the bank CUEC B-SI-7-01 (*Reconcile presented items*) already covered reconciling files, so it says
+  a layout with a trailer does this and the bank reconciles files without one, rather than a new CUEC.
+  M1 is done.
 

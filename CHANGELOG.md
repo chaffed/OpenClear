@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Your core's posted-check file, read as it comes** (`PAID_ITEM_LAYOUTS_PLAN.md`). Settings →
+  *File layouts* (formerly *Issue-file layouts*) has a *Posted checks* tab, for the bank's staff:
+  a layout for the file of checks the core posts, fixed-width or delimited, built from a sample.
+  It can split the MICR on-us field into account and check number, leave out lines whose
+  transaction code isn't a check debit, leave out reversals (counted on the upload), check
+  routing numbers, and check the file's trailer: when its item count or total doesn't match the
+  lines, the whole file is refused, audited as `bulk_upload.refused` and raised as a `high`
+  security event. Use one on the paid-items upload page, with `POST /api/v1/bulk-uploads`
+  (`kind=paid_items`, `format=layout`), or in the drop folder: `checks/tabular/inbox/` reads
+  with the default posted-check layout, and each has its own `checks/layout/<name>/inbox/`.
+  `GET /api/v1/bulk-uploads/layouts` takes `kind` and returns each layout's `kind`.
+
 ## 1.27.0 — 2026-10-21
 
 - **Unauthorized debit statements are the bank's own form** (`SIMPLIFY_PLAN.md` SP1, the product

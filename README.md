@@ -290,16 +290,26 @@ array, not a file):
   entry by entry against Moov's open source ACH implementation on its sample files
   (`tests/fixtures/moov-ach/`).
 
-- **Layouts** (`bulk_import/layouts.py`, issued items): a customer's own format, described
-  once in Settings → Issue-file layouts: delimited (any delimiter, header or not, columns by
+- **Layouts** (`bulk_import/layouts.py`): a file in its own format, described once in
+  Settings → File layouts. Issued checks, in a customer's own (or the bank's) format; and the
+  posted-check file the bank's core sends (PAID_ITEM_LAYOUTS_PLAN.md), built by the bank's
+  staff only. Delimited (any delimiter, header or not, columns by
   name or position), fixed-width (start and length per field, an optional record prefix, and
   lines to skip for a header or trailer) or Excel (a sheet). Amounts with a decimal point,
   implied cents or a separate cents column; named date formats (`MMDDYY`, `YYYYMMDD`…); a
   void flag; leading zeros dropped if asked. The layout builder works from a sample file and
   previews the result before saving, and starts from a short library of common shapes. An
   upload records a copy of the layout it used. The web form, the API (`format=layout` with a
-  `layout_id`; `GET /api/v1/bulk-uploads/layouts`) and the drop folder (the default layout)
+  `layout_id`; `GET /api/v1/bulk-uploads/layouts?kind=…`) and the drop folder (the default layout)
   all use them.
+  A posted-check layout also reads the MICR on-us field (split at a character, or by
+  position), leaves out lines whose transaction code isn't a check debit and reversals
+  (counted on the upload), can list the bank's routing numbers, and can name the file's
+  trailer: when its item count or total doesn't match the lines, the whole file is refused
+  (`bulk_upload.refused`, a `high` security event), so a truncated file never presents half a
+  day's checks. In the drop folder, the bank's `checks/tabular/inbox/` reads with its default
+  posted-check layout, and each layout has its own `checks/layout/<name>/inbox/` (its name in
+  lowercase, with dashes).
 
 Every row/entry carries its own account number (not a single account picked once for the
 whole file) — resolved against your existing accounts, so one file can span multiple
