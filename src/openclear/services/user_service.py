@@ -3,7 +3,7 @@
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqlalchemy import func, select
@@ -13,7 +13,6 @@ from openclear.auth.password_policy import PasswordPolicy, context_words, effect
 from openclear.auth.security import hash_password, verify_password
 from openclear.bulk_import.fields import RowFieldError, optional_str, require_str
 from openclear.bulk_import.results import UserBulkRowResult
-from openclear.config import get_settings
 from openclear.db.tenancy import acting_as_tenant, memberships_elsewhere
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
@@ -458,11 +457,9 @@ def change_own_password(
 
     user = session.get(User, user_id)
     if not verify_password(current_password, user.hashed_password):
-        settings = get_settings()
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.login_max_failed_attempts:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.login_lockout_minutes)
-            notification_service.notify_account_locked(session, user)
+        from openclear.auth import lockout
+
+        lockout.record_failure(session, user, tenant)  # the bank's own lockout policy
         session.flush()
         raise PasswordChangeError("Your current password is incorrect.")
     if new_password == current_password:

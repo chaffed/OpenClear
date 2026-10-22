@@ -90,14 +90,14 @@ V6.2.9,Met,src/openclear/auth/password_policy.py; src/openclear/auth/breached_pa
 V6.2.10,Met,src/openclear/auth/password_policy.py; src/openclear/auth/breached_passwords.py; src/openclear/auth/security.py,
 V6.2.11,Met,src/openclear/auth/password_policy.py; src/openclear/auth/breached_passwords.py; src/openclear/auth/security.py,
 V6.2.12,Met,src/openclear/auth/password_policy.py; src/openclear/auth/breached_passwords.py; src/openclear/auth/security.py,
-V6.3.1,Met,src/openclear/auth/login_service.py,
+V6.3.1,Met,src/openclear/auth/login_service.py; src/openclear/auth/lockout.py,
 V6.3.2,Met,src/openclear/auth/login_service.py,
 V6.3.3,Met,src/openclear/auth/security_key_policy.py,A bank or customer requires a security key; SSO and embedded sign-ins rely on CUECs B-IA-2(2)-02 and -03.
 V6.3.4,Met,src/openclear/auth/login_service.py,
 V6.3.5,Met,src/openclear/services/device_service.py,Lockouts and sign-ins from a new browser are emailed (OW-D30).
 V6.3.6,Met,src/openclear/auth/login_service.py,
 V6.3.7,Met,src/openclear/auth/login_service.py,
-V6.3.8,Met,src/openclear/auth/login_service.py,
+V6.3.8,Met,src/openclear/auth/login_service.py; src/openclear/services/sign_in_links.py,
 V6.4.1,Met,src/openclear/services/password_reset_service.py; src/openclear/services/user_service.py,
 V6.4.2,Met,src/openclear/services/password_reset_service.py; src/openclear/services/user_service.py,
 V6.4.3,Met,src/openclear/services/password_reset_service.py; src/openclear/services/user_service.py,

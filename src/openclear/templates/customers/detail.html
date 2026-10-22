@@ -58,9 +58,6 @@
   {# The cut-off agreed with this customer (UI_PLAN.md UI-D13): blank uses the bank's. #}
   {% set network_names = {"check": "Checks", "ach": "ACH"} %}
   <h3>Cut-off</h3>
-  {% if not bank_time_zone %}
-  <p class="hint">Set the bank's decision cut-off and time zone in Settings first; a customer's own time is kept with it.</p>
-  {% endif %}
   {% if can(ctx, "tenant:manage") %}
   <form method="post" action="/ui/customers/{{ customer.id }}/cutoff" class="cutoff-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -80,7 +77,7 @@
 
 <div class="card">
   <div class="toolbar">
-    <h1>Setup checklist</h1>
+    <h2>Setup checklist</h2>
     <a href="/ui/customers/{{ customer.id }}/wizard" class="button secondary">{{ icon("checklist") }}Open checklist</a>
   </div>
   <p>A guided checklist for setting up this customer's accounts, users, and (optionally)
@@ -88,7 +85,7 @@
 </div>
 
 <div class="card">
-  <h1>Accounts</h1>
+  <h2>Accounts</h2>
   {% if accounts %}
   {% set columns = [
     {"key": "number", "label": "Account number", "role": "primary"},
@@ -98,7 +95,7 @@
   {% call(a, col, part="cell") rt.responsive_table(columns, accounts, attrs="data-sortable", id="account") -%}
     {%- if col.key == "number" %}{{ a.account_number }}
     {%- elif col.key == "name" %}{{ a.name }}
-    {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode.value }}</span>
+    {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode | status_label }}</span>
     {%- endif %}
   {%- endcall %}
   {% else %}
@@ -108,7 +105,7 @@
 </div>
 
 <div class="card">
-  <h1>Self-service</h1>
+  <h2>Self-service</h2>
   <p>Let {{ customer.name }}'s own administrators manage its people, sign-on and API clients. They can only give the roles
     you mark "offered to customers" ({{ offered_group_count }} now; see <a href="/ui/security-groups">Security groups</a>),
     and only within this customer. Turning one off stops it at once.</p>
@@ -156,7 +153,7 @@
 
 <div class="card">
   <div class="toolbar">
-    <h1>Single sign-on</h1>
+    <h2>Single sign-on</h2>
     <a href="/ui/customers/{{ customer.id }}/sso" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   {% if sso_connection_count %}
@@ -168,7 +165,7 @@
 
 <div class="card">
   <div class="toolbar">
-    <h1>Password Policy</h1>
+    <h2>Password Policy</h2>
     <a href="/ui/customers/{{ customer.id }}/password-policy" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <p>This customer can require a stricter password policy than the tenant's own baseline
@@ -178,7 +175,7 @@
 {% if can(ctx, "customer_banner:manage") %}
 <div class="card">
   <div class="toolbar">
-    <h1>Banner Message</h1>
+    <h2>Banner Message</h2>
     <a href="/ui/customers/{{ customer.id }}/banner" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <p>Shown in a persistent banner at the top of every page to this customer's own logged-in
@@ -189,7 +186,7 @@
 {% if can(ctx, "billing:manage") %}
 <div class="card">
   <div class="toolbar">
-    <h1>Billing terms</h1>
+    <h2>Billing terms</h2>
     <a href="/ui/customers/{{ customer.id }}/billing" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <p>Whether this customer is billed by account analysis, hard charge or is exempt, its
@@ -200,7 +197,7 @@
 {% if can(ctx, "data_export:run") %}
 <div class="card">
   <div class="toolbar">
-    <h1>Data export</h1>
+    <h2>Data export</h2>
     <a href="/ui/customers/{{ customer.id }}/data-export" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <p>Generate a downloadable archive of everything scoped to this customer, for
@@ -211,7 +208,7 @@
 {% if can(ctx, "wsud:read") %}
 <div class="card">
   <div class="toolbar">
-    <h1>Unauthorized Debit Statements</h1>
+    <h2>Unauthorized Debit Statements</h2>
     <a href="/ui/customers/{{ customer.id }}/wsud" class="button secondary">{{ icon("visibility") }}View</a>
   </div>
   <p>Written Statements of Unauthorized Debit this customer has signed, self-service,
@@ -222,7 +219,7 @@
 {% if ml_summary is not none %}
 <div class="card">
   <div class="toolbar">
-    <h1>ML scoring</h1>
+    <h2>ML scoring</h2>
     <a href="/ui/admin/customers/{{ customer.id }}/ml" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <table>

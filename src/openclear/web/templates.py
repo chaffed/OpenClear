@@ -94,6 +94,7 @@ _EXCEPTION_TYPE_LABELS = {
     "amount_mismatch": "Amount mismatch",
     "payee_mismatch": "Payee mismatch",
     "stale_dated": "Stale-dated",
+    "stop_amount_mismatch": "Stop on file for another amount",
     "unauthorized_originator": "Unauthorized originator",
     "receiver_id_not_permitted": "Receiver not authorized",
     "amount_exceeds_limit": "Over authorized amount",
@@ -123,7 +124,6 @@ _EXCEPTION_STATUS_LABELS = {
     "pending_approval": "Awaiting approval",
     "pay": "Paid",
     "return": "Returned",
-    "escalated": "Escalated",
     "withdrawn": "Withdrawn",
 }
 
@@ -151,6 +151,26 @@ def _fraud_risk(score: float | None) -> dict | None:
     return {"level": level, "badge": badge, "return_percent": round(return_chance * 100)}
 
 
+# Statuses and modes as people read them (FULL_REVIEW_PLAN.md FR-D15), for every enum a page shows
+# that has no filter of its own. Anything not listed reads as its value in words.
+_STATUS_LABELS = {
+    "outstanding": "Outstanding", "paid": "Paid", "voided": "Voided", "stopped": "Stopped", "stale": "Stale",
+    "active": "Active", "expired": "Expired", "cancelled": "Cancelled", "revoked": "Revoked",
+    "matched": "Matched", "exception": "Exception", "pending": "Pending", "returned": "Returned", "reversed": "Backed out",
+    "block_all": "Blocks every debit", "filter_by_authorization": "Allowed originators only",
+    "none": "Leave open", "fixed_pay": "Always pay", "fixed_return": "Always return", "ml_determined": "The model's score decides",
+    "auto": "Its own model once trained", "customer": "Its own model", "global": "The bank's model",
+    "succeeded": "Delivered", "failed": "Failed", "completed": "Done", "queued": "Waiting", "running": "Running",
+    "processing": "Processing", "rejected": "Rejected", "candidate": "Candidate", "retired": "Retired",
+}
+
+
+def _status_label(value) -> str:
+    code = str(getattr(value, "value", value) or "")
+    return _STATUS_LABELS.get(code, code.replace("_", " ").capitalize())
+
+
+templates.env.filters["status_label"] = _status_label
 templates.env.filters["exception_types"] = _exception_type_labels
 templates.env.filters["exception_status"] = _exception_status_label
 templates.env.globals["fraud_risk"] = _fraud_risk

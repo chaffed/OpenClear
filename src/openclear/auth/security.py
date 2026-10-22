@@ -66,6 +66,7 @@ def create_token(
     confined: bool = False,
     signed_in_with: str | None = None,
     authenticated_at: int | None = None,
+    refresh_id: uuid.UUID | None = None,
     settings: Settings | None = None,
 ) -> str:
     """The token only carries the security_group_id, not the permission set itself —
@@ -147,6 +148,10 @@ def create_token(
         # seconds: a sensitive change such as adding a security key needs it to be recent
         # (auth/deps.py::recently_signed_in). Carried, never renewed, by refresh and switch.
         payload["auth"] = authenticated_at
+    if refresh_id is not None:
+        # Each refresh token's own id: it's retired when used, and seeing it again means a copy
+        # (services/session_service.py::refresh_session; FULL_REVIEW_PLAN.md FR-D8).
+        payload["rid"] = str(refresh_id)
     private_key = load_private_key(settings.jwt_private_key_path)
     return jwt.encode(payload, private_key, algorithm=settings.jwt_algorithm)
 
@@ -219,7 +224,7 @@ def create_session_tokens(
     )
     return SessionTokens(
         access_token=create_token(token_type="access", expires_at=access_expires_at, **common),
-        refresh_token=create_token(token_type="refresh", expires_at=session_expires_at, **common),
+        refresh_token=create_token(token_type="refresh", expires_at=session_expires_at, refresh_id=uuid.uuid4(), **common),
         session_id=session_id,
         access_expires_at=access_expires_at,
         session_expires_at=session_expires_at,

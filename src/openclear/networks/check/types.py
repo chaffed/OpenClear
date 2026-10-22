@@ -16,6 +16,9 @@ class CheckExceptionType(str, enum.Enum):
     AMOUNT_MISMATCH = "amount_mismatch"
     PAYEE_MISMATCH = "payee_mismatch"
     STALE_DATED = "stale_dated"
+    # A stop is on file for this check number, but for a different amount: a stop order names
+    # the amount, so it may not be this check; a person decides (FULL_REVIEW_PLAN.md FR-D11).
+    STOP_AMOUNT_MISMATCH = "stop_amount_mismatch"
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,3 +44,5 @@ class CheckMatchInputs:
     payee_fuzzy_threshold: float
     ocr_payee: str | None = None
     ocr_confidence: float | None = None
+    # The active stop's amount, when it names one.
+    active_stop_amount: Decimal | None = None

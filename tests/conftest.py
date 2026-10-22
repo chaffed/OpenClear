@@ -60,6 +60,8 @@ def isolated_filesystem_settings(tmp_path, monkeypatch):
     # No default cut-off in tests: decisions are final when made unless a test sets a cut-off
     # (tests/test_decisions). Production refuses to start without one (config.assert_production_safe).
     monkeypatch.setenv("OPENCLEAR_DEFAULT_DECISION_CUTOFF", "")
+    # Every test signs in from the test client's one address; tests of the sign-in limit set their own.
+    monkeypatch.setenv("OPENCLEAR_LOGIN_ATTEMPTS_PER_MINUTE", "10000")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

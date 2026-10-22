@@ -16,7 +16,7 @@ from openclear.auth.security import decode_token
 from openclear.config import get_settings
 from openclear.db.account_scope import bind_session_to_accounts, membership_accounts
 from openclear.db.session import get_db
-from openclear.db.tenancy import TenantContext, bind_session_to_tenant, memberships_elsewhere
+from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.customer import Customer
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.security_group import SecurityGroup
@@ -210,13 +210,12 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         customer_banner_message=customer_banner_message,
         must_change_password=user.must_change_password,
         user_email=user.email,
-        other_organizations=0 if user.is_service_account else memberships_elsewhere(db, user_id, tenant_id),
+        # other_organizations and pending_approval_count are for the navigation, so web pages fill
+        # them in (web/deps.py::get_web_context); an API request doesn't pay for them
+        # (FULL_REVIEW_PLAN.md FR9, O1).
         session_id=uuid.UUID(payload["sid"]) if payload.get("sid") else None,
         access_expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
         session_expires_at=datetime.fromtimestamp(payload["sxp"], tz=timezone.utc) if payload.get("sxp") else None,
-        pending_approval_count=_pending_approval_count(db, tenant_id, customer_id, user_id)
-        if "exception:decide" in permissions
-        else 0,
         embed_parent_origin=(payload.get("emb") or {}).get("po"),
         confined=bool(payload.get("cfd")),
         signed_in_with=payload.get("am"),
@@ -351,8 +350,6 @@ def _acting_context(request: Request, db: Session, ctx: TenantContext, client, t
         customer_id=membership.customer_id, customer_name=customer.name if customer else None,
         customer_banner_message=customer.banner_message if customer else None, must_change_password=False,
         session_id=None, acting_api_client_id=client.id,
-        pending_approval_count=_pending_approval_count(db, ctx.tenant_id, membership.customer_id, target.id)
-        if "exception:decide" in permissions else 0,
     )
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         # The action's own audit entry names the person; this one shows a system did it for them.

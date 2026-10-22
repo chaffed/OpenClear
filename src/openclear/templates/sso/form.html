@@ -112,7 +112,7 @@
 
 {% if saml_urls %}
 <div class="card">
-  <h1>For your identity provider</h1>
+  <h2>For your identity provider</h2>
   <p>Set these up in your identity provider's application for OpenClear{{ ", or give it the metadata URL" if connection.protocol.value == "saml" else "" }}.</p>
   <dl>
     {% for label, url in saml_urls %}<dt>{{ label }}</dt><dd><code>{{ url }}</code></dd>{% endfor %}
@@ -122,7 +122,7 @@
 
 {% if connection %}
 <div class="card">
-  <h1>Directory provisioning (SCIM 2.0)</h1>
+  <h2>Directory provisioning (SCIM 2.0)</h2>
   <p>Let your directory create, update and deactivate people here, and push its groups (they're
     matched against the group mappings below). Deactivating someone in the directory ends their
     OpenClear sessions.</p>
@@ -153,7 +153,7 @@
 </div>
 
 <div class="card">
-  <h1>Group mappings</h1>
+  <h2>Group mappings</h2>
   {% if mappings %}
   <table>
     <thead><tr><th>External group</th><th>Security group</th><th data-type="number">Priority</th><th></th></tr></thead>

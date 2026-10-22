@@ -299,8 +299,18 @@ def open_invitation(session: Session, token: str) -> OpenInvitation | None:
                           password_sign_in=bool(tenant.password_login_enabled and customer.password_login_enabled))
 
 
+class InvitationTaken(PeopleError):
+    """Accepted by another request a moment ago: the caller rolls back everything this one did."""
+
+
 def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembership:
+    from openclear.db.claims import AlreadyUsed, claim_once
+
     invitation = opened.invitation
+    try:
+        claim_once(session, invitation, "accepted_at")  # before anything is made: a second accept stops here
+    except AlreadyUsed:
+        raise InvitationTaken("This invitation has already been accepted.") from None
     group = session.get(SecurityGroup, invitation.security_group_id)
     if group is None or not (group.offered_to_customers or _no_access(group)):
         raise PeopleError("This invitation's role is no longer offered. Ask for a new invitation.")
@@ -311,7 +321,7 @@ def _join(session: Session, opened: OpenInvitation, user: User) -> TenantMembers
     if not invitation.all_accounts:
         account_access_service.set_access(session, invitation.tenant_id, membership.id, all_accounts=False,
                                           account_ids=[uuid.UUID(a) for a in invitation.account_ids])
-    invitation.accepted_at, invitation.accepted_user_id = _now(), user.id
+    invitation.accepted_user_id = user.id
     session.flush()
     from openclear.services import customer_approval_service
 
@@ -340,9 +350,6 @@ def accept_as_new(session: Session, opened: OpenInvitation, password: str | None
 def accept_as_existing(session: Session, opened: OpenInvitation, current_password: str) -> tuple[User, TenantMembership]:
     """Someone who already signs in to OpenClear elsewhere proves it's them with their own
     password; only then are they added. A wrong password counts toward their lockout."""
-    from openclear.config import get_settings
-    from openclear.services import notification_service
-
     user = opened.existing_user
     if user is None or not user.is_active or user.is_service_account:
         raise PeopleError("This invitation can't be accepted. Ask for a new one.")
@@ -350,12 +357,10 @@ def accept_as_existing(session: Session, opened: OpenInvitation, current_passwor
     if user.locked_until is not None and _aware(user.locked_until) > now:
         raise PeopleError("Your sign-in is locked for now after too many attempts. Try again later.")
     if not verify_password(current_password or "", user.hashed_password):
-        # Counted toward the same lockout as a failed sign-in (auth/login_service.py).
-        settings = get_settings()
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.login_max_failed_attempts:
-            user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
-            notification_service.notify_account_locked(session, user)
+        # Counted toward the same lockout as a failed sign-in, by the inviting bank's policy.
+        from openclear.auth import lockout
+
+        lockout.record_failure(session, user, opened.tenant)
         session.flush()
         raise PeopleError("That isn't the password for this email.")
     user.failed_login_attempts, user.locked_until = 0, None

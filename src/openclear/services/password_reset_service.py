@@ -100,6 +100,8 @@ def complete(session: Session, opened: OpenReset, new_password: str) -> User:
     records the audited action and commits."""
     from openclear.services import notification_service, session_service, user_service
 
+    from openclear.db.claims import AlreadyUsed, claim_once
+
     user = opened.user
     policy = user_service.password_policy_for_user(session, user.id)
     if policy is not None:
@@ -107,9 +109,12 @@ def complete(session: Session, opened: OpenReset, new_password: str) -> User:
             validate_password(new_password, policy, context=user_service.password_context_for_user(session, user))
         except ValueError as exc:
             raise ResetError(str(exc)) from None
+    try:
+        claim_once(session, opened.reset)
+    except AlreadyUsed:
+        raise ResetError("This link has already been used. Ask your administrator for a new one.") from None
     user.hashed_password = hash_password(new_password)
     user.must_change_password = False
-    opened.reset.used_at = _now()
     session_service.revoke_all_sessions(session, user)
     notification_service.notify_password_changed(session, user, reset_by_admin=True)
     session.flush()

@@ -22,6 +22,16 @@
     <h1>Stop Payments</h1>
     {% if can(ctx, "stop_payment:write") %}<a href="/ui/stop-payments/new" class="button">{{ icon("add") }}New stop payment</a>{% endif %}
   </div>
+  <form method="get" action="/ui/stop-payments" class="toolbar toolbar-start">
+    <label class="field-l">Status
+      <select name="status" data-auto-submit>
+        <option value="">All</option>
+        {% for s in statuses %}<option value="{{ s }}" {{ "selected" if status_filter == s else "" }}>{{ s | status_label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="field-m">Check number <input type="text" name="number" value="{{ number_filter }}" inputmode="numeric" autocomplete="off"></label>
+    <button type="submit" class="secondary">Find</button>
+  </form>
   {% if page_obj.total_count > 0 %}
   {% set columns = [
     {"key": "number", "label": "Check #", "role": "primary"},
@@ -36,7 +46,7 @@
     {%- elif col.key == "amount" %}{{ stop.amount | currency or "any" }}
     {%- elif col.key == "effective" %}{{ stop.effective_date }}
     {%- elif col.key == "expires" %}{{ stop.expiration_date or "never" }}
-    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if stop.status.value == 'active' else '' }}">{{ stop.status.value }}</span>
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if stop.status.value == 'active' else '' }}">{{ stop.status | status_label }}</span>
     {%- elif col.key == "actions" and stop.status.value == "active" and can(ctx, "stop_payment:write") %}
           <form method="post" action="/ui/stop-payments/{{ stop.id }}/cancel" class="inline-form" data-confirm="Cancel this stop payment?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -46,7 +56,7 @@
   {%- endcall %}
   {{ pg.pager(page_obj, request) }}
   {% else %}
-  <p>No stop payments yet.</p>
+  <p>{% if status_filter or number_filter %}No stop payments match. <a href="/ui/stop-payments">Show them all</a>.{% else %}No stop payments yet.{% endif %}</p>
   {% endif %}
 </div>
 {% endblock %}

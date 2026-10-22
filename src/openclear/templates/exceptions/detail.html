@@ -54,7 +54,8 @@
 {% block help_body %}
 <p>Compare what was expected with what was presented. Fields that don't match are
   highlighted. Then choose <strong>Pay</strong> (release the item as if it had matched) or
-  <strong>Return</strong> (send it back unpaid). A decision can't be changed afterwards.</p>
+  <strong>Return</strong> (send it back unpaid). You can change or take back a decision until the
+  item's cut-off; then it becomes final and goes to the bank within a minute.</p>
 <p><strong>Fraud risk</strong> is the model's estimate of how likely this item is to need
   returning, based on past decisions. It's advisory; you make the call.</p>
 <p>In a dual-control organization, a recommendation is submitted first and a
@@ -103,7 +104,7 @@
   <p class="decision-state" data-decision-state="changeable">{{ icon("schedule") }}You can change this until
     <time datetime="{{ changeable_until | iso_utc }}" data-local-time>{{ changeable_until.strftime("%Y-%m-%d %H:%M") }} UTC</time>
     (<time datetime="{{ changeable_until | iso_utc }}" data-relative-time>{{ changeable_until.strftime("%Y-%m-%d %H:%M") }} UTC</time>).
-    At the cut-off it becomes final and goes to the bank.</p>
+    At the cut-off it becomes final and goes to the bank within a minute.</p>
   {% elif decision.locked_at %}
   <p class="decision-state" data-decision-state="final">{{ icon("check_circle") }}Final since
     <time datetime="{{ decision.locked_at | iso_utc }}" data-local-time>{{ decision.locked_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.</p>
@@ -212,7 +213,7 @@
       <div class="card decision-card">
         <h2 class="decision-heading">{{ "Approve recommendation" if item.status.value == "pending_approval" else "Decide" }}</h2>
         {% if item.status.value != "pending_approval" %}<p class="hint decision-hint">Pay releases it as if it had matched; Return sends it back unpaid.
-          {% if evidence and evidence.deadline %}You can change your decision until the cut-off.{% else %}A decision can't be changed afterwards.{% endif %}</p>{% endif %}
+          {% if item.decision_deadline and (minutes_until(item.decision_deadline) or 0) > 0 %}You can change your decision until the cut-off.{% else %}The cut-off has passed, so a decision is final at once.{% endif %}</p>{% endif %}
         {{ decision_panel(item, "/ui/exceptions/" ~ item.id ~ "/decide", "approve" if item.status.value == "pending_approval" else "decide",
                           return_reasons, recommended_return_reason_id, pay_confirm, risk) }}
       </div>
@@ -260,7 +261,7 @@
   <summary><h2>More about this exception</h2></summary>
   <div class="fact-grid">
     <div><span class="fact-label">Status</span>
-      <span class="badge {{ 'badge-ok' if item.status.value == 'pay' else 'badge-danger' if item.status.value in ['return','escalated'] else '' if item.status.value == 'withdrawn' else 'badge-warn' }}">{{ item.status | exception_status }}</span></div>
+      <span class="badge {{ 'badge-ok' if item.status.value == 'pay' else 'badge-danger' if item.status.value == 'return' else '' if item.status.value == 'withdrawn' else 'badge-warn' }}">{{ item.status | exception_status }}</span></div>
     <div><span class="fact-label">Why it's here</span> {{ item.exception_types | exception_types }}</div>
     <div><span class="fact-label">Fraud risk</span>
       {% if risk %}<span class="badge {{ risk.badge }}">{{ risk.level }}</span>

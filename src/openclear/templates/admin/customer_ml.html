@@ -84,7 +84,7 @@
 </div>
 
 <div class="card">
-  <h1>Default disposition — {{ customer.name }}</h1>
+  <h2>Default disposition — {{ customer.name }}</h2>
   <table>
     <thead><tr><th>Network</th><th>Mode</th><th>ACH return reason</th><th></th></tr></thead>
     <tbody>
@@ -99,7 +99,7 @@
         <td>
           <select name="mode" form="{{ form_id }}">
             {% for m in disposition_modes %}
-            <option value="{{ m.value }}" {{ "selected" if m == row.mode else "" }}>{{ m.value | replace("_", " ") | capitalize }}</option>
+            <option value="{{ m.value }}" {{ "selected" if m == row.mode else "" }}>{{ m | status_label }}</option>
             {% endfor %}
           </select>
         </td>
@@ -121,7 +121,7 @@
 </div>
 
 <div class="card">
-  <h1>Model history for {{ customer.name }}</h1>
+  <h2>Model history for {{ customer.name }}</h2>
   {% if models %}
   <table data-sortable>
     <thead><tr><th>Network</th><th>Version</th><th>Status</th><th data-type="number">Trained on</th><th>Metrics</th><th>Why</th><th></th></tr></thead>
@@ -130,7 +130,7 @@
       <tr>
         <td>{{ m.network_code }}</td>
         <td>{{ m.version }}</td>
-        <td><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status.value }}</span></td>
+        <td><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status | status_label }}</span></td>
         <td>{{ m.trained_from_decision_count }} decisions</td>
         <td>{{ format_metrics(m.metrics_json) }}</td>
         <td class="hint">{{ ((m.metrics_json or {}).get("evaluation") or {}).get("reason", "") }}</td>

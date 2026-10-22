@@ -2,6 +2,7 @@
 # Copyright (C) 2026 Chaffed
 
 import enum
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,6 +20,8 @@ from openclear.repositories.ach_return_reason_repo import AchReturnReasonReposit
 from openclear.repositories.decision_repo import DecisionRepository
 from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import decision_feed_service, notification_service, webhook_service
+
+logger = logging.getLogger(__name__)
 
 
 class DecisionError(str, enum.Enum):
@@ -90,6 +93,12 @@ def _resolve_ach_return_reason(
     return _ResolvedReason(reason_code=reason.reason_text, transaction_code=reason.transaction_code), None
 
 
+def _locked(session: Session, tenant_id: uuid.UUID, exception_id: uuid.UUID, ctx: TenantContext) -> ExceptionItem | None:
+    """The item in the caller's scope, locked until the transaction ends (FULL_REVIEW_PLAN.md
+    FR-D1). Every entry point below starts here, so its checks read what it will change."""
+    return ExceptionRepository(session, tenant_id, ctx.customer_id).get_for_update(exception_id)
+
+
 def submit_recommendation(
     session: Session,
     tenant_id: uuid.UUID,
@@ -102,8 +111,7 @@ def submit_recommendation(
     ach_return_reason_id: uuid.UUID | None = None,
     check_return_reason_id: uuid.UUID | None = None,
 ) -> ServiceResult:
-    repo = ExceptionRepository(session, tenant_id, ctx.customer_id)
-    exception = repo.get(exception_id)
+    exception = _locked(session, tenant_id, exception_id, ctx)
     if exception is None:
         return ServiceResult(None, None, DecisionError.NOT_FOUND)
     if exception.status == ExceptionStatus.WITHDRAWN:
@@ -136,7 +144,7 @@ def withdraw_recommendation(session: Session, tenant_id: uuid.UUID, exception_id
     """Takes back one's own recommendation before anyone has approved it (MOBILE_PLAN.md R2: a
     phone's Undo): the exception is open again, as if it had never been recommended. A
     decision is never undone, and nobody withdraws someone else's recommendation."""
-    exception = ExceptionRepository(session, tenant_id, ctx.customer_id).get(exception_id)
+    exception = _locked(session, tenant_id, exception_id, ctx)
     if exception is None:
         return ServiceResult(None, None, DecisionError.NOT_FOUND)
     if exception.status != ExceptionStatus.PENDING_APPROVAL:
@@ -175,13 +183,16 @@ def decide(
     anywhere, now the queryable signal services/wsud_service.py's eligibility check
     relies on."""
     tenant = session.get(Tenant, tenant_id)
-    exception_repo = ExceptionRepository(session, tenant_id, ctx.customer_id)
-    exception = exception_repo.get(exception_id)
+    exception = _locked(session, tenant_id, exception_id, ctx)
     if exception is None:
         return ServiceResult(None, None, DecisionError.NOT_FOUND)
     if exception.status == ExceptionStatus.WITHDRAWN:
         return ServiceResult(None, None, DecisionError.WITHDRAWN)
     if exception.status in (ExceptionStatus.PAY, ExceptionStatus.RETURN):
+        return ServiceResult(None, None, DecisionError.ALREADY_DECIDED)
+    if DecisionRepository(session, tenant_id).get_by_exception(exception.id) is not None:
+        # Can't happen with the lock above; if a row somehow exists anyway, say so plainly
+        # rather than fail on the unique constraint.
         return ServiceResult(None, None, DecisionError.ALREADY_DECIDED)
 
     # Segregation of duties (auth/sod.py): raises SodViolation in enforce mode, logs either way.
@@ -282,7 +293,7 @@ def _revise(session: Session, decision: Decision, exception: ExceptionItem, user
 
 def _changeable_decision(session: Session, tenant_id: uuid.UUID, exception_id: uuid.UUID, ctx: TenantContext
                          ) -> tuple[ExceptionItem | None, Decision | None, DecisionError | None]:
-    exception = ExceptionRepository(session, tenant_id, ctx.customer_id).get(exception_id)
+    exception = _locked(session, tenant_id, exception_id, ctx)
     if exception is None:
         return None, None, DecisionError.NOT_FOUND
     decision = DecisionRepository(session, tenant_id).get_by_exception(exception.id) if exception.status in (
@@ -385,17 +396,35 @@ def revisions(session: Session, tenant_id: uuid.UUID, exception_id: uuid.UUID) -
 
 
 def lock_due(session: Session, now: datetime | None = None) -> int:
-    """At the cut-off (the deadline sweep, workers/tasks.py): locks every decision whose item's
-    deadline has passed, across banks. Returns how many."""
+    """At the cut-off (workers/tasks.py::decision_lock_job, and the deadline sweep): locks every
+    decision whose item's deadline has passed, across banks, committing each on its own so one
+    failure doesn't hold the rest back (FULL_REVIEW_PLAN.md FR-D5); a failure rolls the session
+    back, so call it with nothing of your own uncommitted. Each item is taken with
+    the same row lock a person changing it takes, skipping one that's busy (the next run gets
+    it), and checked again once held: a decision taken back a moment before isn't sent.
+    Returns how many locked."""
     from openclear.db.tenancy import bind_session_to_tenant
 
     now = now or datetime.now(timezone.utc)
-    rows = session.execute(select(Decision, ExceptionItem).join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id).where(
+    due = session.execute(select(ExceptionItem.id, ExceptionItem.tenant_id).join(
+        Decision, Decision.exception_item_id == ExceptionItem.id).where(
         Decision.locked_at.is_(None), ExceptionItem.decision_deadline.is_not(None), ExceptionItem.decision_deadline <= now)).all()
-    for decision, exception in rows:
-        bind_session_to_tenant(session, exception.tenant_id)
-        lock(session, decision, exception)
-    return len(rows)
+    locked = 0
+    for exception_id, tenant_id in due:
+        bind_session_to_tenant(session, tenant_id)
+        try:
+            exception = ExceptionRepository(session, tenant_id).get_for_update(exception_id, skip_locked=True)
+            decision = DecisionRepository(session, tenant_id).get_by_exception(exception_id) if exception is not None else None
+            deadline = _aware(exception.decision_deadline) if exception is not None else None
+            if decision is None or decision.locked_at is not None or deadline is None or deadline > now:
+                continue  # busy, taken back or already final; any row lock held ends with the next commit
+            lock(session, decision, exception)
+            session.commit()
+            locked += 1
+        except Exception:  # noqa: BLE001 -- one item's failure never holds the others; tried again next run
+            session.rollback()
+            logger.exception("Locking the decision on exception %s failed", exception_id)
+    return locked
 
 
 def get_decision_for_exception(

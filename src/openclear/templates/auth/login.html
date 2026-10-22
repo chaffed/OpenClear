@@ -41,7 +41,8 @@
       <input type="text" name="tenant_slug" value="{{ tenant_slug or '' }}" required autofocus autocomplete="organization"
         autocapitalize="none" spellcheck="false" aria-describedby="org-hint">
     </label>
-    <p class="hint" id="org-hint">The short name in your organization's sign-in link, such as <code>riverside-bank</code>.</p>
+    <p class="hint" id="org-hint">The short name in your organization's sign-in link, such as <code>riverside-bank</code>.
+      <a href="/ui/login/find">Don't know it? We'll email you your sign-in links.</a></p>
     {% endif %}
     <label>
       Email

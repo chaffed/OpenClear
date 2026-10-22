@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Find your sign-in — OpenClear{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Find your sign-in</h1>
+  {% if sent_to is defined %}
+  <p role="status">If <strong class="wrap-anywhere">{{ sent_to }}</strong> has an OpenClear sign-in, we've emailed it a link for
+    each organization it belongs to. It should arrive in a minute or two; check your spam folder if it doesn't.</p>
+  <p><a href="/ui/login">Back to sign in</a></p>
+  {% else %}
+  <p>Enter the email address you sign in with. We'll email it the sign-in link for each organization you belong to,
+    already filled in, so you don't need to know its short name.</p>
+  <form method="post" action="/ui/login/find">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Email <input type="email" name="email" required autocomplete="username" autofocus></label>
+    <button type="submit">{{ icon("send") }}Email my sign-in links</button>
+  </form>
+  <p><a href="/ui/login">Back to sign in</a></p>
+  {% endif %}
+</div>
+{% endblock %}

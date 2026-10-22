@@ -1,4 +1,4 @@
-{{ count }} item{{ "s" if count != 1 else "" }} at {{ bank_name }} still need{{ "" if count != 1 else "s" }} a pay or return decision. {% if due_in %}The first is due in {{ due_in }}.{% endif %}
+{{ count }} item{{ "s" if count != 1 else "" }} at {{ bank_name }} still need{{ "" if count != 1 else "s" }} a pay or return decision. {% if due_in %}The first is due in {{ due_in }}{% if due_at %} (at {{ due_at }}){% endif %}.{% endif %}
 
 Decide them here: {{ queue_url }}
 

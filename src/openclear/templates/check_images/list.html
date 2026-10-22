@@ -20,6 +20,14 @@
     {% if can(ctx, "check_image:write") %}<a href="/ui/check-images/upload" class="button">{{ icon("upload") }}Upload check image</a>{% endif %}
     {% if can(ctx, "check_image:write") and can(ctx, "paid_item:write") %}<a href="/ui/check-images/bulk" class="button not-phone">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
   </div>
+  <form method="get" action="/ui/check-images" class="toolbar toolbar-start">
+    <label class="field-l">Reading the image
+      <select name="ocr" data-auto-submit>
+        <option value="">All</option>
+        {% for s in ocr_statuses %}<option value="{{ s }}" {{ "selected" if ocr_filter == s else "" }}>{{ s | status_label }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
   {% if page_obj.total_count > 0 %}
   <table data-sortable>
     <thead><tr><th>Uploaded</th><th>OCR status</th><th>Extracted payee</th><th data-type="number">Extracted amount</th></tr></thead>
@@ -27,7 +35,7 @@
       {% for image in page_obj.items %}
       <tr>
         <td><a href="/ui/check-images/{{ image.id }}">{{ image.created_at.strftime("%Y-%m-%d %H:%M") }}</a></td>
-        <td><span class="badge {{ 'badge-ok' if image.ocr_status.value == 'completed' else 'badge-danger' if image.ocr_status.value == 'failed' else 'badge-warn' }}">{{ image.ocr_status.value }}</span></td>
+        <td><span class="badge {{ 'badge-ok' if image.ocr_status.value == 'completed' else 'badge-danger' if image.ocr_status.value == 'failed' else 'badge-warn' }}">{{ image.ocr_status | status_label }}</span></td>
         <td>{{ image.ocr_extracted_payee or "—" }}</td>
         <td>{{ image.ocr_extracted_amount | currency or "—" }}</td>
       </tr>

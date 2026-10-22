@@ -29,7 +29,7 @@
       <tr>
         <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") if d.created_at else "" }}</td>
         <td><code>{{ d.event_type }}</code></td>
-        <td><span class="badge {{ 'badge-ok' if d.status.value == 'succeeded' else ('badge-danger' if d.status.value == 'failed' else 'badge-warn') }}">{{ d.status.value }}</span>
+        <td><span class="badge {{ 'badge-ok' if d.status.value == 'succeeded' else ('badge-danger' if d.status.value == 'failed' else 'badge-warn') }}">{{ d.status | status_label }}</span>
           {% if d.next_attempt_at and d.status.value == "pending" %}<br><span class="text-muted">next try {{ d.next_attempt_at.strftime("%H:%M") }}</span>{% endif %}</td>
         <td>{{ d.attempts }}</td>
         <td>{{ d.last_status_code or "" }} {{ d.last_error or "" }}</td>

@@ -49,6 +49,7 @@ def create_stop_payment(
     )
     repo.add(stop)
     session.flush()
+    sync_issued_status(session, tenant_id, stop.account_id, stop.check_number)
     return stop
 
 
@@ -61,7 +62,31 @@ def cancel_stop_payment(
         return None
     stop.status = StopPaymentStatus.CANCELLED
     session.flush()
+    sync_issued_status(session, tenant_id, stop.account_id, stop.check_number)
     return stop
+
+
+def sync_issued_status(session: Session, tenant_id: uuid.UUID, account_id: uuid.UUID, check_number: str) -> None:
+    """The issued check a stop names shows "stopped" while an active stop covers it, and
+    "outstanding" again once none does (FULL_REVIEW_PLAN.md FR-D10). A paid, voided or stale
+    check keeps its status. Matching doesn't read this: it reads the stops themselves."""
+    from datetime import date as _date
+
+    from sqlalchemy import select
+
+    from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
+
+    item = session.execute(select(IssuedItem).where(IssuedItem.tenant_id == tenant_id, IssuedItem.account_id == account_id,
+                                                    IssuedItem.check_number == check_number)).scalar_one_or_none()
+    if item is None or item.status not in (IssuedItemStatus.OUTSTANDING, IssuedItemStatus.STOPPED):
+        return
+    today = _date.today()
+    covered = any(s.effective_date <= today and (s.expiration_date is None or s.expiration_date >= today)
+                  for s in session.execute(select(StopPayment).where(
+                      StopPayment.tenant_id == tenant_id, StopPayment.account_id == account_id, StopPayment.check_number == check_number,
+                      StopPayment.status == StopPaymentStatus.ACTIVE)).scalars())
+    item.status = IssuedItemStatus.STOPPED if covered else IssuedItemStatus.OUTSTANDING
+    session.flush()
 
 
 def list_stop_payments(

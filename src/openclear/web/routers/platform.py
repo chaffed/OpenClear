@@ -18,6 +18,7 @@ from openclear.domain.user import User
 from openclear.services import operator_service, support_access_service
 from openclear.web import platform_session
 from openclear.web.deps import render_template
+from openclear.web.rate_limit import rate_limit
 from openclear.web.redirects import see_other
 from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
 
@@ -31,7 +32,8 @@ def login_form(request: Request) -> HTMLResponse:
 
 @router.post("/login")
 def login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db),
-          _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+          _csrf: None = Depends(verify_csrf),
+          _limit: None = Depends(rate_limit("login", limit_setting="login_attempts_per_minute"))) -> HTMLResponse:
     user = login_service.authenticate_platform(db, email, password)
     db.commit()
     if user is None:

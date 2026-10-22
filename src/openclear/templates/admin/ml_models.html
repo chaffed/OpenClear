@@ -75,7 +75,7 @@
       <tr>
         <td data-label="Network" class="cell-primary">{{ m.network_code }}</td>
         <td data-label="Version" class="cell-meta">{{ m.version }}</td>
-        <td data-label="Status" class="cell-status"><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status.value }}</span></td>
+        <td data-label="Status" class="cell-status"><span class="badge {{ 'badge-ok' if m.status.value == 'active' else 'badge-danger' if m.status.value == 'failed' else '' }}">{{ m.status | status_label }}</span></td>
         <td data-label="Trained on" class="cell-meta">{{ m.trained_from_decision_count }} decisions</td>
         <td data-label="Metrics" class="cell-meta">{{ format_metrics(m.metrics_json) }}</td>
         <td data-label="Why" class="cell-text hint">{{ ((m.metrics_json or {}).get("evaluation") or {}).get("reason", "") }}</td>

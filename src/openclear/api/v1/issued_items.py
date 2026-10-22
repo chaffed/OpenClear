@@ -149,7 +149,10 @@ def void_issued_item(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("issued_item:write")),
 ) -> IssuedItemRead:
-    item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, payload.reason, scoped_customer_id=ctx.customer_id)
+    try:
+        item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, payload.reason, scoped_customer_id=ctx.customer_id)
+    except issued_item_service.CantVoid as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Issued item not found")
     audit_log_service.record_action(

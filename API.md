@@ -57,6 +57,11 @@ Body: `{"refresh_token": "..."}`. Returns a new `TokenResponse` (`access_token` 
 group and active status — not whatever was true when the refresh token was issued — so a
 permission change or deactivation takes effect the next time a client refreshes.
 
+**A refresh token works once.** Keep the `refresh_token` each refresh returns and use that next
+time. Presenting a used one again within a minute is allowed (two requests refreshing together);
+after that it's taken as a copy, the whole session is ended (the newer tokens stop working too),
+and the bank's security team sees `auth.session.reuse_detected`. Sign in again to start a new one.
+
 ### API clients (for a bank's systems)
 
 A bank's own systems (its core, its online banking provider, its middleware) sign in with
@@ -444,41 +449,52 @@ non-match becomes an exception item.
 
 ### Exceptions and decisions — `/api/v1/exceptions`
 
-Read-only inventory:
-
 | method | path | permission | notes |
 |---|---|---|---|
-| GET | `` | `exception:read` | query: `network_code`, `status_filter` |
+| GET | `` | `exception:read` | query: `network_code`, `status_filter`, `customer_number`, paging, `updated_since` |
 | GET | `/{exception_id}` | `exception:read` | |
+| POST | `/{exception_id}/recommend` | `exception:recommend` | under dual control, the maker's step — body: `RecommendRequest` |
+| POST | `/{exception_id}/decide` | `exception:decide` | body: `DecideRequest` |
+| GET | `/{exception_id}/decision` | `exception:read` | the decision, `404` if none yet |
+| PUT | `/{exception_id}/decision` | `exception:decide` (`exception:recommend` to propose under dual control) | change it before the cut-off; `409` once final |
+| DELETE | `/{exception_id}/decision` | `exception:decide` | take it back before the cut-off (not under dual control) |
+| GET | `/{exception_id}/decision/history` | `exception:read` | every earlier version, oldest first |
 
-`ExceptionRead`: `id`, `network_code`, `source_item_id`, `related_reference_id`,
-`exception_types` (list of strings), `status` (`open` / `pending_approval` / `pay` /
-`return` / `escalated` / `withdrawn`), `ml_score` (optional), `ml_model_version`
-(optional), `decision_deadline` (optional), `created_at`.
+`customer_number` narrows a bank-wide caller to one customer; a customer's own caller only ever
+sees its own, and naming another answers `403`.
 
-Maker/checker decisioning:
+`ExceptionRead`: `id`, `network_code`, `customer_id`, `source_item_id`, `related_reference_id`,
+`exception_types` (list of strings), `status` (`open` / `pending_approval` / `pay` / `return` /
+`withdrawn`), `ml_score`, `ml_model_version`, `decision_deadline`, `decision_final`,
+`changeable_until`, `created_at`, `updated_at`. Act only on a final decision
+(`decision_final`), or take decisions from the feed, webhooks or decision files, which carry
+only final ones.
 
-| method | path | permission | notes |
-|---|---|---|---|
-| POST | `/{exception_id}/recommend` | `exception:recommend` | maker's first pass — body: `RecommendRequest` |
-| POST | `/{exception_id}/decide` | `exception:decide` | checker's final call — body: `DecideRequest` |
-| GET | `/{exception_id}/decision` | `exception:read` | fetch the recorded decision, `404` if none yet |
+`RecommendRequest` and `DecideRequest`: `outcome` (`pay` / `return`), `reason_code`, `notes`,
+`ach_return_reason_id` (required to return an ACH debit), `check_return_reason_id` (optional, for
+a check: the bank's reason instead of free text). The ids come from the return reasons below.
 
-Both `RecommendRequest` and `DecideRequest`: `outcome` (`pay` / `return`),
-`reason_code`, `notes` (optional).
+`DecisionRead`: `id`, `exception_item_id`, `outcome`, `reason_code`, `return_transaction_code`,
+`notes`, `submitted_by_user_id` (the maker, if any), `decided_by_user_id` (none for an automatic
+default), `decided_at`, `locked_at` (when it became final), `changeable_until`, `change_pending`.
 
-Error responses specific to decisioning (all `HTTPException` with a matching status):
+Errors:
 
 | condition | status |
 |---|---|
 | exception not found | `404` |
-| exception already has a final decision | `409` |
-| `/decide` called before a recommendation exists | `409` |
-| the same user who recommended tries to also decide (maker/checker segregation) | `403` |
+| already decided (including by someone else a moment before) | `409` |
+| `/decide` before a recommendation, under dual control | `409` |
+| the maker approving their own recommendation | `403` |
+| no return reason, or one that's inactive | `422` |
+| changing a decision after its cut-off | `409`, with when it became final |
 
-`DecisionRead`: `id`, `exception_item_id`, `outcome`, `reason_code`, `notes`,
-`submitted_by_user_id` (the maker, if any), `decided_by_user_id` (the checker),
-`decided_at`.
+### Return reasons — `/api/v1/return-reasons`
+
+| method | path | permission | notes |
+|---|---|---|---|
+| GET | `/check` | `exception:read` | the bank's active check return reasons: `id`, `reason_text`, `return_code` |
+| GET | `/ach` | `exception:read` | the bank's active ACH return reasons: `id`, `reason_text`, `transaction_code` |
 
 ### Customers and accounts — `/api/v1/customers`, `/api/v1/accounts`
 
@@ -531,14 +547,15 @@ These endpoints are for bank-wide callers only.
 
 Every pay or return decision, in order, with what a core needs to pay or return the item,
 so it can act before the deadline without reading exceptions one by one. Each live
-decision gets the bank's next `sequence` (1, 2, 3...) when it's made, human or automatic.
+decision gets the bank's next `sequence` (1, 2, 3...) when it becomes final, at its cut-off
+(within a minute of it), human or automatic.
 Numbers become visible in order, so reading "everything after N" never skips one. Fraud
 training examples aren't items and aren't in the feed. Needs `exception:read`; a
 customer-scoped caller sees only its customer's decisions.
 
 | method | path | notes |
 |---|---|---|
-| GET | `?after=N&limit=500` | decisions with `sequence > after`, oldest first (`limit` up to 1,000). `X-Latest-Sequence` gives the newest; a full page has `Link: rel="next"`. Keep the last sequence you processed and pass it as `after` |
+| GET | `?after=N&limit=500` | decisions with `sequence > after`, oldest first (`limit` up to 1,000). `customer_number=` limits a bank-wide caller to one customer; the sequence is still the bank's, so expect gaps. `X-Latest-Sequence` gives the newest; a full page has `Link: rel="next"`. Keep the last sequence you processed and pass it as `after` |
 | GET | `/feed.csv?after=N` | the same as a CSV file (up to 10,000 rows), for a core that takes files |
 | GET | `/file?layout=openclear_csv&after=N` | the same in a decision file layout: `openclear_csv`, or one a plugin provides that the bank turned on ([docs/PLUGINS.md](docs/PLUGINS.md)). `X-Last-Sequence` is the last decision in the file |
 | POST | `/acknowledge` | `{"consumer": "core", "through_sequence": N}`: confirm a consumer processed through N. Only moves forward, never past the newest; bank-wide callers only; audit-logged |

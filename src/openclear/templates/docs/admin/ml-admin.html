@@ -45,7 +45,12 @@ one agreed with the customer (see <a href="/ui/docs/admin/customers-accounts#cut
 model data to score an item, it's skipped rather than guessed — it stays open for a human
 to review rather than risk an under-informed automatic decision.</p>
 
-<p>A scheduled sweep applies these defaults to any exception whose window has expired;
+<p>When sensitive settings need a second admin, choosing <strong>pay</strong> or the model's
+score as a customer's default waits for someone else to approve it, as the cut-off does: either
+one pays items nobody looked at. Leaving items open, or returning them, applies at once. Changing
+which model scores a customer's items waits too.</p>
+
+<p>A scheduled sweep applies these defaults to any exception whose cut-off has passed;
 decisions it makes are marked as automatic in the audit log and exception history, so
 they're always distinguishable from a human's decision.</p>
 {% endblock %}

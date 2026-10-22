@@ -92,6 +92,7 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
         raise WebAuthRequired(next_path=_return_path(request)) from None
     if ctx.must_change_password and request.url.path != PASSWORD_CHANGE_PATH:
         raise WebPasswordChangeRequired()
+    ctx = _navigation_counts(db, ctx)
     if "exception:read" in ctx.permissions:
         import dataclasses
 
@@ -117,6 +118,21 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
             ctx.embed_parent_origin if embed_service.origin_allowed(db, ctx.tenant_id, ctx.embed_parent_origin) else None
         )
     return ctx
+
+
+def _navigation_counts(db: Session, ctx: TenantContext) -> TenantContext:
+    """What only the navigation shows: approvals waiting on this person, and whether they belong
+    to another organization. Worked out for web pages only, not for every API request."""
+    import dataclasses
+
+    from openclear.auth.deps import _pending_approval_count
+    from openclear.db.tenancy import memberships_elsewhere
+    from openclear.domain.user import User
+
+    user = db.get(User, ctx.user_id)
+    elsewhere = 0 if ctx.support_grant_id or (user is not None and user.is_service_account) else memberships_elsewhere(db, ctx.user_id, ctx.tenant_id)
+    pending = _pending_approval_count(db, ctx.tenant_id, ctx.customer_id, ctx.user_id) if "exception:decide" in ctx.permissions else 0
+    return dataclasses.replace(ctx, other_organizations=elsewhere, pending_approval_count=pending)
 
 
 def get_mfa_pending_web_context(request: Request, db: Session = Depends(get_db)) -> TenantContext:

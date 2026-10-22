@@ -107,3 +107,22 @@ redirects straight into this checklist at `/ui/customers/{id}/wizard`.
 - **Audit log**: every setup action above is recorded in the tamper-evident action log
   (`/ui/audit-log`, `audit_log:read` permission) — useful for confirming exactly who
   configured what, and when.
+
+## Monitoring (for the service provider)
+
+Scrape `GET /api/v1/platform/metrics` every minute with a platform API key that has the
+`operations` scope (header `X-Api-Key`). It answers in the Prometheus text format. Alert on:
+
+| Metric | Alert when | What it means |
+|---|---|---|
+| `openclear_decisions_unsent_past_cutoff` | above 0 for 5 minutes | Decisions past their cut-off aren't reaching the banks' cores. Check that the disposition scheduler is on and `decision_lock_job` is running (Controls → scheduled jobs). |
+| `openclear_jobs{status="failed"}` | rises | A background job used every retry: an import, an export, a webhook. Retry it with `POST /api/v1/platform/jobs/{id}/retry` once the cause is fixed. |
+| `openclear_decision_files_oldest_unacknowledged_seconds` | above a bank's own file schedule plus an hour | A core isn't taking its decision files. |
+| `openclear_webhook_deliveries{status="failed"}` | rises | A bank's webhook endpoint stopped answering for a day. |
+| `openclear_http_requests_total{status="5xx"}` | rising fast | Server errors; the access log has the request ids. |
+
+Request counts are per process since it started; the rest is read from the database.
+
+A single-process SQLite installation uses write-ahead logging and waits up to five seconds for a
+write lock, so the in-process worker importing a file doesn't make web requests fail with
+"database is locked".

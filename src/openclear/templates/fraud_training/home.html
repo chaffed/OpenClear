@@ -36,7 +36,7 @@
 </div>
 
 <div class="card card-narrow">
-  <h1>Known-fraud ACH example</h1>
+  <h2>Known-fraud ACH example</h2>
   <form method="post" action="/ui/ml-training/fraud-examples/ach">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>Existing ACH transaction ID <input type="text" name="ach_transaction_id" placeholder="leave blank to enter a new transaction below"></label>
@@ -75,7 +75,7 @@
 </div>
 
 <div class="card">
-  <h1>Recent training examples</h1>
+  <h2>Recent training examples</h2>
   {% if examples %}
   <table data-sortable>
     <thead><tr><th>Network</th><th>Type</th><th>Submitted</th><th></th></tr></thead>

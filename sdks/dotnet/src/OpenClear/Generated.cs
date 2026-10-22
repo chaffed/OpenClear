@@ -96,6 +96,13 @@ public sealed record AchFraudExampleCreate
     [JsonPropertyName("transaction_type")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TransactionType { get; init; }
 }
 
+public sealed record AchReturnReasonRead
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("reason_text")] public string ReasonText { get; init; } = default!;
+    [JsonPropertyName("transaction_code")] public string TransactionCode { get; init; } = default!;
+}
+
 public sealed record AchTransactionCreate
 {
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
@@ -333,6 +340,13 @@ public sealed record CheckImageRead
     [JsonPropertyName("processed_at")] public string ProcessedAt { get; init; } = default!;
 }
 
+public sealed record CheckReturnReasonRead
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("reason_text")] public string ReasonText { get; init; } = default!;
+    [JsonPropertyName("return_code")] public string ReturnCode { get; init; } = default!;
+}
+
 public sealed record ControlCheck
 {
     [JsonPropertyName("detail")] public string Detail { get; init; } = default!;
@@ -460,6 +474,7 @@ public sealed record DataExportRead
 public sealed record DecideRequest
 {
     [JsonPropertyName("ach_return_reason_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchReturnReasonId { get; init; }
+    [JsonPropertyName("check_return_reason_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CheckReturnReasonId { get; init; }
     [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Notes { get; init; }
     [JsonPropertyName("outcome")] public string Outcome { get; init; } = default!;
     [JsonPropertyName("reason_code")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ReasonCode { get; init; }
@@ -494,6 +509,22 @@ public sealed record DecisionRead
     [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
     [JsonPropertyName("return_transaction_code")] public string ReturnTransactionCode { get; init; } = default!;
     [JsonPropertyName("submitted_by_user_id")] public string SubmittedByUserId { get; init; } = default!;
+}
+
+/// <summary>
+/// An earlier version of a decision, changed or taken back before the cut-off.
+/// </summary>
+public sealed record DecisionRevisionRead
+{
+    [JsonPropertyName("decided_at")] public string DecidedAt { get; init; } = default!;
+    [JsonPropertyName("decided_by_user_id")] public string DecidedByUserId { get; init; } = default!;
+    [JsonPropertyName("notes")] public string Notes { get; init; } = default!;
+    [JsonPropertyName("outcome")] public string Outcome { get; init; } = default!;
+    [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
+    [JsonPropertyName("return_transaction_code")] public string ReturnTransactionCode { get; init; } = default!;
+    [JsonPropertyName("revised_at")] public string RevisedAt { get; init; } = default!;
+    [JsonPropertyName("revised_by_user_id")] public string RevisedByUserId { get; init; } = default!;
+    [JsonPropertyName("undone")] public bool Undone { get; init; } = default!;
 }
 
 public sealed record DeviationRead
@@ -862,6 +893,7 @@ public sealed record PendingFraudExampleRead
 public sealed record RecommendRequest
 {
     [JsonPropertyName("ach_return_reason_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchReturnReasonId { get; init; }
+    [JsonPropertyName("check_return_reason_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CheckReturnReasonId { get; init; }
     [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Notes { get; init; }
     [JsonPropertyName("outcome")] public string Outcome { get; init; } = default!;
     [JsonPropertyName("reason_code")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ReasonCode { get; init; }
@@ -2072,17 +2104,18 @@ public sealed partial class DecisionFeedApi
     ///
     /// Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
     /// you processed and pass it as `after` next time. When a full page comes back, a
-    /// `Link: rel="next"` header points at the next one.
+    /// `Link: rel="next"` header points at the next one. With `customer_number`, only that
+    /// customer's decisions; the sequence numbers are still the bank's, so expect gaps.
     /// </summary>
-    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of DecisionFeedAsync, following each page's Link: rel="next".
     /// GET /api/v1/decisions
     /// </summary>
-    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Acknowledge.
@@ -2176,6 +2209,17 @@ public sealed partial class DecisionsApi
         _c.CallAsync<DecisionRead>("PUT", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decision", json: body, cancellationToken: cancellationToken);
 
     /// <summary>
+    /// Get Decision History.
+    ///
+    /// GET /api/v1/exceptions/{exception_id}/decision/history
+    ///
+    /// Every earlier version of the item's decision, oldest first: each change or take-back made
+    /// before its cut-off. Empty when it was decided once.
+    /// </summary>
+    public Task<IReadOnlyList<DecisionRevisionRead>> GetDecisionHistoryAsync(string exceptionId, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<DecisionRevisionRead>>("GET", $"/api/v1/exceptions/{Uri.EscapeDataString(exceptionId.ToString()!)}/decision/history", cancellationToken: cancellationToken);
+
+    /// <summary>
     /// Recommend Decision.
     ///
     /// POST /api/v1/exceptions/{exception_id}/recommend
@@ -2262,15 +2306,15 @@ public sealed partial class ExceptionsApi
     ///
     /// GET /api/v1/exceptions
     /// </summary>
-    public Task<IReadOnlyList<ExceptionRead>> ListExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<ExceptionRead>>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<ExceptionRead>> ListExceptionsAsync(string? networkCode = null, string? statusFilter = null, string? customerNumber = null, long? limit = null, long? offset = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<ExceptionRead>>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["customer_number"] = customerNumber, ["limit"] = limit, ["offset"] = offset, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of ListExceptionsAsync, following each page's Link: rel="next".
     /// GET /api/v1/exceptions
     /// </summary>
-    public IAsyncEnumerable<ExceptionRead> IterExceptionsAsync(string? networkCode = null, string? statusFilter = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<ExceptionRead>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<ExceptionRead> IterExceptionsAsync(string? networkCode = null, string? statusFilter = null, string? customerNumber = null, long? limit = null, string? updatedSince = null, string? afterId = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<ExceptionRead>("GET", "/api/v1/exceptions", query: new Dictionary<string, object?> { ["network_code"] = networkCode, ["status_filter"] = statusFilter, ["customer_number"] = customerNumber, ["limit"] = limit, ["updated_since"] = updatedSince, ["after_id"] = afterId }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Get Exception.
@@ -2622,6 +2666,26 @@ public sealed partial class PlatformJobsApi
 }
 
 /// <summary>
+/// platform-metrics endpoints.
+/// </summary>
+public sealed partial class PlatformMetricsApi
+{
+    private readonly ITransport _c;
+    public PlatformMetricsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Metrics.
+    ///
+    /// GET /api/v1/platform/metrics
+    ///
+    /// Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook
+    /// deliveries, and this process's requests. Scrape it every minute or so.
+    /// </summary>
+    public Task<byte[]> MetricsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/platform/metrics", platform: true, cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// platform-ml endpoints.
 /// </summary>
 public sealed partial class PlatformMlApi
@@ -2717,6 +2781,35 @@ public sealed partial class PlatformUsageApi
     /// </summary>
     public Task<JsonElement> GetUsageAsync(string? periodStart = null, string? periodEnd = null, string? tenantId = null, string? format = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<JsonElement>("GET", "/api/v1/platform/usage", query: new Dictionary<string, object?> { ["period_start"] = periodStart, ["period_end"] = periodEnd, ["tenant_id"] = tenantId, ["format"] = format }, platform: true, cancellationToken: cancellationToken);
+}
+
+/// <summary>
+/// return-reasons endpoints.
+/// </summary>
+public sealed partial class ReturnReasonsApi
+{
+    private readonly ITransport _c;
+    public ReturnReasonsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Ach Return Reasons.
+    ///
+    /// GET /api/v1/return-reasons/ach
+    ///
+    /// The bank's reasons for returning an ACH debit, active ones only.
+    /// </summary>
+    public Task<IReadOnlyList<AchReturnReasonRead>> AchReturnReasonsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<AchReturnReasonRead>>("GET", "/api/v1/return-reasons/ach", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Check Return Reasons.
+    ///
+    /// GET /api/v1/return-reasons/check
+    ///
+    /// The bank's reasons for returning a check, active ones only.
+    /// </summary>
+    public Task<IReadOnlyList<CheckReturnReasonRead>> CheckReturnReasonsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<CheckReturnReasonRead>>("GET", "/api/v1/return-reasons/check", cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -2888,8 +2981,10 @@ public partial class OpenClearClient
     public PaidItemsApi PaidItems { get; private set; } = default!;
     public PlatformBillingApi PlatformBilling { get; private set; } = default!;
     public PlatformJobsApi PlatformJobs { get; private set; } = default!;
+    public PlatformMetricsApi PlatformMetrics { get; private set; } = default!;
     public PlatformMlApi PlatformMl { get; private set; } = default!;
     public PlatformUsageApi PlatformUsage { get; private set; } = default!;
+    public ReturnReasonsApi ReturnReasons { get; private set; } = default!;
     public SecurityEventsApi SecurityEvents { get; private set; } = default!;
     public StopPaymentsApi StopPayments { get; private set; } = default!;
     public UsersApi Users { get; private set; } = default!;
@@ -2924,8 +3019,10 @@ public partial class OpenClearClient
         PaidItems = new PaidItemsApi(this);
         PlatformBilling = new PlatformBillingApi(this);
         PlatformJobs = new PlatformJobsApi(this);
+        PlatformMetrics = new PlatformMetricsApi(this);
         PlatformMl = new PlatformMlApi(this);
         PlatformUsage = new PlatformUsageApi(this);
+        ReturnReasons = new ReturnReasonsApi(this);
         SecurityEvents = new SecurityEventsApi(this);
         StopPayments = new StopPaymentsApi(this);
         Users = new UsersApi(this);

@@ -38,8 +38,8 @@
     {%- if col.key == "number" %}<a href="/ui/paid-items/{{ item.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ item.check_number }}</a>{{ slot("paid_item.row.action", paid_item_id=item.id | string) }}
     {%- elif col.key == "amount" %}{{ item.presented_amount | currency }}
     {%- elif col.key == "date" %}{{ item.presented_date }}
-    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span>
-    {%- elif col.key == "settlement" %}{{ item.settlement_status.value }}
+    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status | status_label }}</span>
+    {%- elif col.key == "settlement" %}{{ item.settlement_status | status_label }}
     {%- endif %}
   {%- endcall %}
   {{ pg.pager(page_obj, request) }}

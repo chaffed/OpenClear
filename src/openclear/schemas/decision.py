@@ -17,6 +17,9 @@ class RecommendRequest(BaseModel):
     reason_code: str = ""
     notes: str | None = None
     ach_return_reason_id: uuid.UUID | None = None
+    # A check returned with one of the bank's check return reasons (GET /return-reasons/check):
+    # its text and code are recorded instead of reason_code.
+    check_return_reason_id: uuid.UUID | None = None
 
 
 class DecideRequest(BaseModel):
@@ -24,6 +27,26 @@ class DecideRequest(BaseModel):
     reason_code: str = ""
     notes: str | None = None
     ach_return_reason_id: uuid.UUID | None = None
+    # A check returned with one of the bank's check return reasons (GET /return-reasons/check):
+    # its text and code are recorded instead of reason_code.
+    check_return_reason_id: uuid.UUID | None = None
+
+
+class DecisionRevisionRead(BaseModel):
+    """An earlier version of a decision, changed or taken back before the cut-off."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    outcome: DecisionOutcome
+    reason_code: str
+    return_transaction_code: str | None
+    notes: str | None
+    decided_by_user_id: uuid.UUID | None
+    decided_at: datetime
+    revised_by_user_id: uuid.UUID | None
+    revised_at: datetime
+    # Taken back (the item was open again), rather than changed to something else.
+    undone: bool
 
 
 class DecisionRead(BaseModel):

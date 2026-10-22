@@ -76,6 +76,11 @@ def save(
     return outbox
 
 
+def _lock_key(tenant_id: uuid.UUID) -> int:
+    digest = hashlib.sha256(f"openclear.decision_outbox:{tenant_id}".encode()).digest()
+    return int.from_bytes(digest[:8], "big", signed=True)
+
+
 def _last_sequence(session: Session, tenant_id: uuid.UUID) -> int:
     return session.execute(select(func.max(DecisionBatch.to_sequence)).where(DecisionBatch.tenant_id == tenant_id)).scalar_one() or 0
 
@@ -96,6 +101,11 @@ def run(session: Session, tenant_id: uuid.UUID, *, layout: str | None = None) ->
     from openclear.networks.ach.returns_file import ReturnsFileError
     from openclear.services import decision_feed_service, plugin_service, webhook_service
 
+    # One writer per bank at a time (FULL_REVIEW_PLAN.md FR-D3): the scheduled run and an API
+    # request at once would each read the same last batch and write the same decisions twice.
+    # The (tenant_id, from_sequence) constraint is the backstop on every database.
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(select(func.pg_advisory_xact_lock(_lock_key(tenant_id))))
     outbox = get_outbox(session, tenant_id)
     layout = layout or outbox.layout
     try:

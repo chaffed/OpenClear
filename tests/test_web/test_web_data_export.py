@@ -57,7 +57,7 @@ def test_full_export_flow_via_web(client, db_session, tenant_factory):
     assert "error" not in start_resp.headers["location"]
 
     list_resp2 = client.get("/ui/settings/data-export")
-    assert "completed" in list_resp2.text
+    assert "Done" in list_resp2.text
     assert "Download" in list_resp2.text
 
     import re
@@ -110,7 +110,7 @@ def test_customer_scoped_export_flow_via_web(client, db_session, tenant_factory)
     assert "error" not in start_resp.headers["location"]
 
     list_resp = client.get(f"/ui/customers/{customer.id}/data-export")
-    assert "completed" in list_resp.text
+    assert "Done" in list_resp.text
 
     import re
 

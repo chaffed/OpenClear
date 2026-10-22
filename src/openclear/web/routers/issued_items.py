@@ -193,7 +193,11 @@ def void_issued_item(
     ctx: TenantContext = Depends(require_web_permission("issued_item:write")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, reason, scoped_customer_id=ctx.customer_id)
+    try:
+        item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, reason, scoped_customer_id=ctx.customer_id)
+    except issued_item_service.CantVoid as exc:
+        db.rollback()
+        return see_other(f"/ui/issued-items/{item_id}", error=str(exc))
     if item is None:
         db.commit()
         return see_other("/ui/issued-items", error='Issued item not found.')

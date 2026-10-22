@@ -42,6 +42,9 @@ class NotificationType(str, enum.Enum):
     EMAIL_CHANGED = "email_changed"
     # services/malware_service.py: an upload was malware (OW-D34). To the bank's administrators; always email.
     MALWARE_DETECTED = "malware_detected"
+    # services/sign_in_links.py: someone asked for their organizations' sign-in links (FR8). To
+    # the address asked about, so always email.
+    SIGN_IN_LINKS = "sign_in_links"
     # services/customer_approval_service.py: the bank approved or rejected someone the
     # customer's side added (MOBILE_PLAN.md R6); sent to the customer's administrators.
     CUSTOMER_USER_DECIDED = "customer_user_decided"

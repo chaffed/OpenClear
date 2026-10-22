@@ -81,7 +81,7 @@ def test_approvals_queue_lists_recommendation_with_recommender(client, tenant_fa
     csrf = _login(client, tenant.slug, users["approver"].email)
     page = client.get("/ui/exceptions/approvals")
     assert page.status_code == 200
-    assert "return" in page.text
+    assert "Return" in page.text
     assert users["preparer"].email in page.text
     assert "your recommendation" not in page.text
 

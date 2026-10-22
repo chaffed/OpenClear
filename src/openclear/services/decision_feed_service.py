@@ -44,6 +44,14 @@ def assign_sequence(session: Session, decision: Decision, exception: ExceptionIt
     if exception.source == ExceptionItemSource.TRAINING_BACKFILL:
         return
     if session.get_bind().dialect.name == "postgresql":
+        # Lock order (FULL_REVIEW_PLAN.md FR-D4; docs/ARCHITECTURE.md): the bank's action-log lock
+        # before its feed lock, always. Whoever decides then writes an action-log entry, and an API
+        # client acting for someone writes one before the route runs; taking the action-log lock
+        # here first means no two transactions ever hold them in opposite orders. Both are
+        # transaction locks, and taking one again in the same transaction doesn't wait.
+        from openclear.services.audit_log_service import _chain_lock_key
+
+        session.execute(select(func.pg_advisory_xact_lock(_chain_lock_key(exception.tenant_id))))
         session.execute(select(func.pg_advisory_xact_lock(_lock_key(exception.tenant_id))))
     latest = session.execute(
         select(func.max(Decision.feed_sequence)).where(Decision.tenant_id == exception.tenant_id)

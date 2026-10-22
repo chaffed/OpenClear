@@ -996,7 +996,7 @@ erDiagram
 <tr><td>source_item_id</td><td>UUID</td><td>no</td><td></td><td>The underlying paid_item/ach_transaction id — not a DB-level FK since it points to one of two different tables depending on network_code.</td></tr>
 <tr><td>related_reference_id</td><td>UUID</td><td>yes</td><td></td><td></td></tr>
 <tr><td>exception_types</td><td>String(500)</td><td>no</td><td></td><td>Comma-separated reason codes (amount mismatch, no issued item, stopped, unauthorized originator, etc).</td></tr>
-<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>open / pending_approval / pay / return / escalated / withdrawn.</td></tr>
+<tr><td>status</td><td>String(20) enum</td><td>no</td><td></td><td>open / pending_approval / pay / return / withdrawn.</td></tr>
 <tr><td>ml_score / ml_model_version</td><td>Float / String(64)</td><td>yes</td><td></td><td>Null until enough history exists to score it.</td></tr>
 <tr><td>recommended_outcome / recommended_reason_code / recommended_return_transaction_code / recommended_notes</td><td>String</td><td>yes</td><td></td><td>Set by the "recommend" step, before a final decision.</td></tr>
 <tr><td>recommended_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.schemas.decision import DecideRequest, DecisionRead, RecommendRequest
+from openclear.schemas.decision import DecideRequest, DecisionRead, DecisionRevisionRead, RecommendRequest
 from openclear.schemas.exception import ExceptionRead
 from openclear.services import audit_log_service, decision_service
 from openclear.services.decision_service import DecisionError
@@ -60,6 +60,7 @@ def recommend_decision(
         reason_code=payload.reason_code,
         notes=payload.notes,
         ach_return_reason_id=payload.ach_return_reason_id,
+        check_return_reason_id=payload.check_return_reason_id,
     )
     if result.error is not None:
         raise HTTPException(_ERROR_STATUS[result.error], result.error.value)
@@ -93,6 +94,7 @@ def decide_exception(
         reason_code=payload.reason_code,
         notes=payload.notes,
         ach_return_reason_id=payload.ach_return_reason_id,
+        check_return_reason_id=payload.check_return_reason_id,
     )
     if result.error is not None:
         raise HTTPException(_ERROR_STATUS[result.error], result.error.value)
@@ -124,6 +126,21 @@ def get_decision(
     return _read(decision, ExceptionRepository(db, ctx.tenant_id, ctx.customer_id).get(exception_id))
 
 
+@router.get("/{exception_id}/decision/history", response_model=list[DecisionRevisionRead])
+def get_decision_history(
+    exception_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_permission("exception:read")),
+) -> list[DecisionRevisionRead]:
+    """Every earlier version of the item's decision, oldest first: each change or take-back made
+    before its cut-off. Empty when it was decided once."""
+    from openclear.repositories.exception_repo import ExceptionRepository
+
+    if ExceptionRepository(db, ctx.tenant_id, ctx.customer_id).get(exception_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Exception not found")
+    return [DecisionRevisionRead.model_validate(r) for r in decision_service.revisions(db, ctx.tenant_id, exception_id)]
+
+
 @router.put("/{exception_id}/decision", response_model=DecisionRead)
 def change_decision(
     exception_id: uuid.UUID,
@@ -147,7 +164,8 @@ def change_decision(
     service = decision_service.recommend_change if proposing else decision_service.change_decision
     kwargs = {} if proposing else {"channel": "api"}
     result = service(db, ctx.tenant_id, exception_id, ctx, outcome=payload.outcome, reason_code=payload.reason_code,
-                     notes=payload.notes, ach_return_reason_id=payload.ach_return_reason_id, **kwargs)
+                     notes=payload.notes, ach_return_reason_id=payload.ach_return_reason_id,
+                     check_return_reason_id=payload.check_return_reason_id, **kwargs)
     if result.error is not None:
         _refuse(result)
     action, verb = ("exception.recommend_change", "Recommended changing") if proposing else ("exception.change_decision", "Changed")

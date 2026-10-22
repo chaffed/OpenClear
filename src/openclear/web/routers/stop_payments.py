@@ -25,17 +25,24 @@ router = APIRouter(prefix="/ui/stop-payments", tags=["web-stop-payments"])
 
 @router.get("")
 def list_stop_payments(
-    request: Request, page: int = 1, db: Session = Depends(get_db),
+    request: Request, page: int = 1, status: str = "", number: str = "", db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("stop_payment:read")),
 ) -> HTMLResponse:
+    """Filtered by status (active by default once there are expired or cancelled ones to hide)
+    and check number (FULL_REVIEW_PLAN.md FR-D14)."""
+    from openclear.domain.stop_payment import StopPaymentStatus
+
+    chosen = StopPaymentStatus(status) if status in {s.value for s in StopPaymentStatus} else None
+    number = number.strip()[:32]
+    filters = {"status": chosen, "check_number": number or None}
+    repo = StopPaymentRepository(db, ctx.tenant_id, ctx.customer_id)
     page_obj = paginate(
         page=page,
-        count_fn=lambda: StopPaymentRepository(db, ctx.tenant_id, ctx.customer_id).count(),
-        list_fn=lambda **kw: stop_payment_service.list_stop_payments(
-            db, ctx.tenant_id, customer_id=ctx.customer_id, order_by=StopPayment.created_at.desc(), **kw
-        ),
+        count_fn=lambda: repo.count(**filters),
+        list_fn=lambda **kw: repo.list(order_by=StopPayment.created_at.desc(), **filters, **kw),
     )
-    return render_template(request, "stop_payments/list.html", ctx=ctx, page_obj=page_obj)
+    return render_template(request, "stop_payments/list.html", ctx=ctx, page_obj=page_obj, status_filter=status if chosen else "",
+                           number_filter=number, statuses=[s.value for s in StopPaymentStatus])
 
 
 @router.get("/new")

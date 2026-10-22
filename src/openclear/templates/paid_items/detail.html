@@ -12,8 +12,8 @@
   <h1>Paid item #{{ item.check_number }}</h1>
   <p>Presented amount: {{ item.presented_amount }}</p>
   <p>Presented date: {{ item.presented_date }}</p>
-  <p>Match status: <span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status.value }}</span></p>
-  <p>Settlement status: {{ item.settlement_status.value }}</p>
+  <p>Match status: <span class="badge {{ 'badge-ok' if item.match_status.value == 'matched' else 'badge-danger' if item.match_status.value == 'exception' else '' }}">{{ item.match_status | status_label }}</span></p>
+  <p>Settlement status: {{ item.settlement_status | status_label }}</p>
   {% if item.match_status.value == "exception" %}
   <p class="link-line"><a href="/ui/exceptions">View in exceptions queue</a></p>
   {% endif %}

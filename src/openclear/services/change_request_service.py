@@ -216,6 +216,15 @@ def get(session: Session, tenant_id: uuid.UUID | None, change_id: uuid.UUID) -> 
     return change if change is not None and change.tenant_id == tenant_id else None
 
 
+def _get_locked(session: Session, tenant_id: uuid.UUID | None, change_id: uuid.UUID, *, skip_locked: bool = False) -> ChangeRequest | None:
+    """The request, locked until the transaction ends and read fresh (FULL_REVIEW_PLAN.md FR2,
+    R6): two approvers, or an approval and a withdrawal, take turns, and the second sees what
+    the first did."""
+    change = session.execute(select(ChangeRequest).where(ChangeRequest.id == change_id).with_for_update(skip_locked=skip_locked)
+                             .execution_options(populate_existing=True)).scalar_one_or_none()
+    return change if change is not None and change.tenant_id == tenant_id else None
+
+
 def pending(session: Session, tenant_id: uuid.UUID | None, *, customer_id: uuid.UUID | None = None, all_customers: bool = True) -> list[ChangeRequest]:
     stmt = select(ChangeRequest).where(ChangeRequest.status == PENDING)
     stmt = stmt.where(ChangeRequest.tenant_id == tenant_id) if tenant_id else stmt.where(ChangeRequest.tenant_id.is_(None))
@@ -238,7 +247,7 @@ def decide(session: Session, tenant_id: uuid.UUID | None, change_id: uuid.UUID, 
            reason: str | None = None, channel: str = "web") -> ChangeRequest:
     from openclear.auth import sod
 
-    change = get(session, tenant_id, change_id)
+    change = _get_locked(session, tenant_id, change_id)
     if change is None or change.status != PENDING:
         raise ChangeError("That change isn't waiting for approval.")
     if change.requested_by_user_id == user_id:
@@ -276,7 +285,7 @@ def decide(session: Session, tenant_id: uuid.UUID | None, change_id: uuid.UUID, 
 
 
 def withdraw(session: Session, tenant_id: uuid.UUID | None, change_id: uuid.UUID, *, user_id: uuid.UUID, channel: str = "web") -> ChangeRequest:
-    change = get(session, tenant_id, change_id)
+    change = _get_locked(session, tenant_id, change_id)
     if change is None or change.status != PENDING:
         raise ChangeError("That change isn't waiting for approval.")
     if change.requested_by_user_id != user_id:
@@ -307,7 +316,13 @@ def settle(session: Session, now: datetime | None = None) -> int:
     tenants = [None, *session.execute(select(Tenant.id).where(Tenant.is_active.is_(True))).scalars().all()]
     for tenant_id in tenants:
         bind_session_to_tenant(session, tenant_id) if tenant_id else None
-        for change in pending(session, tenant_id):
+        for listed in pending(session, tenant_id):
+            if not any(_aware(t) and _aware(t) <= now for t in (listed.applies_at, listed.expires_at)):
+                continue  # nothing due: not locked, so nobody deciding it waits on this sweep
+            change = _get_locked(session, tenant_id, listed.id, skip_locked=True)
+            if change is None or change.status != PENDING:
+                session.rollback()
+                continue  # someone is deciding it right now, or just did
             try:
                 if _aware(change.applies_at) and _aware(change.applies_at) <= now:
                     _apply_alone(session, change)

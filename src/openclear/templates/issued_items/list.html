@@ -38,7 +38,7 @@
       <select name="status" data-auto-submit>
         <option value="">All</option>
         {% for s in ["outstanding", "paid", "voided", "stopped", "stale"] %}
-        <option value="{{ s }}" {{ "selected" if status_filter and status_filter.value == s else "" }}>{{ s }}</option>
+        <option value="{{ s }}" {{ "selected" if status_filter and status_filter.value == s else "" }}>{{ s | status_label }}</option>
         {% endfor %}
       </select>
     </label>
@@ -57,7 +57,7 @@
     {%- elif col.key == "amount" %}{{ item.amount | currency }}
     {%- elif col.key == "payee" %}{{ item.payee_name }}
     {%- elif col.key == "date" %}{{ item.issue_date }}
-    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if item.status.value == 'outstanding' else 'badge-warn' if item.status.value in ['stale','stopped'] else 'badge-danger' if item.status.value == 'voided' else '' }}">{{ item.status.value }}</span>
+    {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if item.status.value == 'outstanding' else 'badge-warn' if item.status.value in ['stale','stopped'] else 'badge-danger' if item.status.value == 'voided' else '' }}">{{ item.status | status_label }}</span>
     {%- endif %}
   {%- endcall %}
   {{ pg.pager(page_obj, request) }}

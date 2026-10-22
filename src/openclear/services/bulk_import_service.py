@@ -459,8 +459,13 @@ def run_import(session: Session, upload_id: uuid.UUID, *, last_attempt: bool = F
         return
     # Only the accounts the uploader may see (db/account_scope.py).
     bind_for_member(session, record.tenant_id, record.uploaded_by_user_id, record.customer_id)
+    from openclear.workers.jobs import LeaseLost
+
     try:
         _import(session, record)
+    except LeaseLost:
+        session.rollback()  # another worker has the job now and carries on from processed_rows
+        return
     except Exception as exc:
         session.rollback()
         if last_attempt:
@@ -489,7 +494,7 @@ def _reconcile(session: Session, record: BulkUploadFile, rows: list) -> None:
 
 
 def _import(session: Session, record: BulkUploadFile) -> None:
-    from openclear.workers.jobs import jobs_queued
+    from openclear.workers.jobs import check_lease, jobs_queued
 
     spec = _spec(record)
     if record.status != BulkUploadStatus.PROCESSING:
@@ -523,6 +528,7 @@ def _import(session: Session, record: BulkUploadFile) -> None:
             queued_ocr |= _record_chunk(session, record, spec, outcomes)
             start += len(chunk)
             record.processed_rows = start
+            check_lease(session)  # this worker still owns the job, or the chunk isn't committed
             session.commit()
         _reconcile(session, record, rows)
 

@@ -131,12 +131,19 @@ def test_anomaly_capture_catches_every_vector_and_keeps_nothing(client, db_sessi
 
 
 def test_anomaly_capture_fails_when_a_rule_stops_catching(db_session, tenant_factory, monkeypatch):
-    """If a vector stops being caught (here, the duplicate check rule is broken), the run fails
-    and says which."""
-    from openclear.networks.check.adapter import CheckAdapter
+    """If a vector stops being caught (here, the duplicate rule is broken: it never reports a
+    duplicate, however it was found), the run fails and says which."""
+    from openclear.networks.check import adapter
+    from openclear.networks.check.types import CheckExceptionType
+
+    real_rules = adapter.evaluate_check_rules
+
+    def without_duplicates(inputs):
+        found, related = real_rules(inputs)
+        return [t for t in found if t != CheckExceptionType.DUPLICATE_PAID], related
 
     tenant, _account, users = tenant_factory.make(slug="mrm-broken")
-    monkeypatch.setattr(CheckAdapter, "_is_duplicate_paid", staticmethod(lambda session, paid_item: False))
+    monkeypatch.setattr(adapter, "evaluate_check_rules", without_duplicates)
     run = mrm_service.anomaly_capture(db_session, tenant.id, user_id=None)
     db_session.commit()
     assert run.passed is False and "check_duplicate_serial" in run.summary

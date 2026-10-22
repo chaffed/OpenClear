@@ -63,6 +63,7 @@ def _continue_session(request: Request, db: Session):
     if not _idle_timeout_not_reached(request):
         raise session_service.RefreshFailed("Signed out after a period of inactivity")
     tokens, _tenant = session_service.refresh_session(db, read_cookie(request, REFRESH_COOKIE_NAME) or "")
+    db.commit()  # the refresh token just used is retired (session_service._retire_refresh_token)
     return tokens
 
 

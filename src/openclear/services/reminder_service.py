@@ -230,6 +230,7 @@ def _notify(session: Session, tenant: Tenant, due_by_customer: dict, now: dateti
         notification_service._queue(
             session, tenant_id=tenant_id, recipient=user, notification_type=NotificationType.DEADLINE_REMINDER,
             template_context={"count": count, "due_in": due_in, "bank_name": tenant.name,
+                              "due_at": notification_service.bank_time(session, tenant_id, nearest),
                               "queue_url": notification_service._absolute_url("/ui/exceptions")},
             subject=f"{count} item{plural} to decide, due in {due_in}" if due_in else f"{count} item{plural} to decide",
         )

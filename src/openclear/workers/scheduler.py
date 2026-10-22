@@ -25,6 +25,7 @@ from openclear.workers.tasks import (
     security_event_delivery_job,
     sweep_expired_dispositions_job,
     decision_outbox_job,
+    decision_lock_job,
 )
 
 _scheduler: BackgroundScheduler | None = None
@@ -45,6 +46,8 @@ def _jobs(settings) -> list[tuple[str, Callable[[], None], object, timedelta]]:
     if settings.enable_disposition_scheduler:
         jobs.append(("sweep_expired_dispositions_job", sweep_expired_dispositions_job,
                      IntervalTrigger(seconds=settings.disposition_sweep_interval_seconds), timedelta(seconds=settings.disposition_sweep_interval_seconds)))
+        jobs.append(("decision_lock_job", decision_lock_job, IntervalTrigger(seconds=settings.decision_lock_interval_seconds),
+                     timedelta(seconds=settings.decision_lock_interval_seconds)))
     if settings.enable_decision_outbox_scheduler:
         jobs.append(("decision_outbox_job", decision_outbox_job, IntervalTrigger(seconds=settings.decision_outbox_tick_seconds),
                      timedelta(seconds=settings.decision_outbox_tick_seconds)))

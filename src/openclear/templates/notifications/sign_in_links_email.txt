@@ -1,0 +1,6 @@
+Someone asked for the OpenClear sign-in links for this address. Here they are:
+
+{% for link, name in links %}{{ name }}
+{{ link }}
+
+{% endfor %}Bookmark the one you use. If you didn't ask for this, you can ignore it: nothing has changed.

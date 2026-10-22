@@ -88,6 +88,12 @@ export interface AchFraudExampleCreate {
 
 export type AchMatchStatus = "pending" | "matched" | "exception";
 
+export interface AchReturnReasonRead {
+  id: string;
+  reason_text: string;
+  transaction_code: string | null;
+}
+
 export type AchSettlementStatus = "pending" | "paid" | "returned";
 
 export interface AchTransactionCreate {
@@ -316,6 +322,12 @@ export interface CheckImageRead {
   processed_at: string | null;
 }
 
+export interface CheckReturnReasonRead {
+  id: string;
+  reason_text: string;
+  return_code: string | null;
+}
+
 export interface ControlCheck {
   detail: string | null;
   key: string;
@@ -431,6 +443,7 @@ export interface DataExportRead {
 
 export interface DecideRequest {
   ach_return_reason_id?: string | null;
+  check_return_reason_id?: string | null;
   notes?: string | null;
   outcome: DecisionOutcome;
   reason_code?: string;
@@ -465,6 +478,19 @@ export interface DecisionRead {
   reason_code: string;
   return_transaction_code: string | null;
   submitted_by_user_id: string | null;
+}
+
+/** An earlier version of a decision, changed or taken back before the cut-off. */
+export interface DecisionRevisionRead {
+  decided_at: string;
+  decided_by_user_id: string | null;
+  notes: string | null;
+  outcome: DecisionOutcome;
+  reason_code: string;
+  return_transaction_code: string | null;
+  revised_at: string;
+  revised_by_user_id: string | null;
+  undone: boolean;
 }
 
 export interface DeviationRead {
@@ -515,7 +541,7 @@ export interface ExceptionRead {
   updated_at?: string | null;
 }
 
-export type ExceptionStatus = "open" | "pending_approval" | "pay" | "return" | "escalated" | "withdrawn";
+export type ExceptionStatus = "open" | "pending_approval" | "pay" | "return" | "withdrawn";
 
 export interface FeeItemCreate {
   afp_code?: string | null;
@@ -809,6 +835,7 @@ export interface PendingFraudExampleRead {
 
 export interface RecommendRequest {
   ach_return_reason_id?: string | null;
+  check_return_reason_id?: string | null;
   notes?: string | null;
   outcome: DecisionOutcome;
   reason_code?: string;
@@ -2101,9 +2128,10 @@ export class DecisionFeedApi {
    *
    * Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
    * you processed and pass it as `after` next time. When a full page comes back, a
-   * `Link: rel="next"` header points at the next one.
+   * `Link: rel="next"` header points at the next one. With `customer_number`, only that
+   * customer's decisions; the sequence numbers are still the bank's, so expect gaps.
    */
-  decisionFeed(query: { after?: number; limit?: number } = {}): Promise<Array<Record<string, unknown>>> {
+  decisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): Promise<Array<Record<string, unknown>>> {
     return this.c.call<Array<Record<string, unknown>>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2112,7 +2140,7 @@ export class DecisionFeedApi {
    *
    * GET /api/v1/decisions
    */
-  iterDecisionFeed(query: { after?: number; limit?: number } = {}): AsyncIterable<Record<string, unknown>> {
+  iterDecisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): AsyncIterable<Record<string, unknown>> {
     return this.c.paginate<Record<string, unknown>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2216,6 +2244,18 @@ export class DecisionsApi {
   }
 
   /**
+   * Get Decision History.
+   *
+   * GET /api/v1/exceptions/{exception_id}/decision/history
+   *
+   * Every earlier version of the item's decision, oldest first: each change or take-back made
+   * before its cut-off. Empty when it was decided once.
+   */
+  getDecisionHistory(exceptionId: string): Promise<Array<DecisionRevisionRead>> {
+    return this.c.call<Array<DecisionRevisionRead>>("GET", `/api/v1/exceptions/${encodeURIComponent(String(exceptionId))}/decision/history`, {  });
+  }
+
+  /**
    * Recommend Decision.
    *
    * POST /api/v1/exceptions/{exception_id}/recommend
@@ -2306,7 +2346,7 @@ export class ExceptionsApi {
    *
    * GET /api/v1/exceptions
    */
-  listExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<ExceptionRead>> {
+  listExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; customer_number?: string | null; limit?: number; offset?: number; updated_since?: string | null; after_id?: string | null } = {}): Promise<Array<ExceptionRead>> {
     return this.c.call<Array<ExceptionRead>>("GET", `/api/v1/exceptions`, { query });
   }
 
@@ -2315,7 +2355,7 @@ export class ExceptionsApi {
    *
    * GET /api/v1/exceptions
    */
-  iterExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<ExceptionRead> {
+  iterExceptions(query: { network_code?: string | null; status_filter?: ExceptionStatus | null; customer_number?: string | null; limit?: number; updated_since?: string | null; after_id?: string | null } = {}): AsyncIterable<ExceptionRead> {
     return this.c.paginate<ExceptionRead>("GET", `/api/v1/exceptions`, { query });
   }
 
@@ -2704,6 +2744,27 @@ export class PlatformJobsApi {
   }
 }
 
+/** `platform-metrics` endpoints. */
+export class PlatformMetricsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Metrics.
+   *
+   * GET /api/v1/platform/metrics
+   *
+   * Jobs, decisions past their cut-off not yet sent, unacknowledged decision files, webhook
+   * deliveries, and this process's requests. Scrape it every minute or so.
+   */
+  metrics(): Promise<Uint8Array> {
+    return this.c.call<Uint8Array>("GET", `/api/v1/platform/metrics`, { auth: "platform", raw: true });
+  }
+}
+
 /** `platform-ml` endpoints. */
 export class PlatformMlApi {
   private readonly c: Transport;
@@ -2807,6 +2868,37 @@ export class PlatformUsageApi {
    */
   getUsage(query: { period_start?: string; period_end?: string; tenant_id?: string | null; format?: "json" | "csv" } = {}): Promise<unknown> {
     return this.c.call<unknown>("GET", `/api/v1/platform/usage`, { query, auth: "platform" });
+  }
+}
+
+/** `return-reasons` endpoints. */
+export class ReturnReasonsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Ach Return Reasons.
+   *
+   * GET /api/v1/return-reasons/ach
+   *
+   * The bank's reasons for returning an ACH debit, active ones only.
+   */
+  achReturnReasons(): Promise<Array<AchReturnReasonRead>> {
+    return this.c.call<Array<AchReturnReasonRead>>("GET", `/api/v1/return-reasons/ach`, {  });
+  }
+
+  /**
+   * Check Return Reasons.
+   *
+   * GET /api/v1/return-reasons/check
+   *
+   * The bank's reasons for returning a check, active ones only.
+   */
+  checkReturnReasons(): Promise<Array<CheckReturnReasonRead>> {
+    return this.c.call<Array<CheckReturnReasonRead>>("GET", `/api/v1/return-reasons/check`, {  });
   }
 }
 
@@ -2990,8 +3082,10 @@ export const AREAS = {
   paidItems: PaidItemsApi,
   platformBilling: PlatformBillingApi,
   platformJobs: PlatformJobsApi,
+  platformMetrics: PlatformMetricsApi,
   platformMl: PlatformMlApi,
   platformUsage: PlatformUsageApi,
+  returnReasons: ReturnReasonsApi,
   securityEvents: SecurityEventsApi,
   stopPayments: StopPaymentsApi,
   users: UsersApi,

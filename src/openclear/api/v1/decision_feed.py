@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from openclear.api.v1 import customer_filter
 from openclear.api.v1.files import ANY_FILE, CSV_FILE
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
@@ -29,13 +30,16 @@ def decision_feed(
     response: Response,
     after: int = Query(0, ge=0, description="Return decisions after this sequence number"),
     limit: int = Query(500, ge=1, le=1000),
+    customer_number: str | None = customer_filter.CUSTOMER_NUMBER,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(_read),
 ) -> list[dict]:
     """Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
     you processed and pass it as `after` next time. When a full page comes back, a
-    `Link: rel="next"` header points at the next one."""
-    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id)
+    `Link: rel="next"` header points at the next one. With `customer_number`, only that
+    customer's decisions; the sequence numbers are still the bank's, so expect gaps."""
+    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit,
+                                           customer_id=customer_filter.resolve(db, ctx, customer_number))
     response.headers["X-Latest-Sequence"] = str(decision_feed_service.latest_sequence(db, ctx.tenant_id))
     if len(feed) == limit:
         response.headers["Link"] = f'<{request.url.include_query_params(after=feed[-1]["sequence"], limit=limit)}>; rel="next"'

@@ -194,7 +194,9 @@ def customer_detail(
         request, "customers/detail.html", ctx=ctx, customer=customer, accounts=accounts, ml_summary=ml_summary,
         sso_connection_count=sso_connection_count, open_count=open_count, nearest_deadline=nearest_deadline,
         reminder_timing=reminder_timing, customer_admins=admins,
-        bank_cutoffs=dict(tenant.decision_cutoffs or {}), bank_time_zone=tenant.time_zone,
+        # What applies: the bank's own, else the installation's default (every bank has a cut-off).
+        bank_cutoffs={code: cutoff_service.cutoff_for(db, tenant, None, code) for code in registered_codes()},
+        bank_time_zone=cutoff_service.time_zone_for(tenant),
         customer_cutoffs=cutoff_service.customer_cutoffs(db, ctx.tenant_id, customer.id), networks=registered_codes(),
         offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
     )

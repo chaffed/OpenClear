@@ -1,5 +1,72 @@
 # Changelog
 
+## Unreleased
+
+- **Deciding is safe when two people act at once** (`FULL_REVIEW_PLAN.md` FR1). Every change to an
+  item's decision takes the item's lock first, so a recommendation made the moment someone else
+  decides is told the item is decided, instead of leaving it waiting for an approval that could
+  never be given; and a decision taken back at the cut-off isn't sent. The default decision at
+  the deadline never overrides someone deciding at that moment.
+- **Decisions reach the bank within a minute of the cut-off.** They're locked and sent every
+  minute (`OPENCLEAR_DECISION_LOCK_INTERVAL_SECONDS`, 60), each on its own, so one that fails is
+  retried without holding the rest back. They used to wait for the five-minute deadline sweep.
+- **A check presented twice at the same moment is paid once** (FR2): the second presentment waits
+  for the first and is caught as a duplicate. Two decision files can no longer carry the same
+  decisions (a scheduled run and an API request at once), and two people approving a settings
+  change at once apply it once. Reset, email-change and invitation links, and online banking
+  launch codes, work exactly once even when opened twice together. A background import handed
+  to another worker (its heartbeat looked stale) can no longer commit alongside it.
+- **Sign-in** (FR3): every wrong password counts even when many arrive at once, and a wrong
+  current password on the change-password form, or on accepting an invitation, now follows the
+  bank's own lockout rule (attempts, minutes, or until unlocked) like signing in does. After a
+  lockout runs out, the next wrong password locks it again. Password sign-ins are limited per
+  address too (`OPENCLEAR_LOGIN_ATTEMPTS_PER_MINUTE`, 20), web, API and platform.
+- **Refresh tokens are used once** (FR3). Each refresh returns a new refresh token (as before);
+  the one used is retired. Presenting a retired one more than a minute later ends the session and
+  raises a high-severity `auth.session.reuse_detected` security event. **API change:** clients must
+  keep the refresh token each refresh returns; one that refreshes with its first token again is
+  signed out.
+- **A customer's default decision and scoring model are protected settings** (FR4): with
+  "sensitive settings need a second admin" on, making a customer's default *pay* (or the model's
+  score), or changing which model scores its items, waits for another admin, like its cut-off.
+  The retired response-window field is gone from that form's handler.
+- **Statuses that were never set now are** (FR5): a stop payment past its expiration date shows as
+  *expired* (nightly), so it no longer offers Cancel or counts as active; an issued check with an
+  active stop shows as *stopped*, and as *outstanding* again when the stop is cancelled or runs
+  out; an outstanding check past the bank's stale-date threshold shows as *stale*. Matching is
+  unchanged: it always read the dates.
+- **Matching** (FR5): a check already paid and presented again is a duplicate whatever the amount
+  (it was caught only at the same amount). A stop for a different amount than the check presented
+  holds it for a person ("Stop on file for another amount") instead of stopping it outright.
+- A paid check can't be voided from anywhere (the API answered 200; it now answers `409`).
+- **API change:** `escalated` is gone from the exception statuses; nothing ever set it.
+- **API additions** (FR6): `customer_number` on `GET /exceptions` and `GET /decisions`;
+  `GET /return-reasons/check` and `/ach`, the ids to send when returning an item;
+  `check_return_reason_id` on recommend, decide and change; and `GET
+  /exceptions/{id}/decision/history`, a decision's earlier versions. The SDKs are regenerated.
+- **Lists bank staff can narrow** (FR7): a Customer filter on Exceptions and Approvals (which
+  also gains Customer and Decide-by columns); Stop payments by status and check number; Check
+  images by how reading the image went.
+- Statuses read as words everywhere ("Active", "Allowed originators only", "Always pay"), not codes.
+- The exception page no longer says a decision can't be changed; the bank's own items show their
+  cut-off too. Each page has one title. The Security page is "Sign-in and security", with a heading
+  per section. A customer's page shows the cut-off that applies (the installation's default
+  included), not "set the bank's first".
+- Emails: a new exception says which check (or ACH debit), the amount and when it's due; reminders
+  give the time in the bank's time zone beside "due in 2 hours".
+- A missing permission to change a decision shows "not allowed", not "not found".
+- **"Don't know your organization?"** (FR8): the plain sign-in page links to *Find your sign-in*,
+  which emails your address a sign-in link for each organization (and customer) you belong to.
+  It answers the same whatever address is typed, so it reveals nothing about who has an account.
+- **Monitoring** (FR9): `GET /api/v1/platform/metrics`, in the Prometheus format, for a platform
+  API key with the `operations` scope: failed jobs, decisions past their cut-off not yet sent,
+  unacknowledged decision files, webhook deliveries and requests (RUNBOOK, "Monitoring").
+- API requests no longer work out the navigation's counts (approvals waiting, other
+  organizations): three fewer queries per call. SQLite installations use write-ahead logging and
+  wait for a write lock instead of failing.
+- API: an `Idempotency-Key` reused for a different person (`OpenClear-Act-As`) is refused as a
+  different request instead of replaying the first person's answer.
+
 ## 1.26.0 — 2026-10-21
 
 - Internal (`REVIEW_FIXES_PLAN.md`): every redirect builds its query in one place, so messages

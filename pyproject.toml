@@ -100,4 +100,6 @@ testpaths = ["tests"]
 markers = [
   # The ASVS 5.0 requirement a test proves (OWASP_PLAN.md OW-D4): @pytest.mark.asvs("6.2.12").
   "asvs(requirement): the ASVS 5.0 requirement this test is evidence for",
+  # Two sessions acting at once on Postgres (FULL_REVIEW_PLAN.md FR9, O4): `pytest -m concurrency`.
+  "concurrency: two sessions acting on the same rows at once (needs Postgres)",
 ]

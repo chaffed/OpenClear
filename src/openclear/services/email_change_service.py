@@ -126,8 +126,13 @@ def open_change(session: Session, token: str) -> OpenedChange | None:
 
 
 def confirm(session: Session, opened: OpenedChange) -> None:
+    from openclear.db.claims import AlreadyUsed, claim_once
+
     change, user = opened.change, opened.user
-    change.used_at = _now()
+    try:
+        claim_once(session, change)
+    except AlreadyUsed:
+        raise EmailChangeError("This link has already been used.") from None
     apply_change(session, user, change.new_email, tenant_id=change.tenant_id, actor_user_id=change.requested_by_user_id,
                  channel="web", via="admin" if change.requested_by_user_id != user.id else "self")
 

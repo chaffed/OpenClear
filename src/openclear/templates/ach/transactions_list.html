@@ -35,10 +35,10 @@
   ] %}
   {% call(txn, col, part="cell") rt.responsive_table(columns, page_obj.items, search=search, action="/ui/ach/transactions", attrs="data-server-list") -%}
     {%- if col.key == "originator" %}<a href="/ui/ach/transactions/{{ txn.id }}?from={{ (request.url.path ~ '?' ~ request.url.query) | urlencode }}">{{ txn.originator_name }}</a>
-    {%- elif col.key == "type" %}{{ txn.transaction_type.value }}
+    {%- elif col.key == "type" %}{{ txn.transaction_type | status_label }}
     {%- elif col.key == "amount" %}{{ txn.amount | currency }}
     {%- elif col.key == "date" %}{{ txn.effective_date }}
-    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status.value }}</span>
+    {%- elif col.key == "match" %}<span class="badge {{ 'badge-ok' if txn.match_status.value == 'matched' else 'badge-danger' if txn.match_status.value == 'exception' else '' }}">{{ txn.match_status | status_label }}</span>
     {%- endif %}
   {%- endcall %}
   {{ pg.pager(page_obj, request) }}
