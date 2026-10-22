@@ -112,4 +112,14 @@ sequenceDiagram
   API (`202` while reverse waits for a second admin). **Changes from RPP-D1:** setting it is for the
   bank's administrators only (`admin:manage`, never a customer's people), and the accounts bulk file
   has no column for it: a protected change can't arrive in a file without its approval.
+- 2026-10-22: RPP2 built. At the cut-off, `auto_disposition_service.is_review_only` pays a check whose
+  only type is `review` on an account still in reverse mode ("Not returned by the cut-off"), house
+  accounts included; anything else follows the customer's default. Exceptions shows *N checks to
+  review* with *Pay all N to review* (`POST /ui/exceptions/review/pay-all`, up to 500, refused when
+  the count changed since it was shown; each decided by the bulk path's rules, now
+  `_decide_each`). No per-check email or upload-summary count for review-only checks; the reminder
+  before the cut-off covers them. The customer's dashboard counts *to review* apart. Bank CUEC
+  B-CA-3-02, control OC-SI-08 and the check `reverse_accounts_agreed`. Postgres: a return at the
+  cut-off isn't paid over (`test_reverse_cutoff_concurrency.py`). The ACH authorizations help says
+  how to review every debit (RPP-D5).
 

@@ -642,7 +642,9 @@ def _record_chunk(session: Session, record: BulkUploadFile, spec: ImportSpec, ou
         # By customer and account, so a person who sees only some accounts is told only of theirs.
         for customer_id, account_id in session.execute(
             select(ExceptionItem.customer_id, source.account_id).join(source, source.id == ExceptionItem.source_item_id).where(
-                ExceptionItem.tenant_id == record.tenant_id, ExceptionItem.source_item_id.in_(created_ids)
+                ExceptionItem.tenant_id == record.tenant_id, ExceptionItem.source_item_id.in_(created_ids),
+                # Checks only to review (reverse positive pay) are in the reminder before the cut-off instead.
+                ExceptionItem.exception_types != "review",
             )
         ):
             key = f"{customer_id or ''}:{account_id}"
