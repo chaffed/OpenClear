@@ -46,6 +46,11 @@ RESULTS: dict[T, str] = {
     # A reverse positive pay account (REVERSE_POSITIVE_PAY_PLAN.md): no issued file, the customer reviews each check.
     T.REVIEW: "customer_review",
 }
+# The issued check names a payee and the teller didn't say what's on the check: the payee must be
+# checked as written before cash is paid (the product owner, 2026-10-22).
+PAYEE_NEEDED = "payee_needed"
+# The order the first problem is chosen in: the clearing rules', then a missing payee.
+_ORDER = [*RESULTS.values(), PAYEE_NEEDED]
 # Not-issued answers from one teller, branch or client within an hour before it looks like
 # someone trying check numbers (TL-D6).
 PROBE_THRESHOLD = 10
@@ -116,16 +121,40 @@ def _rules(session: Session, tenant_id: uuid.UUID, account: Account, request: Ve
     return problems, candidate
 
 
+def _enrolled(session: Session, account: Account) -> bool:
+    """On positive pay (or reverse): a bank's own account, or a customer's still enrolled. A
+    customer deactivated isn't, and its checks are cashed by the bank's usual procedure."""
+    from openclear.domain.customer import Customer
+
+    if account.customer_id is None:
+        return True
+    customer = session.get(Customer, account.customer_id)
+    return customer is not None and customer.is_active
+
+
+def _names_a_payee(issued) -> bool:
+    payee = (issued.payee_name or "").strip()
+    return bool(payee) and payee != "(void)"
+
+
 def verify(session: Session, tenant_id: uuid.UUID, request: VerifyRequest, *, user_id: uuid.UUID | None) -> TellerVerification:
     """Records and returns the verification (the caller commits). Raises nothing for a bad
-    check: the answer is in `result`."""
+    check: the answer is in `result`.
+
+    An account not on positive pay (unknown, or its customer no longer enrolled) answers
+    `not_on_positive_pay`: the teller cashes it by the bank's usual procedure. On an enrolled
+    account a check that isn't found is declined (`not_issued`, or `customer_review` on reverse
+    positive pay), and when the issued check names a payee, the teller must send the payee as
+    written on the check, or it's declined (`payee_needed`)."""
     account = account_service.get_account_by_number(session, tenant_id, request.account_number)
-    if account is None:
+    if account is None or not _enrolled(session, account):
         result, problems, candidate = NOT_ON_POSITIVE_PAY, [NOT_ON_POSITIVE_PAY], None
     else:
         found, candidate = _rules(session, tenant_id, account, request)
         problems = [RESULTS[t] for t in found]
-        result = next((RESULTS[t] for t in RESULTS if t in found), MATCH)
+        if candidate is not None and _names_a_payee(candidate) and not (request.payee_name or "").strip():
+            problems.append(PAYEE_NEEDED)
+        result = next((code for code in _ORDER if code in problems), MATCH)
     now = _now()
     verification = TellerVerification(
         tenant_id=tenant_id, account_id=account.id if account else None, customer_id=account.customer_id if account else None,

@@ -24,7 +24,7 @@ from openclear.services import teller_service
 router = APIRouter(prefix="/checks", tags=["teller"])
 
 Result = Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs",
-                 "payee_differs", "stale", "customer_review"]
+                 "payee_differs", "stale", "customer_review", "payee_needed"]
 
 
 class VerifyCheck(BaseModel):
@@ -32,7 +32,8 @@ class VerifyCheck(BaseModel):
     account_number: str = Field(..., min_length=1, max_length=64, description="From the MICR line")
     check_number: str = Field(..., min_length=1, max_length=32, description="From the MICR line")
     amount: Decimal = Field(..., gt=0, max_digits=14, decimal_places=2)
-    payee_name: str | None = Field(None, max_length=255, description="The payee the teller read, if the platform sends it")
+    payee_name: str | None = Field(None, max_length=255, description="The payee as written on the check. Required when the customer "
+                                                                     "gave a payee for the issued check: without it the answer is payee_needed")
     teller_id: str | None = Field(None, max_length=64, description="Who asked, as the teller platform identifies them")
     branch: str | None = Field(None, max_length=64)
 

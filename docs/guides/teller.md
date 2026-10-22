@@ -15,8 +15,9 @@ teller platform ──POST /api/v1/checks/cashed──▶ OpenClear   { paid_ite
 ```
 
 1. **Verify.** Send what the teller has from the MICR line (`routing_number`, `account_number`,
-   `check_number`), the `amount`, and, if the platform has it, the `payee_name` the teller read,
-   with the `teller_id` and `branch`. OpenClear runs the same rules it runs for checks in
+   `check_number`), the `amount`, the `payee_name` as written on the check, and the `teller_id`
+   and `branch`. When the customer gave a payee for the check, it must be sent; without it the
+   check is declined (`payee_needed`). OpenClear runs the same rules it runs for checks in
    clearing, now, and answers `match` or the first problem:
 
    | `result` | What it means |
@@ -28,12 +29,15 @@ teller platform ──POST /api/v1/checks/cashed──▶ OpenClear   { paid_ite
    | `stop_differs` | A stop is on file for this check number, but for another amount: the customer decides |
    | `already_paid` | Paid already: in clearing, or cashed at another branch |
    | `customer_review` | The account is on reverse positive pay: the customer reviews each check |
-   | `not_on_positive_pay` | OpenClear doesn't know the account |
+   | `payee_needed` | The customer gave a payee for this check: send the payee as written, and verify again |
+   | `not_on_positive_pay` | The account isn't on positive pay: OpenClear doesn't know it, or its customer is no longer enrolled |
 
    `problems` lists every problem found. `issued` (amount, payee, issue date) comes only with a
    decline, to help the teller explain it.
-2. **Pay out only on `match`.** For anything else the teller follows the bank's procedure,
-   usually: decline, or phone the customer. The customer sees each declined check on their
+2. **Pay out only on `match`.** On an account enrolled in positive pay or reverse positive pay,
+   anything else is declined: a check that isn't found is never cashed. `not_on_positive_pay` is
+   the exception: the account isn't enrolled, so the teller cashes it by the bank's standard
+   operating procedure. The customer sees each declined check on their
    Exceptions page for a week, as information.
 3. **Record it cashed.** Send the `verification_id` and the amount paid out, within 15 minutes
    of verifying. OpenClear presents the check as paid at once (paid item source `teller`); the
