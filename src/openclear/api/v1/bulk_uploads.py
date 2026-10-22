@@ -8,8 +8,9 @@ can use, built in or from a plugin (PLUGIN_PLAN.md PL2), can also be sent here d
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -106,6 +107,7 @@ def list_import_formats(db: Session = Depends(get_db), ctx: TenantContext = Depe
 
 class ImportLayoutRead(BaseModel):
     id: uuid.UUID
+    kind: Literal["issued_items", "paid_items"]
     name: str
     customer_id: uuid.UUID | None
     is_default: bool
@@ -113,17 +115,23 @@ class ImportLayoutRead(BaseModel):
 
 
 @router.get("/layouts", response_model=list[ImportLayoutRead])
-def list_import_layouts(db: Session = Depends(get_db), ctx: TenantContext = Depends(get_current_context)) -> list[ImportLayoutRead]:
-    """The issued-check file layouts the caller can upload with (Settings → Issue-file
-    layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-    `kind=issued_items` and `format=layout`."""
+def list_import_layouts(
+    kind: Literal["issued_items", "paid_items"] = Query("issued_items", description="Issued-check or posted-check layouts"),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(get_current_context),
+) -> list[ImportLayoutRead]:
+    """The file layouts the caller can upload with (Settings → File layouts). Issued-check
+    layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+    bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+    and `format=layout`."""
     from openclear.services import import_layout_service
 
-    if "issued_item:write" not in ctx.permissions:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing permission: issued_item:write")
-    return [ImportLayoutRead(id=layout.id, name=layout.name, customer_id=layout.customer_id, is_default=layout.is_default,
+    permission = import_layout_service.PERMISSION[kind]
+    if permission not in ctx.permissions:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
+    return [ImportLayoutRead(id=layout.id, kind=layout.kind, name=layout.name, customer_id=layout.customer_id, is_default=layout.is_default,
                              file_type=layout.settings.get("file_type", "delimited"))
-            for layout in import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id)]
+            for layout in import_layout_service.visible(db, ctx.tenant_id, ctx.customer_id, kind)]
 
 
 @router.post("", response_model=BulkUploadAccepted, status_code=status.HTTP_202_ACCEPTED)

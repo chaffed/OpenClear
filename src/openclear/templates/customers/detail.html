@@ -54,7 +54,7 @@
   <p>{% if open_count %}<a href="/ui/exceptions?customer={{ customer.id }}">{{ open_count }} item{{ "s" if open_count != 1 }} to decide</a>{% if nearest_deadline %}, the first due
     <time datetime="{{ nearest_deadline | iso_utc }}" data-local-time data-relative-time>{{ nearest_deadline.strftime("%Y-%m-%d %H:%M") }} UTC</time>{% endif %}.{% else %}Nothing to decide.{% endif %}
     Reminders: {{ reminder_timing }}.</p>
-  <p class="hint"><a href="/ui/layouts">Issue-file layouts</a> · <a href="/ui/users">Users</a> · <a href="/ui/issued-items">Issued items</a></p>
+  <p class="hint"><a href="/ui/layouts">File layouts</a> · <a href="/ui/users">Users</a> · <a href="/ui/issued-items">Issued items</a></p>
   {# The cut-off agreed with this customer (UI_PLAN.md UI-D13): blank uses the bank's. #}
   {% set network_names = {"check": "Checks", "ach": "ACH"} %}
   <h3>Cut-off</h3>

@@ -1,31 +1,48 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Issue-file layouts — {{ ctx.tenant_name }}{% endblock %}
-{% block help_title %}About issue-file layouts{% endblock %}
+{% block title %}File layouts — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About file layouts{% endblock %}
 {% block help_body %}
-<p>A layout tells OpenClear how to read an issued-check file that isn't in OpenClear's own
-  column format: which column (or which characters, in a fixed-width file) holds the
-  account, check number, amount, date and payee, and how amounts and dates are written.</p>
+<p>A layout tells OpenClear how to read a file that isn't in OpenClear's own column format:
+  which column (or which characters, in a fixed-width file) holds each field, and how amounts
+  and dates are written.</p>
+{% if ctx.customer_id is none %}
+<ul>
+  <li><strong>Issued checks:</strong> the checks a customer has written: account, check number,
+    amount, date and payee.</li>
+  <li><strong>Posted checks:</strong> the file your core sends of the checks it posted, for every
+    customer at once. Only your bank's staff build these. A layout can name the file's trailer:
+    when its item count or total doesn't match the lines, the whole file is refused, so a
+    truncated file never presents half a day's checks.</li>
+</ul>
+{% endif %}
 <p>Build one from a sample of your file. Each upload records the layout it used, so
   changing a layout later doesn't change what an earlier upload meant.</p>
-<p>The default layout is chosen for you when you upload. A customer's own default comes
-  before the bank's.</p>
+<p>The default layout is chosen for you when you upload, and is the one the dropbox reads with.
+  A customer's own default comes before the bank's.</p>
 {% endblock %}
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Issue-file layouts</h1>
-    <a href="/ui/layouts/new" class="button">{{ icon("add") }}New layout</a>
+    <h1>File layouts</h1>
+    <a href="/ui/layouts/new?kind={{ kind }}" class="button">{{ icon("add") }}New layout</a>
   </div>
+  {% if kinds | length > 1 %}
+  <nav class="tabs" aria-label="Kind of file">
+    {% for k in kinds %}
+    <a href="/ui/layouts?kind={{ k }}"{% if k == kind %} aria-current="page"{% endif %}>{{ "Issued checks" if k == "issued_items" else "Posted checks" }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
   {% if layouts %}
   <table>
-    <thead><tr><th>Name</th><th>File</th>{% if ctx.customer_id is none %}<th>For</th>{% endif %}<th>Default</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>File</th>{% if ctx.customer_id is none and kind == "issued_items" %}<th>For</th>{% endif %}<th>Default</th><th></th></tr></thead>
     <tbody>
       {% for layout in layouts %}
       <tr>
         <td>{{ layout.name }}</td>
         <td>{{ file_types[layout.settings.file_type] }}</td>
-        {% if ctx.customer_id is none %}<td>{{ customer_names.get(layout.customer_id, "All customers") if layout.customer_id else "All customers" }}</td>{% endif %}
+        {% if ctx.customer_id is none and kind == "issued_items" %}<td>{{ customer_names.get(layout.customer_id, "All customers") if layout.customer_id else "All customers" }}</td>{% endif %}
         <td>{% if layout.is_default %}<span class="badge badge-ok">default</span>{% endif %}</td>
         <td>
           {% if editable(layout) %}
@@ -50,7 +67,7 @@
     match it to your file with a sample.</p>
   <ul class="plain-list">
     {% for key, t in templates_.items() %}
-    <li><a href="/ui/layouts/new?template={{ key }}">{{ t.name }}</a>: {{ t.description }}</li>
+    <li><a href="/ui/layouts/new?kind={{ kind }}&amp;template={{ key }}">{{ t.name }}</a>: {{ t.description }}</li>
     {% endfor %}
   </ul>
 </div>

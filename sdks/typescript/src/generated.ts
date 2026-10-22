@@ -589,6 +589,7 @@ export interface ImportLayoutRead {
   file_type: string;
   id: string;
   is_default: boolean;
+  kind: "issued_items" | "paid_items";
   name: string;
 }
 
@@ -1390,12 +1391,13 @@ export class BulkUploadsApi {
    *
    * GET /api/v1/bulk-uploads/layouts
    *
-   * The issued-check file layouts the caller can upload with (Settings → Issue-file
-   * layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-   * `kind=issued_items` and `format=layout`.
+   * The file layouts the caller can upload with (Settings → File layouts). Issued-check
+   * layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+   * bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+   * and `format=layout`.
    */
-  listImportLayouts(): Promise<Array<ImportLayoutRead>> {
-    return this.c.call<Array<ImportLayoutRead>>("GET", `/api/v1/bulk-uploads/layouts`, {  });
+  listImportLayouts(query: { kind?: "issued_items" | "paid_items" } = {}): Promise<Array<ImportLayoutRead>> {
+    return this.c.call<Array<ImportLayoutRead>>("GET", `/api/v1/bulk-uploads/layouts`, { query });
   }
 
   /**

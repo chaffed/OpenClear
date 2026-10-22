@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}{{ "Edit" if layout else "New" }} issue-file layout — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}{{ "Edit" if layout else "New" }} {{ noun }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}Building a layout{% endblock %}
 {% block help_body %}
 <ol>
@@ -12,22 +12,33 @@
     would be imported, or what's wrong with it.</li>
   <li>When the preview looks right, <strong>Save</strong>.</li>
 </ol>
+{% if kind == "paid_items" %}
+<p>For your core's posted-check file:</p>
+<ul>
+  <li>When the file gives only the MICR on-us field, map it and say how it splits into the account and check number.</li>
+  <li>When it carries other transactions too, map the transaction code and list the codes that are check debits; other lines are skipped.</li>
+  <li>An amount written negative (a minus sign, or in brackets) is a reversal: skipped and counted, never presented.</li>
+  <li>Name the trailer, and where its item count and total are. The trailer counts every line the layout reads and totals their
+    amounts; when they don't match, the whole file is refused.</li>
+</ul>
+{% endif %}
 {% endblock %}
 {% block content %}
-<p class="back-link"><a href="/ui/layouts">Issue-file layouts</a></p>
+<p class="back-link"><a href="/ui/layouts?kind={{ kind }}">File layouts</a></p>
 <div class="card">
-  <h1>{{ "Edit" if layout else "New" }} issue-file layout</h1>
+  <h1>{{ "Edit" if layout else "New" }} {{ noun }}</h1>
   {% if error %}<p class="flash flash-error" role="alert" id="layout-error">{{ error }}</p>{% endif %}
 
   <form method="post" action="{{ '/ui/layouts/' ~ layout.id if layout else '/ui/layouts' }}" enctype="multipart/form-data" class="layout-builder" data-no-busy>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="sample_b64" value="{{ sample_b64 }}">
     <input type="hidden" name="sample_name" value="{{ sample_name or '' }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
 
     <fieldset>
       <legend>Layout</legend>
       <label>Name <input type="text" name="name" value="{{ layout_name }}" maxlength="100" required></label>
-      {% if ctx.customer_id is none %}
+      {% if ctx.customer_id is none and kind == "issued_items" %}
       <label>For
         <select name="owner">
           <option value="">All customers</option>
@@ -81,7 +92,7 @@
       <legend>Where each field is</legend>
       {% if problem %}<p class="flash flash-warn" role="status">{{ problem }}</p>{% endif %}
       {% if view and not view.fixed %}
-      <p class="hint">Choose what each column holds. Required: {% for f in required %}{{ fields[f] }}{{ ", " if not loop.last }}{% endfor %}.</p>
+      <p class="hint">Choose what each column holds. Required: {% for f in required %}{{ fields[f] }}{{ ", " if not loop.last }}{% endfor %}{% if kind == "paid_items" %}, and the account and check number, or the MICR on-us field{% endif %}.</p>
       <div class="table-scroll">
       <table class="sample-grid">
         <thead>
@@ -154,10 +165,54 @@
       <label>Dates
         <select name="date_format">{% for value in date_formats %}<option value="{{ value }}" {{ "selected" if (settings.date_format or "auto") == value else "" }}>{{ "Recognize it (2026-01-15, 01/15/2026)" if value == "auto" else value }}</option>{% endfor %}</select>
       </label>
+      {% if kind == "issued_items" %}
       <label>A void is marked by (comma-separated, e.g. V, Y) <input type="text" name="void_values" value="{{ settings.void_values or '' }}" class="field-l"></label>
+      {% endif %}
       <label><input type="checkbox" name="strip_zeros" value="check_number" {{ "checked" if "check_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from check numbers</label>
       <label><input type="checkbox" name="strip_zeros" value="account_number" {{ "checked" if "account_number" in (settings.strip_zeros or []) else "" }}> Drop leading zeros from account numbers</label>
     </fieldset>
+
+    {% if kind == "paid_items" %}
+    {% set trailer_s = settings.trailer or {} %}
+    <fieldset>
+      <legend>Posted checks</legend>
+      <div class="inline-fields">
+        <label>The on-us field
+          <select name="onus_mode">{% for value, label in onus_modes.items() %}<option value="{{ value }}" {{ "selected" if (settings.onus_mode or "separator") == value else "" }}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label>Split at <input type="text" name="onus_separator" maxlength="1" class="field-xs" value="{{ settings.onus_separator or '/' }}"></label>
+        <label>Order
+          <select name="onus_order">{% for value, label in onus_orders.items() %}<option value="{{ value }}" {{ "selected" if (settings.onus_order or "account_serial") == value else "" }}>{{ label }}</option>{% endfor %}</select>
+        </label>
+      </div>
+      <div class="inline-fields">
+        {% set oa, os = settings.onus_account or {}, settings.onus_serial or {} %}
+        <label>Or: account at <input type="number" min="1" name="onus_account_start" value="{{ oa.start or '' }}" class="field-s" aria-label="Account start in the on-us field"></label>
+        <label>length <input type="number" min="1" name="onus_account_length" value="{{ oa.length or '' }}" class="field-s" aria-label="Account length in the on-us field"></label>
+        <label>check number at <input type="number" min="1" name="onus_serial_start" value="{{ os.start or '' }}" class="field-s" aria-label="Check number start in the on-us field"></label>
+        <label>length <input type="number" min="1" name="onus_serial_length" value="{{ os.length or '' }}" class="field-s" aria-label="Check number length in the on-us field"></label>
+      </div>
+      <label>Transaction codes that are check debits (comma-separated, e.g. 200) <input type="text" name="debit_values" value="{{ settings.debit_values or '' }}" class="field-l"></label>
+      <label>Your routing numbers (optional; a line for another one fails) <input type="text" name="routing_numbers" value="{{ settings.routing_numbers or '' }}" class="field-xl" inputmode="numeric"></label>
+      <div class="inline-fields">
+        <label>Trailer
+          <select name="trailer_match">{% for value, label in trailer_matches.items() %}<option value="{{ value }}" {{ "selected" if (trailer_s.match or "") == value else "" }}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label>starting with <input type="text" name="trailer_prefix" value="{{ trailer_s.prefix or '' }}" class="field-s"></label>
+      </div>
+      <div class="inline-fields" data-layout-for="fixed">
+        <label>Item count at <input type="number" min="1" name="trailer_count_start" value="{{ trailer_s.count_start or '' }}" class="field-s" aria-label="Trailer item count start"></label>
+        <label>length <input type="number" min="1" name="trailer_count_length" value="{{ trailer_s.count_length or '' }}" class="field-s" aria-label="Trailer item count length"></label>
+        <label>Total at <input type="number" min="1" name="trailer_total_start" value="{{ trailer_s.total_start or '' }}" class="field-s" aria-label="Trailer total start"></label>
+        <label>length <input type="number" min="1" name="trailer_total_length" value="{{ trailer_s.total_length or '' }}" class="field-s" aria-label="Trailer total length"></label>
+      </div>
+      <div class="inline-fields" data-layout-for="delimited excel">
+        <label>Item count in column <input type="number" min="1" name="trailer_count_column" value="{{ trailer_s.count_column or '' }}" class="field-s"></label>
+        <label>Total in column <input type="number" min="1" name="trailer_total_column" value="{{ trailer_s.total_column or '' }}" class="field-s"></label>
+      </div>
+      <p class="hint">The trailer line is found among all the file's lines and is never read as a check, so don't also skip it at the bottom.</p>
+    </fieldset>
+    {% endif %}
 
     <div class="form-actions">
       <button type="submit" name="action" value="preview" class="secondary">{{ icon("visibility") }}Preview</button>
@@ -166,25 +221,35 @@
   </form>
 </div>
 
+{% if trailer %}
+<div class="card" aria-live="polite">
+  <h2>Trailer</h2>
+  {% if trailer.ok %}
+  <p class="flash flash-ok" role="status">The trailer's {{ trailer.declared_count }} items totalling {{ "{:,.2f}".format(trailer.declared_total) }} match the file.</p>
+  {% else %}
+  <p class="flash flash-error" role="status">{{ trailer.problem }} A file like this would be refused whole.</p>
+  {% endif %}
+</div>
+{% endif %}
 {% if preview %}
+{% set columns = [("account_number", "Account"), ("check_number", "Check"), ("amount", "Amount"), ("issue_date", "Date"), ("payee_name", "Payee"), ("void", "Void")]
+   if kind == "issued_items" else [("account_number", "Account"), ("check_number", "Check"), ("presented_amount", "Amount"), ("presented_date", "Posted"), ("routing_number", "Routing")] %}
 <div class="card" aria-live="polite">
   <h2>Preview</h2>
   <p class="hint">The first {{ preview | length }} items, as they would be imported.</p>
   <div class="table-scroll">
   <table class="layout-preview">
-    <thead><tr><th scope="col">Where</th><th scope="col">Account</th><th scope="col">Check</th><th scope="col">Amount</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Void</th><th scope="col">Problem</th></tr></thead>
+    <thead><tr><th scope="col">Where</th>{% for _key, title in columns %}<th scope="col">{{ title }}</th>{% endfor %}<th scope="col">Problem</th></tr></thead>
     <tbody>
       {% for row in preview %}
       <tr{% if row.error %} class="row-error"{% endif %}>
         <td>{{ row.label }}</td>
         {% if row.parsed %}
-        <td>{{ row.parsed.account_number }}</td><td>{{ row.parsed.check_number }}</td><td>{{ row.parsed.amount }}</td>
-        <td>{{ row.parsed.issue_date }}</td><td>{{ row.parsed.payee_name }}</td><td>{{ "void" if row.parsed.void else "" }}</td><td></td>
+        {% for key, _title in columns %}<td>{% if key == "void" %}{{ "void" if row.parsed.void else "" }}{% else %}{{ row.parsed.get(key, "") }}{% endif %}</td>{% endfor %}<td></td>
         {% else %}
-        {% for f in ("account_number", "check_number", "amount", "issue_date", "payee_name", "void") %}
-        <td{% if row.error_field == f %} class="cell-error"{% endif %}>{{ row.raw.get(f, "") }}</td>
-        {% endfor %}
-        <td class="cell-error">{{ row.error }}</td>
+        {% set raw_keys = {"presented_amount": "amount", "presented_date": "posted_date"} %}
+        {% for key, _title in columns %}{% set f = raw_keys.get(key, key) %}<td{% if row.error_field == f %} class="cell-error"{% endif %}>{{ row.raw.get(f, "") }}</td>{% endfor %}
+        {% if row.skipped %}<td class="hint">Skipped: {{ row.skipped }}</td>{% else %}<td class="cell-error">{{ row.error }}</td>{% endif %}
         {% endif %}
       </tr>
       {% endfor %}

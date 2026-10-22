@@ -616,6 +616,7 @@ class ImportLayoutRead(TypedDict):
     file_type: str
     id: str
     is_default: bool
+    kind: Literal["issued_items", "paid_items"]
     name: str
 
 
@@ -1337,16 +1338,17 @@ class BulkUploadsApi:
         """
         return self._c.call("GET", "/api/v1/bulk-uploads/formats")
 
-    def list_import_layouts(self) -> list[ImportLayoutRead]:
+    def list_import_layouts(self, *, kind: Literal["issued_items", "paid_items"] | None = None) -> list[ImportLayoutRead]:
         """List Import Layouts.
 
         GET /api/v1/bulk-uploads/layouts
 
-        The issued-check file layouts the caller can upload with (Settings → Issue-file
-        layouts): a customer's own and the bank's. Send one's `id` as `layout_id` with
-        `kind=issued_items` and `format=layout`.
+        The file layouts the caller can upload with (Settings → File layouts). Issued-check
+        layouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the
+        bank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`
+        and `format=layout`.
         """
-        return self._c.call("GET", "/api/v1/bulk-uploads/layouts")
+        return self._c.call("GET", "/api/v1/bulk-uploads/layouts", query={"kind": kind})
 
     def get_bulk_upload(self, upload_id: str) -> BulkUploadRead:
         """Get Bulk Upload.

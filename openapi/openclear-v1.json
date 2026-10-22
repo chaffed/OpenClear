@@ -4241,6 +4241,14 @@
             "title": "Is Default",
             "type": "boolean"
           },
+          "kind": {
+            "enum": [
+              "issued_items",
+              "paid_items"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -4248,6 +4256,7 @@
         },
         "required": [
           "id",
+          "kind",
           "name",
           "customer_id",
           "is_default",
@@ -8554,8 +8563,26 @@
     },
     "/api/v1/bulk-uploads/layouts": {
       "get": {
-        "description": "The issued-check file layouts the caller can upload with (Settings \u2192 Issue-file\nlayouts): a customer's own and the bank's. Send one's `id` as `layout_id` with\n`kind=issued_items` and `format=layout`.",
+        "description": "The file layouts the caller can upload with (Settings \u2192 File layouts). Issued-check\nlayouts: a customer's own and the bank's. Posted-check layouts (`kind=paid_items`): the\nbank's, for the bank's staff only. Send one's `id` as `layout_id` with the same `kind`\nand `format=layout`.",
         "operationId": "list_import_layouts_api_v1_bulk_uploads_layouts_get",
+        "parameters": [
+          {
+            "description": "Issued-check or posted-check layouts",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "issued_items",
+              "description": "Issued-check or posted-check layouts",
+              "enum": [
+                "issued_items",
+                "paid_items"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8570,6 +8597,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

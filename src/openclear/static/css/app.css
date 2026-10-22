@@ -906,6 +906,12 @@ fieldset { min-width: 0; }
 .checklist-state { width: 6rem; vertical-align: top; white-space: nowrap; }
 .link-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
 
+/* Tabs between kinds of one list (File layouts: issued checks, posted checks). */
+.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; border-bottom: 1px solid var(--border); margin: 0 0 1rem; }
+.tabs a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.1rem; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { color: var(--accent-text); border-bottom-color: var(--accent-text); font-weight: 600; }
+
 /* An upload's result (UI_PLAN.md FL5): the outcome first; undoing the upload set apart. */
 .upload-outcome { font-size: 1.05rem; }
 .file-details { margin: 1.5rem 0; }

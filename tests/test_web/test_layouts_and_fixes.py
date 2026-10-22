@@ -192,7 +192,7 @@ def test_the_api_and_the_drop_folder_use_layouts(client, db_session, tenant_fact
     db_session.commit()
     headers = login_headers(client, tenant.slug, users["admin"].email)
     listed = client.get("/api/v1/bulk-uploads/layouts", headers=headers).json()
-    assert listed == [{"id": str(layout.id), "name": "Pipes", "customer_id": None, "is_default": True, "file_type": "delimited"}]
+    assert listed == [{"id": str(layout.id), "kind": "issued_items", "name": "Pipes", "customer_id": None, "is_default": True, "file_type": "delimited"}]
     resp = client.post("/api/v1/bulk-uploads", headers=headers, data={"kind": "issued_items", "format": "layout", "layout_id": str(layout.id)},
                        files={"file": ("f.txt", f"{account.account_number}|8001|10.00|2026-10-15|Zed\n".encode(), "text/plain")})
     assert resp.status_code == 202

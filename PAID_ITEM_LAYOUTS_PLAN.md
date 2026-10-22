@@ -100,3 +100,10 @@ flowchart LR
 ## Progress log
 
 - 2026-10-21: Plan written (FULL_REVIEW_PLAN.md M1, FR-D20). Not started.
+- 2026-10-22: PIL1 built (migration `f847d741d618`, the `kind` check constraint). `layouts.py` reads
+  posted checks: `PAID_FIELDS`, the three templates, MICR on-us by separator or positions,
+  transaction codes, reversals (`RowSkipped`), and `check_trailer` (built here rather than in PIL2,
+  so the builder's preview shows it). The service, builder and API listing take a kind; the tile
+  is *File layouts*. **Change from PIL-D3:** a bank has no routing numbers on record, so a
+  posted-check layout lists the bank's own (`routing_numbers`), and a line for another fails.
+
