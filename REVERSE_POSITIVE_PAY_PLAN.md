@@ -105,3 +105,23 @@ sequenceDiagram
 ## Progress log
 
 - 2026-10-21: Plan written (FULL_REVIEW_PLAN.md M2, FR-D20). Not started.
+- 2026-10-22: RPP1 built (migration `7f7bc3cb2b34`): `account.check_review_mode`, `CheckExceptionType.REVIEW`
+  (labelled *To review*), `CheckMatchInputs.review_all` from the account's mode, the protected change
+  `account.check_review_mode` (`admin:manage`, loosens on `reverse`, `settings.changed`), the account's
+  *Check review* page linked from the customer's accounts, and `check_review_mode` in the accounts
+  API (`202` while reverse waits for a second admin). **Changes from RPP-D1:** setting it is for the
+  bank's administrators only (`admin:manage`, never a customer's people), and the accounts bulk file
+  has no column for it: a protected change can't arrive in a file without its approval.
+- 2026-10-22: RPP2 built. At the cut-off, `auto_disposition_service.is_review_only` pays a check whose
+  only type is `review` on an account still in reverse mode ("Not returned by the cut-off"), house
+  accounts included; anything else follows the customer's default. Exceptions shows *N checks to
+  review* with *Pay all N to review* (`POST /ui/exceptions/review/pay-all`, up to 500, refused when
+  the count changed since it was shown; each decided by the bulk path's rules, now
+  `_decide_each`). No per-check email or upload-summary count for review-only checks; the reminder
+  before the cut-off covers them. The customer's dashboard counts *to review* apart. Bank CUEC
+  B-CA-3-02, control OC-SI-08 and the check `reverse_accounts_agreed`. Postgres: a return at the
+  cut-off isn't paid over (`test_reverse_cutoff_concurrency.py`). The ACH authorizations help says
+  how to review every debit (RPP-D5).
+- 2026-10-22: RPP3 written: *Reviewing your checks* in the customer's exceptions guide, *Reverse positive
+  pay* in the bank's customers-and-accounts guide, the README and the CHANGELOG. M2 is done.
+

@@ -34,6 +34,7 @@ public sealed record AccountRead
 {
     [JsonPropertyName("account_number")] public string AccountNumber { get; init; } = default!;
     [JsonPropertyName("ach_debit_block_mode")] public string AchDebitBlockMode { get; init; } = default!;
+    [JsonPropertyName("check_review_mode")] public string CheckReviewMode { get; init; } = default!;
     [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
     [JsonPropertyName("external_account_id")] public string ExternalAccountId { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -44,6 +45,7 @@ public sealed record AccountRead
 public sealed record AccountUpsert
 {
     [JsonPropertyName("ach_debit_block_mode")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchDebitBlockMode { get; init; }
+    [JsonPropertyName("check_review_mode")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CheckReviewMode { get; init; }
     [JsonPropertyName("customer_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerNumber { get; init; }
     [JsonPropertyName("external_account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ExternalAccountId { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
@@ -1003,10 +1005,12 @@ public sealed partial class AccountsApi
     /// PUT /api/v1/accounts/{account_number}
     ///
     /// Creates the account with this number, or updates it to match. `200` when it existed,
-    /// `201` when it was created.
+    /// `201` when it was created. Putting an account on reverse positive pay (`check_review_mode`)
+    /// needs admin:manage and a bank-level caller; when the bank's sensitive changes need a second
+    /// admin, the rest is saved and this answers `202` with `{"status": "pending", "change_request_id"}`.
     /// </summary>
-    public Task<AccountRead> UpsertAccountAsync(string accountNumber, AccountUpsert body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<AccountRead>("PUT", $"/api/v1/accounts/{Uri.EscapeDataString(accountNumber.ToString()!)}", json: body, cancellationToken: cancellationToken);
+    public Task<JsonElement> UpsertAccountAsync(string accountNumber, AccountUpsert body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<JsonElement>("PUT", $"/api/v1/accounts/{Uri.EscapeDataString(accountNumber.ToString()!)}", json: body, cancellationToken: cancellationToken);
 }
 
 /// <summary>

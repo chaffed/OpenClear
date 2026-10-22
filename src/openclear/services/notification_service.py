@@ -256,7 +256,10 @@ def notify_exceptions_created_summary(
 
 
 def notify_exception_created(session: Session, exception_item: ExceptionItem) -> None:
-    if _summarizing_exceptions.get():
+    """Not for a check that's only to review (reverse positive pay, REVERSE_POSITIVE_PAY_PLAN.md
+    RPP-D6): a reverse customer has one a day of those, and hears of them in the reminder
+    before the cut-off instead of once per check."""
+    if _summarizing_exceptions.get() or exception_item.exception_types == "review":
         return
     recipients = _recipients_for_permission(
         session, exception_item.tenant_id, "exception:recommend", customer_id=exception_item.customer_id,

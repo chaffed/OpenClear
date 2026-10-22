@@ -21,6 +21,15 @@ class AchDebitBlockMode(str, enum.Enum):
     FILTER_BY_AUTHORIZATION = "filter_by_authorization"
 
 
+class CheckReviewMode(str, enum.Enum):
+    # Positive pay: presented checks are matched against the customer's issued-check file, and
+    # only a mismatch reaches the customer.
+    POSITIVE = "positive"
+    # Reverse positive pay (REVERSE_POSITIVE_PAY_PLAN.md): every presented check is an item for
+    # the customer to review, and one not returned by the cut-off is paid.
+    REVERSE = "reverse"
+
+
 class Account(Base):
     __tablename__ = "account"
     __table_args__ = (
@@ -48,4 +57,11 @@ class Account(Base):
         Enum(AchDebitBlockMode, name="ach_debit_block_mode", native_enum=False, length=32),
         nullable=False,
         default=AchDebitBlockMode.FILTER_BY_AUTHORIZATION,
+    )
+    # Turning reverse on is a protected change (services/change_kinds.py "account.check_review_mode").
+    check_review_mode: Mapped[CheckReviewMode] = mapped_column(
+        Enum(CheckReviewMode, name="check_review_mode", native_enum=False, length=10),
+        nullable=False,
+        default=CheckReviewMode.POSITIVE,
+        server_default=CheckReviewMode.POSITIVE.name,
     )

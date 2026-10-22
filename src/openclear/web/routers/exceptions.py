@@ -219,6 +219,11 @@ def list_exceptions(
     )
     if not hasattr(page_obj, "items"):
         return page_obj
+    # Checks to review (reverse positive pay), across every page of the work queue (RPP-D6).
+    to_review = 0
+    if statuses == exception_service.NEEDS_ATTENTION and not search.active:
+        to_review = exception_service.count_exceptions(
+            db, ctx.tenant_id, statuses=statuses, customer_id=customer_id, where=_review_only_where(network_code or None))
     # Per-row enrichment only ever runs over the current page's rows.
     sources = _load_sources(db, page_obj.items)
     accounts, customers = _names_for_page(db, ctx, page_obj.items, sources)
@@ -245,7 +250,7 @@ def list_exceptions(
         show_deadlines=any(r["exception"].decision_deadline is not None for r in rows),
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),
         customer_filter=str(customer_id) if customer_id and ctx.customer_id is None else "",
-        customer_choices=_customer_choices(db, ctx),
+        customer_choices=_customer_choices(db, ctx), to_review=to_review, max_pay_all=MAX_PAY_ALL,
     )
 
 
@@ -421,7 +426,6 @@ def decide_several(
     recommended, exactly as it would be from its own page, by the same rules (dual
     control, segregation of duties, return reasons), in its own transaction. Whatever can't
     be done is listed afterwards; nothing is relaxed for doing them together."""
-    from openclear.auth.sod import SodViolation
     from openclear.web.security import safe_next_path
 
     back = safe_next_path(back, default="/ui/exceptions")
@@ -432,6 +436,23 @@ def decide_several(
         return see_other(back, error="Select one or more items, then Pay or Return.")
     if len(exception_ids) > 200:
         return see_other(back, error="At most 200 items at once.")
+    done, problems = _decide_each(db, ctx, exception_ids, choice, check_return_reason_id=check_return_reason_id,
+                                  ach_return_reason_id=ach_return_reason_id, notes=notes, together="with others at once")
+    word = "Paid" if choice == DecisionOutcome.PAY else "Returned"
+    message = f"{word} {done} {'item' if done == 1 else 'items'}." if done else ""
+    if problems:
+        shown = "; ".join(problems[:5]) + (f"; and {len(problems) - 5} more" if len(problems) > 5 else "")
+        error = f"{len(problems)} couldn't be done: {shown}."
+        return see_other(back, flash=message or None, error=error)
+    return see_other(back, flash=message, event="exception-decided")
+
+
+def _decide_each(db: Session, ctx: TenantContext, exception_ids: list[uuid.UUID], choice: DecisionOutcome, *, check_return_reason_id: str,
+                 ach_return_reason_id: str, notes: str, together: str) -> tuple[int, list[str]]:
+    """Each exception decided, or recommended, exactly as from its own page, in its own
+    transaction: (how many were done, what couldn't be and why)."""
+    from openclear.auth.sod import SodViolation
+
     dual = db.get(Tenant, ctx.tenant_id).require_dual_control
     can_decide, can_recommend = "exception:decide" in ctx.permissions, "exception:recommend" in ctx.permissions
     done, problems = 0, []
@@ -470,17 +491,61 @@ def decide_several(
         audit_log_service.record_action(
             db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web",
             action="exception.recommend" if recommend_instead else "exception.decide",
-            summary=f"{verb} {choice.value} on exception ({reason_code}), with others at once",
+            summary=f"{verb} {choice.value} on exception ({reason_code}), {together}",
             resource_type="exception_item", resource_id=exception_id,
         )
         db.commit()
         done += 1
-    word = "Paid" if choice == DecisionOutcome.PAY else "Returned"
-    message = f"{word} {done} {'item' if done == 1 else 'items'}." if done else ""
+    return done, problems
+
+
+# --- Reverse positive pay: the day's checks in one pass (REVERSE_POSITIVE_PAY_PLAN.md RPP-D6) -----
+
+MAX_PAY_ALL = 500
+
+
+def _review_only_where(network_code: str | None) -> list:
+    """Checks to review with no other problem: only reverse positive pay accounts have them."""
+    if network_code not in (None, "", "check"):
+        return [ExceptionItem.id.is_(None)]
+    return [ExceptionItem.network_code == "check", ExceptionItem.exception_types == "review"]
+
+
+def _review_customer(ctx: TenantContext, customer: str) -> uuid.UUID | None:
+    if ctx.customer_id is not None or not customer:
+        return ctx.customer_id
+    try:
+        return uuid.UUID(customer)
+    except ValueError:
+        return None
+
+
+@router.post("/review/pay-all")
+def pay_all_to_review(
+    customer: str = Form(""),
+    network_code: str = Form(""),
+    expected: int = Form(...),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("exception:read")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Pays every check to review on the list as shown, after the person confirmed how many.
+    If the list changed since (one decided, a new one arrived), nothing is done and they look
+    again. Each is still its own decision, by the same rules as one at a time."""
+    back = "/ui/exceptions" + (f"?customer={customer}" if customer and ctx.customer_id is None else "")
+    filters = dict(statuses=exception_service.NEEDS_ATTENTION, customer_id=_review_customer(ctx, customer),
+                   where=_review_only_where(network_code or None))
+    items = exception_service.list_exceptions(db, ctx.tenant_id, limit=MAX_PAY_ALL + 1, **filters)
+    if len(items) > MAX_PAY_ALL:
+        return see_other(back, error=f"There are more than {MAX_PAY_ALL} checks to review; narrow the list to one customer first.")
+    if len(items) != expected:
+        return see_other(back, error="The list changed since you looked: check it again, then pay.")
+    done, problems = _decide_each(db, ctx, [item.id for item in items], DecisionOutcome.PAY, check_return_reason_id="",
+                                  ach_return_reason_id="", notes="", together="paying every check to review")
+    message = f"Paid {done} {'check' if done == 1 else 'checks'}." if done else ""
     if problems:
         shown = "; ".join(problems[:5]) + (f"; and {len(problems) - 5} more" if len(problems) > 5 else "")
-        error = f"{len(problems)} couldn't be done: {shown}."
-        return see_other(back, flash=message or None, error=error)
+        return see_other(back, flash=message or None, error=f"{len(problems)} couldn't be done: {shown}.")
     return see_other(back, flash=message, event="exception-decided")
 
 

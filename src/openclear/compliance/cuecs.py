@@ -353,6 +353,12 @@ CUECS: tuple[Cuec, ...] = (
          "add up to the trailer.",
          "assisted", "file_reconciliation", "Daily",
          "Bulk uploads; the file's details", related=("SI-10", "CA-3")),
+    Cuec("B-CA-3-02", "bank", "CA-3", "Agree reverse positive pay in writing",
+         "Before putting a customer's account on reverse positive pay, agree it in writing with the customer, including that "
+         "every check they don't return by the cut-off is paid, and keep the agreement.",
+         "OpenClear puts an account on reverse positive pay only as a protected change, and lists the accounts on it and those "
+         "put on it in the last 30 days.",
+         "assisted", "reverse_accounts_agreed", "On change", "Customers → an account's Check review", related=("SA-9",)),
     Cuec("B-CP-2-01", "bank", "CP-2", "Plan for an outage at the cutoff",
          "Include positive pay in the bank's business continuity plan: what happens to exceptions and decisions if OpenClear or "
          "the core is unavailable at the cutoff, and who decides by hand.",

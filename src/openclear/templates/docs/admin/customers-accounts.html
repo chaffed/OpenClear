@@ -39,4 +39,23 @@ it), so even a bank deciding in real time has decisions that lock at a set time 
   <li><strong>Add an account</strong> — from <a href="/ui/accounts">Accounts</a>, create a
   single account under a customer, or use bulk upload to add several at once.</li>
 </ul>
+
+<h2 id="reverse-positive-pay">Reverse positive pay</h2>
+<p>For a customer who doesn't send an issued-check file, put the account on reverse positive pay:
+every check presented on it becomes an item for the customer to review (<em>To review</em>), the
+customer returns the ones they don't recognise by the cut-off, and the rest are paid. A check with a
+real problem (a stop, a duplicate, a void) still shows as that problem and follows the customer's
+default decision, so it's never paid by silence.</p>
+<ol>
+  <li>Agree it with the customer in writing first, including that unreturned checks are paid (bank
+    CUEC B-CA-3-02). The control check <em>Reverse positive pay agreed</em> lists the accounts on it,
+    and those put on it in the last 30 days, for you to match against your agreements.</li>
+  <li>On the customer's page, in Accounts, choose the account's <strong>Checks</strong> setting, then
+    <strong>Reverse positive pay</strong>. Only your administrators can. It's a protected change:
+    when your bank asks for a second administrator, it waits for one. Putting the account back on
+    positive pay takes effect at once.</li>
+  <li>Integrations can set it too: <code>check_review_mode</code> in
+    <code>PUT /api/v1/accounts/{account_number}</code> (it answers 202 while it waits for approval).</li>
+</ol>
+<p>Checks only for now. To review every ACH debit on an account, give it no ACH authorizations.</p>
 {% endblock %}

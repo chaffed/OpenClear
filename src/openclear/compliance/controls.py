@@ -242,6 +242,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "Customers see the bank's own Written Statement of Unauthorized Debit form (Markdown, HTML or a PDF); the bank collects "
       "and keeps the signed statement its own way.",
       ("IR-6",), "detective", "configurable", ("wsud_form",), ("B-IR-6-02", "C-IR-6-01"), "Settings → Unauthorized debit statement"),
+    C("OC-SI-08", "Reverse positive pay only as agreed",
+      "An account goes on reverse positive pay, where checks the customer doesn't return by the cut-off are paid, only as a "
+      "protected change, and the accounts on it are listed for the bank to match against its agreements.",
+      ("CA-3", "AC-3(2)"), "preventive", "configurable", ("reverse_accounts_agreed",), ("B-CA-3-02",),
+      "Customers → an account's Check review"),
     # --- Configuration management ---------------------------------------------------------
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "

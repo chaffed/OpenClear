@@ -290,6 +290,15 @@ array, not a file):
   entry by entry against Moov's open source ACH implementation on its sample files
   (`tests/fixtures/moov-ach/`).
 
+- **Reverse positive pay** (REVERSE_POSITIVE_PAY_PLAN.md): an account's `check_review_mode`
+  is `positive` (match against the issued file) or `reverse`, for a customer with no issued
+  file: every presented check is an item `review` ("To review"), the customer returns what
+  they don't recognise, and a check whose only type is `review` is paid at the cut-off. A real
+  problem (stop, duplicate, void) shows as itself and follows the customer's default. Turning
+  reverse on is a protected change (`account.check_review_mode`); Exceptions pays every check to
+  review at once, and review-only checks get the reminder before the cut-off rather than an
+  email each.
+
 - **Layouts** (`bulk_import/layouts.py`): a file in its own format, described once in
   Settings → File layouts. Issued checks, in a customer's own (or the bank's) format; and the
   posted-check file the bank's core sends (PAID_ITEM_LAYOUTS_PLAN.md), built by the bank's

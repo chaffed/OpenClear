@@ -1432,6 +1432,41 @@ register(Kind(
 ))
 
 
+# --- Reverse positive pay (REVERSE_POSITIVE_PAY_PLAN.md RPP-D4) -----------------------------------
+
+
+def _review_mode_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.account import Account
+
+    account = session.get(Account, uuid.UUID(payload["account_id"]))
+    if account is None or account.tenant_id != tenant_id:
+        raise ChangeError("That account no longer exists.")
+    return {"mode": account.check_review_mode.value}
+
+
+def _review_mode_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.domain.account import Account, CheckReviewMode
+
+    account = session.get(Account, uuid.UUID(payload["account_id"]))
+    if account is None or account.tenant_id != tenant_id:
+        raise ChangeError("That account no longer exists.")
+    account.check_review_mode = CheckReviewMode(payload["mode"])
+    session.flush()
+    return (f"Account {account.account_number} on reverse positive pay: every check is the customer's to review, "
+            "and one not returned by the cut-off is paid") if account.check_review_mode == CheckReviewMode.REVERSE \
+        else f"Account {account.account_number} back on positive pay"
+
+
+register(Kind(
+    "account.check_review_mode", "An account's check review", "sensitive", "admin:manage", _review_mode_current,
+    lambda payload: {"mode": payload["mode"]},
+    # Reverse pays every check nobody returns, like a "pay" default (FR4); back to positive pays nothing.
+    loosens=lambda before, after: before != after and after["mode"] == "reverse", apply=_review_mode_apply,
+    setting=lambda payload: f"account_check_review:{payload['account_id']}",
+    action="account.check_review_mode",
+))
+
+
 # --- Advisory fraud scoring (SIMPLIFY_PLAN.md SP-D10) --------------------------------------------
 
 

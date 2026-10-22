@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Reverse positive pay** (`REVERSE_POSITIVE_PAY_PLAN.md`). For a customer that doesn't send an
+  issued-check file, an account can be put on reverse positive pay (the customer's page →
+  Accounts → *Checks*, or `check_review_mode` in `PUT /api/v1/accounts/{account_number}`). Every
+  check presented on it is an item marked *To review* (exception type `review`); the customer
+  returns the ones they don't recognise, and the rest are paid at the cut-off ("Not returned by
+  the cut-off"). A check with a real problem (a stop, a duplicate, a void) shows as that problem
+  and follows the customer's default decision, so it's never paid by silence. Turning reverse on
+  is a protected change for the bank's administrators, answered with `202` by the API while it
+  waits. Exceptions offers *Pay all N to review*; checks only to review get the reminder before
+  the cut-off instead of an email each, and the customer's dashboard counts them apart. New bank
+  CUEC B-CA-3-02, control OC-SI-08 and check *Reverse positive pay agreed*.
+
 - **Your core's posted-check file, read as it comes** (`PAID_ITEM_LAYOUTS_PLAN.md`). Settings →
   *File layouts* (formerly *Issue-file layouts*) has a *Posted checks* tab, for the bank's staff:
   a layout for the file of checks the core posts, fixed-width or delimited, built from a sample.

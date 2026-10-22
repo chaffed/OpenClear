@@ -63,6 +63,24 @@
                      hidden={"status": status_filter, "network_code": network_filter, "customer": customer_filter}) }}
   <p class="list-tools not-phone">{{ ls.export_link("/ui/exceptions", search, page_obj.total_count) }}</p>
 
+  {% if to_review and can_act %}
+  {# Reverse positive pay (REVERSE_POSITIVE_PAY_PLAN.md RPP-D6): the day's checks in one pass. #}
+  <div class="callout to-review" role="note">
+    <p><strong>{{ "{:,}".format(to_review) }} {{ "check" if to_review == 1 else "checks" }} to review</strong> with nothing else wrong.
+      Return the ones you don't recognise; the rest are paid at the cut-off{% if to_review <= max_pay_all %}, or pay them now{% endif %}.</p>
+    {% if to_review <= max_pay_all %}
+    <form method="post" action="/ui/exceptions/review/pay-all" class="inline-form"
+          data-confirm="Pay {{ to_review }} {{ 'check' if to_review == 1 else 'checks' }}? Each is decided as it would be on its own page.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="customer" value="{{ customer_filter }}">
+      <input type="hidden" name="network_code" value="{{ network_filter or '' }}">
+      <input type="hidden" name="expected" value="{{ to_review }}">
+      <button type="submit" class="button-pay">{{ icon("check_circle") }}Pay all {{ to_review }} to review</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {% if page_obj.total_count > 0 %}
   {% set columns = ([{"key": "select", "label": "Select", "role": "select", "header": True, "th_class": "select-col", "class": "select-col"}] if can_act else []) + [
     {"key": "item", "label": "Item", "role": "primary"},

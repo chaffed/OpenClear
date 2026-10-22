@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
+from openclear.domain.account import Account, CheckReviewMode
 from openclear.domain.check_image import CheckImage, OcrStatus
 from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.issued_item import IssuedItem
@@ -27,6 +28,7 @@ class CheckAdapter:
     def evaluate(self, session: Session, transaction: PaidItem) -> MatchResult:
         paid_item = transaction
         tenant = session.get(Tenant, paid_item.tenant_id)
+        account = session.get(Account, paid_item.account_id)
 
         candidate = self._find_candidate_issued_item(session, paid_item)
         is_duplicate = self._is_duplicate_paid(session, paid_item)
@@ -45,6 +47,7 @@ class CheckAdapter:
             ocr_payee=check_image.ocr_extracted_payee if check_image else None,
             ocr_confidence=check_image.ocr_confidence if check_image else None,
             active_stop_amount=active_stop.amount if active_stop is not None else None,
+            review_all=account is not None and account.check_review_mode == CheckReviewMode.REVERSE,
         )
 
         exception_types, related_id = evaluate_check_rules(inputs)

@@ -1097,6 +1097,43 @@
       "withdrawn": false
     },
     {
+      "id": "B-CA-3-02",
+      "party": "bank",
+      "nist": "CA-3",
+      "nist_title": "Information Exchange",
+      "oscal_id": "ca-3",
+      "related": [
+        "SA-9"
+      ],
+      "title": "Agree reverse positive pay in writing",
+      "statement": "Before putting a customer's account on reverse positive pay, agree it in writing with the customer, including that every check they don't return by the cut-off is paid, and keep the agreement.",
+      "complements": "OpenClear puts an account on reverse positive pay only as a protected change, and lists the accounts on it and those put on it in the last 30 days.",
+      "evidence": "assisted",
+      "check": "reverse_accounts_agreed",
+      "check_status": "live",
+      "frequency": "On change",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Customers \u2192 an account's Check review",
+      "withdrawn": false
+    },
+    {
       "id": "B-CP-2-01",
       "party": "bank",
       "nist": "CP-2",

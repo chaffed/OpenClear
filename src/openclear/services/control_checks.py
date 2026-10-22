@@ -392,6 +392,30 @@ def wsud_form(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("wsud_form", title, PASS, "No form yet, and no consumer ACH debits returned in the last 60 days.", evidence)
 
 
+def reverse_accounts_agreed(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The accounts on reverse positive pay, and those put on it in the last 30 days, for the
+    bank to match against its written agreements with the customers (REVERSE_POSITIVE_PAY_PLAN.md
+    RPP-D9): unreturned checks on them are paid by silence."""
+    from openclear.domain.account import Account, CheckReviewMode
+    from openclear.domain.audit_log_entry import AuditLogEntry
+
+    reverse = session.execute(select(Account).where(Account.tenant_id == tenant_id, Account.check_review_mode == CheckReviewMode.REVERSE)
+                              ).scalars().all()
+    turned_on = {resource_id for resource_id, summary in session.execute(
+        select(AuditLogEntry.resource_id, AuditLogEntry.summary).where(
+            AuditLogEntry.tenant_id == tenant_id, AuditLogEntry.action == "account.check_review_mode",
+            AuditLogEntry.occurred_at >= _now() - timedelta(days=30))).all() if "reverse" in (summary or "").lower()}
+    recent = sorted(a.account_number for a in reverse if a.id in turned_on)
+    evidence = {"reverse_accounts": sorted(a.account_number for a in reverse)[:LIST_LIMIT], "turned_on_last_30_days": recent[:LIST_LIMIT]}
+    title = "Reverse positive pay agreed"
+    if not reverse:
+        return Control("reverse_accounts_agreed", title, PASS, "No account is on reverse positive pay.", evidence)
+    detail = f"; put on it in the last 30 days: {', '.join(recent[:10])}" if recent else ""
+    return Control("reverse_accounts_agreed", title, PASS,
+                   f"{_plural(len(reverse), 'account')} on reverse positive pay{detail}. Match each to a written agreement with "
+                   "its customer.", evidence)
+
+
 def evidence_export(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.domain.audit_log_entry import AuditLogEntry
 

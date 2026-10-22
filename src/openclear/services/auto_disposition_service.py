@@ -139,11 +139,17 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
     since this is also callable directly); or the outcome resolves to an ACH RETURN with no default_ach_return_reason_id
     configured. Mirrors decision_service.decide()'s mechanics (build_features, create the
     Decision, flip exception status, flip an ACH RETURN's underlying settlement_status) but
-    with no maker-checker check (there's no maker) and no human decider."""
-    if exception_item.customer_id is None:
-        return None
+    with no maker-checker check (there's no maker) and no human decider.
+
+    A check to review on a reverse positive pay account, with no other problem, is paid
+    whatever the customer's default (REVERSE_POSITIVE_PAY_PLAN.md RPP-D3): that's what reverse
+    positive pay promises. One with a real problem follows the customer's default as usual."""
     if exception_item.status not in (ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL):
         return None  # decided (or withdrawn) since the sweep listed it
+    if is_review_only(session, exception_item):
+        return _decide(session, exception_item, DecisionOutcome.PAY, DecisionSource.AUTO_DEFAULT, NOT_RETURNED, None)
+    if exception_item.customer_id is None:
+        return None
     mode = get_disposition_mode(session, exception_item.tenant_id, exception_item.customer_id, exception_item.network_code)
 
     if mode == DispositionMode.NONE:
@@ -170,7 +176,27 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
             return None
         reason_code = ach_return_reason.reason_text
         return_transaction_code = ach_return_reason.transaction_code
+    return _decide(session, exception_item, outcome, source, reason_code, return_transaction_code)
 
+
+NOT_RETURNED = "Not returned by the cut-off"
+
+
+def is_review_only(session: Session, exception_item: ExceptionItem) -> bool:
+    """A check on a reverse positive pay account whose only type is `review`: no known problem,
+    so silence pays it (REVERSE_POSITIVE_PAY_PLAN.md RPP-D3). The account must still be in
+    reverse mode: one moved back to positive pay pays nothing by silence."""
+    from openclear.domain.account import Account, CheckReviewMode
+
+    if exception_item.network_code != "check" or [t.strip() for t in (exception_item.exception_types or "").split(",") if t.strip()] != ["review"]:
+        return False
+    paid_item = get_adapter("check").load_source_item(session, exception_item.source_item_id)
+    account = session.get(Account, paid_item.account_id) if paid_item is not None else None
+    return account is not None and account.check_review_mode == CheckReviewMode.REVERSE
+
+
+def _decide(session: Session, exception_item: ExceptionItem, outcome: DecisionOutcome, source: DecisionSource, reason_code: str,
+            return_transaction_code: str | None) -> Decision:
     adapter = get_adapter(exception_item.network_code)
     features = adapter.build_features(session, exception_item)
 

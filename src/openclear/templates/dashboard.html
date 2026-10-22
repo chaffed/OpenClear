@@ -36,8 +36,15 @@
   <div class="jobs">
     {% if jobs.can_decide %}
     <section class="job">
+      {% if jobs.to_decide or jobs.to_review %}
+      {% set review_text = jobs.to_review ~ (" check" if jobs.to_review == 1 else " checks") ~ " to review" %}
       {% if jobs.to_decide %}
       <h2>{{ jobs.to_decide }} {{ "item" if jobs.to_decide == 1 else "items" }} to decide</h2>
+      {% if jobs.to_review %}<p><strong>{{ review_text }}</strong></p>{% endif %}
+      {% else %}
+      <h2>{{ review_text }}</h2>
+      {% endif %}
+      {% if jobs.to_review %}<p class="hint">Return any check you don't recognise; the rest are paid at the cut-off.</p>{% endif %}
       <p>{% if jobs.first_due %}The first is due <time datetime="{{ jobs.first_due | iso_utc }}" data-local-time data-relative-time>{{ jobs.first_due.strftime("%Y-%m-%d %H:%M") }} UTC</time>.{% endif %}</p>
       <a href="/ui/exceptions" class="button">{{ icon("flag") }}Decide now</a>
       {% else %}
@@ -59,7 +66,7 @@
       {% else %}
       <p>No file sent yet. Send your issued checks so the bank can match what's presented.</p>
       {% endif %}
-      <a href="/ui/issued-items/bulk" class="button{{ ' secondary' if jobs.to_decide else '' }}">{{ icon("upload") }}Upload issued checks</a>
+      <a href="/ui/issued-items/bulk" class="button{{ ' secondary' if jobs.to_decide or jobs.to_review else '' }}">{{ icon("upload") }}Upload issued checks</a>
     </section>
     {% endif %}
   </div>

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Check review — {{ account.account_number }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About check review{% endblock %}
+{% block help_body %}
+<ul>
+  <li><strong>Positive pay</strong> (the default): presented checks are matched against the customer's
+    issued-check file, and only a mismatch reaches the customer.</li>
+  <li><strong>Reverse positive pay</strong>: for a customer who doesn't send an issued-check file.
+    Every check presented on the account is an item for the customer to review, marked <em>To review</em>.
+    The customer returns the ones they don't recognise by the cut-off, and the rest are paid.</li>
+</ul>
+<p>A check with a real problem (a stop, a duplicate, a void) is shown as that problem, and follows the
+  customer's own default decision: it's never paid just because nobody returned it.</p>
+<p>Turning reverse positive pay on pays checks nobody reviewed, so it waits for a second
+  administrator when your bank asks for one. Agree it with the customer in writing first.</p>
+{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Check review — account {{ account.account_number }}</h1>
+  <p>{{ account.name }}{% if customer %} · <a href="/ui/customers/{{ customer.id }}">{{ customer.name }}</a>{% endif %}</p>
+  <p>This account is on <strong>{{ "reverse positive pay" if account.check_review_mode.value == "reverse" else "positive pay" }}</strong>.</p>
+  <form method="post" action="/ui/accounts/{{ account.id }}/check-review"
+        data-confirm="{{ 'Put this account back on positive pay?' if account.check_review_mode.value == 'reverse' else 'Put this account on reverse positive pay? Checks the customer doesn’t return by the cut-off will be paid.' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>How presented checks are reviewed</legend>
+      <label><input type="radio" name="mode" value="positive" {{ "checked" if account.check_review_mode.value == "positive" else "" }}> Positive pay: match against the issued-check file</label>
+      <label><input type="radio" name="mode" value="reverse" {{ "checked" if account.check_review_mode.value == "reverse" else "" }}> Reverse positive pay: the customer reviews every check, and unreturned checks are paid at the cut-off</label>
+    </fieldset>
+    <button type="submit">{{ icon("save") }}Save</button>
+  </form>
+</div>
+{% endblock %}

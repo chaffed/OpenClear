@@ -76,6 +76,8 @@ def _customer_jobs(db: Session, ctx: TenantContext) -> dict:
     scoped = ExceptionRepository(db, ctx.tenant_id, ctx.customer_id).query()
     waiting = scoped.where(ExceptionItem.status.in_(exception_service.NEEDS_ATTENTION)).subquery()
     to_decide, first_due = db.execute(select(func.count(), func.min(waiting.c.decision_deadline)).select_from(waiting)).one()
+    # Checks only to review (reverse positive pay) are counted apart from problems (RPP-D6).
+    to_review = db.execute(select(func.count()).select_from(waiting).where(waiting.c.exception_types == "review")).scalar_one()
     open_to_change = scoped.join(Decision, Decision.exception_item_id == ExceptionItem.id).where(
         Decision.locked_at.is_(None), ExceptionItem.decision_deadline > datetime.now(timezone.utc)).subquery()
     changeable, change_until = db.execute(select(func.count(), func.min(open_to_change.c.decision_deadline))
@@ -83,7 +85,7 @@ def _customer_jobs(db: Session, ctx: TenantContext) -> dict:
     last_upload = db.execute(select(BulkUploadFile).where(
         BulkUploadFile.tenant_id == ctx.tenant_id, BulkUploadFile.customer_id == ctx.customer_id,
         BulkUploadFile.kind == BulkUploadKind.ISSUED_ITEMS).order_by(BulkUploadFile.uploaded_at.desc()).limit(1)).scalar_one_or_none()
-    return {"to_decide": to_decide, "first_due": _aware(first_due), "changeable": changeable, "change_until": _aware(change_until),
+    return {"to_decide": to_decide - to_review, "to_review": to_review, "first_due": _aware(first_due), "changeable": changeable, "change_until": _aware(change_until),
             "last_upload": last_upload, "can_decide": bool({"exception:decide", "exception:recommend"} & set(ctx.permissions)),
             "can_upload": "issued_item:write" in ctx.permissions}
 

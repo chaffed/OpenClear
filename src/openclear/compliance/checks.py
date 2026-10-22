@@ -78,6 +78,7 @@ def _registry() -> tuple[Check, ...]:
         Check("rejected_rows", "Rejected rows corrected", c.rejected_rows),
         Check("stale_ach_authorizations", "ACH authorizations current", c.stale_ach_authorizations, schedule="nightly"),
         Check("wsud_form", "Unauthorized-debit statement form published", c.wsud_form, schedule="nightly"),
+        Check("reverse_accounts_agreed", "Reverse positive pay agreed", c.reverse_accounts_agreed, schedule="nightly"),
         Check("evidence_export", "Evidence exported this quarter", c.evidence_export, schedule="nightly"),
         # Population checks, nightly over the previous day.
         Check("dual_control", "Dual control on every decision", c.dual_control, kind="population", schedule="nightly"),
@@ -131,7 +132,7 @@ KEYS = (
     "parser_hardening", "sla", "api_client_secrets", "customer_self_service", "event_delivery", "production_safety",
     "dormant_accounts", "customer_dormant_users", "privileged_accounts", "staff_mfa", "customer_mfa", "customer_sod",
     "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls",
-    "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_form", "evidence_export",
+    "default_dispositions", "rejected_rows", "stale_ach_authorizations", "wsud_form", "reverse_accounts_agreed", "evidence_export",
     "dual_control", "two_person_changes", "change_impact_replay", "support_access_review", "customer_decision_timeliness",
     "scheduled_jobs", "transport_security", "platform_staff", "software_currency", "installation_settings", "provider_log", "second_approver", "sensitive_settings_protected", "access_review", "customer_access_review", "file_reconciliation",
     "decision_delivery", "outside_services", "password_policy", "security_key_required", "key_age", "control_response",

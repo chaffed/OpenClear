@@ -18,7 +18,18 @@ def normalize_payee(name: str) -> str:
 def evaluate_check_rules(inputs: CheckMatchInputs) -> tuple[list[CheckExceptionType], uuid.UUID | None]:
     """Pure function: no DB session, only pre-loaded facts about the presented item and
     its candidate issued_item. Order matters — see docs/ARCHITECTURE.md ("Matching rules")
-    for the reasoning behind each rule's position and short-circuits."""
+    for the reasoning behind each rule's position and short-circuits. On a reverse positive
+    pay account (`review_all`), a check not in the file, or with nothing wrong, is `review`
+    (REVERSE_POSITIVE_PAY_PLAN.md RPP-D2)."""
+    exceptions, related_id = _evaluate(inputs)
+    if inputs.review_all:
+        exceptions = [CheckExceptionType.REVIEW if e == CheckExceptionType.NOT_IN_FILE else e for e in exceptions]
+        if not exceptions:
+            exceptions = [CheckExceptionType.REVIEW]
+    return exceptions, related_id
+
+
+def _evaluate(inputs: CheckMatchInputs) -> tuple[list[CheckExceptionType], uuid.UUID | None]:
     exceptions: list[CheckExceptionType] = []
 
     if inputs.is_duplicate_paid:

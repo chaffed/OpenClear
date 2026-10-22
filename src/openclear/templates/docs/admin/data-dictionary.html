@@ -219,6 +219,7 @@ transactional record.</p>
 <tr><td>external_account_id</td><td>String(64)</td><td>yes</td><td>UK (with tenant_id)</td><td>A customer's own internal reference, usable in bulk files in place of the real account number.</td></tr>
 <tr><td>name</td><td>String(255)</td><td>no</td><td></td><td></td></tr>
 <tr><td>ach_debit_block_mode</td><td>String(32) enum</td><td>no</td><td></td><td><code>filter_by_authorization</code> or <code>block_all</code>.</td></tr>
+<tr><td>check_review_mode</td><td>String(10) enum</td><td>no</td><td></td><td><code>positive</code> (default) or <code>reverse</code>: reverse positive pay, where every presented check is the customer's to review and one not returned by the cut-off is paid. Turning it on is a protected change.</td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
 </table>

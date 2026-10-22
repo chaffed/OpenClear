@@ -17,7 +17,7 @@ from openclear.api.v1.pagination import Page, Since, changed_since, page_params,
 from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.account import Account, AchDebitBlockMode
+from openclear.domain.account import Account, AchDebitBlockMode, CheckReviewMode
 from openclear.repositories.account_repo import AccountRepository
 from openclear.services import account_service, audit_log_service, customer_service
 
@@ -29,6 +29,9 @@ class AccountUpsert(BaseModel):
     customer_number: str | None = Field(None, max_length=64, description="Whose account it is; null for a bank (house) account")
     ach_debit_block_mode: AchDebitBlockMode | None = None
     external_account_id: str | None = Field(None, max_length=64, description="The customer's own reference, matched in its files")
+    check_review_mode: CheckReviewMode | None = Field(
+        None, description="positive, or reverse positive pay: the customer reviews every check and unreturned ones are paid at "
+                          "the cut-off. Bank staff with admin:manage only; turning reverse on may wait for a second admin (202).")
 
 
 class AccountRead(BaseModel):
@@ -39,6 +42,7 @@ class AccountRead(BaseModel):
     name: str
     customer_id: uuid.UUID | None
     ach_debit_block_mode: AchDebitBlockMode
+    check_review_mode: CheckReviewMode
     external_account_id: str | None
     updated_at: datetime | None = None
 
@@ -56,12 +60,18 @@ def list_accounts(
     return [AccountRead.model_validate(a) for a in rows]
 
 
-@router.put("/{account_number}", response_model=AccountRead, responses={201: {"model": AccountRead}})
+@router.put("/{account_number}", response_model=AccountRead, responses={201: {"model": AccountRead}, 202: {
+    "description": "Saved, except reverse positive pay, which waits for a second admin (Settings → Changes)",
+    "content": {"application/json": {"example": {"status": "pending", "change_request_id": "…", "detail": "…"}}}}})
 def upsert_account(
     account_number: str, payload: AccountUpsert, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_permission("account:write")),
 ):
     """Creates the account with this number, or updates it to match. `200` when it existed,
-    `201` when it was created."""
+    `201` when it was created. Putting an account on reverse positive pay (`check_review_mode`)
+    needs admin:manage and a bank-level caller; when the bank's sensitive changes need a second
+    admin, the rest is saved and this answers `202` with `{"status": "pending", "change_request_id"}`."""
+    if payload.check_review_mode is not None and (ctx.customer_id is not None or "admin:manage" not in ctx.permissions):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the bank's administrators set an account's check review")
     customer_id = None
     if payload.customer_number:
         customer = customer_service.get_customer_by_number(db, ctx.tenant_id, payload.customer_number)
@@ -94,5 +104,23 @@ def upsert_account(
         summary=f"{'Created' if code == 201 else 'Synced'} account {account_number} ({payload.name})",
         resource_type="account", resource_id=account.id,
     )
+    if payload.check_review_mode is not None:
+        from openclear.services import change_request_service
+
+        try:
+            outcome = change_request_service.request_or_apply(
+                db, "account.check_review_mode", {"account_id": str(account.id), "mode": payload.check_review_mode.value},
+                tenant_id=ctx.tenant_id, user_id=ctx.user_id, channel="api")
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+        if outcome.waiting:
+            db.commit()
+            return JSONResponse({"status": "pending", "change_request_id": str(outcome.change.id),
+                                 "detail": "The rest is saved. Reverse positive pay waits for a second admin (Settings → Changes, "
+                                           "or POST /api/v1/changes/{id}/approve)."}, status_code=status.HTTP_202_ACCEPTED)
+        if outcome.summary != "Nothing changed.":
+            audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="account.check_review_mode",
+                                            summary=outcome.summary, resource_type="account", resource_id=account.id)
     db.commit()
     return JSONResponse(AccountRead.model_validate(account).model_dump(mode="json"), status_code=code)

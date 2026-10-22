@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
-from openclear.domain.account import Account
+from openclear.domain.account import Account, CheckReviewMode
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.repositories.account_repo import AccountRepository
 from openclear.services import account_service, audit_log_service, customer_service
 from openclear.web.bulk_import import start_import
-from openclear.web.deps import render_template, require_web_permission
+from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
 from openclear.web.redirects import checklist_return, see_other
 from openclear.web.security import verify_csrf
@@ -136,3 +136,58 @@ async def bulk_upload_accounts(
         request, db, ctx, upload_file, kind=BulkUploadKind.ACCOUNTS, file_format="tabular",
         form_template="accounts/bulk_upload.html", default_filename="upload.csv",
     )
+
+
+# --- Reverse positive pay (REVERSE_POSITIVE_PAY_PLAN.md RPP-D1, RPP-D4) ----------------------------
+
+
+def _bank_account(db: Session, ctx: TenantContext, account_id: uuid.UUID) -> Account:
+    """One of this bank's accounts, for its staff: a customer's people never change how their
+    checks are reviewed."""
+    account = db.get(Account, account_id)
+    if account is None or account.tenant_id != ctx.tenant_id or ctx.customer_id is not None:
+        raise WebNotFound()
+    return account
+
+
+@router.get("/{account_id}/check-review")
+def check_review_form(
+    request: Request, account_id: uuid.UUID, db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("admin:manage")),
+) -> HTMLResponse:
+    account = _bank_account(db, ctx, account_id)
+    customer = customer_service.get_customer(db, ctx.tenant_id, account.customer_id) if account.customer_id else None
+    return render_template(request, "accounts/check_review.html", ctx=ctx, account=account, customer=customer)
+
+
+@router.post("/{account_id}/check-review")
+def set_check_review(
+    account_id: uuid.UUID,
+    mode: CheckReviewMode = Form(...),
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("admin:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Reverse pays the checks nobody returns, so turning it on waits for a second admin
+    under the bank's rule; back to positive pay takes effect at once."""
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    account = _bank_account(db, ctx, account_id)
+    back = f"/ui/accounts/{account.id}/check-review"
+    try:
+        outcome = change_request_service.request_or_apply(
+            db, "account.check_review_mode", {"account_id": str(account.id), "mode": mode.value},
+            tenant_id=ctx.tenant_id, user_id=ctx.user_id,
+            summary=f"Account {account.account_number}: {'reverse' if mode == CheckReviewMode.REVERSE else 'positive'} positive pay")
+    except ValueError as exc:
+        db.rollback()
+        return see_other(back, error=str(exc))
+    if outcome.waiting:
+        db.commit()
+        return see_other(back, flash=waiting_message(outcome))
+    if outcome.summary != "Nothing changed.":
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="account.check_review_mode",
+                                        summary=outcome.summary, resource_type="account", resource_id=account.id)
+    db.commit()
+    return see_other(back, flash="Saved.")
