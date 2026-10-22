@@ -6253,7 +6253,8 @@
                 "amount_differs",
                 "payee_differs",
                 "stale",
-                "customer_review"
+                "customer_review",
+                "payee_needed"
               ],
               "type": "string"
             },
@@ -6273,7 +6274,8 @@
               "amount_differs",
               "payee_differs",
               "stale",
-              "customer_review"
+              "customer_review",
+              "payee_needed"
             ],
             "title": "Result",
             "type": "string"
@@ -6344,7 +6346,7 @@
                 "type": "null"
               }
             ],
-            "description": "The payee the teller read, if the platform sends it",
+            "description": "The payee as written on the check. Required when the customer gave a payee for the issued check: without it the answer is payee_needed",
             "title": "Payee Name"
           },
           "routing_number": {

@@ -972,8 +972,8 @@ class TokenResponse(TypedDict):
 class Verification(TypedDict):
     expires_at: str
     issued: NotRequired[IssuedDetails | None]
-    problems: list[Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review"]]
-    result: Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review"]
+    problems: list[Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "payee_needed"]]
+    result: Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "payee_needed"]
     verification_id: str
 
 

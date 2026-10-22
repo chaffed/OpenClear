@@ -37,8 +37,9 @@ def _issue(db_session, tenant, account, number, amount="250.00", payee="Acme Sup
 
 
 def _verify(client, headers, account, number, amount="250.00", **extra):
-    resp = client.post("/api/v1/checks/verify", headers=headers,
-                       json={"account_number": account.account_number, "check_number": number, "amount": amount, **extra})
+    """As a teller sends it: with the payee written on the check, unless a test leaves it out."""
+    body = {"account_number": account.account_number, "check_number": number, "amount": amount, "payee_name": "Acme Supply Co", **extra}
+    resp = client.post("/api/v1/checks/verify", headers=headers, json={k: v for k, v in body.items() if v is not None})
     assert resp.status_code == 200, resp.text
     return resp.json()
 
@@ -71,6 +72,7 @@ def test_every_answer_is_what_clearing_would_decide(client, db_session, bank):
         ("101", "275.00", {}, "amount_differs", ["amount_differs"]),
         ("100", "250.00", {"payee_name": "Somebody Else Entirely"}, "payee_differs", ["payee_differs"]),
         ("100", "250.00", {"payee_name": "ACME SUPPLY"}, "match", []),  # read loosely, as clearing compares OCR's
+        ("100", "250.00", {"payee_name": None}, "payee_needed", ["payee_needed"]),  # the customer gave a payee: it must be checked
         ("102", "250.00", {}, "voided", ["voided"]),
         ("103", "250.00", {}, "stopped", ["stopped"]),
         ("104", "250.00", {}, "stale", ["stale"]),
@@ -192,3 +194,25 @@ def test_verify_reads_the_issued_item_and_its_stops_once(client, db_session, ban
     finally:
         event.remove(engine, "before_cursor_execute", count)
     assert len(reads) == 2, reads  # a later change can't quietly make it slower
+
+
+def test_a_customer_no_longer_enrolled_is_cashed_by_the_usual_procedure(client, db_session, bank):
+    """The product owner (2026-10-22): enrolled in positive pay or reverse positive pay, a check
+    not found is declined; not enrolled, the teller cashes it by standard operating procedure."""
+    from openclear.services import customer_service
+
+    tenant, account, _users, headers = bank
+    customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="E-1", name="Gone Co"))
+    account.customer_id = customer.id
+    db_session.commit()
+    assert _verify(client, headers, account, "700", "30.00")["result"] == "not_issued"  # enrolled: declined
+    customer.is_active = False
+    db_session.commit()
+    assert _verify(client, headers, account, "700", "30.00")["result"] == "not_on_positive_pay"  # not enrolled: the usual procedure
+
+
+def test_no_payee_is_needed_when_the_customer_gave_none(client, db_session, bank):
+    tenant, account, _users, headers = bank
+    _issue(db_session, tenant, account, "800", payee="")
+    assert _verify(client, headers, account, "800", payee_name=None)["result"] == "match"
+

@@ -926,8 +926,8 @@ export interface TokenResponse {
 export interface Verification {
   expires_at: string;
   issued?: IssuedDetails | null;
-  problems: Array<"match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review">;
-  result: "match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review";
+  problems: Array<"match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "payee_needed">;
+  result: "match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "payee_needed";
   verification_id: string;
 }
 

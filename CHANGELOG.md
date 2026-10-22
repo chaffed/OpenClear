@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Teller verification: enrollment and the payee** (the product owner's decisions on
+  `TELLER_PLAN.md`'s questions). A check on an account whose customer is no longer enrolled
+  answers `not_on_positive_pay`, so the teller cashes it by the bank's standard procedure, as for
+  an account OpenClear doesn't know. On an enrolled account a check that isn't found is declined.
+  When the customer gave a payee for the issued check, the teller platform must send the payee as
+  written on the check: without it the answer is the new `payee_needed`, a decline.
+
 ## 1.28.0 — 2026-10-22
 
 - **Verifying checks at a branch** (`TELLER_PLAN.md` TL-1, TL-2). A teller platform asks

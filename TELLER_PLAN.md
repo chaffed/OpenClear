@@ -152,4 +152,10 @@ sequenceDiagram
   matching-rule plugins aren't run on a verification (they read a presented item); `check:verify`
   is kept from Admin's default grant, like `data_export:run`. TL-3 waits for a bank's teller
   platform, and TL-4 for a bank to ask.
+- 2026-10-22: The product owner answered the questions for the first bank. An account not on
+  positive pay (unknown to OpenClear, or its customer deactivated) answers `not_on_positive_pay`,
+  and the teller cashes it by standard operating procedure. On an account enrolled in positive pay
+  or reverse positive pay, a check that isn't found is declined (`not_issued`, `customer_review`).
+  When the customer gives payees, the payee is validated as written on the check: the platform must
+  send it, or the answer is `payee_needed`.
 
