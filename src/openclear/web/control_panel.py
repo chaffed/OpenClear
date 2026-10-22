@@ -110,6 +110,7 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         siem_state, siem_tone = delivery.senders.KINDS.get(destination.kind, destination.kind) + (
             " · delivering" if destination.last_success_at else " · waiting for the first event"), "ok"
     messages = [name for name, value in (("login", tenant.login_message), ("banner", tenant.banner_message)) if value]
+    wsud_state = _wsud_form_state(db, ctx.tenant_id)
     return [
         Tile("branding", "Organization", "Branding", "palette", "/ui/settings/branding",
              "Your name, logo, favicon and accent color.", tenant.name, modal=True, keywords="logo color colour favicon name"),
@@ -145,6 +146,10 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("wsud-form", "Data & compliance", "Unauthorized debit statement", "gavel", "/ui/settings/wsud-form",
+             "Your form for customers to report an unauthorized ACH debit: Markdown, HTML or a PDF.",
+             wsud_state, tone="warn" if wsud_state == "Not set" else "",
+             keywords="wsud unauthorized debit statement nacha form return"),
         Tile("outside-services", "Data & compliance", "Outside services", "extension", "/ui/settings/outside-services",
              "The outside services OpenClear uses for you, and when you last reviewed each.", modal=True,
              keywords="vendors third party providers tprm review"),
@@ -167,9 +172,10 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("reminders", "Decisions & rules", "Reminders", "notifications_active", "/ui/settings/reminders",
              "Email and text reminders before the cutoff for items still to decide.", reminders, modal=True,
              keywords="cutoff deadline notify notifications sms email"),
-        Tile("fraud-model", "Decisions & rules", "Fraud scoring model", "analytics", "/ui/settings/fraud-model",
-             "The shared model, or one trained only on your own decisions.",
-             "Bank-only model" if tenant.ml_model_source.value == "private" else "Shared model", keywords="ml machine learning score"),
+        Tile("fraud-model", "Decisions & rules", "Fraud scoring", "analytics", "/ui/settings/fraud-model",
+             "An advisory score on each exception, from a model trained on your own decisions.",
+             "On" if tenant.ml_scoring_enabled else "Off", tone="ok" if tenant.ml_scoring_enabled else "",
+             keywords="ml machine learning score model"),
         Tile("decision-files", "Integrations", "Decision files", "description", "/ui/settings/decision-files",
              "Write each pay and return decision to a file for your core.",
              f"Every {outbox.interval_minutes} min" if outbox.enabled else "Off", tone="ok" if outbox.enabled else "",
@@ -436,3 +442,10 @@ def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
 
 def tile_for(db: Session, ctx: TenantContext, key: str) -> Tile | None:
     return next((t for t in tiles_for(db, ctx) if t.key == key), None)
+
+
+def _wsud_form_state(db, tenant_id) -> str:
+    from openclear.services import bank_form_service
+
+    form = bank_form_service.get(db, tenant_id)
+    return {"markdown": "Written (Markdown)", "html": "Written (HTML)", "pdf": "A PDF"}.get(form.format, "Set") if form else "Not set"

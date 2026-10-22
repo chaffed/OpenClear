@@ -10,7 +10,7 @@ A subcategory that NIST maps to a control also covers its enhancements (`AC-2` c
 `AC-2(1)`), and one mapped to a whole family (`IR`) covers every control in it. A subcategory
 with nothing below isn't one OpenClear's controls or CUECs address.
 
-NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23`, so a control or CUEC filed only under those isn't on this page.
+NIST's mapping links no subcategory to `AU-10`, `MA-4`, `SC-18`, `SC-23`, so a control or CUEC filed only under those isn't on this page.
 
 ## Govern (GV)
 
@@ -98,7 +98,7 @@ NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23
 | **PR.PS-06** Secure software development practices are integrated, and their performance is monitored throughout the software development life cycle | — | — |
 | **PR.IR-01** Networks and environments are protected from unauthorized logical access and usage | OC-AC-01, OC-AC-03, OC-AC-04, OC-AC-06, OC-AC-07, OC-AC-08, OC-AC-09, OC-AC-12, OC-AC-13, OC-SC-05, OC-SC-06, OC-SC-07 | B-AC-3(2)-01, C-AC-3-01, H-SC-7-01 |
 | **PR.IR-02** The organization's technology assets are protected from environmental threats | OC-SI-05 | B-CP-2-01 |
-| **PR.IR-03** Mechanisms are implemented to achieve resilience requirements in normal and adverse situations | OC-SI-05, OC-SI-07, OC-CM-02 | B-CP-2-01, B-IR-6-01, C-IR-6-01, H-CP-9-01, H-IR-6-01 |
+| **PR.IR-03** Mechanisms are implemented to achieve resilience requirements in normal and adverse situations | OC-SI-05, OC-SI-07, OC-CM-02 | B-IR-6-02, B-CP-2-01, B-IR-6-01, C-IR-6-01, H-CP-9-01, H-IR-6-01 |
 | **PR.IR-04** Adequate resource capacity to ensure availability is maintained | — | — |
 
 ## Detect (DE)
@@ -121,17 +121,17 @@ NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23
 
 | Subcategory | OpenClear controls | CUECs |
 |---|---|---|
-| **RS.MA-01** The incident response plan is executed in coordination with relevant third parties once an incident is declared | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
-| **RS.MA-02** Incident reports are triaged and validated | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
-| **RS.MA-03** Incidents are categorized and prioritized | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
-| **RS.MA-04** Incidents are escalated or elevated as needed | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.MA-01** The incident response plan is executed in coordination with relevant third parties once an incident is declared | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.MA-02** Incident reports are triaged and validated | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.MA-03** Incidents are categorized and prioritized | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.MA-04** Incidents are escalated or elevated as needed | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
 | **RS.MA-05** The criteria for initiating incident recovery are applied | — | — |
 | **RS.AN-03** Analysis is performed to establish what has taken place during an incident and the root cause of the incident | OC-AU-05 | — |
-| **RS.AN-06** Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved | OC-AU-05, OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
-| **RS.AN-07** Incident data and metadata are collected, and their integrity and provenance are preserved | OC-AU-05, OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.AN-06** Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved | OC-AU-05, OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.AN-07** Incident data and metadata are collected, and their integrity and provenance are preserved | OC-AU-05, OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
 | **RS.AN-08** An incident's magnitude is estimated and validated | — | B-RA-3-01 |
-| **RS.CO-02** Internal and external stakeholders are notified of incidents | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
-| **RS.CO-03** Information is shared with designated internal and external stakeholders | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.CO-02** Internal and external stakeholders are notified of incidents | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RS.CO-03** Information is shared with designated internal and external stakeholders | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
 | **RS.MI-01** Incidents are contained | — | — |
 | **RS.MI-02** Incidents are eradicated | — | — |
 
@@ -145,5 +145,5 @@ NIST's mapping links no subcategory to `AC-21`, `AU-10`, `MA-4`, `SC-18`, `SC-23
 | **RC.RP-04** Critical mission functions and cybersecurity risk management are considered to establish post-incident operational norms | — | — |
 | **RC.RP-05** The integrity of restored assets is verified, systems and services are restored, and normal operating status is confirmed | OC-CM-02 | — |
 | **RC.RP-06** The end of incident recovery is declared based on criteria, and incident-related documentation is completed | — | — |
-| **RC.CO-03** Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders | OC-SI-07 | B-IR-6-01, C-IR-6-01, H-IR-6-01 |
+| **RC.CO-03** Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders | OC-SI-07 | B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01 |
 | **RC.CO-04** Public updates on incident recovery are shared using approved methods and messaging | OC-SI-05 | B-CP-2-01 |

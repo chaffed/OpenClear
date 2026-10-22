@@ -16,7 +16,6 @@ A kind's payload is what applying it needs; `current` reads the value it would r
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -127,20 +126,18 @@ def _model_current(session, tenant_id, customer_id, payload) -> dict:
 
 def _model_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     from openclear.ml.registry import activate_model
-    from openclear.services import customer_service
 
-    model_customer = uuid.UUID(payload["customer_id"]) if payload.get("customer_id") else None
-    if model_customer is not None and customer_service.get_customer(session, tenant_id, model_customer) is None:
-        raise ChangeError("That customer no longer exists.")
-    model = activate_model(session, uuid.UUID(payload["model_id"]), expected_customer_id=model_customer,
-                           **({} if model_customer else {"expected_tenant_id": tenant_id}))
+    try:
+        model = activate_model(session, uuid.UUID(payload["model_id"]), expected_tenant_id=tenant_id)
+    except ValueError:
+        raise ChangeError("That model no longer exists.") from None
     return f"Activated {model.network_code} model {model.version}"
 
 
 register(Kind(
     "ml_model.activate", "Scoring models", "sensitive", "admin:manage", _model_current,
     value=lambda payload: {"active": True}, loosens=lambda before, after: True, apply=_model_apply,
-    setting=lambda payload: f"ml_model:{payload.get('customer_id') or 'bank'}",
+    setting=lambda payload: "ml_model:bank",
     action="ml_model.activate",
 ))
 
@@ -747,28 +744,8 @@ register(Kind(
 ))
 
 
-def _ml_source_current(session, tenant_id, customer_id, payload) -> dict:
-    from openclear.domain.tenant import Tenant
-
-    source = session.get(Tenant, tenant_id).ml_model_source
-    return {"source": source.value if hasattr(source, "value") else source}
 
 
-def _ml_shared_apply(session, tenant_id, customer_id, payload, user_id) -> str:
-    from openclear.services import tenant_ml_service
-
-    try:
-        tenant_ml_service.switch_to_shared(session, tenant_id, actor_user_id=uuid.UUID(payload["consented_by"]), consented=True)
-    except tenant_ml_service.SwitchNotAllowed as exc:
-        raise ChangeError(str(exc)) from None
-    return "Switched to the shared fraud-scoring model (data pooling acknowledged)"
-
-
-register(Kind(
-    "ml.switch_to_shared", "The shared scoring model", "sensitive", _BANK_ADMIN, _ml_source_current, lambda payload: {"source": "shared"},
-    loosens=lambda before, after: after["source"] == "shared" and before["source"] != "shared", apply=_ml_shared_apply,
-    describe=lambda before, after: "Pool the bank's decisions into the shared fraud-scoring model", action="tenant.ml_source_change",
-))
 
 
 # --- Access: widening a person's access, when "Access changes need a second admin" is on (DC-D5) ---
@@ -1154,30 +1131,6 @@ register(_domain_move_kind("customer.email_domain.move", _CUSTOMER_ADMIN, "custo
 _OPERATOR = "platform:operator"
 
 
-def _shared_current(session, tenant_id, customer_id, payload) -> dict:
-    from openclear.domain.ml_model import MlModel, MlModelStatus
-
-    model = session.get(MlModel, uuid.UUID(payload["model_id"]))
-    if model is None or model.tenant_id is not None or model.customer_id is not None:
-        raise ChangeError("That shared model no longer exists.")
-    return {"active": model.status == MlModelStatus.ACTIVE}
-
-
-def _shared_apply(session, tenant_id, customer_id, payload, user_id) -> str:
-    from openclear.ml.registry import activate_model
-
-    model = activate_model(session, uuid.UUID(payload["model_id"]), expected_customer_id=None, expected_tenant_id=None)
-    return f"Activated the shared {model.network_code} model {model.version}, for every bank that uses it"
-
-
-register(Kind(
-    "platform.shared_model.activate", "The shared scoring model", "protection", _OPERATOR, _shared_current, lambda payload: {"active": True},
-    loosens=lambda before, after: after["active"] and not before["active"], apply=_shared_apply, scope="provider",
-    setting=lambda payload: "shared_model", describe=lambda before, after: "Activate a shared scoring model for every bank that uses it",
-    action="platform.shared_model.activate",
-))
-
-
 def _provision_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     from openclear.services import operator_service
 
@@ -1435,11 +1388,11 @@ register(Kind(
 ))
 
 
-# --- A customer's default decision and scoring (FULL_REVIEW_PLAN.md FR4, S3) ---------------------
-# What happens to a customer's items nobody decides by the cut-off, and which model scores them:
-# "always pay" pays every one, so it's as protected as the cut-off itself.
+# --- A customer's default decision (FULL_REVIEW_PLAN.md FR4, S3) ---------------------------------
+# What happens to a customer's items nobody decides by the cut-off: "always pay" pays every one,
+# so it's as protected as the cut-off itself.
 
-_PAYING_MODES = {"fixed_pay", "ml_determined"}
+_PAYING_MODES = {"fixed_pay"}
 
 
 def _disposition_current(session, tenant_id, customer_id, payload) -> dict:
@@ -1471,40 +1424,31 @@ def _disposition_apply(session, tenant_id, customer_id, payload, user_id) -> str
 
 register(Kind(
     "customer.disposition", "A customer's default decision", "sensitive", "admin:manage", _disposition_current, _disposition_value,
-    # Paying by default, or by the model's score, decides money nobody looked at; leaving items
-    # open or returning them doesn't pay anything.
+    # Paying by default decides money nobody looked at; leaving items open or returning them
+    # doesn't pay anything.
     loosens=lambda before, after: before != after and after["mode"] in _PAYING_MODES, apply=_disposition_apply,
     setting=lambda payload: f"customer_disposition:{payload['customer_id']}:{payload['network_code']}",
     action="customer.update_disposition",
 ))
 
 
-def _ml_mode_current(session, tenant_id, customer_id, payload) -> dict:
-    from openclear.domain.customer_ml_setting import MlScoringMode
-    from openclear.repositories.customer_ml_setting_repo import CustomerMlSettingRepository
-
-    rows = CustomerMlSettingRepository(session, tenant_id).list(customer_id=uuid.UUID(payload["customer_id"]),
-                                                                network_code=payload["network_code"])
-    return {"mode": rows[0].mode.value if rows else MlScoringMode.AUTO.value}
+# --- Advisory fraud scoring (SIMPLIFY_PLAN.md SP-D10) --------------------------------------------
 
 
-def _ml_mode_apply(session, tenant_id, customer_id, payload, user_id) -> str:
-    from openclear.domain.customer import Customer
-    from openclear.domain.customer_ml_setting import MlScoringMode
-    from openclear.services import customer_ml_service
+def _scoring_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.domain.tenant import Tenant
 
-    customer = session.get(Customer, uuid.UUID(payload["customer_id"]))
-    if customer is None or customer.tenant_id != tenant_id:
-        raise ChangeError("That customer no longer exists.")
-    customer_ml_service.set_mode(session, tenant_id, customer.id, payload["network_code"], MlScoringMode(payload["mode"]))
-    return f"{customer.name}'s {payload['network_code']} items scored by: {payload['mode']}"
+    tenant = session.get(Tenant, tenant_id)
+    tenant.ml_scoring_enabled = bool(payload["enabled"])
+    session.flush()
+    return "Fraud scoring turned on: a model trained on your own decisions scores each item" if tenant.ml_scoring_enabled \
+        else "Fraud scoring turned off"
 
 
 register(Kind(
-    "customer.ml_mode", "A customer's scoring model", "sensitive", "admin:manage", _ml_mode_current,
-    lambda payload: {"mode": payload["mode"]},
-    # Which model scores the items is what "decide by the model's score" acts on.
-    loosens=lambda before, after: before != after, apply=_ml_mode_apply,
-    setting=lambda payload: f"customer_ml_mode:{payload['customer_id']}:{payload['network_code']}",
-    action="customer.update_ml_mode",
+    "ml_scoring", "Fraud scoring", "sensitive", "admin:manage", tenant_fields("ml_scoring_enabled"),
+    lambda payload: {"ml_scoring_enabled": bool(payload["enabled"])},
+    # Turning it on brings a model into how people judge items; turning it off removes one.
+    loosens=turned_on("ml_scoring_enabled"), apply=_scoring_apply, setting=lambda payload: "ml_scoring",
+    action="tenant.ml_scoring",
 ))

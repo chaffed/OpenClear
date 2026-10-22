@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
 
-{% block title %}End User Documentation — {{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}
+{% block title %}End user documentation — {{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}
 
 {% block content %}
 <div class="toolbar">
-  <h1>End User Documentation</h1>
+  <h1>End user documentation</h1>
   <div class="actions">
     <a href="/ui/docs/end-user/pdf" class="button secondary">{{ icon("download") }}Download PDF</a>
   </div>
 </div>
 <p>Guides for the day-to-day work of using OpenClear: entering and reviewing checks and ACH
-activity, working the exceptions queue, and submitting known-fraud training examples.
+activity, and working the exceptions queue.
 Use <strong>Download PDF</strong> above to save every topic below as a single offline
 document, e.g. for new-hire training.</p>
 <div class="doc-index-grid">

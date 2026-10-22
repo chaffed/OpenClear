@@ -20,7 +20,7 @@ from openclear.plugins.api import SlotAction, SlotContent, UiSlot
 from openclear.services import plugin_service, security_group_service, user_service
 from tests.conftest import TenantFactory
 from tests.test_auth.test_plugins_bank_choices import EXAMPLE, _EntryPoint
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.items import _make_customer_with_account, _make_exception
 from tests.test_web.test_mobile_components import _sign_in, browser_page  # noqa: F401 -- a fixture
 
 TEST_SLOTS: list[UiSlot] = []

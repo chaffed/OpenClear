@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Getting Started — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Getting started — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this checklist{% endblock %}
 {% block help_body %}
 <p>A guided checklist for setting up this one customer — each step links to the real
@@ -14,7 +14,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Getting Started — {{ customer.name }}</h1>
+    <h1>Getting started — {{ customer.name }}</h1>
     <a href="/ui/customers/{{ customer.id }}" class="button secondary">{{ icon("arrow_back") }}Back to customer</a>
   </div>
   <p>{{ required_done }} of {{ required_total }} required steps complete.</p>

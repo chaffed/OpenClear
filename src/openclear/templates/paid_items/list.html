@@ -3,7 +3,7 @@
 {% import "_macros/pagination.html" as pg %}
 {% import "_macros/list_search.html" as ls with context %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Paid Items — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Paid items — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About paid items{% endblock %}
 {% block help_body %}
 <p>A paid item is a check presented for payment against one of your accounts.
@@ -20,7 +20,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Paid Items</h1>
+    <h1>Paid items</h1>
     {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/new" class="button">{{ icon("send") }}Submit paid item</a>{% endif %}
     {% if can(ctx, "paid_item:write") %}<a href="/ui/paid-items/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
   </div>

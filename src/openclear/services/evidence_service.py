@@ -100,15 +100,10 @@ def _rules(session: Session, tenant_id: uuid.UUID) -> dict:
 
 
 def _models(session: Session, tenant_id: uuid.UUID) -> list[dict]:
-    from openclear.domain.customer import Customer
     from openclear.domain.ml_model import MlModel, MlModelStatus
 
-    customers = select(Customer.id).where(Customer.tenant_id == tenant_id)
-    rows = session.execute(select(MlModel).where(MlModel.status == MlModelStatus.ACTIVE, or_(
-        MlModel.tenant_id == tenant_id, MlModel.customer_id.in_(customers),
-        (MlModel.tenant_id.is_(None) & MlModel.customer_id.is_(None))))).scalars()
-    return [{"id": str(m.id), "network": m.network_code, "scope": "customer" if m.customer_id else ("bank" if m.tenant_id else "shared"),
-             "customer_id": str(m.customer_id) if m.customer_id else None, "version": m.version, "algorithm": m.algorithm,
+    rows = session.execute(select(MlModel).where(MlModel.status == MlModelStatus.ACTIVE, MlModel.tenant_id == tenant_id)).scalars()
+    return [{"id": str(m.id), "network": m.network_code, "version": m.version, "algorithm": m.algorithm,
              "artifact_sha256": m.artifact_sha256, "trained_from_decisions": m.trained_from_decision_count,
              "metrics": m.metrics_json, "activated_at": _iso(m.activated_at)} for m in rows]
 

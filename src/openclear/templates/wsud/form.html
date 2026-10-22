@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Unauthorized debit statement — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Unauthorized debit statement</h1>
+  {% if form %}
+  <p class="hint">If an ACH debit taken from your account wasn't authorized, {{ ctx.tenant_name }} needs this statement from you.
+    Complete it and return it as it says.</p>
+  {% if form.format == "markdown" %}<div class="bank-form">{{ form.body | render_markdown }}</div>
+  {% elif form.format == "html" %}<div class="bank-form">{{ form.body | clean_html }}</div>
+  {% else %}
+  {% if form.body %}<div class="bank-form">{{ form.body | render_markdown }}</div>{% endif %}
+  <p><a href="/ui/wsud/form.pdf" class="button">{{ icon("download") }}Download the form (PDF)</a></p>
+  {% endif %}
+  {% else %}
+  <p>If an ACH debit taken from your account wasn't authorized, contact {{ ctx.tenant_name }} right away: they'll send you
+    the statement to sign.</p>
+  {% if ctx.support_email or ctx.support_phone %}<p>{% if ctx.support_email %}<a href="mailto:{{ ctx.support_email }}">{{ ctx.support_email }}</a>{% endif %}{% if ctx.support_email and ctx.support_phone %} · {% endif %}{{ ctx.support_phone or "" }}</p>{% endif %}
+  {% endif %}
+  {% if ctx.customer_id is none and can(ctx, "tenant:manage") %}<p class="hint"><a href="/ui/settings/wsud-form">Change this form</a></p>{% endif %}
+</div>
+{% endblock %}

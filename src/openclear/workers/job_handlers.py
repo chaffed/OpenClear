@@ -81,15 +81,7 @@ def _scan_bank_dropbox(session: Session, job: Job) -> None:
 def _retrain_model_slot(session: Session, job: Job) -> None:
     from openclear.workers.tasks import _train_and_log
 
-    payload = job.payload
-    _train_and_log(
-        session,
-        payload["network_code"],
-        customer_id=uuid.UUID(payload["customer_id"]) if payload.get("customer_id") else None,
-        tenant_id=uuid.UUID(payload["tenant_id"]) if payload.get("tenant_id") else None,
-        label=payload.get("label", "shared"),
-        force_activate_reason=payload.get("force_activate_reason"),
-    )
+    _train_and_log(session, job.payload["network_code"], tenant_id=uuid.UUID(job.payload["tenant_id"]))
 
 
 @handler("control_run.execute")  # services/long_runs.JOB_KIND

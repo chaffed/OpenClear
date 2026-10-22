@@ -30,13 +30,9 @@ def test_ensure_demo_tenant_creates_and_seeds(db_session, monkeypatch):
     assert len(users) == 5
     assert db_session.query(IssuedItem).filter(IssuedItem.tenant_id == tenant.id).count() > 0
 
-    # Safety property: never trains/activates the bare global model (customer_id=None) --
-    # only a per-customer one, since MlModel has no tenant_id column at all and the
-    # global model is genuinely shared across every tenant in the database.
-    global_models = db_session.query(MlModel).filter(MlModel.network_code == "check", MlModel.customer_id.is_(None)).count()
-    per_customer_models = db_session.query(MlModel).filter(MlModel.network_code == "check", MlModel.customer_id.is_not(None)).count()
-    assert global_models == 0
-    assert per_customer_models >= 1
+    # The demo bank turns fraud scoring on and trains its own model, which belongs to it alone.
+    assert tenant.ml_scoring_enabled
+    assert db_session.query(MlModel).filter(MlModel.network_code == "check", MlModel.tenant_id == tenant.id).count() >= 1
 
 
 def test_ensure_demo_tenant_is_idempotent(db_session, monkeypatch):
@@ -133,10 +129,10 @@ def test_reset_demo_tenant_purges_on_disk_files(db_session, monkeypatch):
     tenant_asset_path = tenant_asset_dir / "logo.png"
     tenant_asset_path.write_bytes(b"fake-logo-bytes")
 
-    # seed_demo_content trains a real per-customer model -- its artifact is a genuine file
-    # on disk (ml/registry.py::ArtifactStore), not tenant-subdirectory-scoped like the
-    # three above, so it needs its own, separately-verified cleanup path.
-    old_model = db_session.query(MlModel).filter(MlModel.network_code == "check", MlModel.customer_id.is_not(None)).one()
+    # seed_demo_content trains a real bank model -- its artifact is a genuine file on disk
+    # (ml/registry.py::ArtifactStore), not tenant-subdirectory-scoped like the three above,
+    # so it needs its own, separately-verified cleanup path.
+    old_model = db_session.query(MlModel).filter(MlModel.network_code == "check", MlModel.tenant_id == tenant.id).one()
     old_artifact_path = Path(old_model.artifact_path)
     assert old_artifact_path.exists()
 

@@ -293,6 +293,13 @@ def _seed(client, db_session, tenant_factory):
                               .where(TenantMembership.tenant_id == tenant.id).order_by(User.email)).all()
     for minutes, (membership, _email) in enumerate(rows):
         membership.created_at = datetime(2026, 1, 1, 9) + timedelta(minutes=minutes)
+    # The demo bank's model is named for when it was trained, and its scores vary with the
+    # random split; both fixed for the pictures.
+    from openclear.domain.ml_model import MlModel
+
+    for model_row in db_session.execute(select(MlModel).where(MlModel.tenant_id == tenant.id)).scalars():
+        model_row.version = "v1_20260101T090000"
+        model_row.metrics_json = {**(model_row.metrics_json or {}), "precision": 0.8, "recall": 0.75, "auc": 0.82}
     db_session.commit()
 
     paid = db_session.execute(select(PaidItem).where(PaidItem.tenant_id == tenant.id, PaidItem.check_number == "10025")).scalar_one()

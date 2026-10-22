@@ -158,7 +158,7 @@ _STATUS_LABELS = {
     "active": "Active", "expired": "Expired", "cancelled": "Cancelled", "revoked": "Revoked",
     "matched": "Matched", "exception": "Exception", "pending": "Pending", "returned": "Returned", "reversed": "Backed out",
     "block_all": "Blocks every debit", "filter_by_authorization": "Allowed originators only",
-    "none": "Leave open", "fixed_pay": "Always pay", "fixed_return": "Always return", "ml_determined": "The model's score decides",
+    "none": "Leave open", "fixed_pay": "Always pay", "fixed_return": "Always return",
     "auto": "Its own model once trained", "customer": "Its own model", "global": "The bank's model",
     "succeeded": "Delivered", "failed": "Failed", "completed": "Done", "queued": "Waiting", "running": "Running",
     "processing": "Processing", "rejected": "Rejected", "candidate": "Candidate", "retired": "Retired",
@@ -251,6 +251,23 @@ def _render_markdown(text: str | None) -> Markup:
 
 
 templates.env.filters["render_markdown"] = _render_markdown
+
+
+def clean_html(html: str | None) -> Markup:
+    """A bank's own HTML (its unauthorized-debit statement form, SIMPLIFY_PLAN.md SP-D2), cut
+    down to the same allowlist as rendered Markdown: no scripts, styles, forms or event handlers."""
+    if not html:
+        return Markup("")
+    cleaned = nh3.clean(
+        html, tags=_MARKDOWN_ALLOWED_TAGS, attributes=_MARKDOWN_ALLOWED_ATTRIBUTES,
+        url_schemes=_MARKDOWN_ALLOWED_URL_SCHEMES, attribute_filter=_markdown_attribute_filter,
+        link_rel="noopener noreferrer nofollow",
+    )
+    # B704: nh3 has just cleaned it to the allowlist above
+    return Markup(cleaned)  # nosec B704
+
+
+templates.env.filters["clean_html"] = clean_html
 
 
 def _pager_href(request, page: int) -> str:

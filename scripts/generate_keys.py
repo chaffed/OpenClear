@@ -25,7 +25,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
-_KEY_NAMES = ("jwt", "file_signing", "audit_log_signing", "wsud_signing")
+_KEY_NAMES = ("jwt", "file_signing", "audit_log_signing")
 
 
 def _generate_pair(output_dir: Path, name: str, *, force: bool) -> None:
@@ -81,8 +81,6 @@ def main() -> None:
         f"  OPENCLEAR_FILE_SIGNING_PUBLIC_KEY_PATH={output_dir / 'file_signing_public.pem'}\n"
         f"  OPENCLEAR_AUDIT_LOG_SIGNING_PRIVATE_KEY_PATH={output_dir / 'audit_log_signing_private.pem'}\n"
         f"  OPENCLEAR_AUDIT_LOG_SIGNING_PUBLIC_KEY_PATH={output_dir / 'audit_log_signing_public.pem'}\n"
-        f"  OPENCLEAR_WSUD_SIGNING_PRIVATE_KEY_PATH={output_dir / 'wsud_signing_private.pem'}\n"
-        f"  OPENCLEAR_WSUD_SIGNING_PUBLIC_KEY_PATH={output_dir / 'wsud_signing_public.pem'}\n"
         "  OPENCLEAR_ENVIRONMENT=production\n"
         "\n"
         "Also set a real random OPENCLEAR_SSO_ENCRYPTION_KEY (a plain random string, not a "

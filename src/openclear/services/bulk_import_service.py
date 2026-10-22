@@ -68,7 +68,6 @@ PERMISSION_BY_KIND = {
     BulkUploadKind.ACCOUNTS: "account:write",
     BulkUploadKind.CHECK_IMAGES: "check_image:write",
     BulkUploadKind.PAID_ITEMS: "paid_item:write",
-    BulkUploadKind.FRAUD_TRAINING_EXAMPLES: "ml_training_example:write",
 }
 
 

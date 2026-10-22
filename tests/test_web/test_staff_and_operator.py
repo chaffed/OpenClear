@@ -18,7 +18,7 @@ from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 from openclear.services import customer_hub_service, customer_service, security_group_service, support_access_service, user_service
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _make_exception
+from tests.items import _make_exception
 
 STAFF_PASSWORD = "Platform-Staff-Pass-1"
 

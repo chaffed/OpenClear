@@ -437,18 +437,13 @@ def _email(session: Session, user_id) -> str | None:
 # --- The two kinds from before, for their call sites -------------------------------------------
 
 
-def request_model_activation(session: Session, tenant_id: uuid.UUID, model_id: uuid.UUID, *, customer_id: uuid.UUID | None,
-                             user_id: uuid.UUID, channel: str = "web") -> Outcome:
-    """Activate a model, or ask a second admin to, once it's confirmed to be one of this bank's
-    (a bank-only model, or one of its customer's)."""
+def request_model_activation(session: Session, tenant_id: uuid.UUID, model_id: uuid.UUID, *, user_id: uuid.UUID,
+                             channel: str = "web") -> Outcome:
+    """Activate one of the bank's own models, or ask a second admin to (SIMPLIFY_PLAN.md SP-D8)."""
     from openclear.domain.ml_model import MlModel
-    from openclear.services import customer_service
 
     model = session.get(MlModel, model_id)
-    customer = customer_service.get_customer(session, tenant_id, customer_id) if customer_id else None
-    if model is None or (customer_id and (customer is None or model.customer_id != customer_id)) \
-            or (not customer_id and (model.tenant_id != tenant_id or model.customer_id is not None)):
+    if model is None or model.tenant_id != tenant_id:
         raise ChangeError("Model not found")
-    summary = f"Activate {model.network_code} model {model.version}" + (f" for {customer.name}" if customer else " (bank-only)")
-    return request_or_apply(session, "ml_model.activate", {"model_id": str(model_id), **({"customer_id": str(customer_id)} if customer_id else {})},
-                            tenant_id=tenant_id, user_id=user_id, channel=channel, summary=summary)
+    return request_or_apply(session, "ml_model.activate", {"model_id": str(model_id)}, tenant_id=tenant_id, user_id=user_id,
+                            channel=channel, summary=f"Activate {model.network_code} model {model.version}")

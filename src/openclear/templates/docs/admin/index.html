@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
 
-{% block title %}Bank Administrator Documentation — {{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}
+{% block title %}Bank administrator documentation — {{ ctx.tenant_name if ctx else "OpenClear" }}{% endblock %}
 
 {% block content %}
 <div class="toolbar">
-  <h1>Bank Administrator Documentation</h1>
+  <h1>Bank administrator documentation</h1>
   <div class="actions">
     <a href="/ui/docs/admin/pdf" class="button secondary">{{ icon("download") }}Download PDF</a>
   </div>

@@ -205,38 +205,17 @@
 </div>
 {% endif %}
 
-{% if can(ctx, "wsud:read") %}
+{% if disposition_summary is not none %}
 <div class="card">
   <div class="toolbar">
-    <h2>Unauthorized Debit Statements</h2>
-    <a href="/ui/customers/{{ customer.id }}/wsud" class="button secondary">{{ icon("visibility") }}View</a>
-  </div>
-  <p>Written Statements of Unauthorized Debit this customer has signed, self-service,
-    covering their own returned ACH transactions.</p>
-</div>
-{% endif %}
-
-{% if ml_summary is not none %}
-<div class="card">
-  <div class="toolbar">
-    <h2>ML scoring</h2>
-    <a href="/ui/admin/customers/{{ customer.id }}/ml" class="button secondary">{{ icon("tune") }}Manage</a>
+    <h2>Default decision</h2>
+    <a href="/ui/admin/customers/{{ customer.id }}/default-decision" class="button secondary">{{ icon("tune") }}Manage</a>
   </div>
   <table>
-    <thead><tr><th>Network</th><th>Mode</th><th>This customer's model</th></tr></thead>
+    <thead><tr><th>Network</th><th>If no one decides by the cut-off</th></tr></thead>
     <tbody>
-      {% for row in ml_summary %}
-      <tr>
-        <td>{{ row.network_code }}</td>
-        <td><span class="badge">{{ row.mode.value | capitalize }}</span></td>
-        <td>
-          {% if row.active_customer_model %}
-          <span class="badge badge-ok">active ({{ row.active_customer_model.trained_from_decision_count }} decisions)</span>
-          {% else %}
-          none trained yet — using the global model
-          {% endif %}
-        </td>
-      </tr>
+      {% for row in disposition_summary %}
+      <tr><td>{{ row.network_code }}</td><td><span class="badge">{{ row.mode | status_label }}</span></td></tr>
       {% endfor %}
     </tbody>
   </table>

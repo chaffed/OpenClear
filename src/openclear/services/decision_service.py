@@ -180,8 +180,7 @@ def decide(
     checker is enforced here, not just in the UI). Finalizing an ACH RETURN also marks
     the underlying AchTransaction settled as RETURNED (see
     domain/ach_transaction.py::AchSettlementStatus) — previously never actually set
-    anywhere, now the queryable signal services/wsud_service.py's eligibility check
-    relies on."""
+    anywhere, now what services/control_checks.py::wsud_form counts."""
     tenant = session.get(Tenant, tenant_id)
     exception = _locked(session, tenant_id, exception_id, ctx)
     if exception is None:

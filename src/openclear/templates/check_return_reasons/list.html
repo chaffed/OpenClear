@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Check Return Reasons — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Check return reasons — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About check return reasons{% endblock %}
 {% block help_body %}
 <p>Returning a check means choosing one of these reasons. The return code is what a return
@@ -13,7 +13,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Check Return Reasons</h1>
+    <h1>Check return reasons</h1>
     <a href="/ui/check-return-reasons/new" class="button">{{ icon("add") }}New return reason</a>
   </div>
   {% if reasons %}

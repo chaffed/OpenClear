@@ -10,12 +10,8 @@ Safety notes baked into the design, not incidental:
 - `reset_demo_tenant`/`_wipe_tenant_children` only ever operate on the one tenant flagged
   `is_demo=True` — looked up fresh each time, never passed in from a caller, so there's no
   path for this to accidentally target a real tenant.
-- The demo's ML model is trained and activated *per-customer* (`customer_id=` the demo's
-  own seeded customer), never the bare global model — `MlModel` has no `tenant_id` column
-  at all (confirmed by reading `domain/ml_model.py`), so the "global" model is genuinely
-  shared across every tenant in the database. Training it from synthetic demo data on every
-  reset would silently corrupt real production scoring. A per-customer model demonstrates
-  the exact same feature with zero cross-tenant risk.
+- The demo's fraud model is the demo bank's own (every model belongs to one bank,
+  SIMPLIFY_PLAN.md SP-D8), so training it from synthetic data touches no other bank.
 - `_wipe_tenant_children` purges on-disk files (check images, bulk uploads, branding
   assets, ML artifacts) as well as DB rows — see `_purge_tenant_files`. Without this, a
   public demo tenant's uploaded check images (and any real PII an OCR run extracted from
@@ -36,7 +32,6 @@ from openclear.config import get_settings
 from openclear.db.base import Base
 from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.ach_transaction import AchTransactionType
-from openclear.domain.customer import Customer
 from openclear.domain.decision import DecisionOutcome
 from openclear.domain.email_change import EmailChange
 from openclear.domain.ml_model import MlModel
@@ -268,10 +263,12 @@ def seed_demo_content(
         )
         session.commit()
 
-    logger.info("Training and activating a per-customer check-network ML model (never the global model)...")
+    logger.info("Turning on fraud scoring and training the bank's check-network model...")
+    tenant.ml_scoring_enabled = True
+    session.commit()
     try:
-        result = train_model(session, "check", customer_id=customer.id)
-        activate_model(session, result.model_row.id, expected_customer_id=customer.id)
+        result = train_model(session, "check", tenant_id=tenant.id)
+        activate_model(session, result.model_row.id, expected_tenant_id=tenant.id)
         session.commit()
         logger.info("  Trained model %s (%d decisions).", result.model_row.id, decided_customer)
     except InsufficientTrainingData as exc:
@@ -316,26 +313,18 @@ def _purge_tenant_files(session: Session, tenant_id: uuid.UUID) -> None:
     """Deletes every on-disk file this tenant's data ever wrote -- the DB-only wipe below
     used to leave these behind forever (check images, bulk uploads, and any branding
     assets survived every reset indefinitely, and real OCR-extracted PII in a check image
-    would outlive its own already-deleted DB row). Must run before the MlModel delete
-    below, since an ML artifact's path can only be read off the row that's about to
-    disappear.
+    would outlive its own already-deleted DB row). Must run before the rows are deleted,
+    since an ML artifact's path can only be read off the row that's about to disappear.
 
     Two different on-disk layouts need two different strategies. check_image_storage_dir,
     bulk_upload_storage_dir, and tenant_asset_storage_dir (ocr/storage.py,
     bulk_import/file_storage.py, web/branding_storage.py) all live under
-    {base_dir}/{tenant_id}/... and rmtree cleanly. ml_artifact_dir
-    (ml/registry.py::ArtifactStore) is flat -- {network_code}_{customer_id}_{version}.
-    joblib, no tenant_id anywhere in the path or as a column on MlModel itself
-    (domain/ml_model.py) -- so each artifact has to be found via its owning Customer and
-    unlinked individually."""
+    {base_dir}/{tenant_id}/... and rmtree cleanly. ML artifacts (ml/registry.py) are found
+    through their rows and unlinked one by one."""
     for area in ("check_images", "bulk_uploads", "tenant_assets", "data_exports", "audit_archives"):
         storage.delete_tenant(area, tenant_id)
 
-    artifact_paths = session.execute(
-        select(MlModel.artifact_path).where(
-            MlModel.customer_id.in_(select(Customer.id).where(Customer.tenant_id == tenant_id))
-        )
-    ).scalars().all()
+    artifact_paths = session.execute(select(MlModel.artifact_path).where(MlModel.tenant_id == tenant_id)).scalars().all()
     for artifact_path in artifact_paths:
         storage.delete(artifact_path)
 
@@ -366,15 +355,6 @@ def _wipe_tenant_children(session: Session, tenant_id: uuid.UUID) -> None:
     bind_session_to_tenant(session, tenant_id)
 
     _purge_tenant_files(session, tenant_id)
-
-    # MlModel is the one exception to "every tenant-scoped table has a tenant_id column"
-    # (confirmed by reading domain/ml_model.py -- it's keyed by network_code/customer_id
-    # only, since the global model is deliberately shared cross-tenant). Its per-customer
-    # rows still hold an FK to Customer, so they must go before the generic loop below
-    # deletes this tenant's Customer rows, or that delete FK-violates.
-    session.execute(
-        delete(MlModel).where(MlModel.customer_id.in_(select(Customer.id).where(Customer.tenant_id == tenant_id)))
-    )
 
     for table in reversed(Base.metadata.sorted_tables):
         if "tenant_id" in table.columns:

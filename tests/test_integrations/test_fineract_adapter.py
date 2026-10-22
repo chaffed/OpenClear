@@ -17,7 +17,7 @@ from openclear.domain.customer import Customer
 from openclear.domain.decision import DecisionOutcome
 from openclear.domain.exception_item import ExceptionItem
 from openclear.services import api_client_service, issued_item_service, security_group_service
-from tests.test_ml.test_per_customer_ml import _decide
+from tests.items import _decide
 
 from openclear_fineract import Adapter, Fineract, State  # noqa: E402 -- from integrations/fineract/src (conftest.py)
 from openclear_sdk import OpenClear  # noqa: E402

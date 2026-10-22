@@ -2,7 +2,7 @@
 {% import "docs/_macros.html" as docs %}
 
 {% block doc_body %}
-<h1>Users &amp; Security Groups</h1>
+<h1>Users &amp; Security groups</h1>
 <p>OpenClear uses named, fully custom security groups instead of a fixed list of roles — each
 group is just a chosen set of permissions, so you can shape access exactly to how your
 organization is structured. Every new tenant is seeded with five starting groups:
@@ -77,8 +77,8 @@ apply at once; only those that loosen it wait.</p>
   <li><strong>Sensitive settings</strong> (Settings → <em>Dual control</em>, off by default; on for
   banks that were in segregation-of-duties <em>enforce</em> mode): matching rules, scoring models,
   security groups, new API clients and webhooks, single sign-on connections, group mappings and
-  SCIM tokens, decision files, the embedded view, customers' self-service, and switching to the
-  shared model. A new API client, webhook or sign-on connection is made inactive, with its secret
+  SCIM tokens, decision files, the embedded view, customers' self-service, and turning fraud
+  scoring on or off. A new API client, webhook or sign-on connection is made inactive, with its secret
   shown once, and the approval turns it on.</li>
   <li><strong>Access changes</strong>: adding someone (one at a time, in bulk, or a grant to
   another customer), giving more permissions or accounts, and reactivating someone. They're added
@@ -100,8 +100,8 @@ leaves, a waiting change applies alone after 24 hours unless withdrawn; that's l
 <code>change_request.applied_alone</code> security event, and the Controls page flags it. Every
 request and decision is in the action log, and the evidence export lists the period's changes with
 both people's names.</p>
-<p>At the service provider, provisioning a bank, granting a platform role, new platform API keys, fee items and
-activating the shared model wait for a second operator (Platform → <em>Changes</em>), in the provider's own signed
+<p>At the service provider, provisioning a bank, granting a platform role, new platform API keys and fee items
+wait for a second operator (Platform → <em>Changes</em>), in the provider's own signed
 action log. That log is verified daily; the Controls page's "Service provider's action log intact" shows the result.
 Changes to the installation's settings are flagged on the Controls page until an operator acknowledges them there.</p>
 <p>If the last other person who could approve one of your rules is deactivated, removed or given less access, that

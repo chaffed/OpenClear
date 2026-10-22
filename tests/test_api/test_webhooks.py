@@ -21,7 +21,7 @@ from openclear.domain.webhook import WebhookDelivery, WebhookDeliveryStatus
 from openclear.services import webhook_service
 from openclear.workers import jobs
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 
 class _Receiver:

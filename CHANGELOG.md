@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+## 1.27.0 — 2026-10-21
+
+- **Unauthorized debit statements are the bank's own form** (`SIMPLIFY_PLAN.md` SP1, the product
+  owner's decision). OpenClear no longer has customers sign a Written Statement of Unauthorized
+  Debit. Each bank sets its own form under Settings → *Unauthorized debit statement*: written in
+  Markdown, in HTML (cleaned of scripts and form fields), or uploaded as a PDF with a note above
+  it. Customers see it under *Unauthorized debit statement*, or are told to contact the bank if
+  there's none. The bank obtains and keeps the statement its own way (a new bank CUEC,
+  B-IR-6-02), and control OC-SI-07 now warns while a bank that returns consumer debits has no
+  form published. **Removed:** the signed statements and their tables, the WSUD signing key
+  pair (`OPENCLEAR_WSUD_SIGNING_*`), the two legal-text settings (production no longer needs
+  them), the `wsud:sign` and `wsud:read` permissions, and the billing metric `wsud_statements`.
+- **Names read the same everywhere.** The navigation, page headings, tab titles and guide titles
+  are sentence case: "Action log", "Issued items", "Security groups", "Positive pay". The
+  admin guide formerly titled "Audit Log" is "Action log", like the page.
+- **The fraud score is advisory, from the bank's own model, and off until the bank turns it on**
+  (`SIMPLIFY_PLAN.md` SP2, the product owner's decision). Settings → *Fraud scoring* turns it on
+  or off; turning it on is a protected `sensitive` change. With it on, the bank's own model,
+  trained only on its own final decisions, scores each exception, and the score is shown beside
+  the item. It never decides one. Models live under Settings → ML models as before, and the
+  model table now has row-level security. A customer's admin page is now *Default decision*.
+  **Removed:** the shared cross-bank model and the choice between it and a bank-only model (with
+  its data-pooling disclosure, `OPENCLEAR_ML_NEW_BANK_PRIVATE_SWITCH_LOCK_DAYS` and
+  `OPENCLEAR_ML_SHARED_POOL_DISCLOSURE_TEXT`); customer models and the customer scoring mode;
+  the "ML-determined" default decision (settings using it now leave the item open, and the
+  decision source `auto_ml` is gone: past ones read `auto_default`); fraud-training
+  examples, their pages, API, bulk upload kind and the `ml_training_example:write` permission;
+  the platform ML API (`/api/v1/platform/ml/*`) and the `shared_model` platform key scope;
+  `GET /api/v1/admin/ml/shared-model`; control OC-AC-11 with CUEC B-AC-21-01; and the billing
+  metric `customer_model_monthly`. `POST /api/v1/admin/ml/retrain` answers 409 while scoring is off.
 - **Deciding is safe when two people act at once** (`FULL_REVIEW_PLAN.md` FR1). Every change to an
   item's decision takes the item's lock first, so a recommendation made the moment someone else
   decides is told the item is decided, instead of leaving it waiting for an approval that could

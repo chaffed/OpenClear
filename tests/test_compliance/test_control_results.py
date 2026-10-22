@@ -134,7 +134,7 @@ def test_retention_keeps_an_open_deviations_result(db_session, tenant_factory):
 
 def test_dual_control_over_a_period(db_session, tenant_factory):
     from openclear.domain.decision import Decision, DecisionOutcome, DecisionSource
-    from tests.test_ml.test_per_customer_ml import _make_exception
+    from tests.items import _make_exception
 
     tenant, account, users = tenant_factory.make(slug="chk-dual", require_dual_control=True)
     start = datetime(2026, 3, 1, tzinfo=timezone.utc)
@@ -178,10 +178,9 @@ def test_state_checks_find_what_needs_doing(db_session, tenant_factory):
     assert dormant.status == "WARN" and users["viewer"].email in dormant.evidence["no_sign_in_for_90_days"]
     assert control_checks.integration_tls(db_session, tenant.id).status == "FAIL"
     assert control_checks.staff_mfa(db_session, tenant.id).status == "WARN"  # nobody has a security key
-    assert control_checks.model_pooling_acknowledged(db_session, tenant.id).status == "WARN"
     group = security_group_service.create_security_group(db_session, tenant.id, security_group_service.SecurityGroupInput(
         name="Does it all", permissions=["issued_item:write", "exception:decide"], offered_to_customers=True))
-    from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+    from tests.items import _make_customer_with_account
 
     customer, _acct = _make_customer_with_account(db_session, tenant, "CK-1")
     user_service.create_user_with_membership(db_session, tenant.id, email="both@ck.example.com", password=TenantFactory.PASSWORD,

@@ -132,15 +132,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "Sessions always end after an idle and an absolute timeout, whose lengths the bank sets, and a person can sign out "
       "their other devices.",
       ("AC-12", "SC-23"), "preventive", "built_in", (), (), "Settings → Session timeouts"),
-    C("OC-AC-11", "Model data pooling disclosed",
-      "A bank on the shared fraud model acknowledges the data-pooling disclosure, recorded with who and when, and can move to a "
-      "model trained on its own decisions alone.",
-      ("AC-21",), "preventive", "configurable", ("model_pooling_acknowledged",), ("B-AC-21-01",), "Settings → Fraud model"),
     C("OC-AC-12", "ACH debits only from authorized originators",
       "An ACH debit from an originator not on the account's authorizations becomes an exception for the customer to decide.",
       ("AC-3",), "preventive", "configurable", ("stale_ach_authorizations",), ("C-AC-3-01",), "ACH → Authorizations"),
     C("OC-AC-13", "Two people at the service provider",
-      "Setting up a bank, activating the shared scoring model, platform staff roles, platform API keys and platform fees wait for a second of the "
+      "Setting up a bank, platform staff roles, platform API keys and platform fees wait for a second of the "
       "platform's operators, and a request made with a platform API key waits for a person. Host attestations are prepared by one "
       "and accepted by another. The provider's own action log is chained and signed, and its security-relevant settings are "
       "watched until acknowledged.",
@@ -242,10 +238,10 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-SI-06", "Decisions delivered to the core",
       "Decisions go to the core through an outbox with retries, as files or calls, so none is lost if the core is down.",
       ("CA-3",), "corrective", "built_in", ("decision_delivery",), ("B-CA-3-01",), "Settings → Decision files"),
-    C("OC-SI-07", "Unauthorized debits signed for",
-      "A customer signs a Written Statement of Unauthorized Debit for a returned consumer ACH debit, kept with its consent "
-      "and attestation text.",
-      ("IR-6", "AU-10"), "detective", "built_in", ("wsud_signed",), ("C-IR-6-01",), "Written statements of unauthorized debit"),
+    C("OC-SI-07", "The bank's unauthorized-debit statement form",
+      "Customers see the bank's own Written Statement of Unauthorized Debit form (Markdown, HTML or a PDF); the bank collects "
+      "and keeps the signed statement its own way.",
+      ("IR-6",), "detective", "configurable", ("wsud_form",), ("B-IR-6-02", "C-IR-6-01"), "Settings → Unauthorized debit statement"),
     # --- Configuration management ---------------------------------------------------------
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "

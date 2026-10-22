@@ -49,8 +49,9 @@ pay or return it before the settlement deadline.
                                    decision (pay / return) ──► ML training data
 ```
 
-Every decision a person makes becomes a labelled training example, so the fraud-risk
-score improves as a bank uses the product.
+Every final decision a person makes becomes a labelled example for the bank's own model,
+so, when the bank turns fraud scoring on, the advisory fraud-risk score improves as the bank
+uses the product. The score never decides an item.
 
 Layers, top to bottom:
 
@@ -93,19 +94,17 @@ Isolation has three layers:
    at the start of each transaction; a signed-in user can also see their own memberships
    in other banks, for switching organization. It only protects anything when the app
    connects as a role without `BYPASSRLS` (see README, "Postgres"). `exception_item` and
-   `decision` are left out on purpose: training the shared ML model reads decisions from
-   every bank that chose it (see [ML pipeline](#ml-pipeline)). If you need RLS there too,
-   give the training job its own `BYPASSRLS` role rather than weakening the policy.
+   `decision` are left out on purpose: the cut-off and default-decision sweeps find every
+   bank's due items, then bind to each item's bank. `ml_model` has RLS: every model belongs
+   to one bank (migration `5b8e2d4f6a1c`).
 
 Customer-owned rows (`account`, `issued_item`, `paid_item`, `exception_item`, and so on)
 carry a **denormalized `customer_id`** copied from their account at creation time. That
-makes the customer filter a single-column `WHERE` rather than a join, and it's also what
-per-customer ML training groups on.
+makes the customer filter a single-column `WHERE` rather than a join.
 
 The **platform operator** (whoever runs the OpenClear installation) is not a tenant. They act
 through platform API keys (`domain/platform_api_key.py`, `auth/platform_api_key_deps.py`)
-with explicit scopes, for example running the shared ML model (`api/v1/platform_ml.py`)
-or reading usage metrics.
+with explicit scopes, for example reading usage metrics or operations metrics.
 
 ## Data model
 
@@ -115,9 +114,10 @@ The core tables, by area:
   was presented), `check_image` (front/back images, OCR results).
 - **ACH:** `ach_authorization_rule` (which originators may debit an account, with
   optional receiver, amount, frequency and SEC-code limits), `ach_transaction`,
-  `ach_return_reason`, and `wsud_statement` for Written Statements of Unauthorized Debit.
+  `ach_return_reason`, and `bank_form` for each bank's own Written Statement of Unauthorized Debit
+  form (shown to customers; the bank collects the statement).
 - **Shared review core:** `exception_item` and `decision`. These are network-agnostic.
-- **ML:** `ml_model` (one row per trained version, in a *slot*), `customer_ml_setting`.
+- **ML:** `ml_model` (one row per trained version of a bank's model, per network).
 - **Organisation:** `tenant`, `customer`, `user`, `tenant_membership`, `security_group`,
   `sso_connection`, `webauthn_credential`.
 - **Operations:** `audit_log_entry` (append-only), `bulk_upload_file` and
@@ -234,8 +234,8 @@ decision was made.
 
 If nobody decides by the deadline, the scheduled sweep
 (`workers/tasks.py::sweep_expired_dispositions_job`) applies the customer's default: always
-pay, always return, or follow the model's score. It leaves the item alone if the choice
-can't be made safely (no model yet, or an ACH return with no default return reason).
+pay or always return. The score never decides. It leaves the item alone if the choice can't
+be made safely (an ACH return with no default return reason).
 
 A decision made before the item's cut-off can be changed or taken back until then; at the
 cut-off it locks and goes out (feed number, `exception.decided`, decision files). That runs
@@ -264,8 +264,14 @@ chain per bank, numbered by `sequence`, safe under concurrent writers (see READM
 ### What the score means
 
 `exception_item.ml_score` is the model's probability that the item should be **paid**. The
-UI shows the inverse as "Fraud risk" (low/medium/high). No model means no score, never a
-made-up 0.5, so the UI can tell "unknown" from "uncertain".
+UI shows the inverse as "Fraud risk" (low/medium/high). It's **advisory**: a person decides,
+and no default decision follows the score. No model means no score, never a made-up 0.5, so
+the UI can tell "unknown" from "uncertain".
+
+Scoring is **off** until the bank turns it on (Settings → *Fraud scoring*,
+`tenant.ml_scoring_enabled`). Turning it on is a protected `sensitive` change
+(`services/change_kinds.py`, kind `ml_scoring`), so it waits for a second admin when the bank
+asks for one. With it off, nothing is trained or scored.
 
 ### Model choice
 
@@ -278,54 +284,40 @@ similarity and OCR confidence against SEC codes and receiver IDs), so each netwo
 `features.py` builds its own feature shape. A single combined model would be mostly
 zero-filled columns.
 
-### Slots: shared, bank-only, customer
+### One model per bank and network
 
-`ml/registry.py` keeps models in **slots**. Each slot has at most one `active` model plus
-its history:
-
-| Slot | Trained on | Run by |
-|------|-----------|--------|
-| Shared (per network) | Decisions from every bank that chose the shared model. A bank's fraud-training examples count only once the platform operator approves them. | Platform operator (`/api/v1/platform/ml/*`) |
-| Bank-only | That bank's own decisions, including its fraud-training examples | The bank's admins |
-| Customer | That customer's decisions | The bank's admins |
-
-Each bank chooses the shared or bank-only model (`tenant.ml_model_source`,
-`services/tenant_ml_service.py`). New banks start on the shared model, which solves the
-cold-start problem: a new bank gets useful scores on day one. A new bank can't switch to a bank-only
-model for its first 90 days (`ml_new_bank_private_switch_lock_days`); the platform
-operator can lift that early. When a bank does switch, the shared model is **copied** into
-its bank-only slot, so it keeps scoring while it builds up its own data, and its decisions
-stop feeding the shared model. Switching back is never locked, but the bank must
-acknowledge the data-pooling disclosure first.
-
-Which model scores an exception (`ml/predict.py::_resolve_scoring_source`):
-
-1. A customer's exception uses that customer's own model if it has an active one and its
-   setting isn't "Bank's model" (`customer_ml_setting`, default AUTO).
-2. Otherwise, the bank's choice: bank-only or shared.
+Every model belongs to one bank (`ml_model.tenant_id`, required). `ml/registry.py` keeps
+each bank's models per network: at most one `active` model plus its history. A bank's model
+learns only from that bank's own final, live decisions; no data is pooled across banks, and
+there are no customer models. The bank's admins retrain and activate models in
+Settings → *ML models* (`/ui/admin/ml-models`, `admin:manage`). `ml/predict.py` scores an
+exception with its bank's active model for the network, and only while the bank has scoring
+on.
 
 ### Training and promotion
 
-`workers/tasks.py::retrain_job` queues a retrain job for every slot that has enough new
-labelled decisions (counted with SQL `COUNT`s, against the number of eligible decisions
-the slot's last run recorded), and the job calls `ml/train.py::train_model`. Training
+`workers/tasks.py::retrain_job` queues a retrain job, for every bank with scoring on and each
+network, once there are enough new labelled decisions (counted with SQL `COUNT`s, against the
+number the bank's last run recorded); the job binds to the bank and calls
+`ml/train.py::train_model`. Training
 reads only the two columns it needs (`features_json`, outcome), in batches, from the last
-`ml_training_window_days` (365) and at most the newest `ml_training_max_rows` (250,000);
-known-fraud training examples are kept whatever their age. Each run records its row
+`ml_training_window_days` (365) and at most the newest `ml_training_max_rows` (250,000).
+Only final decisions count: one that can still change before its cut-off isn't a label yet.
+Each run records its row
 counts, whether it was capped, and how long it took in `metrics_json["training"]`.
 Training holds out the most recent decisions. The
 new model (challenger) and the active one (champion) are scored on the **same** holdout,
 and the challenger is promoted only if it does at least as well
-(`_promotion_decision`). A bank's first model trained on its own data must also have seen
-at least `ml_bank_model_min_decisions`, so it can't beat the seeded copy by luck on a tiny
-sample. There's a per-slot cooldown so on-demand retraining can't be used to burn compute.
+(`_promotion_decision`). A bank's first model is activated as soon as it's trained; a
+replacement must also have seen at least `ml_bank_model_min_decisions` (200), so it can't beat
+the active one by luck on a tiny sample. There's a per-bank cooldown so on-demand retraining
+can't be used to burn compute.
 
 Artifacts are joblib (pickle) files under `ml_artifact_dir` (`ml/registry.py::ArtifactStore`).
 The database holds each file's path and its SHA-256 (`ml_model.artifact_sha256`), and a
 file is unpickled only if it still matches, because unpickling a swapped file would run
-code. A model that fails the check simply doesn't score, and the failure is logged. `ml/predict.py` caches loaded models per slot (least recently used dropped
-past `ml_model_cache_size`, 256) and reloads automatically when the slot's active model
-id changes. A model file that's missing or unreadable is treated the same way: no score,
+code. A model that fails the check simply doesn't score, and the failure is logged. `ml/predict.py` caches loaded models per bank and network (least recently used dropped
+past `ml_model_cache_size`, 256) and reloads automatically when the active model id changes. A model file that's missing or unreadable is treated the same way: no score,
 logged.
 
 ## OCR
@@ -371,8 +363,8 @@ Files arrive through the UI, the API, or a watched **dropbox** directory
   signed as they're written (`sign_digest`); X9.37 files are read through an mmap with
   images sliced out per check, and zip images are read on demand.
 - The API's small `/bulk` calls (up to `bulk_api_sync_max_rows`) still import inside the
-  request (`ingest_paid_items_bulk` and friends), and so do the user and fraud-training
-  uploads, which are small and need an answer on the spot.
+  request (`ingest_paid_items_bulk` and friends), and so do user uploads, which are small and
+  need an answer on the spot.
 - Every row created is recorded in `bulk_upload_created_record`, so the whole upload can be
   **backed out** later (`services/bulk_upload_reversal_service.py`). Backing out withdraws
   exceptions that haven't been decided yet, and never overrides a human decision.
@@ -469,14 +461,14 @@ Two kinds of background work:
   per-job advisory lock (`workers/leader_lock.py`), so with several instances only one
   runs each tick. The jobs are plain functions, so an external cron can call them instead.
 - **Background jobs** (`workers/jobs.py`, handlers in `workers/job_handlers.py`): OCR after
-  an image upload, data exports, each bank's dropbox scan and each model slot's retrain.
+  an image upload, data exports, each bank's dropbox scan and each bank's model retrain.
   A job is a row in the `job` table, committed in the same transaction as whatever queued
   it. Workers claim due jobs with a conditional update (and `SKIP LOCKED` on Postgres), run
   the handler with a session bound to the job's bank (so RLS applies), send heartbeats, and
   retry failures with back-off; a job whose heartbeats stop is queued again. Workers run as
   a thread in each web process (`worker_mode=in_process`, the default) or as separate
   `openclear-worker` processes (`external`). The scheduler's retrain and dropbox jobs now
-  just queue one job per model slot or bank. The sweep, notification sending and the demo
+  just queue one job per bank (or per bank and network). The sweep, notification sending and the demo
   reset are quick, and still run directly.
 
 Shared between instances (SCALE_PLAN.md S6):
@@ -528,7 +520,7 @@ A plugin is checked in several ways:
 - Registration is all-or-nothing. A plugin adds to a staging copy of the registry, and the copy replaces the live one only if `register()` succeeds. A plugin that raises, or claims a name that's already taken, leaves nothing behind and is marked `failed`.
 - `plugins.status()` feeds Settings → Plugins.
 
-Some extension points are a bank's choice rather than the operator's (`BANK_CHOICE_POINTS`): import formats, decision layouts, matching rules and notification channels. Scoring features aren't a bank's choice: they feed the shared model, so they apply to every bank.
+Some extension points are a bank's choice rather than the operator's (`BANK_CHOICE_POINTS`): import formats, decision layouts, matching rules and notification channels. Scoring features aren't a bank's choice: the operator installs them, and every bank's model uses the same ones.
 
 - `registry.origins` records which plugin registered each entry.
 - A plugin's entry is usable by a bank only if the bank has a `tenant_extension` row for it.

@@ -12,7 +12,7 @@ from openclear.domain.audit_log_entry import AuditLogEntry
 from openclear.domain.notification import Notification, NotificationType
 from openclear.services import attestation_service, security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+from tests.items import _make_customer_with_account
 from tests.test_web.test_web_bulk_ach import _login
 
 TODAY = date(2027, 1, 2)

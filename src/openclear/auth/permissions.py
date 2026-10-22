@@ -38,10 +38,7 @@ PERMISSION_CATALOG: dict[str, str] = {
     "customer:manage": "Manage customers",
     "data_export:run": "Export all tenant/customer data for migration or offboarding",
     "ach_return_reason:manage": "Manage the catalogs of ACH and check return reasons",
-    "wsud:sign": "Sign a Written Statement of Unauthorized Debit (customer-scoped)",
-    "wsud:read": "View signed Written Statements of Unauthorized Debit across customers",
     "bulk_import:run": "Trigger an on-demand auto-import scan of dropped files",
-    "ml_training_example:write": "Submit or retract known-fraud training examples for the ML model",
     "end_user_documentation:read": "View the End User documentation",
     "admin_documentation:read": "View the Bank Administrator documentation",
     # Deliberately NOT in CUSTOMER_SCOPE_MASKED_PERMISSIONS below -- unlike customer:manage
@@ -81,7 +78,7 @@ PERMISSION_CATALOG: dict[str, str] = {
 CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
     {
         "user:manage", "security_group:manage", "tenant:manage", "customer:manage", "admin:manage", "audit_log:read",
-        "ach_return_reason:manage", "wsud:read", "billing:manage", "api_client:manage",
+        "ach_return_reason:manage", "billing:manage", "api_client:manage",
     }
 )
 
@@ -101,23 +98,17 @@ CUSTOMER_SELF_SERVICE_PERMISSIONS: dict[str, str] = {
 # group must be explicitly edited to add it via /ui/security-groups, rather than getting
 # it "for free" like every other permission does today. This is a one-off exception, not
 # a pattern to extend casually — most new permissions should still join Admin normally.
-# wsud:sign joins it for the same reason: signing a legal unauthorized-debit attestation
-# on the account holder's behalf is a distinct, deliberate-opt-in class of action, not
-# something every Admin group should silently gain. ml_training_example:write joins for the
-# same reason again: a bad or malicious label here silently shapes what the fraud model
-# learns for every tenant, at least as consequential as the other two.
-_NOT_ADMIN_DEFAULT = {"data_export:run", "wsud:sign", "ml_training_example:write"}
+_NOT_ADMIN_DEFAULT = {"data_export:run"}
 
 _ALL = [key for key in PERMISSION_CATALOG if key not in _NOT_ADMIN_DEFAULT]
 
-# audit_log:read, wsud:read, and admin_documentation:read are deliberately excluded from
+# audit_log:read and admin_documentation:read (and billing and compliance reads) are deliberately excluded from
 # the general read-permission bucket below — every other *:read key lands in
 # Preparer/Approver/Viewer by default (they already see the underlying business records),
-# but "who did what, when", "every customer's signed unauthorized-debit attestations", and
-# the Bank Administrator documentation are all more sensitive/admin-facing than any single
+# but "who did what, when" and the Bank Administrator documentation are all more sensitive/admin-facing than any single
 # resource's own data, and default to Admin-only, same posture as the *:manage
 # permissions. A tenant can still grant any of them to a custom group.
-_ADMIN_ONLY_READS = ("audit_log:read", "wsud:read", "admin_documentation:read", "billing:read", "compliance:read")
+_ADMIN_ONLY_READS = ("audit_log:read", "admin_documentation:read", "billing:read", "compliance:read")
 _READS = [key for key in _ALL if key.endswith(":read") and key not in _ADMIN_ONLY_READS]
 
 # Default groups seeded into every new tenant (provisioning_service.py, tests'
@@ -134,7 +125,7 @@ DEFAULT_SECURITY_GROUPS: dict[str, list[str]] = {
         "ach_authorization:read", "ach_authorization:write",
         "ach_transaction:read", "ach_transaction:write",
         "exception:read", "exception:recommend",
-        "wsud:sign", "bulk_import:run", "end_user_documentation:read",
+        "bulk_import:run", "end_user_documentation:read",
     ],
     # end_user_documentation:read isn't listed explicitly here -- it's already included
     # via _READS (it isn't one of the _ADMIN_ONLY_READS above), same as every other
@@ -160,7 +151,7 @@ DEFAULT_SECURITY_GROUPS: dict[str, list[str]] = {
         "ach_authorization:read", "ach_authorization:write",
         "ach_transaction:read", "ach_transaction:write",
         "exception:read", "exception:recommend", "exception:decide",
-        "wsud:sign", "bulk_import:run", "end_user_documentation:read",
+        "bulk_import:run", "end_user_documentation:read",
     ],
 }
 

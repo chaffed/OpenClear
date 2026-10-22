@@ -12,16 +12,10 @@ def test_seed_default_security_groups_matches_old_role_behavior(db_session, tena
     # The five defaults, plus the built-in "No access yet" for people a bank invites (UI_PLAN.md UI-D14).
     assert set(groups) == {"Admin", "Preparer", "Approver", "Viewer", "Bookkeeper", "No access yet"}
     assert groups["No access yet"].permissions == [] and groups["No access yet"].system_role == "no_access"
-    # Every catalog permission EXCEPT data_export:run, wsud:sign, and
-    # ml_training_example:write, all deliberately excluded from Admin's default grant (see
-    # auth/permissions.py::_NOT_ADMIN_DEFAULT) — a bank must explicitly add any of these to
-    # a security group, even its own Admin group.
-    assert set(groups["Admin"].permissions) == set(PERMISSION_CATALOG) - {
-        "data_export:run", "wsud:sign", "ml_training_example:write"
-    }
-    assert "data_export:run" not in groups["Admin"].permissions
-    assert "wsud:sign" not in groups["Admin"].permissions
-    assert "ml_training_example:write" not in groups["Admin"].permissions
+    # Every catalog permission except data_export:run, deliberately excluded from Admin's
+    # default grant (see auth/permissions.py::_NOT_ADMIN_DEFAULT) — a bank must explicitly
+    # add it to a security group, even its own Admin group.
+    assert set(groups["Admin"].permissions) == set(PERMISSION_CATALOG) - {"data_export:run"}
     assert "issued_item:write" in groups["Preparer"].permissions
     assert "exception:decide" not in groups["Preparer"].permissions
     assert "exception:decide" in groups["Approver"].permissions

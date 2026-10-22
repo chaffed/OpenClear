@@ -34,9 +34,6 @@ class PaidItemSource(str, enum.Enum):
     API = "api"
     BULK_FILE = "bulk_file"
     MANUAL = "manual"
-    # A synthetic paid_item created by services/fraud_training_service.py to carry a
-    # known-fraud training label — never a real presented check.
-    TRAINING_BACKFILL = "training_backfill"
 
 
 class PaidItem(Base):

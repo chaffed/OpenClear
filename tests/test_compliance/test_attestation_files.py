@@ -13,7 +13,7 @@ from openclear import storage
 from openclear.config import get_settings
 from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+from tests.items import _make_customer_with_account
 from tests.test_web.test_web_bulk_ach import _login
 
 EVIL = "x/../../../../../../escaped.txt"

@@ -13,7 +13,7 @@ import pytest
 from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_item
 from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import cutoff_service
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+from tests.items import _make_customer_with_account
 
 ET = ZoneInfo("America/New_York")
 

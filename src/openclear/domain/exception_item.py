@@ -5,7 +5,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, String, func
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from openclear.db.base import Base, new_uuid
@@ -13,11 +13,6 @@ from openclear.db.base import Base, new_uuid
 
 class ExceptionItemSource(str, enum.Enum):
     LIVE = "live"
-    # Created by services/fraud_training_service.py, not the real matching pipeline — see
-    # that module for why: a known-fraud transaction can clear the real rules cleanly (no
-    # OCR payee check, an authorized-looking ACH debit), so it needs a way into the
-    # training set that doesn't depend on ever tripping an exception for real.
-    TRAINING_BACKFILL = "training_backfill"
 
 
 class ExceptionStatus(str, enum.Enum):
@@ -106,17 +101,3 @@ class ExceptionItem(Base):
         nullable=False,
         default=ExceptionItemSource.LIVE,
     )
-    # True when this TRAINING_BACKFILL exception points at a source_item_id that already
-    # had a prior LIVE exception decided PAY/RETURN — i.e. this label is correcting a past
-    # live decision, not just adding a fresh one. Display-only (see
-    # services/fraud_training_service.py for how it's computed).
-    is_correction: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    # One-way soft-retraction, mirrors BulkUploadFile.backed_out_at/backed_out_by_user_id —
-    # only ever set on a TRAINING_BACKFILL exception (see fraud_training_service.retract_*).
-    retracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Only meaningful for TRAINING_BACKFILL (fraud-training) examples from a bank on the
-    # shared model: such an example feeds the shared model only once the platform
-    # operator has approved it, so one bank can't quietly poison scoring for all of them
-    # (ml/train.py). Live exceptions and bank-only banks' examples ignore it.
-    shared_training_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    retracted_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)

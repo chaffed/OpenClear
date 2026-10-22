@@ -3,7 +3,7 @@
 """A customer's dashboard leads with its two jobs (UI_PLAN.md UI-D8), and the account menu says
 who's signed in (UI-D6)."""
 
-from tests.test_ml.test_per_customer_ml import _make_exception
+from tests.items import _make_exception
 from tests.test_web.test_journeys import _customer_user, _sign_in_as
 
 

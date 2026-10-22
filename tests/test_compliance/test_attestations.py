@@ -140,7 +140,7 @@ def test_the_pages(client, db_session, tenant_factory):
 
 
 def test_a_customer_sees_its_own_responsibilities(client, db_session, tenant_factory):
-    from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+    from tests.items import _make_customer_with_account
 
     tenant, _account, _users = tenant_factory.make(slug="att-cust")
     customer, _acct = _make_customer_with_account(db_session, tenant, "AT-1")

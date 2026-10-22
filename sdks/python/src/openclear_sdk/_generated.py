@@ -91,21 +91,6 @@ AchAuthorizationStatus = Literal["active", "revoked"]
 AchDebitBlockMode = Literal["block_all", "filter_by_authorization"]
 
 
-class AchFraudExampleCreate(TypedDict):
-    account_id: NotRequired[str | None]
-    ach_return_reason_id: str
-    ach_transaction_id: NotRequired[str | None]
-    amount: NotRequired[float | str | None]
-    effective_date: NotRequired[str | None]
-    notes: NotRequired[str | None]
-    originator_id: NotRequired[str | None]
-    originator_name: NotRequired[str | None]
-    receiver_id: NotRequired[str | None]
-    sec_code: NotRequired[str | None]
-    trace_number: NotRequired[str | None]
-    transaction_type: NotRequired[AchTransactionType | None]
-
-
 AchMatchStatus = Literal["pending", "matched", "exception"]
 
 
@@ -277,7 +262,7 @@ class BulkUploadAccepted(TypedDict):
     upload_id: str
 
 
-BulkUploadKind = Literal["issued_items", "ach_transactions", "users", "accounts", "check_images", "paid_items", "fraud_training_examples"]
+BulkUploadKind = Literal["issued_items", "ach_transactions", "users", "accounts", "check_images", "paid_items"]
 
 
 class BulkUploadRead(TypedDict):
@@ -322,16 +307,6 @@ class ChangeRead(TypedDict):
     status: Literal["pending", "approved", "rejected", "withdrawn", "expired", "applied_alone"]
     summary: str
     title: str
-
-
-class CheckFraudExampleCreate(TypedDict):
-    account_id: NotRequired[str | None]
-    check_number: NotRequired[str | None]
-    notes: NotRequired[str | None]
-    paid_item_id: NotRequired[str | None]
-    presented_amount: NotRequired[float | str | None]
-    presented_date: NotRequired[str | None]
-    reason_code: str
 
 
 class CheckImageRead(TypedDict):
@@ -630,14 +605,6 @@ class FeeOverrideOutput(TypedDict):
     waived: NotRequired[bool]
 
 
-class FraudExampleRead(TypedDict):
-    created_at: str
-    id: str
-    is_correction: bool
-    network_code: str
-    retracted_at: str | None
-
-
 class ImportFormatRead(TypedDict):
     built_in: bool
     format: str
@@ -860,19 +827,6 @@ class PaidItemRead(TypedDict):
 PaidItemSettlementStatus = Literal["pending", "paid", "returned", "reversed"]
 
 
-class PendingFraudExampleRead(TypedDict):
-    """A fraud-training example from a bank on the shared model, awaiting the platform
-operator's approval before it can train the shared model (api/v1/platform_ml.py)."""
-
-    exception_id: str
-    network_code: str
-    notes: str | None
-    outcome: str
-    reason_code: str | None
-    submitted_at: str
-    tenant_slug: str
-
-
 class RecommendRequest(TypedDict):
     ach_return_reason_id: NotRequired[str | None]
     check_return_reason_id: NotRequired[str | None]
@@ -914,16 +868,6 @@ class SelfService(TypedDict):
     manages_sign_on: bool
 
 
-class SharedModelSummaryRead(TypedDict):
-    """What a bank may see about the shared model — counts only, never other banks."""
-
-    activated_at: str | None
-    contributing_bank_count: int
-    network_code: str
-    trained_from_decision_count: int | None
-    version: str | None
-
-
 class SignedAttestation(TypedDict):
     attestation: dict[str, Any]
     signature: dict[str, Any]
@@ -953,11 +897,6 @@ class StopPaymentRead(TypedDict):
 
 
 StopPaymentStatus = Literal["active", "expired", "cancelled"]
-
-
-class SwitchLockClearedRead(TypedDict):
-    tenant_id: str
-    tenant_slug: str
 
 
 class TenantUserRead(TypedDict):
@@ -1135,9 +1074,7 @@ class AdminApi:
 
         GET /api/v1/admin/ml/models
 
-        This organization's own models: its bank-only models and its customers' models.
-        (It used to list every organization's models.) For the shared model, see
-        /admin/ml/shared-model.
+        This organization's own models.
         """
         return self._c.call("GET", "/api/v1/admin/ml/models", query={"network_code": network_code})
 
@@ -1146,7 +1083,7 @@ class AdminApi:
 
         PATCH /api/v1/admin/ml/models/{model_id}/activate
 
-        Activates one of this organization's bank-only models (404 for any other model). When the
+        Activates one of this organization's own models (404 for any other model). When the
         bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
         "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
         `POST /api/v1/changes/{id}/approve`).
@@ -1158,19 +1095,10 @@ class AdminApi:
 
         POST /api/v1/admin/ml/retrain
 
-        Retrains this organization's bank-only model (403 for a bank on the shared model).
+        Retrains this organization's own model from its own final decisions (409 while fraud
+        scoring is off). The score is advisory: it never decides an item.
         """
         return self._c.call("POST", "/api/v1/admin/ml/retrain", query={"network_code": network_code})
-
-    def shared_model_summary(self) -> list[SharedModelSummaryRead]:
-        """Shared Model Summary.
-
-        GET /api/v1/admin/ml/shared-model
-
-        The shared model's active version per network, with counts only (never which other
-        banks contribute).
-        """
-        return self._c.call("GET", "/api/v1/admin/ml/shared-model")
 
     def list_payment_networks(self) -> list[str]:
         """List Payment Networks.
@@ -2156,48 +2084,6 @@ class ExceptionsApi:
         return self._c.call("GET", f"/api/v1/exceptions/{_path(exception_id)}")
 
 
-class FraudTrainingApi:
-    """`fraud-training` endpoints."""
-
-    def __init__(self, transport: "Transport") -> None:
-        self._c = transport
-
-    def create_ach_fraud_example(self, body: AchFraudExampleCreate) -> FraudExampleRead:
-        """Create Ach Fraud Example.
-
-        POST /api/v1/ml-training/fraud-examples/ach
-        """
-        return self._c.call("POST", "/api/v1/ml-training/fraud-examples/ach", json=body)
-
-    def create_ach_fraud_examples_bulk(self, body: list[AchFraudExampleCreate]) -> BulkSubmitResponse:
-        """Create Ach Fraud Examples Bulk.
-
-        POST /api/v1/ml-training/fraud-examples/ach/bulk
-        """
-        return self._c.call("POST", "/api/v1/ml-training/fraud-examples/ach/bulk", json=body)
-
-    def create_check_fraud_example(self, body: CheckFraudExampleCreate) -> FraudExampleRead:
-        """Create Check Fraud Example.
-
-        POST /api/v1/ml-training/fraud-examples/check
-        """
-        return self._c.call("POST", "/api/v1/ml-training/fraud-examples/check", json=body)
-
-    def create_check_fraud_examples_bulk(self, body: list[CheckFraudExampleCreate]) -> BulkSubmitResponse:
-        """Create Check Fraud Examples Bulk.
-
-        POST /api/v1/ml-training/fraud-examples/check/bulk
-        """
-        return self._c.call("POST", "/api/v1/ml-training/fraud-examples/check/bulk", json=body)
-
-    def retract_fraud_example_api(self, exception_id: str) -> FraudExampleRead:
-        """Retract Fraud Example Api.
-
-        POST /api/v1/ml-training/fraud-examples/{exception_id}/retract
-        """
-        return self._c.call("POST", f"/api/v1/ml-training/fraud-examples/{_path(exception_id)}/retract")
-
-
 class IssuedItemsApi:
     """`issued-items` endpoints."""
 
@@ -2472,78 +2358,6 @@ class PlatformMetricsApi:
         return self._c.call("GET", "/api/v1/platform/metrics", auth="platform", raw=True)
 
 
-class PlatformMlApi:
-    """`platform-ml` endpoints."""
-
-    def __init__(self, transport: "Transport") -> None:
-        self._c = transport
-
-    def pending_fraud_examples(self) -> list[PendingFraudExampleRead]:
-        """Pending Fraud Examples.
-
-        GET /api/v1/platform/ml/fraud-examples/pending
-
-        Fraud-training examples from banks on the shared model that aren't yet approved
-        for training it (oldest first). Bank-only banks' examples never need approval: they
-        only ever train that bank's own model.
-        """
-        return self._c.call("GET", "/api/v1/platform/ml/fraud-examples/pending", auth="platform")
-
-    def approve_fraud_example(self, exception_id: str) -> None:
-        """Approve Fraud Example.
-
-        POST /api/v1/platform/ml/fraud-examples/{exception_id}/approve
-        """
-        return self._c.call("POST", f"/api/v1/platform/ml/fraud-examples/{_path(exception_id)}/approve", auth="platform")
-
-    def list_shared_models(self, *, network_code: str | None = None) -> list[MlModelRead]:
-        """List Shared Models.
-
-        GET /api/v1/platform/ml/models
-        """
-        return self._c.call("GET", "/api/v1/platform/ml/models", query={"network_code": network_code}, auth="platform")
-
-    def activate_shared_model(self, model_id: str) -> MlModelRead:
-        """Activate Shared Model.
-
-        PATCH /api/v1/platform/ml/models/{model_id}/activate
-
-        Asks for the shared model to be activated: it scores every bank that uses it, so it waits
-        for a person among the platform's operators to approve it in the operator view (`202` with
-        `change_request_id`). Already active: `200` with the model.
-        """
-        return self._c.call("PATCH", f"/api/v1/platform/ml/models/{_path(model_id)}/activate", auth="platform")
-
-    def shared_model_feature_importance(self, model_id: str) -> dict[str, float]:
-        """Shared Model Feature Importance.
-
-        GET /api/v1/platform/ml/models/{model_id}/feature-importance
-
-        Model coefficients by feature, largest effect first. Operator-only: banks never
-        see the shared model's internals.
-        """
-        return self._c.call("GET", f"/api/v1/platform/ml/models/{_path(model_id)}/feature-importance", auth="platform")
-
-    def retrain_shared_model(self, *, network_code: str | None = None) -> RetrainResponse:
-        """Retrain Shared Model.
-
-        POST /api/v1/platform/ml/retrain
-
-        Trains a challenger for the shared model, promoted only by the champion/challenger rule;
-        activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
-        """
-        return self._c.call("POST", "/api/v1/platform/ml/retrain", query={"network_code": network_code}, auth="platform")
-
-    def clear_bank_switch_lock(self, tenant_id: str) -> SwitchLockClearedRead:
-        """Clear Bank Switch Lock.
-
-        POST /api/v1/platform/tenants/{tenant_id}/ml-switch-lock/clear
-
-        Lets a new bank switch to a bank-only model before its 90 days are up.
-        """
-        return self._c.call("POST", f"/api/v1/platform/tenants/{_path(tenant_id)}/ml-switch-lock/clear", auth="platform")
-
-
 class PlatformUsageApi:
     """`platform-usage` endpoints."""
 
@@ -2729,14 +2543,12 @@ AREAS = {
     "edge": EdgeApi,
     "embed": EmbedApi,
     "exceptions": ExceptionsApi,
-    "fraud_training": FraudTrainingApi,
     "issued_items": IssuedItemsApi,
     "model_risk": ModelRiskApi,
     "paid_items": PaidItemsApi,
     "platform_billing": PlatformBillingApi,
     "platform_jobs": PlatformJobsApi,
     "platform_metrics": PlatformMetricsApi,
-    "platform_ml": PlatformMlApi,
     "platform_usage": PlatformUsageApi,
     "return_reasons": ReturnReasonsApi,
     "security_events": SecurityEventsApi,

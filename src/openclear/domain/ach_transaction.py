@@ -34,9 +34,6 @@ class AchTransactionSource(str, enum.Enum):
     API = "api"
     BULK_FILE = "bulk_file"
     MANUAL = "manual"
-    # A synthetic ach_transaction created by services/fraud_training_service.py to carry a
-    # known-fraud training label — never a real incoming ACH entry.
-    TRAINING_BACKFILL = "training_backfill"
 
 
 class AchTransaction(Base):

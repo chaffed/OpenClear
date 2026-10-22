@@ -7,7 +7,7 @@
 from openclear.compliance import controls, cuecs
 from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory, login_headers
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+from tests.items import _make_customer_with_account
 
 
 def _customer_person(db_session, tenant):

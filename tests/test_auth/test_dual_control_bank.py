@@ -63,8 +63,8 @@ def test_a_new_api_client_works_only_once_approved(client, db_session, tenant_fa
     assert client.post("/api/v1/oauth/token", data=token).status_code == 200
 
 
-def test_webhooks_embedding_self_service_and_the_shared_model_wait(client, db_session, tenant_factory):
-    from tests.test_ml.test_per_customer_ml import _make_customer_with_account
+def test_webhooks_embedding_and_self_service_wait(client, db_session, tenant_factory):
+    from tests.items import _make_customer_with_account
 
     tenant, users, second = _bank(db_session, tenant_factory, "dcb-misc", sensitive=True)
     customer, _account = _make_customer_with_account(db_session, tenant, "DCB-1")

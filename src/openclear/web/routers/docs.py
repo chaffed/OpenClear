@@ -30,34 +30,33 @@ class DocPage:
 
 
 END_USER_DOC_PAGES: list[DocPage] = [
-    DocPage("getting-started", "Getting Started", "Logging in, the tenant/customer/account model, and the dashboard."),
-    DocPage("issued-items", "Issued Items", "Recording checks a company has written, single-entry or bulk."),
-    DocPage("paid-items", "Paid Items", "Recording checks that cleared, so they can be matched against issued items."),
-    DocPage("stop-payments", "Stop Payments", "Placing or cancelling a stop on a specific check."),
-    DocPage("check-images", "Check Images", "Uploading front/back check images and reprocessing them."),
-    DocPage("ach-transactions", "ACH Transactions", "Submitting incoming ACH debits and credits for screening."),
-    DocPage("ach-authorizations", "ACH Authorizations & Allow Rules", "Maintaining the allow list ACH transactions are screened against."),
-    DocPage("exceptions", "Exceptions & Decisioning", "Reviewing and deciding flagged checks and ACH items."),
-    DocPage("wsud", "Unauthorized Debit Statements", "Signing a statement that a returned ACH debit was unauthorized."),
-    DocPage("fraud-training", "Known-Fraud Training Data", "Labeling known-fraud items to improve the ML model."),
-    DocPage("bulk-uploads", "Bulk File Uploads", "Uploading files in bulk, and undoing an upload if needed."),
-    DocPage("billing-statement", "Your Billing Statement", "Reading your monthly statement of positive pay charges."),
-    DocPage("people-and-sign-on", "Your People & Sign-on", "For your administrators: inviting people, roles and accounts, and your own single sign-on."),
+    DocPage("getting-started", "Getting started", "Logging in, the tenant/customer/account model, and the dashboard."),
+    DocPage("issued-items", "Issued items", "Recording checks a company has written, single-entry or bulk."),
+    DocPage("paid-items", "Paid items", "Recording checks that cleared, so they can be matched against issued items."),
+    DocPage("stop-payments", "Stop payments", "Placing or cancelling a stop on a specific check."),
+    DocPage("check-images", "Check images", "Uploading front/back check images and reprocessing them."),
+    DocPage("ach-transactions", "ACH transactions", "Submitting incoming ACH debits and credits for screening."),
+    DocPage("ach-authorizations", "ACH authorizations & allow rules", "Maintaining the allow list ACH transactions are screened against."),
+    DocPage("exceptions", "Exceptions & decisioning", "Reviewing and deciding flagged checks and ACH items."),
+    DocPage("wsud", "Unauthorized debit statements", "Your bank's form for reporting an ACH debit you didn't authorize."),
+    DocPage("bulk-uploads", "Bulk file uploads", "Uploading files in bulk, and undoing an upload if needed."),
+    DocPage("billing-statement", "Your billing statement", "Reading your monthly statement of positive pay charges."),
+    DocPage("people-and-sign-on", "Your people & sign-on", "For your administrators: inviting people, roles and accounts, and your own single sign-on."),
 ]
 END_USER_DOC_PAGES_BY_SLUG: dict[str, DocPage] = {p.slug: p for p in END_USER_DOC_PAGES}
 
 ADMIN_DOC_PAGES: list[DocPage] = [
-    DocPage("users-security-groups", "Users & Security Groups", "Managing users, permissions, and multi-customer access."),
-    DocPage("customers-accounts", "Customers & Accounts", "Managing the customers and bank accounts under your organization."),
-    DocPage("ml-admin", "ML Scoring & Default Disposition", "Configuring fraud scoring behavior and auto-decisions on expired exceptions."),
-    DocPage("notifications-webauthn", "Notifications & Account Security", "Email/SMS preferences and passkey (WebAuthn) management."),
-    DocPage("branding-settings", "Organization Settings & Branding", "Branding, dual control, session timeouts, and dark mode."),
-    DocPage("audit-log", "Audit Log", "The immutable, tamper-evident record of every action taken."),
-    DocPage("data-export", "Data Export", "Exporting all tenant or customer data for migration or offboarding."),
+    DocPage("users-security-groups", "Users & security groups", "Managing users, permissions, and multi-customer access."),
+    DocPage("customers-accounts", "Customers & accounts", "Managing the customers and bank accounts under your organization."),
+    DocPage("ml-admin", "Fraud scoring & default decisions", "Configuring fraud scoring behavior and auto-decisions on expired exceptions."),
+    DocPage("notifications-webauthn", "Notifications & account security", "Email/SMS preferences and passkey (WebAuthn) management."),
+    DocPage("branding-settings", "Organization settings & branding", "Branding, dual control, session timeouts, and dark mode."),
+    DocPage("audit-log", "Action log", "The immutable, tamper-evident record of every action taken."),
+    DocPage("data-export", "Data export", "Exporting all tenant or customer data for migration or offboarding."),
     DocPage("billing", "Billing", "The fee schedule, analysis vs. hard charge, finalizing a month, and the billing exports."),
-    DocPage("authentication", "Login, SSO & Account Lockout", "Configuring single sign-on and handling locked-out users."),
-    DocPage("demo-tenant", "Demo Tenant", "Resetting the sales demo environment to a clean state."),
-    DocPage("data-dictionary", "Data Dictionary & Schema", "Every table and column in the database, with ER diagrams grouped by subsystem."),
+    DocPage("authentication", "Login, SSO & account lockout", "Configuring single sign-on and handling locked-out users."),
+    DocPage("demo-tenant", "Demo tenant", "Resetting the sales demo environment to a clean state."),
+    DocPage("data-dictionary", "Data dictionary & schema", "Every table and column in the database, with ER diagrams grouped by subsystem."),
 ]
 ADMIN_DOC_PAGES_BY_SLUG: dict[str, DocPage] = {p.slug: p for p in ADMIN_DOC_PAGES}
 

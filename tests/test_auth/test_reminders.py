@@ -15,7 +15,7 @@ from openclear.domain.deadline_reminder import DeadlineReminder
 from openclear.domain.notification import Notification, NotificationChannel, NotificationPreference, NotificationType
 from openclear.domain.tenant import Tenant
 from openclear.services import customer_service, reminder_service
-from tests.test_ml.test_per_customer_ml import _make_exception
+from tests.items import _make_exception
 
 
 def test_parsing_and_describing_offsets():

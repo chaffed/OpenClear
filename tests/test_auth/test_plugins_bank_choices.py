@@ -20,7 +20,7 @@ from openclear.domain.decision import DecisionOutcome
 from openclear.domain.paid_item import PaidItem
 from openclear.services import plugin_service
 from tests.conftest import TenantFactory, login_headers
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "openclear-plugin-example" / "src"
 

@@ -22,9 +22,6 @@ class BulkUploadKind(str, enum.Enum):
     # distinct from CHECK_IMAGES, which always implies one. See
     # networks/check/bulk_import.py::ingest_paid_item_tabular_rows.
     PAID_ITEMS = "paid_items"
-    # Known-fraud training labels (check and ACH both land under this one kind) — see
-    # services/fraud_training_service.py.
-    FRAUD_TRAINING_EXAMPLES = "fraud_training_examples"
 
 
 class BulkUploadSource(str, enum.Enum):
@@ -43,7 +40,7 @@ class BulkUploadStatus(str, enum.Enum):
     (services/bulk_import_service.py) go RECEIVED -> QUEUED -> PROCESSING -> COMPLETED, or
     REJECTED (the whole file failed validation, nothing imported) or FAILED (the job gave
     up; rows already committed stay). The uploads still processed inside the request
-    (users, fraud-training labels) go straight from RECEIVED to COMPLETED."""
+    (users) go straight from RECEIVED to COMPLETED."""
 
     RECEIVED = "received"
     QUEUED = "queued"

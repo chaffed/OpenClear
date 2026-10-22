@@ -53,7 +53,7 @@ verify it.
 | Data held | Accounts and customers; issued checks, presented items and check images; ACH transactions and authorizations; exceptions and decisions; users and memberships; the action log. |
 | Where it's held | Wherever the bank or its host runs the database and file storage. OpenClear sends nothing to its authors. |
 | Optional outside services | Each is off unless configured: email and SMS providers for notifications; cloud OCR for check images; S3-compatible storage; identity providers for SSO; webhooks to the bank's own systems; malware scanning (ClamAV, and VirusTotal, which is sent only file hashes). Each one the bank turns on is a relationship to assess ([all of them](../security/data-and-limits.md#outside-connections)). |
-| Model data sharing | The shared scoring model learns from labelled decisions pooled across banks. Who acknowledged the pooling disclosure, and when, is recorded. A bank can move to a bank-only model trained on its own decisions (after its first 90 days). |
+| Model data sharing | None. Fraud scoring is off until the bank turns it on, and a bank's model learns only from its own decisions. No data is pooled across banks. |
 
 ### Resilience, incidents and exit
 

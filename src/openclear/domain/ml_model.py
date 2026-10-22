@@ -22,21 +22,16 @@ class MlModel(Base):
     """Model registry, one row per trained artifact. Separate models per network_code
     (check vs ach feature spaces barely overlap) — never assume a single global model.
 
-    Three kinds of model, by owner (FIX_PLAN.md Phase 5):
-    - shared network model: tenant_id and customer_id both NULL — trained on every
-      SHARED bank's decisions, controlled only by the platform operator;
-    - bank-only model: tenant_id set, customer_id NULL — one PRIVATE bank's own model;
-    - customer model: customer_id set (and tenant_id, its bank).
-    ml/predict.py picks among them. A given (network_code, tenant_id, customer_id) slot
-    can have at most one ACTIVE row at a time — enforced in ml/registry.py, not a DB
-    constraint, since TRAINING/RETIRED/FAILED rows for the same slot coexist as history."""
+    One kind of model: a bank's own (SIMPLIFY_PLAN.md SP-D8), trained only on its own final
+    decisions, and only while the bank has scoring on (Tenant.ml_scoring_enabled). A given
+    (network_code, tenant_id) slot has at most one ACTIVE row at a time — enforced in
+    ml/registry.py, not a DB constraint, since TRAINING/RETIRED/FAILED rows for the same slot coexist as history."""
 
     __tablename__ = "ml_model"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     network_code: Mapped[str] = mapped_column(ForeignKey("payment_network.code"), nullable=False, index=True)
-    customer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("customer.id"), nullable=True, index=True)
-    tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"), nullable=True, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
 
     version: Mapped[str] = mapped_column(String(64), nullable=False)
     algorithm: Mapped[str] = mapped_column(String(64), nullable=False)

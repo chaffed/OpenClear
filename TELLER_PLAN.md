@@ -11,11 +11,35 @@ again elsewhere.
 
 | Need | Today | Where |
 |---|---|---|
-| Is this check good? | The clearing rules decide it for presented items: `not_in_file`, `amount_mismatch`, `payee_mismatch`, `voided`, `stopped`, `stale_dated`, `duplicate_paid`. A pure function, with no database session. | `networks/check/rules.py`, `networks/check/types.py` |
+| Is this check good? | The clearing rules decide it for presented items: `not_in_file`, `amount_mismatch`, `payee_mismatch`, `voided`, `stopped`, `stop_amount_mismatch`, `stale_dated`, `duplicate_paid`. A pure function, with no database session. A stop that names another amount no longer stops the check: it's held as `stop_amount_mismatch` for a person (FR5). | `networks/check/rules.py`, `networks/check/types.py` |
 | Looking a check up | `GET /api/v1/issued-items` filters by account and status only, not check number. A teller platform would have to list every outstanding check on the account. | `api/v1/issued_items.py` |
-| A check already paid | `duplicate_paid` when a paid item with the same account, check number and amount was already paid | `networks/check/adapter.py::_is_duplicate_paid` |
-| Where a presentment came from | `PaidItemSource`: api, bulk_file, manual, training_backfill | `domain/paid_item.py` |
+| A check already paid | `duplicate_paid` when a paid item with the same account, check number and amount was already paid, and also whenever the matched issued check is already `paid`, at any amount (FR5, FR-D11). A paid check can't be voided (409). | `networks/check/adapter.py::_is_duplicate_paid`; `rules.py`; `api/v1/issued_items.py` |
+| Two presentments at once | The issued item is locked (`with_for_update`) while a presentment is matched, so the same check presented twice at the same moment is paid once and the second is `duplicate_paid` (FR2) | `networks/check/adapter.py::_find_candidate_issued_item` |
+| Lifecycle | Expired stops and stale checks are set nightly; a check is `stopped` while a stop covers it (FR5) | `services/lifecycle_service.py` |
+| Where a presentment came from | `PaidItemSource`: api, bulk_file, manual (`training_backfill` went with the fraud-training examples, SIMPLIFY_PLAN.md SP2) | `domain/paid_item.py` |
 | Bank systems calling OpenClear | Bank-level API clients with a security group; `private_key_jwt`; rate limits per client | `auth/`, `web/rate_limit.py` |
+
+## Since this plan was written
+
+FULL_REVIEW_PLAN.md (FR1–FR5) and SIMPLIFY_PLAN.md (SP2) changed some of what this plan builds on.
+The decisions stand; these notes say how they now read.
+
+- **TL-D1 (same rules as clearing).** Verify takes the issued item's lock too
+  (`with_for_update`, as `CheckAdapter.evaluate` does since FR2), so a verify and a clearing
+  presentment of the same check can't both see it unpaid. `stop_amount_mismatch` joins the
+  results, as `stop_differs`: the teller declines and the customer decides.
+- **TL-D3 (cashed marks it paid).** Since FR5, a later presentment of a check already paid is
+  `duplicate_paid` at any amount, which closes the gap of a cashed check altered and presented
+  again for another amount. The cashed paid item still sets the issued item to `paid`, which is
+  what that rule reads.
+- **TL-D4 (declines shown as information).** Showing them on the exceptions page needs a type
+  that asks for no decision. Reverse positive pay's `review` type (REVERSE_POSITIVE_PAY_PLAN.md
+  RPP-D2) is the nearest; an informational `teller_declined` item is designed with it, not
+  separately.
+- **TL-D5 (no scoring).** Unchanged, and simpler: the fraud score is now advisory, from the bank's
+  own model, and off by default (SP2). Verify never scores.
+- **Paid-item layouts** (PAID_ITEM_LAYOUTS_PLAN.md) don't change this plan: a cashed check is
+  presented through the API, not a file.
 
 ## The flow
 
@@ -113,3 +137,7 @@ sequenceDiagram
 ## Progress log
 
 - 2026-10-18: Plan written. Not started.
+- 2026-10-21: "What exists today" brought up to date with 1.27 (FR2's issued-item lock, FR5's
+  duplicate-paid and stop-amount rules and lifecycle, SP2's paid-item sources), and a section
+  on how FR1–FR5 and SP2 change the decisions. Still not started; its stages follow the paid-item
+  layouts and reverse positive pay plans.

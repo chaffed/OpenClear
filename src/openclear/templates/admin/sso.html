@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Single Sign-On — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Single sign-on — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About SSO{% endblock %}
 {% block help_body %}
 <p>Configure federated login (Okta, Azure AD, or any OIDC-compliant identity provider)
@@ -16,7 +16,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Single Sign-On</h1>
+    <h1>Single sign-on</h1>
     <a href="/ui/admin/sso/new" class="button">{{ icon("add_link") }}Add connection</a>
   </div>
   {% if connections %}

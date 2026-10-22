@@ -4,9 +4,8 @@
 
 """Makes a new cross-tenant platform API key. By default it can only read the
 usage-metering endpoint (GET /api/v1/platform/usage — see services/usage_metrics_service.py).
-Pass --scope shared_model for the platform operator's key that runs the shared
-fraud-scoring model (/api/v1/platform/ml/* — see api/v1/platform_ml.py). Give each key only
-what it needs.
+Pass --scope operations for monitoring (jobs, metrics, security events) or --scope billing
+for platform billing. Give each key only what it needs.
 
 A new key reaches every bank's data, so a second platform operator approves it
 (DUAL_CONTROL_PLAN.md DC-D12) at /ui/platform/changes. The raw key is printed here, once, and
@@ -17,7 +16,7 @@ revoke it (services/platform_api_key_service.py::revoke) and run this again for 
 
 Usage:
     python scripts/create_metering_api_key.py "Acme Billing Integration"
-    python scripts/create_metering_api_key.py "Platform ML operator" --scope shared_model
+    python scripts/create_metering_api_key.py "Monitoring" --scope operations
     python scripts/create_metering_api_key.py "First operator key" --scope operations --emergency
 """
 
@@ -34,7 +33,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("name", help="A human label identifying who/what this key is for (e.g. 'Acme Billing Integration')")
     parser.add_argument(
-        "--scope", action="append", choices=["usage", "shared_model", "operations", "billing"], dest="scopes",
+        "--scope", action="append", choices=["usage", "operations", "billing"], dest="scopes",
         help="What the key may do; repeat for more than one (default: usage)",
     )
     parser.add_argument("--emergency", action="store_true", help="make the key work at once, as a critical security event")

@@ -11,14 +11,12 @@ from openclear.api.v1.check_images import router as check_images_router
 from openclear.api.v1.decisions import router as decisions_router
 from openclear.api.v1.dropbox_import import router as dropbox_import_router
 from openclear.api.v1.exceptions import router as exceptions_router
-from openclear.api.v1.fraud_training import router as fraud_training_router
 from openclear.api.v1.issued_items import router as issued_items_router
 from openclear.api.v1.paid_items import router as paid_items_router
 from openclear.api.v1.platform_usage import router as platform_usage_router
 from openclear.api.v1.billing import router as billing_router
 from openclear.api.v1.platform_billing import router as platform_billing_router
 from openclear.api.v1.platform_jobs import router as platform_jobs_router
-from openclear.api.v1.platform_ml import router as platform_ml_router
 from openclear.api.v1.stop_payments import router as stop_payments_router
 from openclear.api.v1.users import router as users_router
 from openclear.api.v1.oauth import router as oauth_router
@@ -52,7 +50,6 @@ api_router.include_router(check_images_router)
 api_router.include_router(ach_authorizations_router)
 api_router.include_router(ach_transactions_router)
 api_router.include_router(exceptions_router)
-api_router.include_router(fraud_training_router)
 api_router.include_router(decisions_router)
 api_router.include_router(return_reasons_router)
 api_router.include_router(platform_metrics_router)
@@ -77,7 +74,6 @@ api_router.include_router(api_clients_router)
 api_router.include_router(bulk_uploads_router)
 api_router.include_router(dropbox_import_router)
 api_router.include_router(platform_usage_router)
-api_router.include_router(platform_ml_router)
 api_router.include_router(platform_jobs_router)
 api_router.include_router(billing_router)
 api_router.include_router(platform_billing_router)

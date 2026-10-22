@@ -11,12 +11,12 @@ from openclear.auth.deps import require_permission
 from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.ml_model import MlModel
-from openclear.domain.tenant import MlModelSource, Tenant
+from openclear.domain.tenant import Tenant
 from openclear.ml.registry import activate_model
 from openclear.ml.train import InsufficientTrainingData, RetrainCooldownActive, train_model
 from openclear.networks.registry import registered_codes
-from openclear.schemas.ml_model import MlModelRead, RetrainResponse, SharedModelSummaryRead
-from openclear.services import audit_log_service, tenant_ml_service
+from openclear.schemas.ml_model import MlModelRead, RetrainResponse
+from openclear.services import audit_log_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -26,12 +26,9 @@ def list_payment_networks(ctx: TenantContext = Depends(require_permission("admin
     return registered_codes()
 
 
-def _require_bank_only_model(db: Session, ctx: TenantContext) -> None:
-    if db.get(Tenant, ctx.tenant_id).ml_model_source != MlModelSource.PRIVATE:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Your organization uses the shared model, which only the platform operator retrains or activates.",
-        )
+def _require_scoring_on(db: Session, ctx: TenantContext) -> None:
+    if not db.get(Tenant, ctx.tenant_id).ml_scoring_enabled:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Fraud scoring is off for your organization. Turn it on first.")
 
 
 @router.post("/ml/retrain", response_model=RetrainResponse)
@@ -40,15 +37,16 @@ def retrain(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("admin:manage")),
 ) -> RetrainResponse:
-    """Retrains this organization's bank-only model (403 for a bank on the shared model)."""
-    _require_bank_only_model(db, ctx)
+    """Retrains this organization's own model from its own final decisions (409 while fraud
+    scoring is off). The score is advisory: it never decides an item."""
+    _require_scoring_on(db, ctx)
     try:
         result = train_model(db, network_code, tenant_id=ctx.tenant_id)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="ml_model.retrain",
-        summary=f"Retrained the bank-only {network_code} model ({'activated' if result.promoted else 'not activated'})",
+        summary=f"Retrained the bank's {network_code} model ({'activated' if result.promoted else 'not activated'})",
         resource_type="ml_model", resource_id=result.model_row.id,
     )
     db.commit()
@@ -67,24 +65,12 @@ def list_ml_models(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("admin:manage")),
 ) -> list[MlModelRead]:
-    """This organization's own models: its bank-only models and its customers' models.
-    (It used to list every organization's models.) For the shared model, see
-    /admin/ml/shared-model."""
+    """This organization's own models."""
     stmt = select(MlModel).where(MlModel.tenant_id == ctx.tenant_id).order_by(MlModel.created_at.desc())
     if network_code is not None:
         stmt = stmt.where(MlModel.network_code == network_code)
     rows = db.execute(stmt).scalars().all()
     return [MlModelRead.model_validate(r) for r in rows]
-
-
-@router.get("/ml/shared-model", response_model=list[SharedModelSummaryRead])
-def shared_model_summary(
-    db: Session = Depends(get_db),
-    ctx: TenantContext = Depends(require_permission("admin:manage")),
-) -> list[SharedModelSummaryRead]:
-    """The shared model's active version per network, with counts only (never which other
-    banks contribute)."""
-    return [SharedModelSummaryRead.model_validate(s, from_attributes=True) for s in tenant_ml_service.shared_model_summaries(db)]
 
 
 @router.patch("/ml/models/{model_id}/activate", response_model=MlModelRead, responses={202: {
@@ -95,7 +81,7 @@ def activate_ml_model(
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_permission("admin:manage")),
 ):
-    """Activates one of this organization's bank-only models (404 for any other model). When the
+    """Activates one of this organization's own models (404 for any other model). When the
     bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
     "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
     `POST /api/v1/changes/{id}/approve`)."""
@@ -105,8 +91,7 @@ def activate_ml_model(
 
     if change_request_service.needs_approval(db, ctx.tenant_id, "ml_model.activate"):
         try:
-            outcome = change_request_service.request_model_activation(db, ctx.tenant_id, model_id, customer_id=None, user_id=ctx.user_id,
-                                                                      channel="api")
+            outcome = change_request_service.request_model_activation(db, ctx.tenant_id, model_id, user_id=ctx.user_id, channel="api")
         except change_request_service.ChangeRequestError as exc:
             if "waiting" in str(exc):
                 raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
@@ -116,12 +101,12 @@ def activate_ml_model(
                              "detail": "A second admin must approve this (Settings → Changes, or POST /api/v1/changes/{id}/approve)."},
                             status_code=status.HTTP_202_ACCEPTED)
     try:
-        model = activate_model(db, model_id, expected_customer_id=None, expected_tenant_id=ctx.tenant_id)
+        model = activate_model(db, model_id, expected_tenant_id=ctx.tenant_id)
     except ValueError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Model not found") from None
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="ml_model.activate",
-        summary=f"Activated bank-only {model.network_code} model {model.version}", resource_type="ml_model", resource_id=model.id,
+        summary=f"Activated the bank's {model.network_code} model {model.version}", resource_type="ml_model", resource_id=model.id,
     )
     db.commit()
     return MlModelRead.model_validate(model)

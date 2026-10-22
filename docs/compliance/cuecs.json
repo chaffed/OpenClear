@@ -920,6 +920,67 @@
       "withdrawn": false
     },
     {
+      "id": "B-IR-6-02",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "AU-11"
+      ],
+      "title": "Obtain and keep Written Statements of Unauthorized Debit",
+      "statement": "Obtain a Written Statement of Unauthorized Debit from a customer who reports a consumer ACH debit as unauthorized, as the Nacha Rules require, and keep it for the period they set.",
+      "complements": "OpenClear shows customers the bank's own statement form (Markdown, HTML or a PDF) and warns while a bank that returns consumer debits has none published.",
+      "evidence": "assisted",
+      "check": "wsud_form",
+      "check_status": "live",
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Settings \u2192 Unauthorized debit statement",
+      "withdrawn": false
+    },
+    {
       "id": "B-SI-3-01",
       "party": "bank",
       "nist": "SI-3",
@@ -1240,26 +1301,6 @@
         }
       ],
       "where": "Settings; docs/compliance/tprm.md",
-      "withdrawn": false
-    },
-    {
-      "id": "B-AC-21-01",
-      "party": "bank",
-      "nist": "AC-21",
-      "nist_title": "Information Sharing",
-      "oscal_id": "ac-21",
-      "related": [
-        "SA-9"
-      ],
-      "title": "Decide on model data pooling",
-      "statement": "Decide whether the bank's labelled decisions are pooled into the shared scoring model, and have someone with the authority to do so acknowledge the disclosure.",
-      "complements": "OpenClear pools nothing until the disclosure is acknowledged, records who acknowledged it, and offers a bank-only model.",
-      "evidence": "automated",
-      "check": "model_pooling_acknowledged",
-      "check_status": "live",
-      "frequency": "Once, and on change",
-      "csf": [],
-      "where": "Settings \u2192 Fraud model",
       "withdrawn": false
     },
     {
@@ -1702,12 +1743,12 @@
         "IR-4"
       ],
       "title": "Report fraud at once",
-      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and sign the Written Statement of Unauthorized Debit when returning an ACH debit as unauthorized.",
-      "complements": "OpenClear collects and keeps the signed statement with the return.",
-      "evidence": "automated",
-      "check": "wsud_signed",
-      "check_status": "live",
-      "frequency": "Per event",
+      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's Written Statement of Unauthorized Debit when returning an ACH debit as unauthorized.",
+      "complements": "OpenClear shows the customer the bank's statement form, and returns the debit when the customer decides to.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
       "csf": [
         {
           "id": "PR.IR-03",
@@ -1750,7 +1791,7 @@
           "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
         }
       ],
-      "where": "Exceptions; Written statements",
+      "where": "Unauthorized debit statement; Exceptions",
       "withdrawn": false
     },
     {

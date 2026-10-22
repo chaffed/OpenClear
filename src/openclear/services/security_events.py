@@ -240,12 +240,11 @@ AUDIT_EVENTS: dict[str, str] = {
     "tenant.update_cutoffs": "settings.changed",  # when decisions become final (UI_PLAN.md UI-D13)
     "customer.update_cutoff": "settings.changed",
     "customer.update_disposition": "settings.changed",
-    "customer.update_ml_mode": "settings.changed",
     "tenant.update_closures": "settings.changed",
     "customer.update_password_policy": "settings.changed",
     "tenant.update_sod_mode": "sod.mode.changed",
     "compliance.settings.changed": "settings.changed",  # the attestations' second person among them
-    "tenant.ml_source_change": "settings.changed",  # pooling the bank's decisions into the shared model, or not
+    "tenant.ml_scoring": "settings.changed",  # advisory fraud scoring on or off, or not
     "plugin.enable": "plugin.enabled",
     "plugin.disable": "plugin.disabled",
     "change_request.create": "change_request.created",

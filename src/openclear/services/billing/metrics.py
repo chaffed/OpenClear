@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 
 from openclear.domain.account import Account, AchDebitBlockMode
 from openclear.domain.ach_authorization_rule import AchAuthorizationRule, AchAuthorizationStatus
-from openclear.domain.ach_transaction import AchTransaction, AchTransactionSource, AchTransactionType
+from openclear.domain.ach_transaction import AchTransaction, AchTransactionType
 from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadKind
 from openclear.domain.check_image import CheckImage, OcrStatus
 from openclear.domain.customer import Customer
@@ -35,12 +35,10 @@ from openclear.domain.data_export_job import DataExportJob
 from openclear.domain.decision import Decision, DecisionOutcome, DecisionSource
 from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 from openclear.domain.issued_item import IssuedItem
-from openclear.domain.ml_model import MlModel, MlModelStatus
 from openclear.domain.notification import Notification, NotificationChannel, NotificationStatus
-from openclear.domain.paid_item import PaidItem, PaidItemSource
+from openclear.domain.paid_item import PaidItem
 from openclear.domain.stop_payment import StopPayment
 from openclear.domain.tenant_membership import TenantMembership
-from openclear.domain.wsud_statement import WsudStatement
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,15 +157,6 @@ def _ach_rules(session, tenant_id, period):
     return _rows(session, stmt, "account")
 
 
-def _customer_models(session, tenant_id, period):
-    stmt = (
-        select(MlModel.customer_id, func.count(distinct(MlModel.network_code)))
-        .where(MlModel.tenant_id == tenant_id, MlModel.customer_id.is_not(None), MlModel.status == MlModelStatus.ACTIVE)
-        .group_by(MlModel.customer_id)
-    )
-    return _rows(session, stmt, "customer")
-
-
 # --- Per item --------------------------------------------------------------------------
 
 
@@ -187,7 +176,6 @@ def _files(kinds: tuple[BulkUploadKind, ...] | None) -> Counter:
             .where(
                 BulkUploadFile.tenant_id == tenant_id,
                 *_in(BulkUploadFile.uploaded_at, period),
-                BulkUploadFile.kind != BulkUploadKind.FRAUD_TRAINING_EXAMPLES,
             )
             .group_by(BulkUploadFile.customer_id)
         )
@@ -201,7 +189,7 @@ def _files(kinds: tuple[BulkUploadKind, ...] | None) -> Counter:
 def _presented_checks(session, tenant_id, period):
     stmt = (
         select(PaidItem.customer_id, PaidItem.account_id, func.count())
-        .where(PaidItem.tenant_id == tenant_id, PaidItem.source != PaidItemSource.TRAINING_BACKFILL, *_in(PaidItem.created_at, period))
+        .where(PaidItem.tenant_id == tenant_id, *_in(PaidItem.created_at, period))
         .group_by(PaidItem.customer_id, PaidItem.account_id)
     )
     return _rows(session, stmt, "account")
@@ -213,7 +201,6 @@ def _ach_debits(session, tenant_id, period):
         .where(
             AchTransaction.tenant_id == tenant_id,
             AchTransaction.transaction_type == AchTransactionType.DEBIT,
-            AchTransaction.source != AchTransactionSource.TRAINING_BACKFILL,
             *_in(AchTransaction.created_at, period),
         )
         .group_by(AchTransaction.customer_id, AchTransaction.account_id)
@@ -290,15 +277,6 @@ def _check_images(session, tenant_id, period):
     return _rows(session, stmt, "account")
 
 
-def _wsud(session, tenant_id, period):
-    stmt = (
-        select(WsudStatement.customer_id, func.count())
-        .where(WsudStatement.tenant_id == tenant_id, *_in(WsudStatement.signed_at, period))
-        .group_by(WsudStatement.customer_id)
-    )
-    return _rows(session, stmt, "customer")
-
-
 def _exports(session, tenant_id, period):
     stmt = (
         select(DataExportJob.customer_id, func.count())
@@ -328,7 +306,6 @@ METRICS: dict[str, Metric] = {m.code: m for m in [
     Metric("ach_account_monthly", "Accounts with ACH positive pay (per month)", "month", "account", _ach_accounts),
     Metric("user_monthly", "Users with access (per month)", "month", "customer", _users),
     Metric("ach_rule_monthly", "Active ACH authorization rules (per month)", "month", "account", _ach_rules),
-    Metric("customer_model_monthly", "Customer-specific fraud models (per month)", "month", "customer", _customer_models),
     # Check positive pay
     Metric("issued_items", "Issued checks loaded", "item", "account", _issued_items),
     Metric("issue_files", "Issued-check files received", "item", "customer", _files((BulkUploadKind.ISSUED_ITEMS,))),
@@ -343,7 +320,6 @@ METRICS: dict[str, Metric] = {m.code: m for m in [
     Metric("ach_exceptions", "ACH exceptions", "item", "account", _exceptions("ach")),
     Metric("ach_returns", "ACH debits returned", "item", "account",
            _decisions(("ach",), Decision.outcome == DecisionOutcome.RETURN)),
-    Metric("wsud_statements", "Unauthorized-debit statements (WSUD) signed", "item", "customer", _wsud),
     # Either network
     Metric("items_paid_on_decision", "Exceptions decided pay", "item", "account",
            _decisions(("check", "ach"), Decision.outcome == DecisionOutcome.PAY)),

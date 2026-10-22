@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Default decision — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About default decisions{% endblock %}
+{% block help_body %}
+<p>The default decision is what happens to this customer's exception if no one decides it by
+  its cut-off. "None" (the default) leaves it open; "Always pay" and "Always return" apply a
+  fixed outcome. A default that pays waits for a second administrator when your bank asks for
+  one.</p>
+<p>An ACH return needs a return reason from your own list. If none is chosen, the item is left
+  open rather than guessed, and tried again at the next sweep.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="toolbar">
+    <h1>Default decision — {{ customer.name }}</h1>
+    <a href="/ui/customers/{{ customer.id }}">Back to customer</a>
+  </div>
+  <table>
+    <thead><tr><th>Network</th><th>Mode</th><th>ACH return reason</th><th></th></tr></thead>
+    <tbody>
+      {% for row in disposition_summary %}
+      {% set form_id = "disposition-form-" ~ row.network_code %}
+      <tr>
+        <td>
+          {{ row.network_code }}
+          <form id="{{ form_id }}" method="post" action="/ui/admin/customers/{{ customer.id }}/disposition"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"></form>
+          <input type="hidden" name="network_code" value="{{ row.network_code }}" form="{{ form_id }}">
+        </td>
+        <td>
+          <select name="mode" form="{{ form_id }}">
+            {% for m in disposition_modes %}
+            <option value="{{ m.value }}" {{ "selected" if m == row.mode else "" }}>{{ m | status_label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          {% if row.network_code == "ach" %}
+          <select name="default_ach_return_reason_id" form="{{ form_id }}">
+            <option value="">— none configured —</option>
+            {% for reason in ach_return_reasons %}
+            <option value="{{ reason.id }}" {{ "selected" if reason.id == row.default_ach_return_reason_id else "" }}>{{ reason.reason_text }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+        </td>
+        <td><button type="submit" class="secondary" form="{{ form_id }}">{{ icon("save") }}Save</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

@@ -2,7 +2,7 @@
 {% import "_macros/responsive_table.html" as rt %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}ACH Authorizations — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}ACH authorizations — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About ACH authorizations{% endblock %}
 {% block help_body %}
 <p>An authorization is a standing rule pre-approving future debits/credits from one
@@ -18,7 +18,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>ACH Authorizations</h1>
+    <h1>ACH authorizations</h1>
     {% if can(ctx, "ach_authorization:write") %}<a href="/ui/ach/authorizations/new" class="button">{{ icon("add") }}New authorization</a>{% endif %}
   </div>
   {% if page_obj.total_count > 0 %}

@@ -3,13 +3,13 @@
 
 """Default disposition for exceptions whose decision_deadline passes with no human
 decision — a per-(customer, network) CustomerDispositionSetting picks what happens: leave
-it open (NONE, the default), always pay/return (FIXED_*), or let the ML model decide
-(ML_DETERMINED). compute_decision_deadline() is called from the check/ACH ingestion paths
+it open (NONE, the default), or always pay or return (FIXED_*). The fraud score never
+decides (SIMPLIFY_PLAN.md SP-D6). compute_decision_deadline() is called from the check/ACH ingestion paths
 to actually populate ExceptionItem.decision_deadline (otherwise dead ever since that column
 was added); auto_decide_exception() is the "decide this one expired exception" entry point
 workers/tasks.py::sweep_expired_dispositions_job() calls per row. Both intentionally return
 None/skip rather than guess whenever the inputs needed for a real decision aren't
-available (no trained model yet, no configured ACH return reason) — see each function's
+available (no configured ACH return reason) — see each function's
 docstring."""
 
 import uuid
@@ -22,7 +22,6 @@ from openclear.config import get_settings
 from openclear.domain.customer_disposition_setting import CustomerDispositionSetting, DispositionMode
 from openclear.domain.decision import Decision, DecisionOutcome, DecisionSource
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
-from openclear.ml.predict import score_exception
 from openclear.networks.registry import get_adapter, registered_codes
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
 from openclear.repositories.customer_disposition_setting_repo import CustomerDispositionSettingRepository
@@ -40,7 +39,6 @@ class CustomerNetworkDispositionSummary:
     response_window_hours: int
     default_ach_return_reason_id: uuid.UUID | None
 
-_ML_PAY_THRESHOLD = 0.5
 
 
 def _get_setting(
@@ -95,9 +93,8 @@ def set_disposition_setting(
 def get_disposition_summary(
     session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID
 ) -> list[CustomerNetworkDispositionSummary]:
-    """One entry per registered payment network — what the per-customer admin page's
-    "Default disposition" card is built from, same fan-out shape as
-    customer_ml_service.get_ml_summary()."""
+    """One entry per registered payment network: what the customer's *Default decision* page
+    is built from."""
     summaries = []
     for network_code in registered_codes():
         setting = _get_setting(session, tenant_id, customer_id, network_code)
@@ -139,8 +136,7 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
     """Decides one expired exception per its customer's configured disposition mode.
     Returns None (leaving the exception untouched, to be retried on the next sweep) when:
     the resolved mode is NONE (shouldn't reach here via the sweep's own query, but guarded
-    since this is also callable directly); ML_DETERMINED and no model/score is available
-    yet; or the outcome resolves to an ACH RETURN with no default_ach_return_reason_id
+    since this is also callable directly); or the outcome resolves to an ACH RETURN with no default_ach_return_reason_id
     configured. Mirrors decision_service.decide()'s mechanics (build_features, create the
     Decision, flip exception status, flip an ACH RETURN's underlying settlement_status) but
     with no maker-checker check (there's no maker) and no human decider."""
@@ -160,13 +156,8 @@ def auto_decide_exception(session: Session, exception_item: ExceptionItem) -> De
         outcome = DecisionOutcome.RETURN
         source = DecisionSource.AUTO_DEFAULT
         reason_code = "Auto-decided: no decision by the cut-off"
-    else:  # ML_DETERMINED
-        score = score_exception(session, exception_item)
-        if score is None:
-            return None
-        outcome = DecisionOutcome.PAY if score >= _ML_PAY_THRESHOLD else DecisionOutcome.RETURN
-        source = DecisionSource.AUTO_ML
-        reason_code = f"Auto-decided by ML (score={score:.3f})"
+    else:  # an unknown mode never decides
+        return None
 
     return_transaction_code: str | None = None
     if outcome == DecisionOutcome.RETURN and exception_item.network_code == "ach":

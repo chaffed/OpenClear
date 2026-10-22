@@ -13,7 +13,7 @@ from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.stop_payment import StopPayment
 from openclear.services import security_group_service, user_service
 from tests.conftest import TenantFactory
-from tests.test_ml.test_per_customer_ml import _make_customer_with_account, _make_exception
+from tests.items import _make_customer_with_account, _make_exception
 from tests.test_web.test_mobile_components import _sign_in
 
 URL = "http://testserver"

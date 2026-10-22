@@ -89,45 +89,6 @@ class Settings(BaseSettings):
     # type, same key-separation reasoning (services/audit_log_service.py).
     audit_log_signing_private_key_path: str = f"{_DEV_KEYS_DIR}/audit_log_signing_private.pem"
     audit_log_signing_public_key_path: str = f"{_DEV_KEYS_DIR}/audit_log_signing_public.pem"
-    # Also its own separate key pair — signed Written Statement of Unauthorized Debit
-    # attestations (services/wsud_service.py) are a distinct signed-artifact type from
-    # the three above, same key-separation reasoning.
-    wsud_signing_private_key_path: str = f"{_DEV_KEYS_DIR}/wsud_signing_private.pem"
-    wsud_signing_public_key_path: str = f"{_DEV_KEYS_DIR}/wsud_signing_public.pem"
-
-    # The text shown to a customer before they e-sign a Written Statement of Unauthorized
-    # Debit (services/wsud_service.py) — these defaults implement the *structural*
-    # elements the federal E-SIGN Act (15 U.S.C. § 7001) requires (a disclosure the
-    # consumer must affirmatively consent to, a distinct signing act, tamper-evident
-    # retention of exactly what was shown and signed) but have NOT been reviewed by a
-    # lawyer. assert_production_safe() below refuses to start with these still at their
-    # checked-in defaults when environment="production" — same "must override before
-    # going live" treatment as the signing keys and sso_encryption_key above. A bank
-    # deploying this should have its own counsel review and, if needed, replace this text
-    # (via OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT / OPENCLEAR_WSUD_ATTESTATION_TEXT) before
-    # relying on it. Changing this text doesn't affect any already-signed statement —
-    # WsudStatement.statement_text_snapshot captures exactly what was shown and signed at
-    # the time, regardless of what these settings say later.
-    wsud_consent_disclosure_text: str = (
-        "Before you sign electronically, please review: (1) You have the right to request a "
-        "paper copy of this statement instead of signing electronically — contact your "
-        "financial institution to request one. (2) You may withdraw your consent to sign "
-        "electronically at any time before signing, with no effect on your ability to dispute "
-        "the transaction(s) below through other means. (3) Signing electronically requires a "
-        "device capable of displaying this page and retaining or printing a copy for your "
-        "records; by proceeding, you confirm you can access this statement in this format. "
-        "(4) This consent applies only to this specific statement, not to other documents. "
-        "By checking the box below, you affirmatively consent to sign this statement "
-        "electronically instead of on paper."
-    )
-    wsud_attestation_text: str = (
-        "I certify that the ACH debit transaction(s) listed and selected below were not "
-        "authorized by me, and I did not authorize the originator to debit my account for "
-        "these transactions. I understand this statement may be relied upon by my financial "
-        "institution to process a return of these transactions, and that I am making this "
-        "statement under penalty of perjury."
-    )
-
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_minutes: int = 60 * 24 * 7
     mfa_pending_token_expire_minutes: int = 5  # short-lived: only enough time to complete the WebAuthn ceremony
@@ -309,15 +270,14 @@ class Settings(BaseSettings):
     platform_operator_id: str = "OPENCLEAR-PLATFORM"
 
     ml_min_new_decisions_for_retrain: int = 20
-    # Minimum time between two retrains of the same (network_code, customer_id) pair —
+    # Minimum time between two retrains of the same bank's model for a network —
     # closes off repeatedly hammering the on-demand retrain endpoint into a self-service
     # compute DoS (ml/train.py::train_model). The nightly scheduled job is already gated
     # by ml_min_new_decisions_for_retrain and won't normally trip this too.
     ml_retrain_cooldown_seconds: int = 60
     # What one training run reads (SCALE_PLAN.md S5): decisions from the last
     # ml_training_window_days (0 = all history), and at most ml_training_max_rows of the
-    # most recent of those. Known-fraud training examples are always included, however
-    # old: they're few, and curated on purpose.
+    # most recent of those.
     ml_training_window_days: int = 365
     ml_training_max_rows: int = 250_000
     # Loaded models each process keeps in memory (one per model slot that has scored
@@ -326,25 +286,10 @@ class Settings(BaseSettings):
     # Which scoring model training builds: "logistic_regression" (built in), or one a
     # plugin provides (plugins/__init__.py).
     ml_scoring_model: str = "logistic_regression"
-    # Fraud-scoring model choice per bank (services/tenant_ml_service.py, FIX_PLAN.md
-    # Phase 5). A newly created bank must stay on the shared model this many days before it
-    # may switch to a bank-only model (banks that predate the setting aren't locked).
-    ml_new_bank_private_switch_lock_days: int = 90
-    # A bank-only model retrain replaces the active model only once the bank has at least
+    # A retrained model replaces the bank's active model only once the bank has at least
     # this many of its own labeled decisions AND the new model beats the active one on the
     # same recent held-out decisions (ml/train.py).
     ml_bank_model_min_decisions: int = 200
-    # Shown, and acknowledged, whenever a bank joins the shared model (onboarding and
-    # Settings). Placeholder wording: have counsel review and replace it. Unlike the WSUD
-    # text this doesn't block production startup; the UI flags the placeholder instead.
-    ml_shared_pool_disclosure_text: str = (
-        "PLACEHOLDER — HAVE COUNSEL REVIEW. By joining the shared fraud-scoring model, your "
-        "institution's pay/return decisions and the transaction features used to score them are "
-        "pooled with those of other participating institutions to train a model that scores all "
-        "of their exceptions. Other institutions never see your data, your name, or which "
-        "decisions came from you. You can switch to a bank-only model later; your data then stops "
-        "being used from the next time the shared model is retrained."
-    )
     ml_artifact_dir: str = "./ml_artifacts"  # NOT inside src/openclear/ — that's installed package code, not a place for runtime output
     enable_ml_scheduler: bool = False  # opt-in: off by default so tests/local dev don't spawn a background thread
     ml_retrain_cron_hour: int = 2  # nightly at 2am when enabled
@@ -591,19 +536,8 @@ _DEFAULT_FIELDS: tuple[str, ...] = (
     "file_signing_public_key_path",
     "audit_log_signing_private_key_path",
     "audit_log_signing_public_key_path",
-    "wsud_signing_private_key_path",
-    "wsud_signing_public_key_path",
     "sso_encryption_key",
 )
-
-# Separate from _DEFAULT_FIELDS above: these aren't secrets to regenerate, they're
-# unreviewed placeholder legal text (see their own field comments) — a bank must have
-# its own counsel review and supply real text, not run a script.
-_WSUD_TEXT_FIELDS: tuple[str, ...] = (
-    "wsud_consent_disclosure_text",
-    "wsud_attestation_text",
-)
-
 
 def assert_production_safe(settings: Settings) -> None:
     if settings.environment != "production":
@@ -619,17 +553,6 @@ def assert_production_safe(settings: Settings) -> None:
             f"are still at their insecure checked-in dev/test defaults: {', '.join(still_default)}. "
             "Generate real ones with `python scripts/generate_keys.py` and a random "
             "OPENCLEAR_SSO_ENCRYPTION_KEY — see README.md's 'Signing keys' section."
-        )
-
-    still_default_wsud_text = [name for name in _WSUD_TEXT_FIELDS if getattr(settings, name) == defaults[name].default]
-    if still_default_wsud_text:
-        raise RuntimeError(
-            "Refusing to start with OPENCLEAR_ENVIRONMENT=production while these settings "
-            f"are still at their unreviewed placeholder legal text: {', '.join(still_default_wsud_text)}. "
-            "This is NOT LEGAL ADVICE — have your own counsel review and supply real "
-            "Written Statement of Unauthorized Debit consent/attestation text via "
-            "OPENCLEAR_WSUD_CONSENT_DISCLOSURE_TEXT / OPENCLEAR_WSUD_ATTESTATION_TEXT before "
-            "relying on this for a real e-signature."
         )
 
     if settings.storage_backend == "s3" and not settings.s3_bucket:

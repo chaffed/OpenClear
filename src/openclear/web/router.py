@@ -48,7 +48,6 @@ from openclear.web.routers.dashboard import router as dashboard_router
 from openclear.web.routers.data_export import router as data_export_router
 from openclear.web.routers.docs import router as docs_router
 from openclear.web.routers.exceptions import router as exceptions_router
-from openclear.web.routers.fraud_training import router as fraud_training_router
 from openclear.web.routers.issued_items import router as issued_items_router
 from openclear.web.routers.license import router as license_router
 from openclear.web.routers.paid_items import router as paid_items_router
@@ -97,7 +96,6 @@ web_router.include_router(layouts_router)
 web_router.include_router(platform_router)
 web_router.include_router(support_access_router)
 web_router.include_router(exceptions_router)
-web_router.include_router(fraud_training_router)
 web_router.include_router(admin_router)
 web_router.include_router(users_router)
 web_router.include_router(security_groups_router)

@@ -3,52 +3,41 @@
 
 {% block doc_body %}
 <h1>ML Scoring &amp; Default Disposition</h1>
-<p>Two related settings, both configured per customer and per payment network (check and
-ACH separately): how confident the fraud model needs to be before a score is shown, and
-what should happen automatically if nobody responds to an exception in time.</p>
+<p>Two separate settings. <strong>Fraud scoring</strong> is your organization's: an advisory
+score beside each exception, from a model trained on your own decisions. The <strong>default
+decision</strong> is set per customer and per payment network (check and ACH separately): what
+happens if nobody decides an exception in time.</p>
 
 {{ docs.screenshot("admin_ml_models", "ML models admin screen") }}
 
-<h2>Shared or bank-only model</h2>
-<p>Your organization chooses its fraud-scoring model in
-<a href="/ui/settings/fraud-model">Settings → Fraud scoring model</a>:</p>
+<h2>Fraud scoring</h2>
+<p>Fraud scoring is off until you turn it on in
+<a href="/ui/settings/fraud-model">Settings → Fraud scoring</a>. Turning it on or off is a
+sensitive change: when sensitive settings need a second admin, it waits for one. With it off,
+nothing is trained or scored.</p>
 <ul>
-  <li><strong>Shared model</strong> (every organization starts here). It learns from the
-    decisions of every participating bank, so it's useful from day one. The platform
-    operator trains it and decides which version is active; Settings → ML models shows its
-    version and how many decisions and banks it learned from, but never which banks. Your
-    fraud-training examples are used by it only after the platform operator reviews them.</li>
-  <li><strong>Bank-only model</strong>. It learns only from your own decisions, so your data
-    never leaves your organization. When you switch, it starts as an exact copy of the shared
-    model, so scoring continues without a gap. Your administrators then retrain it from
-    <a href="/ui/admin/ml-models">Settings → ML models</a>. A retrained version replaces the active one only once it has
-    learned from enough of your decisions (200 by default) and scores at least as well on your
-    most recent ones. Otherwise it's kept, with the reason shown, and can be activated by hand.</li>
+  <li>The score is <strong>advisory</strong>. It shows on each exception and in the list, and a
+    person always makes the call. It never decides an item, by default or otherwise.</li>
+  <li>Your model learns only from your own organization's final decisions. Your data is never
+    shared with another bank, and there are no separate models per customer.</li>
+  <li>Your administrators retrain and activate models in
+    <a href="/ui/admin/ml-models">Settings → ML models</a>. Your first model is activated when
+    it's trained. A retrained version replaces the active one only once it has learned from
+    enough of your decisions (200 by default) and scores at least as well on your most recent
+    ones. Otherwise it's kept, with the reason shown, and can be activated by hand.</li>
 </ul>
-<p>New organizations stay on the shared model for their first 90 days. The page shows when
-you can switch. Switching back to the shared model is always allowed, but first someone must
-acknowledge how the shared model uses your data. Every switch and acknowledgement is recorded
-in the audit log.</p>
 
-<h2>Per-customer scoring mode</h2>
-<p>From a customer's page, open its ML settings to choose its scoring
-mode for each network: <strong>Auto</strong> (its own model once one is trained, otherwise
-your organization's model), <strong>Bank's model</strong> (always your organization's
-model), or <strong>This customer's model</strong>. The page shows which model is scoring the
-customer right now. Customer models are retrained and activated there too.</p>
+<h2>Default decision</h2>
+<p>From a customer's page, open <strong>Default decision</strong> to set what happens when an
+exception's decision cut-off passes with no human decision: leave it open (the default), or a
+fixed <strong>pay</strong> or <strong>return</strong> outcome. For ACH, set the default return
+reason to use. The cut-off itself is the bank's, or one agreed with the customer (see
+<a href="/ui/docs/admin/customers-accounts#cutoff">Decision cut-off</a>). An ACH return with no
+default return reason is skipped rather than guessed: the item stays open for a person.</p>
 
-<h2>Default disposition</h2>
-<p>Set what happens when an exception's decision cut-off passes with no human decision: a
-fixed <strong>pay</strong> or <strong>return</strong> outcome, or let the ML model's score
-decide. For ACH, set the default return reason to use. The cut-off itself is the bank's, or
-one agreed with the customer (see <a href="/ui/docs/admin/customers-accounts#cutoff">Decision cut-off</a>). If ML-determined disposition is selected but there isn't yet enough
-model data to score an item, it's skipped rather than guessed — it stays open for a human
-to review rather than risk an under-informed automatic decision.</p>
-
-<p>When sensitive settings need a second admin, choosing <strong>pay</strong> or the model's
-score as a customer's default waits for someone else to approve it, as the cut-off does: either
-one pays items nobody looked at. Leaving items open, or returning them, applies at once. Changing
-which model scores a customer's items waits too.</p>
+<p>When sensitive settings need a second admin, choosing <strong>pay</strong> as a customer's
+default waits for someone else to approve it, as the cut-off does: it pays items nobody looked
+at. Leaving items open, or returning them, applies at once.</p>
 
 <p>A scheduled sweep applies these defaults to any exception whose cut-off has passed;
 decisions it makes are marked as automatic in the audit log and exception history, so

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/pagination.html" as pg %}
 {% from "_macros/icon.html" import icon %}
-{% block title %}Check Images — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Check images — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About check images{% endblock %}
 {% block help_body %}
 <p>A scanned image of a presented check, optionally linked to the paid item it
@@ -16,7 +16,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Check Images</h1>
+    <h1>Check images</h1>
     {% if can(ctx, "check_image:write") %}<a href="/ui/check-images/upload" class="button">{{ icon("upload") }}Upload check image</a>{% endif %}
     {% if can(ctx, "check_image:write") and can(ctx, "paid_item:write") %}<a href="/ui/check-images/bulk" class="button not-phone">{{ icon("upload_file") }}Bulk upload</a>{% endif %}
   </div>

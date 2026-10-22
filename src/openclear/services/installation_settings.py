@@ -21,7 +21,7 @@ from openclear.domain.installation_setting_digest import InstallationSettingDige
 WATCHED = (
     "environment", "webauthn_origin", "webauthn_rp_id", "public_base_url", "client_ip_header", "trusted_proxy_cidrs", "edge_secret",
     "edge_secret_previous", "edge_secret_header", "jwt_public_key_path", "file_signing_public_key_path", "audit_log_signing_public_key_path",
-    "wsud_signing_public_key_path", "sso_encryption_key", "jwt_access_token_expire_minutes", "jwt_refresh_token_expire_minutes",
+    "sso_encryption_key", "jwt_access_token_expire_minutes", "jwt_refresh_token_expire_minutes",
     "login_max_failed_attempts", "login_lockout_minutes", "hsts_max_age_seconds", "siem_kind", "siem_host", "siem_url",
     "host_cuecs_attested_by", "enable_control_test_scheduler", "enable_housekeeping_scheduler", "control_tests_include_sandboxes",
     "release_feed_url", "soc2_mapping_path", "worker_mode",

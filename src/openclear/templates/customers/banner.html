@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
 {% from "_macros/markdown_editor.html" import markdown_editor %}
-{% block title %}Banner Message — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
+{% block title %}Banner message — {{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About the banner message{% endblock %}
 {% block help_body %}
 <p>Shown in a persistent banner at the top of every page to this customer's own
@@ -11,7 +11,7 @@
 {% block content %}
 <div class="card">
   <div class="toolbar">
-    <h1>Banner Message — {{ customer.name }}</h1>
+    <h1>Banner message — {{ customer.name }}</h1>
     {% if can(ctx, "customer:manage") %}
     <a href="/ui/customers/{{ customer.id }}" class="button secondary">{{ icon("arrow_back") }}Back to customer</a>
     {% endif %}

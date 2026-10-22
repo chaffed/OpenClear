@@ -17,7 +17,7 @@ from openclear.services import auto_disposition_service
 from openclear.workers import tasks
 from tests.conftest import login_headers
 from tests.test_auth.test_sweep_expired_dispositions_job import _expired_exception, _make_customer
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 
 def _ach_exception(db_session, tenant, account, trace):
@@ -56,16 +56,13 @@ def test_decisions_come_out_in_order_with_what_a_core_needs(client, db_session, 
     assert [r["sequence"] for r in rows] == ["1", "2", "3"] and rows[1]["originator_name"] == "'=Unknown Co"
 
 
-def test_automatic_decisions_are_numbered_and_training_examples_are_not(monkeypatch, session_factory, client, db_session, tenant_factory):
-    from tests.test_ml.test_bank_model_choice import _submit_fraud_example
-
-    tenant, account, users = tenant_factory.make(slug="feed-auto")
+def test_automatic_decisions_are_numbered(monkeypatch, session_factory, client, db_session, tenant_factory):
+    tenant, _account, users = tenant_factory.make(slug="feed-auto")
     customer, customer_account = _make_customer(db_session, tenant)
     auto_disposition_service.set_disposition_setting(
         db_session, tenant.id, customer.id, "check", mode=DispositionMode.FIXED_PAY, response_window_hours=1, default_ach_return_reason_id=None,
     )
     db_session.commit()
-    _submit_fraud_example(db_session, tenant, account, users, "FRAUD-1")  # a decision, but not an item
     _expired_exception(db_session, tenant, customer_account, users, "AUTO-1")
     monkeypatch.setattr(tasks, "get_session_factory", lambda: session_factory)
     tasks.sweep_expired_dispositions_job()

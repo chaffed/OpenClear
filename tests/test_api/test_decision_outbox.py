@@ -23,7 +23,7 @@ from openclear.networks.ach.ingestion import AchTransactionSubmission, ingest_ac
 from openclear.repositories.exception_repo import ExceptionRepository
 from openclear.services import decision_outbox_service, decision_service, webhook_service
 from tests.conftest import login_headers
-from tests.test_ml.test_per_customer_ml import _decide, _make_exception
+from tests.items import _decide, _make_exception
 
 NACHA = {"routing_number": "231380104", "bank_name": "Acme Bank", "operator_routing_number": "091000080", "operator_name": "FED"}
 MOOV = os.environ.get("OPENCLEAR_TEST_MOOV_ACH_URL", "http://localhost:18080")
@@ -38,7 +38,7 @@ def _ach_return(db_session, tenant, account, users, trace, amount="75.00", code=
     exception = ExceptionRepository(db_session, tenant.id).list(source_item_id=txn.id)[0]
     reason = db_session.execute(select(AchReturnReason).where(AchReturnReason.tenant_id == tenant.id,
                                                               AchReturnReason.transaction_code == code)).scalars().first()
-    from tests.test_ml.test_per_customer_ml import TenantContext
+    from tests.items import TenantContext
 
     ctx = TenantContext(tenant_id=tenant.id, user_id=users["approver"].id, security_group_id=uuid.uuid4(), permissions=frozenset(),
                         tenant_slug=tenant.slug, tenant_name=tenant.name, accent_color=None, has_logo=False, has_favicon=False,

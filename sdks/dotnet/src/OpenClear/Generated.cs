@@ -80,22 +80,6 @@ public sealed record AchAuthorizationRead
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
-public sealed record AchFraudExampleCreate
-{
-    [JsonPropertyName("account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AccountId { get; init; }
-    [JsonPropertyName("ach_return_reason_id")] public string AchReturnReasonId { get; init; } = default!;
-    [JsonPropertyName("ach_transaction_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchTransactionId { get; init; }
-    [JsonPropertyName("amount")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Amount { get; init; }
-    [JsonPropertyName("effective_date")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? EffectiveDate { get; init; }
-    [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Notes { get; init; }
-    [JsonPropertyName("originator_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? OriginatorId { get; init; }
-    [JsonPropertyName("originator_name")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? OriginatorName { get; init; }
-    [JsonPropertyName("receiver_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ReceiverId { get; init; }
-    [JsonPropertyName("sec_code")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? SecCode { get; init; }
-    [JsonPropertyName("trace_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TraceNumber { get; init; }
-    [JsonPropertyName("transaction_type")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TransactionType { get; init; }
-}
-
 public sealed record AchReturnReasonRead
 {
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -314,17 +298,6 @@ public sealed record ChangeRead
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
     [JsonPropertyName("summary")] public string Summary { get; init; } = default!;
     [JsonPropertyName("title")] public string Title { get; init; } = default!;
-}
-
-public sealed record CheckFraudExampleCreate
-{
-    [JsonPropertyName("account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AccountId { get; init; }
-    [JsonPropertyName("check_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CheckNumber { get; init; }
-    [JsonPropertyName("notes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Notes { get; init; }
-    [JsonPropertyName("paid_item_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PaidItemId { get; init; }
-    [JsonPropertyName("presented_amount")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PresentedAmount { get; init; }
-    [JsonPropertyName("presented_date")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PresentedDate { get; init; }
-    [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
 }
 
 public sealed record CheckImageRead
@@ -645,15 +618,6 @@ public sealed record FeeOverrideOutput
     [JsonPropertyName("waived")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Waived { get; init; }
 }
 
-public sealed record FraudExampleRead
-{
-    [JsonPropertyName("created_at")] public string CreatedAt { get; init; } = default!;
-    [JsonPropertyName("id")] public string Id { get; init; } = default!;
-    [JsonPropertyName("is_correction")] public bool IsCorrection { get; init; } = default!;
-    [JsonPropertyName("network_code")] public string NetworkCode { get; init; } = default!;
-    [JsonPropertyName("retracted_at")] public string RetractedAt { get; init; } = default!;
-}
-
 public sealed record ImportFormatRead
 {
     [JsonPropertyName("built_in")] public bool BuiltIn { get; init; } = default!;
@@ -876,20 +840,6 @@ public sealed record PaidItemRead
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
-/// <summary>
-/// A fraud-training example from a bank on the shared model, awaiting the platform operator's approval before it can train the shared model (api/v1/platform_ml.py).
-/// </summary>
-public sealed record PendingFraudExampleRead
-{
-    [JsonPropertyName("exception_id")] public string ExceptionId { get; init; } = default!;
-    [JsonPropertyName("network_code")] public string NetworkCode { get; init; } = default!;
-    [JsonPropertyName("notes")] public string Notes { get; init; } = default!;
-    [JsonPropertyName("outcome")] public string Outcome { get; init; } = default!;
-    [JsonPropertyName("reason_code")] public string ReasonCode { get; init; } = default!;
-    [JsonPropertyName("submitted_at")] public string SubmittedAt { get; init; } = default!;
-    [JsonPropertyName("tenant_slug")] public string TenantSlug { get; init; } = default!;
-}
-
 public sealed record RecommendRequest
 {
     [JsonPropertyName("ach_return_reason_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchReturnReasonId { get; init; }
@@ -939,18 +889,6 @@ public sealed record SelfService
     [JsonPropertyName("manages_sign_on")] public bool ManagesSignOn { get; init; } = default!;
 }
 
-/// <summary>
-/// What a bank may see about the shared model — counts only, never other banks.
-/// </summary>
-public sealed record SharedModelSummaryRead
-{
-    [JsonPropertyName("activated_at")] public string ActivatedAt { get; init; } = default!;
-    [JsonPropertyName("contributing_bank_count")] public long ContributingBankCount { get; init; } = default!;
-    [JsonPropertyName("network_code")] public string NetworkCode { get; init; } = default!;
-    [JsonPropertyName("trained_from_decision_count")] public long TrainedFromDecisionCount { get; init; } = default!;
-    [JsonPropertyName("version")] public string Version { get; init; } = default!;
-}
-
 public sealed record SignedAttestation
 {
     [JsonPropertyName("attestation")] public IReadOnlyDictionary<string, JsonElement> Attestation { get; init; } = default!;
@@ -980,12 +918,6 @@ public sealed record StopPaymentRead
     [JsonPropertyName("reason")] public string Reason { get; init; } = default!;
     [JsonPropertyName("status")] public string Status { get; init; } = default!;
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
-}
-
-public sealed record SwitchLockClearedRead
-{
-    [JsonPropertyName("tenant_id")] public string TenantId { get; init; } = default!;
-    [JsonPropertyName("tenant_slug")] public string TenantSlug { get; init; } = default!;
 }
 
 /// <summary>
@@ -1181,9 +1113,7 @@ public sealed partial class AdminApi
     ///
     /// GET /api/v1/admin/ml/models
     ///
-    /// This organization's own models: its bank-only models and its customers' models.
-    /// (It used to list every organization's models.) For the shared model, see
-    /// /admin/ml/shared-model.
+    /// This organization's own models.
     /// </summary>
     public Task<IReadOnlyList<MlModelRead>> ListMlModelsAsync(string? networkCode = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<MlModelRead>>("GET", "/api/v1/admin/ml/models", query: new Dictionary<string, object?> { ["network_code"] = networkCode }, cancellationToken: cancellationToken);
@@ -1193,7 +1123,7 @@ public sealed partial class AdminApi
     ///
     /// PATCH /api/v1/admin/ml/models/{model_id}/activate
     ///
-    /// Activates one of this organization's bank-only models (404 for any other model). When the
+    /// Activates one of this organization's own models (404 for any other model). When the
     /// bank's sensitive settings need a second admin, it answers `202` with `{"status": "pending",
     /// "change_request_id"}` instead: a second admin approves it (Settings → Changes, or
     /// `POST /api/v1/changes/{id}/approve`).
@@ -1206,21 +1136,11 @@ public sealed partial class AdminApi
     ///
     /// POST /api/v1/admin/ml/retrain
     ///
-    /// Retrains this organization's bank-only model (403 for a bank on the shared model).
+    /// Retrains this organization's own model from its own final decisions (409 while fraud
+    /// scoring is off). The score is advisory: it never decides an item.
     /// </summary>
     public Task<RetrainResponse> RetrainAsync(string? networkCode = null, CancellationToken cancellationToken = default) =>
         _c.CallAsync<RetrainResponse>("POST", "/api/v1/admin/ml/retrain", query: new Dictionary<string, object?> { ["network_code"] = networkCode }, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Shared Model Summary.
-    ///
-    /// GET /api/v1/admin/ml/shared-model
-    ///
-    /// The shared model's active version per network, with counts only (never which other
-    /// banks contribute).
-    /// </summary>
-    public Task<IReadOnlyList<SharedModelSummaryRead>> SharedModelSummaryAsync(CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<SharedModelSummaryRead>>("GET", "/api/v1/admin/ml/shared-model", cancellationToken: cancellationToken);
 
     /// <summary>
     /// List Payment Networks.
@@ -2326,55 +2246,6 @@ public sealed partial class ExceptionsApi
 }
 
 /// <summary>
-/// fraud-training endpoints.
-/// </summary>
-public sealed partial class FraudTrainingApi
-{
-    private readonly ITransport _c;
-    public FraudTrainingApi(ITransport transport) => _c = transport;
-
-    /// <summary>
-    /// Create Ach Fraud Example.
-    ///
-    /// POST /api/v1/ml-training/fraud-examples/ach
-    /// </summary>
-    public Task<FraudExampleRead> CreateAchFraudExampleAsync(AchFraudExampleCreate body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<FraudExampleRead>("POST", "/api/v1/ml-training/fraud-examples/ach", json: body, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Create Ach Fraud Examples Bulk.
-    ///
-    /// POST /api/v1/ml-training/fraud-examples/ach/bulk
-    /// </summary>
-    public Task<BulkSubmitResponse> CreateAchFraudExamplesBulkAsync(IReadOnlyList<AchFraudExampleCreate> body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<BulkSubmitResponse>("POST", "/api/v1/ml-training/fraud-examples/ach/bulk", json: body, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Create Check Fraud Example.
-    ///
-    /// POST /api/v1/ml-training/fraud-examples/check
-    /// </summary>
-    public Task<FraudExampleRead> CreateCheckFraudExampleAsync(CheckFraudExampleCreate body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<FraudExampleRead>("POST", "/api/v1/ml-training/fraud-examples/check", json: body, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Create Check Fraud Examples Bulk.
-    ///
-    /// POST /api/v1/ml-training/fraud-examples/check/bulk
-    /// </summary>
-    public Task<BulkSubmitResponse> CreateCheckFraudExamplesBulkAsync(IReadOnlyList<CheckFraudExampleCreate> body, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<BulkSubmitResponse>("POST", "/api/v1/ml-training/fraud-examples/check/bulk", json: body, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Retract Fraud Example Api.
-    ///
-    /// POST /api/v1/ml-training/fraud-examples/{exception_id}/retract
-    /// </summary>
-    public Task<FraudExampleRead> RetractFraudExampleApiAsync(string exceptionId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<FraudExampleRead>("POST", $"/api/v1/ml-training/fraud-examples/{Uri.EscapeDataString(exceptionId.ToString()!)}/retract", cancellationToken: cancellationToken);
-}
-
-/// <summary>
 /// issued-items endpoints.
 /// </summary>
 public sealed partial class IssuedItemsApi
@@ -2686,87 +2557,6 @@ public sealed partial class PlatformMetricsApi
 }
 
 /// <summary>
-/// platform-ml endpoints.
-/// </summary>
-public sealed partial class PlatformMlApi
-{
-    private readonly ITransport _c;
-    public PlatformMlApi(ITransport transport) => _c = transport;
-
-    /// <summary>
-    /// Pending Fraud Examples.
-    ///
-    /// GET /api/v1/platform/ml/fraud-examples/pending
-    ///
-    /// Fraud-training examples from banks on the shared model that aren't yet approved
-    /// for training it (oldest first). Bank-only banks' examples never need approval: they
-    /// only ever train that bank's own model.
-    /// </summary>
-    public Task<IReadOnlyList<PendingFraudExampleRead>> PendingFraudExamplesAsync(CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<PendingFraudExampleRead>>("GET", "/api/v1/platform/ml/fraud-examples/pending", platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Approve Fraud Example.
-    ///
-    /// POST /api/v1/platform/ml/fraud-examples/{exception_id}/approve
-    /// </summary>
-    public Task<JsonElement> ApproveFraudExampleAsync(string exceptionId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<JsonElement>("POST", $"/api/v1/platform/ml/fraud-examples/{Uri.EscapeDataString(exceptionId.ToString()!)}/approve", platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// List Shared Models.
-    ///
-    /// GET /api/v1/platform/ml/models
-    /// </summary>
-    public Task<IReadOnlyList<MlModelRead>> ListSharedModelsAsync(string? networkCode = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<MlModelRead>>("GET", "/api/v1/platform/ml/models", query: new Dictionary<string, object?> { ["network_code"] = networkCode }, platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Activate Shared Model.
-    ///
-    /// PATCH /api/v1/platform/ml/models/{model_id}/activate
-    ///
-    /// Asks for the shared model to be activated: it scores every bank that uses it, so it waits
-    /// for a person among the platform's operators to approve it in the operator view (`202` with
-    /// `change_request_id`). Already active: `200` with the model.
-    /// </summary>
-    public Task<MlModelRead> ActivateSharedModelAsync(string modelId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<MlModelRead>("PATCH", $"/api/v1/platform/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/activate", platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Shared Model Feature Importance.
-    ///
-    /// GET /api/v1/platform/ml/models/{model_id}/feature-importance
-    ///
-    /// Model coefficients by feature, largest effect first. Operator-only: banks never
-    /// see the shared model's internals.
-    /// </summary>
-    public Task<IReadOnlyDictionary<string, JsonElement>> SharedModelFeatureImportanceAsync(string modelId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyDictionary<string, JsonElement>>("GET", $"/api/v1/platform/ml/models/{Uri.EscapeDataString(modelId.ToString()!)}/feature-importance", platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Retrain Shared Model.
-    ///
-    /// POST /api/v1/platform/ml/retrain
-    ///
-    /// Trains a challenger for the shared model, promoted only by the champion/challenger rule;
-    /// activating one by hand waits for an operator (`PATCH .../activate`). In the provider's log.
-    /// </summary>
-    public Task<RetrainResponse> RetrainSharedModelAsync(string? networkCode = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<RetrainResponse>("POST", "/api/v1/platform/ml/retrain", query: new Dictionary<string, object?> { ["network_code"] = networkCode }, platform: true, cancellationToken: cancellationToken);
-
-    /// <summary>
-    /// Clear Bank Switch Lock.
-    ///
-    /// POST /api/v1/platform/tenants/{tenant_id}/ml-switch-lock/clear
-    ///
-    /// Lets a new bank switch to a bank-only model before its 90 days are up.
-    /// </summary>
-    public Task<SwitchLockClearedRead> ClearBankSwitchLockAsync(string tenantId, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<SwitchLockClearedRead>("POST", $"/api/v1/platform/tenants/{Uri.EscapeDataString(tenantId.ToString()!)}/ml-switch-lock/clear", platform: true, cancellationToken: cancellationToken);
-}
-
-/// <summary>
 /// platform-usage endpoints.
 /// </summary>
 public sealed partial class PlatformUsageApi
@@ -2975,14 +2765,12 @@ public partial class OpenClearClient
     public EdgeApi Edge { get; private set; } = default!;
     public EmbedApi Embed { get; private set; } = default!;
     public ExceptionsApi Exceptions { get; private set; } = default!;
-    public FraudTrainingApi FraudTraining { get; private set; } = default!;
     public IssuedItemsApi IssuedItems { get; private set; } = default!;
     public ModelRiskApi ModelRisk { get; private set; } = default!;
     public PaidItemsApi PaidItems { get; private set; } = default!;
     public PlatformBillingApi PlatformBilling { get; private set; } = default!;
     public PlatformJobsApi PlatformJobs { get; private set; } = default!;
     public PlatformMetricsApi PlatformMetrics { get; private set; } = default!;
-    public PlatformMlApi PlatformMl { get; private set; } = default!;
     public PlatformUsageApi PlatformUsage { get; private set; } = default!;
     public ReturnReasonsApi ReturnReasons { get; private set; } = default!;
     public SecurityEventsApi SecurityEvents { get; private set; } = default!;
@@ -3013,14 +2801,12 @@ public partial class OpenClearClient
         Edge = new EdgeApi(this);
         Embed = new EmbedApi(this);
         Exceptions = new ExceptionsApi(this);
-        FraudTraining = new FraudTrainingApi(this);
         IssuedItems = new IssuedItemsApi(this);
         ModelRisk = new ModelRiskApi(this);
         PaidItems = new PaidItemsApi(this);
         PlatformBilling = new PlatformBillingApi(this);
         PlatformJobs = new PlatformJobsApi(this);
         PlatformMetrics = new PlatformMetricsApi(this);
-        PlatformMl = new PlatformMlApi(this);
         PlatformUsage = new PlatformUsageApi(this);
         ReturnReasons = new ReturnReasonsApi(this);
         SecurityEvents = new SecurityEventsApi(this);

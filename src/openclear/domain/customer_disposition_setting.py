@@ -17,16 +17,12 @@ class DispositionMode(str, enum.Enum):
     NONE = "none"
     FIXED_PAY = "fixed_pay"
     FIXED_RETURN = "fixed_return"
-    # Re-scores fresh via ml.predict.score_exception() at decision time and picks
-    # PAY/RETURN from the model's own probability — see services/auto_disposition_service.py.
-    ML_DETERMINED = "ml_determined"
 
 
 class CustomerDispositionSetting(Base):
     """One row per (customer, network) a bank admin has ever touched the default
-    disposition for — absence of a row means NONE (no auto-decision), same "only grows on
-    explicit override" convention as CustomerMlSetting (domain/customer_ml_setting.py),
-    which this table mirrors column-for-column."""
+    disposition for — absence of a row means NONE (no auto-decision): the table only grows on
+    an explicit override."""
 
     __tablename__ = "customer_disposition_setting"
     __table_args__ = (
@@ -51,8 +47,7 @@ class CustomerDispositionSetting(Base):
     # A cut-off agreed with this customer ("14:00", the bank's time zone), in place of the
     # bank's for this network (UI_PLAN.md UI-D13). Set by bank staff; None uses the bank's.
     cutoff_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
-    # Only meaningful when `mode` could produce an ACH RETURN (FIXED_RETURN, or
-    # ML_DETERMINED landing on RETURN) — an ACH return needs a reason from the tenant's own
+    # Only meaningful when `mode` is FIXED_RETURN — an ACH return needs a reason from the tenant's own
     # AchReturnReason catalog, same rule decision_service.decide() enforces for a human. If
     # this is unset when needed, that customer+ach auto-decisioning is skipped rather than
     # inventing a reason — see auto_disposition_service.auto_decide_exception.
