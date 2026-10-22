@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.27.0 — 2026-10-21
+
 - **Unauthorized debit statements are the bank's own form** (`SIMPLIFY_PLAN.md` SP1, the product
   owner's decision). OpenClear no longer has customers sign a Written Statement of Unauthorized
   Debit. Each bank sets its own form under Settings → *Unauthorized debit statement*: written in
