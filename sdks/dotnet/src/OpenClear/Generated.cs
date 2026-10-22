@@ -280,6 +280,19 @@ public sealed record BulkUploadRowRead
     [JsonPropertyName("success")] public bool Success { get; init; } = default!;
 }
 
+public sealed record CashCheck
+{
+    [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
+    [JsonPropertyName("verification_id")] public string VerificationId { get; init; } = default!;
+}
+
+public sealed record CashedCheck
+{
+    [JsonPropertyName("exception_types")] public IReadOnlyList<string> ExceptionTypes { get; init; } = default!;
+    [JsonPropertyName("paid_item_id")] public string PaidItemId { get; init; } = default!;
+    [JsonPropertyName("verification_id")] public string VerificationId { get; init; } = default!;
+}
+
 public sealed record ChangeRead
 {
     [JsonPropertyName("after")] public IReadOnlyDictionary<string, JsonElement> After { get; init; } = default!;
@@ -694,6 +707,16 @@ public sealed record InventoryCuec
     [JsonPropertyName("withdrawn")] public bool Withdrawn { get; init; } = default!;
 }
 
+/// <summary>
+/// What was issued, to explain a decline. Never sent for a match.
+/// </summary>
+public sealed record IssuedDetails
+{
+    [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
+    [JsonPropertyName("issue_date")] public string IssueDate { get; init; } = default!;
+    [JsonPropertyName("payee_name")] public string PayeeName { get; init; } = default!;
+}
+
 public sealed record IssuedItemCreate
 {
     [JsonPropertyName("account_id")] public string AccountId { get; init; } = default!;
@@ -840,6 +863,7 @@ public sealed record PaidItemRead
     [JsonPropertyName("presented_amount")] public string PresentedAmount { get; init; } = default!;
     [JsonPropertyName("presented_date")] public string PresentedDate { get; init; } = default!;
     [JsonPropertyName("settlement_status")] public string SettlementStatus { get; init; } = default!;
+    [JsonPropertyName("source")] public string Source { get; init; } = default!;
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
@@ -965,6 +989,26 @@ public sealed record TokenResponse
     [JsonPropertyName("access_token")] public string AccessToken { get; init; } = default!;
     [JsonPropertyName("refresh_token")] public string RefreshToken { get; init; } = default!;
     [JsonPropertyName("token_type")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TokenType { get; init; }
+}
+
+public sealed record Verification
+{
+    [JsonPropertyName("expires_at")] public string ExpiresAt { get; init; } = default!;
+    [JsonPropertyName("issued")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IssuedDetails? Issued { get; init; }
+    [JsonPropertyName("problems")] public IReadOnlyList<string> Problems { get; init; } = default!;
+    [JsonPropertyName("result")] public string Result { get; init; } = default!;
+    [JsonPropertyName("verification_id")] public string VerificationId { get; init; } = default!;
+}
+
+public sealed record VerifyCheck
+{
+    [JsonPropertyName("account_number")] public string AccountNumber { get; init; } = default!;
+    [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
+    [JsonPropertyName("branch")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Branch { get; init; }
+    [JsonPropertyName("check_number")] public string CheckNumber { get; init; } = default!;
+    [JsonPropertyName("payee_name")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PayeeName { get; init; }
+    [JsonPropertyName("routing_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? RoutingNumber { get; init; }
+    [JsonPropertyName("teller_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TellerId { get; init; }
 }
 
 public sealed record WebauthnCredentialRead
@@ -2705,6 +2749,37 @@ public sealed partial class StopPaymentsApi
 }
 
 /// <summary>
+/// teller endpoints.
+/// </summary>
+public sealed partial class TellerApi
+{
+    private readonly ITransport _c;
+    public TellerApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// Record Cashed.
+    ///
+    /// POST /api/v1/checks/cashed
+    ///
+    /// Records a verified check as cashed: it's presented as paid at once, so the same check
+    /// presented anywhere later is a duplicate. Each verification can be recorded once.
+    /// </summary>
+    public Task<CashedCheck> RecordCashedAsync(CashCheck body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<CashedCheck>("POST", "/api/v1/checks/cashed", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Verify Check.
+    ///
+    /// POST /api/v1/checks/verify
+    ///
+    /// Whether a check can be cashed at a branch: the clearing rules, run now, over this check.
+    /// Pay out only on `match`. A match can be recorded cashed once, within 15 minutes.
+    /// </summary>
+    public Task<Verification> VerifyCheckAsync(VerifyCheck body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<Verification>("POST", "/api/v1/checks/verify", json: body, cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// users endpoints.
 /// </summary>
 public sealed partial class UsersApi
@@ -2782,6 +2857,7 @@ public partial class OpenClearClient
     public ReturnReasonsApi ReturnReasons { get; private set; } = default!;
     public SecurityEventsApi SecurityEvents { get; private set; } = default!;
     public StopPaymentsApi StopPayments { get; private set; } = default!;
+    public TellerApi Teller { get; private set; } = default!;
     public UsersApi Users { get; private set; } = default!;
 
     private void BindAreas()
@@ -2818,6 +2894,7 @@ public partial class OpenClearClient
         ReturnReasons = new ReturnReasonsApi(this);
         SecurityEvents = new SecurityEventsApi(this);
         StopPayments = new StopPaymentsApi(this);
+        Teller = new TellerApi(this);
         Users = new UsersApi(this);
     }
 }

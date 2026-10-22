@@ -77,10 +77,11 @@ def _criteria(ids: tuple[uuid.UUID, ...], user_id: uuid.UUID | None) -> list:
     from openclear.domain.issued_item import IssuedItem
     from openclear.domain.paid_item import PaidItem
     from openclear.domain.stop_payment import StopPayment
+    from openclear.domain.teller_verification import TellerVerification
 
     allowed = list(ids)
     options = [with_loader_criteria(Account, lambda cls: cls.id.in_(allowed), include_aliases=True)]
-    for model in (IssuedItem, StopPayment, PaidItem, AchAuthorizationRule, AchTransaction):
+    for model in (IssuedItem, StopPayment, PaidItem, AchAuthorizationRule, AchTransaction, TellerVerification):
         options.append(with_loader_criteria(model, lambda cls: cls.account_id.in_(allowed), include_aliases=True))
     options.append(with_loader_criteria(ExceptionItem, lambda cls: or_(
         cls.source_item_id.in_(select(PaidItem.id).where(PaidItem.account_id.in_(allowed)).scalar_subquery()),

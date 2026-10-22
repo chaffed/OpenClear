@@ -21,6 +21,9 @@ PERMISSION_CATALOG: dict[str, str] = {
     "stop_payment:write": "Create/cancel stop payments",
     "paid_item:read": "View paid items",
     "paid_item:write": "Submit paid items",
+    # A teller platform's only permission (TELLER_PLAN.md TL-D2): verify a check before cash is paid at a
+    # branch, and record it cashed. It can't list issued items.
+    "check:verify": "Verify checks cashed at a branch, and record them cashed (teller platforms)",
     "check_image:read": "View check images",
     "check_image:write": "Upload/reprocess check images",
     "ach_authorization:read": "View ACH authorizations",
@@ -78,7 +81,7 @@ PERMISSION_CATALOG: dict[str, str] = {
 CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
     {
         "user:manage", "security_group:manage", "tenant:manage", "customer:manage", "admin:manage", "audit_log:read",
-        "ach_return_reason:manage", "billing:manage", "api_client:manage",
+        "ach_return_reason:manage", "billing:manage", "api_client:manage", "check:verify",
     }
 )
 
@@ -96,9 +99,10 @@ CUSTOMER_SELF_SERVICE_PERMISSIONS: dict[str, str] = {
 # but a full data export is a different class of risk (a single action that can move
 # everything a tenant or customer has to an outside party), so even a tenant's own Admin
 # group must be explicitly edited to add it via /ui/security-groups, rather than getting
-# it "for free" like every other permission does today. This is a one-off exception, not
-# a pattern to extend casually — most new permissions should still join Admin normally.
-_NOT_ADMIN_DEFAULT = {"data_export:run"}
+# it "for free" like every other permission does today. check:verify is the second: it's a
+# teller platform's, through its own API client, not something a person does. Not a pattern
+# to extend casually — most new permissions should still join Admin normally.
+_NOT_ADMIN_DEFAULT = {"data_export:run", "check:verify"}
 
 _ALL = [key for key in PERMISSION_CATALOG if key not in _NOT_ADMIN_DEFAULT]
 
@@ -153,6 +157,9 @@ DEFAULT_SECURITY_GROUPS: dict[str, list[str]] = {
         "exception:read", "exception:recommend", "exception:decide",
         "bulk_import:run", "end_user_documentation:read",
     ],
+    # For a teller platform's API client (TELLER_PLAN.md TL-D2): verifying a check at a branch
+    # and recording it cashed, and nothing else.
+    "Teller platform": ["check:verify"],
 }
 
 # Bank-granted support access (UX_PLAN.md U8; services/support_access_service.py). A support

@@ -266,6 +266,17 @@ export interface BulkUploadRowRead {
   success: boolean;
 }
 
+export interface CashCheck {
+  amount: number | string;
+  verification_id: string;
+}
+
+export interface CashedCheck {
+  exception_types: Array<string>;
+  paid_item_id: string;
+  verification_id: string;
+}
+
 export interface ChangeRead {
   after: Record<string, unknown> | null;
   applies_at: string | null;
@@ -650,6 +661,13 @@ export interface InventoryCuec {
   withdrawn: boolean;
 }
 
+/** What was issued, to explain a decline. Never sent for a match. */
+export interface IssuedDetails {
+  amount: string;
+  issue_date: string;
+  payee_name: string;
+}
+
 export interface IssuedItemCreate {
   account_id: string;
   amount: number | string;
@@ -789,10 +807,13 @@ export interface PaidItemRead {
   presented_amount: string;
   presented_date: string;
   settlement_status: PaidItemSettlementStatus;
+  source: PaidItemSource;
   updated_at?: string | null;
 }
 
 export type PaidItemSettlementStatus = "pending" | "paid" | "returned" | "reversed";
+
+export type PaidItemSource = "api" | "bulk_file" | "manual" | "teller";
 
 export interface RecommendRequest {
   ach_return_reason_id?: string | null;
@@ -900,6 +921,24 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type?: string;
+}
+
+export interface Verification {
+  expires_at: string;
+  issued?: IssuedDetails | null;
+  problems: Array<"match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review">;
+  result: "match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review";
+  verification_id: string;
+}
+
+export interface VerifyCheck {
+  account_number: string;
+  amount: number | string;
+  branch?: string | null;
+  check_number: string;
+  payee_name?: string | null;
+  routing_number?: string | null;
+  teller_id?: string | null;
 }
 
 export interface WebauthnCredentialRead {
@@ -2802,6 +2841,39 @@ export class StopPaymentsApi {
   }
 }
 
+/** `teller` endpoints. */
+export class TellerApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * Record Cashed.
+   *
+   * POST /api/v1/checks/cashed
+   *
+   * Records a verified check as cashed: it's presented as paid at once, so the same check
+   * presented anywhere later is a duplicate. Each verification can be recorded once.
+   */
+  recordCashed(body: CashCheck): Promise<CashedCheck> {
+    return this.c.call<CashedCheck>("POST", `/api/v1/checks/cashed`, { json: body });
+  }
+
+  /**
+   * Verify Check.
+   *
+   * POST /api/v1/checks/verify
+   *
+   * Whether a check can be cashed at a branch: the clearing rules, run now, over this check.
+   * Pay out only on `match`. A match can be recorded cashed once, within 15 minutes.
+   */
+  verifyCheck(body: VerifyCheck): Promise<Verification> {
+    return this.c.call<Verification>("POST", `/api/v1/checks/verify`, { json: body });
+  }
+}
+
 /** `users` endpoints. */
 export class UsersApi {
   private readonly c: Transport;
@@ -2882,5 +2954,6 @@ export const AREAS = {
   returnReasons: ReturnReasonsApi,
   securityEvents: SecurityEventsApi,
   stopPayments: StopPaymentsApi,
+  teller: TellerApi,
   users: UsersApi,
 } as const;

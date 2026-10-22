@@ -242,6 +242,8 @@ class TenantFactory:
         for group_name, group in groups.items():
             if group.system_role:  # built in ("No access yet"): nobody joins it by default
                 continue
+            if group_name == "Teller platform":  # for a teller platform's API client, not a person (TELLER_PLAN.md TL-D2)
+                continue
             user = user_service.create_user_with_membership(
                 self.session,
                 tenant.id,

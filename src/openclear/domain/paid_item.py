@@ -34,6 +34,8 @@ class PaidItemSource(str, enum.Enum):
     API = "api"
     BULK_FILE = "bulk_file"
     MANUAL = "manual"
+    # Cashed at a branch, recorded by the teller platform (TELLER_PLAN.md TL-D3).
+    TELLER = "teller"
 
 
 class PaidItem(Base):

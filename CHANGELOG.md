@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Verifying checks at a branch** (`TELLER_PLAN.md` TL-1, TL-2). A teller platform asks
+  `POST /api/v1/checks/verify` before cash is paid: OpenClear runs the clearing rules over the
+  check now and answers `match` or the first problem (not issued, another amount or payee,
+  voided, stopped, already paid, stale, reverse positive pay, an account it doesn't know). After
+  paying out, `POST /api/v1/checks/cashed` presents it at once as a paid item with source
+  `teller`, so the same check presented anywhere later is a duplicate; each verification is
+  recorded once, within 15 minutes. The platform's API client goes in the new **Teller platform**
+  security group, whose one permission, `check:verify`, does nothing else and which no person
+  holds by default. Every call is in the action log and raises a security event; ten checks not
+  issued within an hour from one teller, branch or client raise `teller.verify.probing` (high).
+  A customer sees checks refused at a branch in the last week on Exceptions, as information.
+  `PaidItemRead` gains `source`. Guide: `docs/guides/teller.md`. New bank CUEC B-CP-2-02 (the
+  teller fallback), control OC-SI-09, threat OC-T23.
+
 - **Reverse positive pay** (`REVERSE_POSITIVE_PAY_PLAN.md`). For a customer that doesn't send an
   issued-check file, an account can be put on reverse positive pay (the customer's page →
   Accounts → *Checks*, or `check_review_mode` in `PUT /api/v1/accounts/{account_number}`). Every

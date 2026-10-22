@@ -290,6 +290,17 @@ class BulkUploadRowRead(TypedDict):
     success: bool
 
 
+class CashCheck(TypedDict):
+    amount: float | str
+    verification_id: str
+
+
+class CashedCheck(TypedDict):
+    exception_types: list[str]
+    paid_item_id: str
+    verification_id: str
+
+
 class ChangeRead(TypedDict):
     after: dict[str, Any] | None
     applies_at: str | None
@@ -678,6 +689,14 @@ class InventoryCuec(TypedDict):
     withdrawn: bool
 
 
+class IssuedDetails(TypedDict):
+    """What was issued, to explain a decline. Never sent for a match."""
+
+    amount: str
+    issue_date: str
+    payee_name: str
+
+
 class IssuedItemCreate(TypedDict):
     account_id: str
     amount: float | str
@@ -827,10 +846,14 @@ class PaidItemRead(TypedDict):
     presented_amount: str
     presented_date: str
     settlement_status: PaidItemSettlementStatus
+    source: PaidItemSource
     updated_at: NotRequired[str | None]
 
 
 PaidItemSettlementStatus = Literal["pending", "paid", "returned", "reversed"]
+
+
+PaidItemSource = Literal["api", "bulk_file", "manual", "teller"]
 
 
 class RecommendRequest(TypedDict):
@@ -944,6 +967,24 @@ class TokenResponse(TypedDict):
     access_token: str
     refresh_token: str
     token_type: NotRequired[str]
+
+
+class Verification(TypedDict):
+    expires_at: str
+    issued: NotRequired[IssuedDetails | None]
+    problems: list[Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review"]]
+    result: Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review"]
+    verification_id: str
+
+
+class VerifyCheck(TypedDict):
+    account_number: str
+    amount: float | str
+    branch: NotRequired[str | None]
+    check_number: str
+    payee_name: NotRequired[str | None]
+    routing_number: NotRequired[str | None]
+    teller_id: NotRequired[str | None]
 
 
 class WebauthnCredentialRead(TypedDict):
@@ -2491,6 +2532,33 @@ class StopPaymentsApi:
         return self._c.call("PATCH", f"/api/v1/stop-payments/{_path(stop_id)}/cancel")
 
 
+class TellerApi:
+    """`teller` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def record_cashed(self, body: CashCheck) -> CashedCheck:
+        """Record Cashed.
+
+        POST /api/v1/checks/cashed
+
+        Records a verified check as cashed: it's presented as paid at once, so the same check
+        presented anywhere later is a duplicate. Each verification can be recorded once.
+        """
+        return self._c.call("POST", "/api/v1/checks/cashed", json=body)
+
+    def verify_check(self, body: VerifyCheck) -> Verification:
+        """Verify Check.
+
+        POST /api/v1/checks/verify
+
+        Whether a check can be cashed at a branch: the clearing rules, run now, over this check.
+        Pay out only on `match`. A match can be recorded cashed once, within 15 minutes.
+        """
+        return self._c.call("POST", "/api/v1/checks/verify", json=body)
+
+
 class UsersApi:
     """`users` endpoints."""
 
@@ -2563,5 +2631,6 @@ AREAS = {
     "return_reasons": ReturnReasonsApi,
     "security_events": SecurityEventsApi,
     "stop_payments": StopPaymentsApi,
+    "teller": TellerApi,
     "users": UsersApi,
 }

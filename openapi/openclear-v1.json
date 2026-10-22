@@ -1915,6 +1915,64 @@
         "title": "BulkUploadRowRead",
         "type": "object"
       },
+      "CashCheck": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "description": "What was paid out: the amount verified",
+            "title": "Amount"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "title": "Verification Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id",
+          "amount"
+        ],
+        "title": "CashCheck",
+        "type": "object"
+      },
+      "CashedCheck": {
+        "properties": {
+          "exception_types": {
+            "description": "Empty when the check cleared as paid. Otherwise what went wrong between verify and cash, such as a stop placed in between: the bank should follow up.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Exception Types",
+            "type": "array"
+          },
+          "paid_item_id": {
+            "format": "uuid",
+            "title": "Paid Item Id",
+            "type": "string"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "title": "Verification Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id",
+          "paid_item_id",
+          "exception_types"
+        ],
+        "title": "CashedCheck",
+        "type": "object"
+      },
       "ChangeRead": {
         "properties": {
           "after": {
@@ -4651,6 +4709,32 @@
         "title": "InventoryCuec",
         "type": "object"
       },
+      "IssuedDetails": {
+        "description": "What was issued, to explain a decline. Never sent for a match.",
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "issue_date": {
+            "format": "date",
+            "title": "Issue Date",
+            "type": "string"
+          },
+          "payee_name": {
+            "title": "Payee Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "payee_name",
+          "issue_date"
+        ],
+        "title": "IssuedDetails",
+        "type": "object"
+      },
       "IssuedItemCreate": {
         "properties": {
           "account_id": {
@@ -5435,6 +5519,9 @@
           "settlement_status": {
             "$ref": "#/components/schemas/PaidItemSettlementStatus"
           },
+          "source": {
+            "$ref": "#/components/schemas/PaidItemSource"
+          },
           "updated_at": {
             "anyOf": [
               {
@@ -5454,6 +5541,7 @@
           "check_number",
           "presented_amount",
           "presented_date",
+          "source",
           "matched_issued_item_id",
           "match_status",
           "settlement_status",
@@ -5470,6 +5558,16 @@
           "reversed"
         ],
         "title": "PaidItemSettlementStatus",
+        "type": "string"
+      },
+      "PaidItemSource": {
+        "enum": [
+          "api",
+          "bulk_file",
+          "manual",
+          "teller"
+        ],
+        "title": "PaidItemSource",
         "type": "string"
       },
       "RecommendRequest": {
@@ -6121,6 +6219,167 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "Verification": {
+        "properties": {
+          "expires_at": {
+            "description": "Record it cashed before this, or verify it again",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "issued": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssuedDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problems": {
+            "description": "Every problem found, in the order the clearing rules found them",
+            "items": {
+              "enum": [
+                "match",
+                "not_on_positive_pay",
+                "stopped",
+                "already_paid",
+                "voided",
+                "not_issued",
+                "stop_differs",
+                "amount_differs",
+                "payee_differs",
+                "stale",
+                "customer_review"
+              ],
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "result": {
+            "description": "match, or the first problem. Pay out only on match; otherwise follow the bank's procedure.",
+            "enum": [
+              "match",
+              "not_on_positive_pay",
+              "stopped",
+              "already_paid",
+              "voided",
+              "not_issued",
+              "stop_differs",
+              "amount_differs",
+              "payee_differs",
+              "stale",
+              "customer_review"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "title": "Verification Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verification_id",
+          "result",
+          "problems",
+          "expires_at"
+        ],
+        "title": "Verification",
+        "type": "object"
+      },
+      "VerifyCheck": {
+        "properties": {
+          "account_number": {
+            "description": "From the MICR line",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Account Number",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "check_number": {
+            "description": "From the MICR line",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Check Number",
+            "type": "string"
+          },
+          "payee_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The payee the teller read, if the platform sends it",
+            "title": "Payee Name"
+          },
+          "routing_number": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{9}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the MICR line",
+            "title": "Routing Number"
+          },
+          "teller_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who asked, as the teller platform identifies them",
+            "title": "Teller Id"
+          }
+        },
+        "required": [
+          "account_number",
+          "check_number",
+          "amount"
+        ],
+        "title": "VerifyCheck",
         "type": "object"
       },
       "WebauthnCredentialRead": {
@@ -9168,6 +9427,106 @@
         "summary": "Reprocess Check Image",
         "tags": [
           "check-images"
+        ]
+      }
+    },
+    "/api/v1/checks/cashed": {
+      "post": {
+        "description": "Records a verified check as cashed: it's presented as paid at once, so the same check\npresented anywhere later is a duplicate. Each verification can be recorded once.",
+        "operationId": "record_cashed_api_v1_checks_cashed_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashCheck"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashedCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such verification"
+          },
+          "409": {
+            "description": "Declined, already recorded, expired, or another amount"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Cashed",
+        "tags": [
+          "teller"
+        ]
+      }
+    },
+    "/api/v1/checks/verify": {
+      "post": {
+        "description": "Whether a check can be cashed at a branch: the clearing rules, run now, over this check.\nPay out only on `match`. A match can be recorded cashed once, within 15 minutes.",
+        "operationId": "verify_check_api_v1_checks_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCheck"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify Check",
+        "tags": [
+          "teller"
         ]
       }
     },

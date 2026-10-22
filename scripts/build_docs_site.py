@@ -33,6 +33,7 @@ PAGES = [
     ("sdks/dotnet/README.md", "sdks/dotnet.md", ".NET"),
     ("sdks/embed/README.md", "sdks/embed.md", "Embedding library"),
     ("docs/guides/embedding.md", "guides/embedding.md", "Embedding in online banking"),
+    ("docs/guides/teller.md", "guides/teller.md", "Verifying checks at a branch"),
     ("integrations/fineract/README.md", "guides/fineract.md", "Apache Fineract adapter"),
     ("docs/PLUGINS.md", "guides/plugins.md", "Writing a plugin"),
     ("docs/guides/bi.md", "guides/bi.md", "Reporting with your BI platform"),
@@ -69,6 +70,7 @@ NAV = """nav:
       - Embedding library: sdks/embed.md
   - Guides:
       - Embedding in online banking: guides/embedding.md
+      - Verifying checks at a branch: guides/teller.md
       - Apache Fineract adapter: guides/fineract.md
       - Writing a plugin: guides/plugins.md
       - Reporting with your BI platform: guides/bi.md

@@ -391,11 +391,22 @@ No bulk endpoint exists for stop payments.
 
 `PaidItemCreate`: `account_id`, `check_number`, `presented_amount`, `presented_date`.
 
-`PaidItemRead` adds: `id`, `matched_issued_item_id`, `match_status` (`pending` /
+`PaidItemRead` adds: `id`, `source` (`api`, `bulk_file`, `manual`, `teller`: cashed at a branch), `matched_issued_item_id`, `match_status` (`pending` /
 `matched` / `exception`), `settlement_status` (`pending` / `paid` / `returned`),
 `created_at`. Submitting a paid item automatically attempts to match it against an
 outstanding issued item; a non-match becomes an exception item (see
 [Exceptions and decisions](#exceptions-and-decisions--apiv1exceptions)).
+
+### Teller verification — `/api/v1/checks`
+
+For a teller platform's API client, in the bank's **Teller platform** security group
+(`check:verify`, which no person holds by default and which does nothing else). See
+[docs/guides/teller.md](docs/guides/teller.md).
+
+| method | path | notes |
+|---|---|---|
+| POST | `/verify` | `routing_number`, `account_number`, `check_number`, `amount`, and optionally `payee_name` (as the teller read it), `teller_id`, `branch` → `verification_id`, `result`, `problems`, `expires_at`, `issued` (what was issued, only to explain a decline). `result` is `match`, or the first of `stopped`, `already_paid`, `voided`, `not_issued`, `stop_differs`, `amount_differs`, `payee_differs`, `stale`, `customer_review` (a reverse positive pay account), `not_on_positive_pay`. Pay out only on `match` |
+| POST | `/cashed` | `verification_id`, `amount` (what was paid out) → `201` with `paid_item_id` and `exception_types` (empty when it cleared as paid). The check is presented at once as a paid item with source `teller`, so the same check presented anywhere later is a duplicate. `409` for a declined, expired (15 minutes) or already-recorded verification, or another amount; `404` for an unknown one |
 
 ### Check images — `/api/v1/check-images`
 
@@ -509,7 +520,7 @@ customers by CIF can use the CIF as the customer number.
 | GET | `/customers` (`?external_customer_id=`) | `customer:manage` | paged |
 | PUT | `/customers/{customer_number}` | `customer:manage` | `name` (required), `is_active`, `external_customer_id`, `tax_id`, contact and address fields, `notes` |
 | GET | `/accounts` | `account:read` | paged; a customer-scoped caller sees its own |
-| PUT | `/accounts/{account_number}` | `account:write` | `name` (required), `customer_number` (null for a house account), `ach_debit_block_mode`, `external_account_id` (the customer's own reference, matched in its files). A customer-scoped caller can only create or change its own customer's accounts |
+| PUT | `/accounts/{account_number}` | `account:write` | `name` (required), `customer_number` (null for a house account), `ach_debit_block_mode`, `external_account_id` (the customer's own reference, matched in its files), `check_review_mode` (`positive`, or `reverse` positive pay: the customer reviews every check and unreturned ones are paid at the cut-off; the bank's `admin:manage` only, and while turning reverse on waits for a second admin the rest is saved and it answers `202` with `{"status": "pending", "change_request_id"}`). A customer-scoped caller can only create or change its own customer's accounts |
 
 Every create and update is audit-logged.
 
@@ -563,7 +574,7 @@ customer-scoped caller sees only its customer's decisions.
 
 Each decision: `sequence`, `decision_id`, `exception_id`, `network` (`check` / `ach`),
 `outcome` (`pay` / `return`), `reason_code`, `return_transaction_code`, `source`
-(`human`, `auto_default`, `auto_ml`), `decided_by` (email, or null for automatic),
+(`human`, `auto_default`), `decided_by` (email, or null for automatic),
 `decided_at`, `account_number`, `customer_number`. Plus, for a check: `check_number`,
 `amount`, `presented_date`; for an ACH debit: `trace_number`, `amount`, `effective_date`,
 `originator_id`, `originator_name`, `sec_code`.
@@ -573,18 +584,16 @@ then acknowledge the last sequence it handled.
 
 ### Admin — `/api/v1/admin`
 
-All gated on `admin:manage`. Each organization chooses its fraud-scoring model (Settings →
-Fraud scoring model in the web UI): the **shared model**, trained on every participating
-bank's decisions and run only by the platform operator (see "Platform — shared model"
-below), or a **bank-only model** trained on its own decisions, which these endpoints manage.
+All gated on `admin:manage`. Fraud scoring is advisory and the bank's own: a model trained only on
+its own final decisions scores each exception once the bank turns scoring on (Settings → Fraud
+scoring), and the score never decides an item.
 
 | method | path | notes |
 |---|---|---|
 | GET | `/payment-networks` | list registered network codes (`list[str]`) |
-| POST | `/ml/retrain?network_code=...` | retrain this organization's **bank-only** model → `RetrainResponse`; `403` for an organization on the shared model; `409` if there isn't enough training data yet, or it was retrained moments ago. The new version is activated only if it scores at least as well as the active one on the same recent decisions and was trained on enough of the bank's own decisions (`ml_bank_model_min_decisions`, default 200); the reason is in `metrics_json.evaluation.reason` |
-| GET | `/ml/models` | this organization's own model versions (bank-only and customer models); optional `?network_code=` filter |
-| GET | `/ml/shared-model` | the shared model's active version per network, with counts only → `list[SharedModelSummaryRead]` (`network_code`, `version`, `activated_at`, `trained_from_decision_count`, `contributing_bank_count`) |
-| PATCH | `/ml/models/{model_id}/activate` | activate one of this organization's bank-only models; `404` for any other model. With segregation of duties enforced, answers `202` with `{"status": "pending", "change_request_id"}`: a second admin approves it in Admin → Changes |
+| POST | `/ml/retrain?network_code=...` | retrain this organization's model → `RetrainResponse`; `409` while fraud scoring is off, if there isn't enough training data yet, or it was retrained moments ago. The new version is activated only if it scores at least as well as the active one on the same recent decisions and was trained on enough of the bank's own decisions (`ml_bank_model_min_decisions`, default 200); the reason is in `metrics_json.evaluation.reason` |
+| GET | `/ml/models` | this organization's model versions; optional `?network_code=` filter |
+| PATCH | `/ml/models/{model_id}/activate` | activate one of this organization's models; `404` for any other. With segregation of duties enforced, answers `202` with `{"status": "pending", "change_request_id"}`: a second admin approves it in Admin → Changes |
 
 `MlModelRead`: `id`, `network_code`, `version`, `algorithm`,
 `trained_from_decision_count`, `metrics_json`, `status` (`training` / `active` /
@@ -667,7 +676,6 @@ account, per customer or bank-wide:
 | `account_monthly` / `ach_account_monthly` | accounts enrolled (check / ACH positive pay) | account |
 | `user_monthly` | users with access | customer |
 | `ach_rule_monthly` | active ACH authorization rules | account |
-| `customer_model_monthly` | customer-specific fraud models | customer |
 | `issued_items` / `issue_files` | issued checks loaded / issue files received | account / customer |
 | `presented_checks` / `ach_debits` | items evaluated | account |
 | `check_exceptions` / `ach_exceptions` | exceptions raised | account |
@@ -709,28 +717,6 @@ A statement: `period_start`, `period_end`, `customer_id`, `customer_number`,
 `TIR1`…, `MCHG`), `list_amount`, `discount_amount`, `net_amount`, `payment_method`
 (`BCMP`, `FLAT`, `WVED`, `FREE`), `tiers`, and `accounts` (volume per account). Amounts are
 strings.
-
-### Platform — shared model — `/api/v1/platform`
-
-For the platform operator only, **not** a user token: send a platform API key with the
-`shared_model` scope as `X-Api-Key` (mint one with
-`python scripts/create_metering_api_key.py "Platform ML operator" --scope shared_model`).
-`401` for a bad key, `403` for a key without the scope. A usage-metering key can't use these,
-and a `shared_model` key can't read usage.
-
-| method | path | notes |
-|---|---|---|
-| GET | `/ml/models` | the shared model's versions; optional `?network_code=` |
-| POST | `/ml/retrain?network_code=...` | retrain the shared model (decisions from banks on the shared model only, plus approved fraud-training examples) → `RetrainResponse` |
-| PATCH | `/ml/models/{model_id}/activate` | activate a shared-model version; `404` for a bank's own model |
-| GET | `/ml/models/{model_id}/feature-importance` | the model's coefficients by feature, largest effect first |
-| GET | `/ml/fraud-examples/pending` | fraud-training examples from banks on the shared model that aren't yet approved to train it → `list[PendingFraudExampleRead]` |
-| POST | `/ml/fraud-examples/{exception_id}/approve` | approve one for the shared model (`204`); recorded in that bank's audit log |
-| POST | `/tenants/{tenant_id}/ml-switch-lock/clear` | let a new organization switch to a bank-only model before its first 90 days are up; recorded in its audit log |
-
-When an organization switches to a bank-only model, the next scheduled retrain rebuilds the
-shared model without its data and activates the result even if it scores lower, because
-removing that bank's data comes first.
 
 ### Platform — background jobs — `/api/v1/platform/jobs`
 
@@ -832,7 +818,8 @@ summary notification per reviewer rather than one each.
 | method | path | notes |
 |---|---|---|
 | GET | `/api/v1/bulk-uploads/formats` | the `kind` and `format` pairs the caller may upload, each with `built_in` |
-| POST | `/api/v1/bulk-uploads` | `multipart/form-data`: `kind` (e.g. `paid_items`), `format` (e.g. `tabular`, `nacha`, `x937`), `file`, and optionally `create_missing_accounts`. Answers `202` with `status_url`. A format that doesn't exist or isn't turned on gets `422`. A file that can't be read comes back `rejected` |
+| POST | `/api/v1/bulk-uploads` | `multipart/form-data`: `kind` (e.g. `paid_items`), `format` (e.g. `tabular`, `nacha`, `x937`, `layout`), `file`, and optionally `create_missing_accounts`, and `layout_id` with `format=layout` (issued items, or the bank's posted-check file with `kind=paid_items`). Answers `202` with `status_url`. A format that doesn't exist or isn't turned on gets `422`. A file that can't be read comes back `rejected`, as does a posted-check file whose trailer doesn't match its lines |
+| GET | `/api/v1/bulk-uploads/layouts?kind=` | the layouts the caller may upload with: `issued_items` (default; a customer's own and the bank's) or `paid_items` (the bank's posted-check layouts, bank staff only). Each: `id`, `kind`, `name`, `customer_id`, `is_default`, `file_type` |
 
 Needs the permission for that `kind`.
 

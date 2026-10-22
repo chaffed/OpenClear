@@ -63,6 +63,20 @@
                      hidden={"status": status_filter, "network_code": network_filter, "customer": customer_filter}) }}
   <p class="list-tools not-phone">{{ ls.export_link("/ui/exceptions", search, page_obj.total_count) }}</p>
 
+  {% if branch_declines %}
+  {# Teller positive pay (TELLER_PLAN.md TL-D4): someone tried to cash these at a branch, and was refused. #}
+  <details class="callout branch-declines">
+    <summary>{{ branch_declines | length }} {{ "check was" if branch_declines | length == 1 else "checks were" }} refused at a branch in the last 7 days</summary>
+    <p class="hint">Information only: nothing was paid, and there's nothing to decide. If you don't know who presented one, tell your bank.</p>
+    <ul class="plain-list">
+      {% for v in branch_declines %}
+      <li>Check {{ v.check_number }} for {{ "{:,.2f}".format(v.amount) }} on account {{ v.account_number }}{% if v.branch %} at branch {{ v.branch }}{% endif %},
+        <time datetime="{{ v.created_at | iso_utc }}" data-local-time>{{ v.created_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>:
+        {{ v.result | replace("_", " ") }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
   {% if to_review and can_act %}
   {# Reverse positive pay (REVERSE_POSITIVE_PAY_PLAN.md RPP-D6): the day's checks in one pass. #}
   <div class="callout to-review" role="note">

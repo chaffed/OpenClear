@@ -247,6 +247,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "protected change, and the accounts on it are listed for the bank to match against its agreements.",
       ("CA-3", "AC-3(2)"), "preventive", "configurable", ("reverse_accounts_agreed",), ("B-CA-3-02",),
       "Customers → an account's Check review"),
+    C("OC-SI-09", "Checks verified at a branch",
+      "A teller platform verifies a check by the clearing rules before cash is paid at a branch, and records it cashed once, "
+      "so the same check presented anywhere later is a duplicate. Its permission does nothing else, and probing for check "
+      "numbers raises a security event.",
+      ("SI-4", "AC-6"), "preventive", "configurable", (), ("B-CP-2-02",), "API: /api/v1/checks/verify and /cashed"),
     # --- Configuration management ---------------------------------------------------------
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "

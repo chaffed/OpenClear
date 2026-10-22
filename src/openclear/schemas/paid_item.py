@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
-from openclear.domain.paid_item import PaidItemMatchStatus, PaidItemSettlementStatus
+from openclear.domain.paid_item import PaidItemMatchStatus, PaidItemSettlementStatus, PaidItemSource
 
 
 class PaidItemCreate(BaseModel):
@@ -25,6 +25,8 @@ class PaidItemRead(BaseModel):
     check_number: str
     presented_amount: Decimal
     presented_date: date
+    # Where it was presented: api, bulk_file, manual, or teller (cashed at a branch, TELLER_PLAN.md TL-D3).
+    source: PaidItemSource
     matched_issued_item_id: uuid.UUID | None
     match_status: PaidItemMatchStatus
     settlement_status: PaidItemSettlementStatus
