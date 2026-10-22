@@ -122,4 +122,6 @@ sequenceDiagram
   B-CA-3-02, control OC-SI-08 and the check `reverse_accounts_agreed`. Postgres: a return at the
   cut-off isn't paid over (`test_reverse_cutoff_concurrency.py`). The ACH authorizations help says
   how to review every debit (RPP-D5).
+- 2026-10-22: RPP3 written: *Reviewing your checks* in the customer's exceptions guide, *Reverse positive
+  pay* in the bank's customers-and-accounts guide, the README and the CHANGELOG. M2 is done.
 
