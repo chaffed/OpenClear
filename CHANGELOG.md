@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.28.1 — 2026-10-22
+
 - **Teller verification: enrollment and the payee** (the product owner's decisions on
   `TELLER_PLAN.md`'s questions). A check on an account whose customer is no longer enrolled
   answers `not_on_positive_pay`, so the teller cashes it by the bank's standard procedure, as for
