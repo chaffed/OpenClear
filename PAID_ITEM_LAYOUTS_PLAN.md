@@ -106,4 +106,14 @@ flowchart LR
   so the builder's preview shows it). The service, builder and API listing take a kind; the tile
   is *File layouts*. **Change from PIL-D3:** a bank has no routing numbers on record, so a
   posted-check layout lists the bank's own (`routing_numbers`), and a line for another fails.
+- 2026-10-22: PIL2 built. `BUILTIN_SPECS[(PAID_ITEMS, "layout")]`: the trailer is checked when the
+  file arrives, and a mismatch rejects it whole (`TrailerMismatch`), audited as
+  `bulk_upload.refused` with a `high` security event. Skipped lines are counted on the upload
+  (`skipped_rows`) and shown on its page. The paid-items upload page and the API take a
+  posted-check layout; the bank's `checks/tabular/inbox/` reads with its default, and each layout
+  has `checks/layout/<name, lowercase with dashes>/inbox/` (two layouts whose names give one
+  folder: neither is read, and it's logged). **Changes:** the fixed-width template keeps the
+  account as written (space-padded): dropping leading zeros broke accounts that have them. The
+  "same check in two files" test runs in order rather than at once: FR2's concurrency test already
+  covers two presentments at the same moment.
 

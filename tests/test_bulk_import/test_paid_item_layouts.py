@@ -21,7 +21,7 @@ FIXED = layouts.clean_settings(layouts.PAID_TEMPLATES["fixed_header_trailer"].se
 
 
 def _detail(account, check, cents, code="200", date="10212026"):
-    return f"D{account:0>12}{check:0>10}{cents:0>12}{date}{code}"
+    return f"D{account:<12}{check:0>10}{cents:0>12}{date}{code}"
 
 
 def _trailer(count, cents):
@@ -148,7 +148,7 @@ def test_building_a_posted_check_layout_with_its_trailer(client, db_session, ten
     assert new.status_code == 200 and "New posted-check layout" in new.text and 'name="trailer_prefix" value="T"' in new.text
 
     form = {"csrf_token": csrf, "kind": "paid_items", "name": "Core posted checks", "file_type": "fixed", "line_prefix": "D",
-            "amount_format": "implied", "date_format": "MMDDYYYY", "strip_zeros": ["account_number", "check_number"],
+            "amount_format": "implied", "date_format": "MMDDYYYY", "strip_zeros": ["check_number"],
             "debit_values": "200", "trailer_match": "prefix", "trailer_prefix": "T", "trailer_count_start": "2",
             "trailer_count_length": "7", "trailer_total_start": "9", "trailer_total_length": "15"}
     for field, spot in FIXED["positions"].items():
@@ -213,3 +213,149 @@ def test_the_sample_can_come_from_an_earlier_posted_check_upload(client, db_sess
     page = client.get(f"/ui/layouts/new?kind=paid_items&from_upload={upload_id}")
     assert page.status_code == 200 and "presented_amount" in page.text
     assert client.get(f"/ui/layouts/new?kind=issued_items&from_upload={upload_id}").status_code == 404
+
+
+# --- Importing with a posted-check layout (PIL2) ---------------------------------------------------
+
+
+def _core_layout(db_session, tenant, name="Core posted checks", *, is_default=True):
+    layout = import_layout_service.save(db_session, tenant.id, layout=None, name=name, owner_customer_id=None, kind=layouts.PAID_ITEMS,
+                                        raw_settings=layouts.PAID_TEMPLATES["fixed_header_trailer"].settings, is_default=is_default,
+                                        user_id=None)
+    db_session.commit()
+    return layout
+
+
+def _paid_items(db_session, tenant):
+    from openclear.domain.paid_item import PaidItem
+
+    return {p.check_number: p for p in db_session.execute(select(PaidItem).where(PaidItem.tenant_id == tenant.id)).scalars()}
+
+
+def test_a_posted_check_file_presents_every_check_and_leaves_out_the_rest(client, db_session, tenant_factory):
+    tenant, account, users = tenant_factory.make(slug="pil-import")
+    layout = _core_layout(db_session, tenant)
+    csrf = _login(client, tenant.slug, users["admin"].email)
+    page = client.get("/ui/paid-items/bulk").text
+    assert f'<option value="{layout.id}" selected>Core posted checks (default)</option>' in page
+
+    number = account.account_number
+    content = _file(_detail(number, "2001", "12500"), _detail(number, "2002", "500", code="400"), _detail(number, "2003", "9900"),
+                    _trailer(3, "22900"))
+    resp = client.post("/ui/paid-items/bulk", data={"csrf_token": csrf, "layout_id": str(layout.id)},
+                       files={"upload_file": ("posted.txt", content, "text/plain")})
+    assert "2 of 2 succeeded" in resp.text and "1 line wasn&#39;t a check to present" in resp.text and ">Core posted checks<" in resp.text
+    presented = _paid_items(db_session, tenant)
+    assert set(presented) == {"2001", "2003"} and presented["2001"].presented_amount == Decimal("125.00")
+
+
+def test_a_short_file_is_refused_whole_and_raised(client, db_session, tenant_factory):
+    from openclear.domain.audit_log_entry import AuditLogEntry
+    from openclear.domain.security_event import SecurityEvent
+
+    tenant, account, users = tenant_factory.make(slug="pil-short")
+    layout = _core_layout(db_session, tenant)
+    headers = login_headers(client, tenant.slug, users["admin"].email)
+    content = _file(_detail(account.account_number, "3001", "12500"), _trailer(2, "25000"))  # the second line never arrived
+    resp = client.post("/api/v1/bulk-uploads", headers=headers, data={"kind": "paid_items", "format": "layout", "layout_id": str(layout.id)},
+                       files={"file": ("posted.txt", content, "text/plain")})
+    assert resp.status_code == 202 and resp.json()["status"] == "rejected"
+    assert client.get(resp.json()["status_url"], headers=headers).json()["error"] == \
+        "The trailer says 2 items totalling 250.00; the file has 1 totalling 125.00. Nothing in the file was imported."
+    assert _paid_items(db_session, tenant) == {}
+    entry = db_session.execute(select(AuditLogEntry).where(AuditLogEntry.tenant_id == tenant.id,
+                                                           AuditLogEntry.action == "bulk_upload.refused")).scalar_one()
+    assert "posted.txt" in entry.summary
+    event = db_session.execute(select(SecurityEvent).where(SecurityEvent.name == "bulk_upload.refused")).scalars().first()
+    assert event is not None and event.severity == "high"
+
+
+def test_customers_cant_upload_with_the_banks_posted_check_layout(client, db_session, tenant_factory):
+    tenant, _account, _users = tenant_factory.make(slug="pil-cust-upload")
+    layout = _core_layout(db_session, tenant)
+    customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="P-2", name="Upload Co"))
+    group = security_group_service.get_security_group_by_name(db_session, tenant.id, "Preparer")
+    user_service.create_user_with_membership(db_session, tenant.id, email="prep@uploadco.example", password=TenantFactory.PASSWORD,
+                                             security_group_id=group.id, customer_id=customer.id)
+    db_session.commit()
+    headers = login_headers(client, tenant.slug, "prep@uploadco.example")
+    resp = client.post("/api/v1/bulk-uploads", headers=headers, data={"kind": "paid_items", "format": "layout", "layout_id": str(layout.id)},
+                       files={"file": ("posted.txt", b"x", "text/plain")})
+    assert resp.status_code in (403, 404)
+    csrf = _login(client, tenant.slug, "prep@uploadco.example")
+    page = client.get("/ui/paid-items/bulk")
+    if page.status_code == 200:
+        assert "Core posted checks" not in page.text
+        assert client.post("/ui/paid-items/bulk", data={"csrf_token": csrf, "layout_id": str(layout.id)},
+                           files={"upload_file": ("p.txt", b"x", "text/plain")}, follow_redirects=False).status_code == 404
+
+
+def test_the_dropbox_reads_with_the_default_then_each_layouts_folder(db_session, tenant_factory, monkeypatch, tmp_path):
+    import os
+    import time
+
+    from openclear.config import get_settings
+    from openclear.services import dropbox_import_service
+
+    root = tmp_path / "dropbox"
+    monkeypatch.setenv("OPENCLEAR_AUTO_IMPORT_DROPBOX_DIR", str(root))
+    get_settings.cache_clear()
+    try:
+        tenant, account, _users = tenant_factory.make(slug="pil-drop")
+        _core_layout(db_session, tenant)
+        second = import_layout_service.save(db_session, tenant.id, layout=None, name="Second core (CSV)", owner_customer_id=None,
+                                            kind=layouts.PAID_ITEMS, raw_settings=layouts.PAID_TEMPLATES["posted_csv"].settings,
+                                            is_default=False, user_id=None)
+        db_session.commit()
+        assert dropbox_import_service.layout_folder(second.name) == "second-core-csv"
+
+        def drop(subpath, name, content):
+            inbox = root / tenant.slug / subpath / "inbox"
+            inbox.mkdir(parents=True, exist_ok=True)
+            (inbox / name).write_bytes(content)
+            old = time.time() - 120
+            os.utime(inbox / name, (old, old))
+
+        number = account.account_number
+        drop("checks/tabular", "fixed.txt", _file(_detail(number, "4001", "1000"), _trailer(1, "1000")))
+        drop("checks/layout/second-core-csv", "posted.csv",
+             f"Account,Check Number,Amount,Posted Date\n{number},4002,20.00,2026-10-21\n".encode())
+        drop("checks/tabular", "short.txt", _file(_detail(number, "4003", "1000"), _trailer(2, "2000")))
+        results = {r.filename: r for r in dropbox_import_service.scan_and_import_tenant(db_session, tenant)}
+        assert results["fixed.txt"].outcome == results["posted.csv"].outcome == "imported"
+        assert results["short.txt"].outcome == "failed" and "The trailer says 2 items" in results["short.txt"].error
+        from openclear.workers import jobs
+
+        jobs.drain(db_session.get_bind())
+        db_session.expire_all()
+        assert {"4001", "4002"} <= set(_paid_items(db_session, tenant)) and "4003" not in _paid_items(db_session, tenant)
+        assert (root / tenant.slug / "checks/tabular/failed/short.txt").exists()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_the_same_check_in_two_files_is_a_duplicate(client, db_session, tenant_factory):
+    from openclear.domain.exception_item import ExceptionItem
+
+    from datetime import date
+
+    from openclear.services import issued_item_service
+
+    tenant, account, users = tenant_factory.make(slug="pil-dup")
+    layout = _core_layout(db_session, tenant)
+    issued_item_service.create_issued_item(db_session, tenant.id, issued_item_service.IssuedItemInput(
+        account_id=account.id, check_number="5001", amount=Decimal("75.00"), payee_name="Acme", issue_date=date(2026, 10, 1)),
+        submitted_by_user_id=users["admin"].id)
+    db_session.commit()
+    headers = login_headers(client, tenant.slug, users["admin"].email)
+    for name, check in (("monday.txt", "5001"), ("tuesday.txt", "5001")):
+        content = _file(_detail(account.account_number, check, "7500"), _trailer(1, "7500"), "EXTRA" if name == "tuesday.txt" else "")
+        resp = client.post("/api/v1/bulk-uploads", headers=headers,
+                           data={"kind": "paid_items", "format": "layout", "layout_id": str(layout.id)},
+                           files={"file": (name, content, "text/plain")})
+        assert resp.status_code == 202, resp.text
+    from openclear.workers import jobs
+
+    jobs.drain(db_session.get_bind())
+    types = [e.exception_types for e in db_session.execute(select(ExceptionItem).where(ExceptionItem.tenant_id == tenant.id)).scalars()]
+    assert len(types) == 1 and "duplicate_paid" in types[0]  # Monday's matched and paid; Tuesday's is the duplicate

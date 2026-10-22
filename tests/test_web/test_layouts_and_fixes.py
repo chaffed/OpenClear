@@ -255,7 +255,7 @@ def test_a_file_in_other_columns_offers_a_layout_from_itself(client, db_session,
     tenant, _account, users = tenant_factory.make(slug="fix-offer")
     csrf = _login(client, tenant.slug, users["admin"].email)
     resp, upload_id = _upload(client, csrf, SAMPLE, "acme.csv")
-    assert f"/ui/layouts/new?from_upload={upload_id}" in resp.text
+    assert f"/ui/layouts/new?kind=issued_items&amp;from_upload={upload_id}" in resp.text
     builder = client.get(f"/ui/layouts/new?from_upload={upload_id}").text
     assert "acme.csv" in builder and 'name="assign_4"' in builder and "Pay To" in builder
 

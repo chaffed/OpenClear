@@ -8485,7 +8485,7 @@
     },
     "/api/v1/bulk-uploads": {
       "post": {
-        "description": "Uploads a file to import in the background. Poll `status_url` for progress. A file\nthat can't be read at all comes back `rejected`, with the reason in `error`. An\nissued-check file in the customer's own columns or a fixed-width format is sent with\n`format=layout` and its `layout_id`.",
+        "description": "Uploads a file to import in the background. Poll `status_url` for progress. A file\nthat can't be read at all comes back `rejected`, with the reason in `error`. An\nissued-check file in the customer's own columns or a fixed-width format, or the core's\nposted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.\nA posted-check file whose trailer doesn't match its lines comes back `rejected`.",
         "operationId": "upload_file_api_v1_bulk_uploads_post",
         "requestBody": {
           "content": {

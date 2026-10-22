@@ -146,8 +146,9 @@ def upload_file(
 ) -> BulkUploadAccepted:
     """Uploads a file to import in the background. Poll `status_url` for progress. A file
     that can't be read at all comes back `rejected`, with the reason in `error`. An
-    issued-check file in the customer's own columns or a fixed-width format is sent with
-    `format=layout` and its `layout_id`."""
+    issued-check file in the customer's own columns or a fixed-width format, or the core's
+    posted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.
+    A posted-check file whose trailer doesn't match its lines comes back `rejected`."""
     from openclear.services import import_layout_service
 
     permission = bulk_import_service.PERMISSION_BY_KIND.get(kind)
@@ -155,10 +156,11 @@ def upload_file(
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Missing permission: {permission}")
     options: dict = {"create_missing_accounts": create_missing_accounts}
     if format == "layout":
-        if kind != BulkUploadKind.ISSUED_ITEMS or layout_id is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "format=layout needs kind=issued_items and a layout_id.")
+        if kind not in (BulkUploadKind.ISSUED_ITEMS, BulkUploadKind.PAID_ITEMS) or layout_id is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "format=layout needs kind=issued_items or paid_items, and a layout_id.")
         try:
-            options |= import_layout_service.upload_options(import_layout_service.get(db, ctx.tenant_id, layout_id, ctx.customer_id))
+            options |= import_layout_service.upload_options(
+                import_layout_service.get(db, ctx.tenant_id, layout_id, ctx.customer_id, kind=kind.value))
         except import_layout_service.LayoutNotFound:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Layout not found.") from None
     try:

@@ -41,6 +41,7 @@
     {{ "{:,}".format(added) }} {{ nouns[0] if added == 1 else nouns[1] }} added.
     {% if to_fix > 0 %}<strong>{{ "{:,}".format(to_fix) }} {{ "row needs" if to_fix == 1 else "rows need" }} fixing.</strong>
     {% elif record.failed_count %}Every failed row has been fixed.{% endif %}
+    {% if skipped_rows %}{{ "{:,}".format(skipped_rows) }} {{ "line wasn't a check" if skipped_rows == 1 else "lines weren't checks" }} to present (another transaction code, or a reversal) and {{ "was" if skipped_rows == 1 else "were" }} left out.{% endif %}
   </p>
   {% endif %}
 
@@ -48,7 +49,7 @@
   <div class="callout" role="note">
     <p>Is this file in your own columns or a fixed-width format? Describe it once with a layout,
       starting from this file, and upload it again.</p>
-    <p><a href="/ui/layouts/new?from_upload={{ record.id }}" class="button secondary">{{ icon("tune") }}Save these settings as a layout</a></p>
+    <p><a href="/ui/layouts/new?kind={{ layout_kind }}&amp;from_upload={{ record.id }}" class="button secondary">{{ icon("tune") }}Save these settings as a layout</a></p>
   </div>
   {% endif %}
 
@@ -117,6 +118,7 @@
         {% if record.succeeded_count is not none %}
         <tr><th>Succeeded</th><td>{{ record.succeeded_count }}</td></tr>
         <tr><th>Failed</th><td>{{ record.failed_count }}</td></tr>
+        {% if skipped_rows %}<tr><th>Left out</th><td>{{ skipped_rows }}</td></tr>{% endif %}
         {% elif status == "rejected" %}
         <tr><th>Result</th><td>Rejected before any rows were processed</td></tr>
         {% endif %}

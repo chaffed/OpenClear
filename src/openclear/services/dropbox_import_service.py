@@ -14,7 +14,8 @@ content:
         issued_items/inbox/                  # tabular only
         ach_transactions/tabular/inbox/
         ach_transactions/nacha/inbox/
-        checks/tabular/inbox/                 # paid items, no image
+        checks/tabular/inbox/                 # paid items, no image; the bank's default posted-check layout, if set
+        checks/layout/<layout name>/inbox/    # paid items read by that posted-check layout (lowercase, dashes)
         checks/x937/inbox/
         checks/zip/inbox/
         <customer_number>/                    # optional — same kind/format subtree, customer-scoped
@@ -102,12 +103,21 @@ class ImportedFileResult:
     error: str | None = None
 
 
+_CHECKS_LAYOUT = "checks/layout"
+
+
+def layout_folder(name: str) -> str:
+    """The dropbox folder name for a posted-check layout (PAID_ITEM_LAYOUTS_PLAN.md PIL-D5):
+    its name in lowercase, with dashes for anything else, so "Core (FIS)" is core-fis."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
 def _bulk_upload_kind_for(kind_subpath: str) -> BulkUploadKind:
     if kind_subpath == _ISSUED_ITEMS:
         return BulkUploadKind.ISSUED_ITEMS
     if kind_subpath in (_ACH_TABULAR, _ACH_NACHA):
         return BulkUploadKind.ACH_TRANSACTIONS
-    if kind_subpath == _CHECKS_TABULAR:
+    if kind_subpath == _CHECKS_TABULAR or kind_subpath.startswith(_CHECKS_LAYOUT + "/"):
         return BulkUploadKind.PAID_ITEMS
     return BulkUploadKind.CHECK_IMAGES  # checks/x937, checks/zip
 
@@ -141,6 +151,7 @@ def _process_one_file(
     customer_number: str | None,
     kind_subpath: str,
     path: Path,
+    layout=None,
 ) -> ImportedFileResult:
     settings = get_settings()
 
@@ -176,14 +187,19 @@ def _process_one_file(
     # scan. The counts are known here only when the job has already run (inline mode);
     # otherwise they're on the upload's page when it finishes.
     # Issued items in the customer's (or else the bank's) default layout, if one is set
-    # (services/import_layout_service.py); otherwise OpenClear's own columns.
-    file_format, options = _FORMAT_BY_SUBPATH[kind_subpath], None
-    if kind_subpath == _ISSUED_ITEMS:
-        from openclear.services import import_layout_service
+    # (services/import_layout_service.py); otherwise OpenClear's own columns. The bank's own
+    # checks/tabular inbox reads with its default posted-check layout, if it has one; a
+    # layout's own folder, with that layout.
+    from openclear.bulk_import import layouts
+    from openclear.services import import_layout_service
 
+    file_format, options = _FORMAT_BY_SUBPATH.get(kind_subpath, "layout"), None
+    if layout is None and kind_subpath == _ISSUED_ITEMS:
         layout = import_layout_service.default_for(session, tenant.id, customer_id)
-        if layout is not None:
-            file_format, options = "layout", import_layout_service.upload_options(layout)
+    elif layout is None and kind_subpath == _CHECKS_TABULAR and customer_id is None:
+        layout = import_layout_service.default_for(session, tenant.id, None, layouts.PAID_ITEMS)
+    if layout is not None:
+        file_format, options = "layout", import_layout_service.upload_options(layout)
     with path.open("rb") as handle:
         upload_record = bulk_import_service.receive_upload(
             session,
@@ -231,14 +247,36 @@ def _scan_root(
 ) -> list[ImportedFileResult]:
     settings = get_settings()
     results: list[ImportedFileResult] = []
-    for kind_subpath in _ALL_KIND_SUBPATHS:
+    inboxes = [(kind_subpath, None) for kind_subpath in _ALL_KIND_SUBPATHS]
+    if customer_id is None:
+        inboxes += _layout_inboxes(session, tenant)
+    for kind_subpath, layout in inboxes:
         inbox_dir = root / kind_subpath / "inbox"
         for path in _eligible_files(inbox_dir, min_age_seconds=settings.auto_import_min_file_age_seconds):
             try:
-                results.append(_process_one_file(session, tenant, customer_id, customer_number, kind_subpath, path))
+                results.append(_process_one_file(session, tenant, customer_id, customer_number, kind_subpath, path, layout))
             except Exception:
                 logger.exception("Unexpected error importing %s for tenant %s -- leaving file in place", path, tenant.slug)
     return results
+
+
+def _layout_inboxes(session: Session, tenant: Tenant) -> list[tuple[str, object]]:
+    """checks/layout/<folder>/ for each of the bank's posted-check layouts. Two layouts whose
+    names give the same folder share none: the folder is structural, never guessed."""
+    from openclear.bulk_import import layouts
+    from openclear.services import import_layout_service
+
+    by_folder: dict[str, list] = {}
+    for layout in import_layout_service.visible(session, tenant.id, None, layouts.PAID_ITEMS):
+        by_folder.setdefault(layout_folder(layout.name), []).append(layout)
+    inboxes = []
+    for folder, found in sorted(by_folder.items()):
+        if not folder or len(found) > 1:
+            logger.error("Posted-check layouts %s for tenant %s share the dropbox folder %r -- rename one; neither is read",
+                         [layout.name for layout in found], tenant.slug, folder)
+            continue
+        inboxes.append((f"{_CHECKS_LAYOUT}/{folder}", found[0]))
+    return inboxes
 
 
 def scan_and_import_tenant(session: Session, tenant: Tenant, *, customer_id: uuid.UUID | None = None) -> list[ImportedFileResult]:

@@ -142,14 +142,13 @@ TEMPLATES: dict[str, Template] = {
 # The same, for a core's posted-check file (PAID_ITEM_LAYOUTS_PLAN.md PIL-D6).
 PAID_TEMPLATES: dict[str, Template] = {
     "fixed_header_trailer": Template(
-        "Fixed-width with header and trailer", "H header, D detail lines (account 12, check 10, amount in cents 12, posted "
+        "Fixed-width with header and trailer", "H header, D detail lines (account 12, space-padded; check 10, amount in cents 12, posted "
         "date MMDDYYYY 8, transaction code 3), and a T trailer with the item count (7) and total in cents (15).",
         {"kind": PAID_ITEMS, "file_type": "fixed", "line_prefix": "D",
          "positions": {"account_number": {"start": 2, "length": 12}, "check_number": {"start": 14, "length": 10},
                        "amount": {"start": 24, "length": 12}, "posted_date": {"start": 36, "length": 8},
                        "transaction_code": {"start": 44, "length": 3}},
-         "amount_format": "implied", "date_format": "MMDDYYYY", "strip_zeros": ["account_number", "check_number"],
-         "debit_values": "200",
+         "amount_format": "implied", "date_format": "MMDDYYYY", "strip_zeros": ["check_number"], "debit_values": "200",
          "trailer": {"match": "prefix", "prefix": "T", "count_start": 2, "count_length": 7, "total_start": 9, "total_length": 15}}),
     "posted_csv": Template(
         "CSV with column names", "A header row naming each column; amounts like 1,234.56.",

@@ -1366,8 +1366,9 @@ export class BulkUploadsApi {
    *
    * Uploads a file to import in the background. Poll `status_url` for progress. A file
    * that can't be read at all comes back `rejected`, with the reason in `error`. An
-   * issued-check file in the customer's own columns or a fixed-width format is sent with
-   * `format=layout` and its `layout_id`.
+   * issued-check file in the customer's own columns or a fixed-width format, or the core's
+   * posted-check file (`kind=paid_items`), is sent with `format=layout` and its `layout_id`.
+   * A posted-check file whose trailer doesn't match its lines comes back `rejected`.
    */
   uploadFile(form: { create_missing_accounts?: boolean; file: Blob; format: string; kind: BulkUploadKind; layout_id?: string | null }): Promise<BulkUploadAccepted> {
     return this.c.call<BulkUploadAccepted>("POST", `/api/v1/bulk-uploads`, { multipart: form });
