@@ -70,7 +70,10 @@ def _seed_labeled_decisions(db_session, tenant, account, users, count: int = 12)
         db_session.commit()
 
 
-def test_retrain_endpoint_trains_and_promotes_model(client, db_session, tenant_factory):
+def test_retrain_endpoint_trains_and_promotes_model(client, db_session, tenant_factory, monkeypatch):
+    from openclear.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "ml_bank_model_min_decisions", 10)  # the floor itself: tests/test_ml
     tenant, account, users = tenant_factory.make(slug="admin-ml-retrain")
     _scoring_on(db_session, tenant)
     _seed_labeled_decisions(db_session, tenant, account, users)

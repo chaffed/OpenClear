@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
-from openclear.domain.decision import Decision, DecisionOutcome
+from openclear.domain.decision import Decision, DecisionOutcome, DecisionSource
 from openclear.domain.exception_item import ExceptionItem, ExceptionItemSource
 from openclear.domain.ml_model import MlModel, MlModelStatus
 from openclear.ml.registry import ArtifactStore, activate_model, create_model_row, get_active_model_row
@@ -55,7 +55,9 @@ class TrainResult:
 
 def _labeled_decisions(stmt, network_code: str, tenant_id: uuid.UUID):
     """Adds to `stmt` (a select over Decision) a bank's training data (SIMPLIFY_PLAN.md SP-D8):
-    its own final decisions on this network."""
+    its own final decisions on this network, made by a person. A default applied because nobody
+    decided in time (DecisionSource.AUTO_DEFAULT) says what the account's setting is, not whether
+    the item was fraud, so it would teach the model the default (REGULATORY_PLAN.md RG6)."""
     return stmt.join(ExceptionItem, Decision.exception_item_id == ExceptionItem.id).where(
         ExceptionItem.tenant_id == tenant_id,
         ExceptionItem.network_code == network_code,
@@ -63,6 +65,7 @@ def _labeled_decisions(stmt, network_code: str, tenant_id: uuid.UUID):
         Decision.features_json.is_not(None),
         # Only final decisions: one that can still change before its cut-off isn't a label yet (UI_PLAN.md UI-D13).
         Decision.locked_at.is_not(None),
+        Decision.source == DecisionSource.HUMAN,
     )
 
 
@@ -144,20 +147,24 @@ def _promotion_decision(
     comparison is fair — comparing a new model's AUC against the old model's stored AUC,
     measured on a different holdout, isn't. There's also a floor on how much of the bank's
     data a replacement has learned from (ml_bank_model_min_decisions): a small sample can
-    "win" a small holdout by luck. Returns (promote, evaluation details)."""
+    "win" a small holdout by luck. The floor applies to the first model too (REGULATORY_PLAN.md
+    RG6; docs/compliance/sr-11-7.md): it's kept, but not activated, until the bank has enough.
+    Returns (promote, evaluation details)."""
     evaluation: dict = {"holdout_size": len(y_holdout)}
+    minimum = get_settings().ml_bank_model_min_decisions
+    if decision_count < minimum:
+        evaluation["reason"] = (
+            f"Not activated: trained on {decision_count} of the bank's own decisions; "
+            f"{minimum} are needed before {'it can be activated' if champion is None else 'it can replace the active model'}."
+        )
+        if champion is not None:
+            evaluation["compared_with_version"] = champion.version
+        return False, evaluation
     if champion is None:
         evaluation["reason"] = "No model was active, so this one was activated."
         return True, evaluation
 
     evaluation["compared_with_version"] = champion.version
-    minimum = get_settings().ml_bank_model_min_decisions
-    if decision_count < minimum:
-        evaluation["reason"] = (
-            f"Not activated: trained on {decision_count} of the bank's own decisions; "
-            f"{minimum} are needed before it can replace the active model."
-        )
-        return False, evaluation
 
     try:
         champion_metrics = _evaluate(ArtifactStore().load_model(champion), X_holdout, y_holdout)

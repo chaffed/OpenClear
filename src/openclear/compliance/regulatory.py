@@ -29,7 +29,10 @@ PAGES: tuple[Page, ...] = (
     Page("state-rules.md", "State rules: Massachusetts and CSBS", date(2026, 10, 22)),
     Page("fincen-ofac.md", "Check fraud, SARs and OFAC", date(2026, 10, 22)),
     Page("nacha.md", "Nacha Operating Rules and Regulation E", date(2026, 10, 22)),
-    Page("sr-11-7.md", "Model risk management (SR 11-7)", date(2026, 10, 21)),
+    Page("sr-11-7.md", "Model risk management (SR 11-7)", date(2026, 10, 22)),
+    Page("ai-rmf.md", "AI risk management (NIST AI RMF)", date(2026, 10, 22)),
+    Page("accessibility.md", "Accessibility", date(2026, 10, 22)),
+    Page("cfpb-1033.md", "CFPB Section 1033", date(2026, 10, 22)),
     Page("tprm.md", "Third-party risk management", date(2026, 10, 21)),
     Page("csf.md", "NIST CSF 2.0", date(2026, 10, 22)),
 )

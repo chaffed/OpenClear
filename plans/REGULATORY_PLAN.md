@@ -266,3 +266,17 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   deposit from X9.37 type 26 addenda (medium; the field layout in X9.100-187 to confirm); an item
   history export for investigations, signed, bank-only and not labelled SAR (medium); IAT addenda
   names (small, only if a bank screens from OpenClear).
+- 2026-10-22: RG6 done. **Findings:** WCAG 2.2 wasn't checked (axe ran 2.0 and 2.1 tags only);
+  with it, 106 row actions on desktop were under 24px and the data dictionary's diagram labels
+  failed contrast in the dark theme, and on phones the decision bar could hide the control focused
+  just above it (2.4.11). In the model: defaults applied at the deadline were training labels, and
+  a first model was activated on 10 decisions while `sr-11-7.md` said 200. Section 1033 doesn't
+  reach positive pay (business accounts; the rule's dates stayed by the court). Built: the axe
+  runs on WCAG 2.2 and the guides, a focus-not-obscured check, the fixes for each finding, human
+  decisions only as labels, and the 200 floor for the first model. CUECs B-SA-4-01, B-RA-3-05;
+  B-RA-3-02 amended. Pages `accessibility.md`, `ai-rmf.md`, `cfpb-1033.md`. **Follow-ups, not
+  built:** the manual screen-reader and keyboard pass, then a VPAT (parked, needs a person);
+  3.3.7 Redundant Entry evaluated (small, with that pass); score drift and agreement monitoring
+  (medium); a check of the bulk-action bar's focus case on every build (small).
+- 2026-10-22: RG7 done: all fifteen regulatory pages are in `compliance/regulatory.py` with
+  their "Current as of" lines, kept in step by `test_regulatory_currency`.

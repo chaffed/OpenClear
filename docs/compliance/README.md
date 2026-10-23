@@ -14,6 +14,9 @@ for each point is.
 - [Check fraud, SARs and OFAC](fincen-ofac.md): what a SAR narrative needs from OpenClear, and why it doesn't screen
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
+- [AI risk management (NIST AI RMF)](ai-rmf.md): the fraud-scoring model, function by function
+- [Accessibility](accessibility.md): WCAG 2.2 AA, Section 508 and the ADA; what's checked and what a VPAT would hold
+- [CFPB Section 1033](cfpb-1033.md): why positive pay isn't covered
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack
 - [Security metrics](security-metrics.md): ASVS coverage, advisories fixed, dependency age and
   the SBOM, for the latest release

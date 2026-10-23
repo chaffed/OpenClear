@@ -103,7 +103,8 @@ def test_admin_page_while_scoring_is_off(client, db_session, tenant_factory):
     assert get_active_model_row(db_session, "check", tenant_id=tenant.id) is None
 
 
-def test_retraining_from_the_admin_page(client, db_session, tenant_factory):
+def test_retraining_from_the_admin_page(client, db_session, tenant_factory, monkeypatch):
+    monkeypatch.setattr(get_settings(), "ml_bank_model_min_decisions", 10)  # the floor itself: tests/test_ml
     tenant, account, users = tenant_factory.make(slug="fm-admin-on")
     tenant.ml_scoring_enabled = True
     db_session.commit()

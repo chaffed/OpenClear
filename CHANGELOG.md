@@ -46,6 +46,17 @@
   CUECs B-RA-3-04 (screen for sanctions where the money moves), B-SC-28-01 (encrypt downloads on
   the bank's devices) and B-IR-6-08 (keep SARs out of OpenClear); H-CP-9-01 now asks for an
   immutable or offline backup.
+- **Accessibility and AI** (RG6). The automated accessibility checks now cover WCAG 2.2 (axe's
+  `wcag22a` and `wcag22aa`, so a 24px target size at every width) and the in-app guides and data
+  dictionary, and check that a control focused from the keyboard isn't hidden behind the decision
+  bar. Fixed what they found: row actions (Edit, Deactivate, a note's toggle) are at least 24px
+  high on desktops, the page scrolls a focused control clear of the decision and bulk-action
+  bars, and the data dictionary's diagram labels are readable in the dark theme. **Fraud
+  scoring:** a bank's first model is now activated only after 200 of its own decisions, like a
+  replacement (it had been 10), as `sr-11-7.md` said; and defaults applied at the deadline are no
+  longer training labels, since they say what the account's setting is, not whether the item was
+  fraud. New pages `accessibility.md`, `ai-rmf.md` and `cfpb-1033.md`; CUECs B-SA-4-01 and
+  B-RA-3-05; B-RA-3-02 names Section 1033.
 - **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
   sources, and the control check `regulatory_currency` warns when one is over a year old.
 

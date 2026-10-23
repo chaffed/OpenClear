@@ -303,14 +303,16 @@ number the bank's last run recorded); the job binds to the bank and calls
 reads only the two columns it needs (`features_json`, outcome), in batches, from the last
 `ml_training_window_days` (365) and at most the newest `ml_training_max_rows` (250,000).
 Only final decisions count: one that can still change before its cut-off isn't a label yet.
+Only people's decisions count: a default applied at the deadline (`DecisionSource.AUTO_DEFAULT`)
+says what the account's setting is, not whether the item was fraud.
 Each run records its row
 counts, whether it was capped, and how long it took in `metrics_json["training"]`.
 Training holds out the most recent decisions. The
 new model (challenger) and the active one (champion) are scored on the **same** holdout,
 and the challenger is promoted only if it does at least as well
-(`_promotion_decision`). A bank's first model is activated as soon as it's trained; a
-replacement must also have seen at least `ml_bank_model_min_decisions` (200), so it can't beat
-the active one by luck on a tiny sample. There's a per-bank cooldown so on-demand retraining
+(`_promotion_decision`). Any model, the bank's first included, must also have seen at least
+`ml_bank_model_min_decisions` (200) before it's activated, so it can't beat the active one by
+luck on a tiny sample, or score a bank's items from a handful of decisions. There's a per-bank cooldown so on-demand retraining
 can't be used to burn compute.
 
 Artifacts are joblib (pickle) files under `ml_artifact_dir` (`ml/registry.py::ArtifactStore`).

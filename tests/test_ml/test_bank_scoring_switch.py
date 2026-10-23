@@ -47,6 +47,26 @@ def _row(db_session, *, tenant_id, activate=True, version="v"):
 # --- What a bank's model trains on ---
 
 
+def test_defaults_applied_at_the_deadline_are_not_training_labels(db_session, tenant_factory):
+    """REGULATORY_PLAN.md RG6: an AUTO_DEFAULT decision says what the account's default is, not
+    whether the item was fraud, so the model learns only from people's decisions."""
+    from sqlalchemy import select
+
+    from openclear.domain.decision import Decision, DecisionSource
+    from openclear.domain.exception_item import ExceptionItem
+
+    bank, _a, _u = _bank(tenant_factory, db_session, "lbl-auto", decisions=14)
+    rows = db_session.execute(select(Decision).join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id)
+                              .where(ExceptionItem.tenant_id == bank.id)).scalars().all()
+    for decision in rows[:4]:
+        decision.source = DecisionSource.AUTO_DEFAULT
+    db_session.commit()
+
+    result = train_model(db_session, "check", tenant_id=bank.id)
+
+    assert result.model_row.trained_from_decision_count == 10
+
+
 def test_a_bank_model_trains_on_its_own_bank_only(db_session, tenant_factory):
     _bank(tenant_factory, db_session, "own-ccc", decisions=12)
     bank, _a, _u = _bank(tenant_factory, db_session, "own-ddd", decisions=14)
@@ -148,9 +168,22 @@ def test_first_bank_model_is_activated_when_none_is_active(db_session, tenant_fa
     assert "No model was active" in result.model_row.metrics_json["evaluation"]["reason"]
 
 
-def test_bank_model_needs_enough_own_decisions_to_replace_the_active_one(db_session, tenant_factory):
+def test_a_first_model_needs_enough_own_decisions_to_be_activated(db_session, tenant_factory, monkeypatch):
+    """REGULATORY_PLAN.md RG6: the floor in sr-11-7.md applies to the first model too."""
+    monkeypatch.setattr(get_settings(), "ml_bank_model_min_decisions", 200)
+    bank, _a, _u = _bank(tenant_factory, db_session, "cc-first-floor", decisions=12)
+
+    result = train_model(db_session, "check", tenant_id=bank.id)
+
+    assert not result.promoted
+    assert "200 are needed before it can be activated" in result.model_row.metrics_json["evaluation"]["reason"]
+    assert get_active_model_row(db_session, "check", tenant_id=bank.id) is None
+
+
+def test_bank_model_needs_enough_own_decisions_to_replace_the_active_one(db_session, tenant_factory, monkeypatch):
     bank, _a, _u = _bank(tenant_factory, db_session, "cc-min", decisions=12)
     first = train_model(db_session, "check", tenant_id=bank.id)
+    monkeypatch.setattr(get_settings(), "ml_bank_model_min_decisions", 200)
 
     second = train_model(db_session, "check", tenant_id=bank.id)
 

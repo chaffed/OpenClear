@@ -105,6 +105,7 @@ NIST_TITLES = {
     "RA-3": "Risk Assessment",
     "RA-5": "Vulnerability Monitoring and Scanning",
     "SA-9": "External System Services",
+    "SA-4": "Acquisition Process",
     "SC-5": "Denial-of-service Protection",
     "SC-7": "Boundary Protection",
     "SC-8": "Transmission Confidentiality and Integrity",
@@ -313,7 +314,8 @@ CUECS: tuple[Cuec, ...] = (
          "attested", None, "Yearly", "Settings → Controls; docs/compliance/tprm.md"),
     Cuec("B-RA-3-02", "bank", "RA-3", "Know which accounts are consumer accounts",
          "Identify each account on OpenClear that is a consumer account under Regulation E, and apply the bank's Regulation E "
-         "procedures to it alongside positive pay.",
+         "procedures to it alongside positive pay, and meet any duty under the CFPB's personal financial data rights rule "
+         "(12 CFR 1033) for it through the bank's own interfaces.",
          "OpenClear protects business and consumer accounts the same way, and its decision history shows when an item was "
          "shown, decided and by whom.",
          "attested", None, "Yearly", "Customers → Accounts; docs/compliance/nacha.md (Regulation E)"),
@@ -338,6 +340,13 @@ CUECS: tuple[Cuec, ...] = (
          "unmanaged devices (201 CMR 17.04(5)).",
          "OpenClear records each export and download in the action log.",
          "attested", None, "Yearly", "The bank's device management", related=("MP-4",)),
+    Cuec("B-RA-3-05", "bank", "RA-3", "Govern the scoring model",
+         "Before turning fraud scoring on, inventory the bank's model under its model-risk or AI policy, tier it and name an owner; "
+         "while it's on, review its metrics, champion/challenger record and replays at least yearly, and turn it off if they "
+         "degrade.",
+         "OpenClear keeps scoring off until the bank turns it on, activates a model only after 200 of the bank's own decisions, "
+         "learns only from decisions people made, and shows each model's metrics and how it was chosen.",
+         "attested", None, "Yearly", "Settings → ML models; docs/compliance/ai-rmf.md", related=("CA-7", "CM-4")),
     Cuec("B-SI-12-01", "bank", "SI-12", "Set retention and disposal",
          "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and "
          "at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
@@ -501,6 +510,11 @@ CUECS: tuple[Cuec, ...] = (
          "Supplement A requires even when the unauthorized access was at the host.",
          "OpenClear's action log, security events and evidence export reconstruct who did what, and when.",
          "attested", None, "Yearly", "The bank's incident response plan", related=("IR-4", "IR-8")),
+    Cuec("B-SA-4-01", "bank", "SA-4", "Check accessibility against the bank's obligations",
+         "Compare OpenClear's accessibility statement with the bank's own ADA and policy obligations, and report any barrier the "
+         "bank's staff or customers meet.",
+         "OpenClear checks WCAG 2.2 A and AA automatically on every build, and states what isn't yet checked.",
+         "attested", None, "Yearly", "docs/compliance/accessibility.md"),
     # --- The bank: outside services ------------------------------------------------------
     Cuec("B-SA-9-02", "bank", "SA-9", "Write OpenClear into the third-party policy",
          "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a "

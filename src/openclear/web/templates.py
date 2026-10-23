@@ -136,8 +136,8 @@ def _exception_status_label(status) -> str:
 
 def _fraud_risk(score: float | None) -> dict | None:
     """Exposed as `fraud_risk(item.ml_score)`. ExceptionItem.ml_score is the model's
-    probability that the item should be PAID (ml/model.py; auto-disposition pays at
-    >= 0.5). Reviewers think in terms of risk, and a bare "0.95" is easy to read the wrong
+    probability that the item should be PAID (ml/model.py). It's advice only: nothing pays or
+    returns by it, and a default at the deadline is the account's setting. Reviewers think in terms of risk, and a bare "0.95" is easy to read the wrong
     way round, so this turns it into a level plus the chance it should be returned.
     None when there's no score yet."""
     if score is None:
