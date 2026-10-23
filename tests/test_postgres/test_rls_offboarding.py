@@ -6,6 +6,7 @@ it (plans/OFFBOARDING_PLAN.md): every row with the bank's tenant_id goes, and no
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import func, select
 
 from openclear.db.base import Base
@@ -13,6 +14,9 @@ from openclear.domain.bank_deletion import BankDeletion
 from openclear.domain.data_export_job import DataExportJob, DataExportJobStatus
 from openclear.domain.tenant import Tenant
 from openclear.services import offboarding_service
+from tests.conftest import TEST_DATABASE_URL
+
+pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs OPENCLEAR_TEST_DATABASE_URL (Postgres)")
 
 
 def _rows(session, tenant_id) -> int:
