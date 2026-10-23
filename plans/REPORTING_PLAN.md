@@ -8,7 +8,7 @@ they've been given, and only the kinds of data their permissions cover.
 
 **Status: replaced.** On 2026-10-12 the product owner decided OpenClear won't have a reporting
 dashboard or report builder of its own. Banks report from their own business intelligence
-platform, fed from OpenClear's API; the guide is [docs/guides/bi.md](docs/guides/bi.md). The
+platform, fed from OpenClear's API; the guide is [docs/guides/bi.md](../docs/guides/bi.md). The
 analysis below is kept for the record: it's why the data sits behind the API and its
 permissions rather than being read straight from the database.
 

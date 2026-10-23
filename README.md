@@ -1399,7 +1399,7 @@ To write a plugin:
 - read [docs/PLUGINS.md](docs/PLUGINS.md);
 - copy [examples/openclear-plugin-example](examples/openclear-plugin-example).
 
-The plan is in [PLUGIN_PLAN.md](PLUGIN_PLAN.md).
+The plan is in [PLUGIN_PLAN.md](plans/PLUGIN_PLAN.md).
 
 ## Upgrade and downgrade support
 

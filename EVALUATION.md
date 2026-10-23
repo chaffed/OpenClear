@@ -333,7 +333,7 @@ waiting on approval right now").
 ## Notes for resuming
 
 - All checklist items complete as of 2026-09-22. The fix work is planned in
-  [FIX_PLAN.md](FIX_PLAN.md) — track implementation progress there.
+  [FIX_PLAN.md](plans/FIX_PLAN.md) — track implementation progress there.
 - Reproductions used throwaway files that have since been deleted. Nothing in the repo was
   modified except this file.
 - Live UI check setup: a scratch SQLite DB with `OPENCLEAR_ENVIRONMENT=development`,

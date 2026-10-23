@@ -98,7 +98,7 @@ ASVS 5.0 requirements. "CUEC" means the protection depends on the service provid
 
 pytm matches every element and flow against its threat library (based on CAPEC). These are
 the threats it raises for this model, most severe first. Most are answered by the controls
-above and by the [ASVS assessment](../../OWASP_PLAN.md); they're listed so that a change to
+above and by the [ASVS assessment](../../plans/OWASP_PLAN.md); they're listed so that a change to
 the model that raises a new one shows up in review.
 
 {_generic_threats(tm)}

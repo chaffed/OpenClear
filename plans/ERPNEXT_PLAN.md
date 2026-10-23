@@ -12,7 +12,7 @@ Today an ERPNext business does both by hand: it exports its checks to CSV and up
 it decides exceptions in OpenClear's own pages. This plan connects the two systems, so a check
 written in ERPNext is in OpenClear within minutes and its exceptions are visible from ERPNext.
 
-The [Fineract adapter](integrations/fineract/README.md) connects a bank's core system. This is
+The [Fineract adapter](../integrations/fineract/README.md) connects a bank's core system. This is
 its mirror image: it connects a **customer's** system, using a customer-owned API client.
 
 ## What exists today

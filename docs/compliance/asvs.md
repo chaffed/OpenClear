@@ -17,7 +17,7 @@ OpenClear measured against the [OWASP Application Security Verification Standard
 | Service provider's (CUEC) | 15 |
 | Not applicable | 41 |
 
-Requirements not fully met are planned for 1.24 and 1.25, or recorded with their reason ([OWASP_PLAN.md](../../OWASP_PLAN.md)).
+Requirements not fully met are planned for 1.24 and 1.25, or recorded with their reason ([OWASP_PLAN.md](../../plans/OWASP_PLAN.md)).
 
 
 ## V1 Encoding and Sanitization

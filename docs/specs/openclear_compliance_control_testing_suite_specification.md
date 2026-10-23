@@ -1,6 +1,6 @@
 > The original specification for OpenClear's compliance and control testing. It describes a Go
-> layout (`pkg/`, `cmd/`); OpenClear is Python. [COMPLIANCE_PLAN.md](../../COMPLIANCE_PLAN.md) and
-> [CONTROLS_PLAN.md](../../CONTROLS_PLAN.md) map it onto the code and say where they differ.
+> layout (`pkg/`, `cmd/`); OpenClear is Python. [COMPLIANCE_PLAN.md](../../plans/COMPLIANCE_PLAN.md) and
+> [CONTROLS_PLAN.md](../../plans/CONTROLS_PLAN.md) map it onto the code and say where they differ.
 
 # Technical Specification: OpenClear Automated Compliance, Control & Model Risk Testing Engine
 

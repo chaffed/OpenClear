@@ -1,6 +1,6 @@
 # OpenClear Fix Plan
 
-Source: [EVALUATION.md](EVALUATION.md) (2026-09-22). Finding IDs (S0, F1, U2, …) refer to
+Source: [EVALUATION.md](../EVALUATION.md) (2026-09-22). Finding IDs (S0, F1, U2, …) refer to
 that file. Each phase is one PR (or a small set of PRs) that ships and is tested on its
 own. Work top to bottom. Tick boxes as you go so a lost session can resume here.
 

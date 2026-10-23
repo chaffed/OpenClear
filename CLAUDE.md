@@ -10,7 +10,8 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - `networks/` payment rails (`check/`, `ach/`; `registry.py`) · `bulk_import/` file parsers
 - `db/tenancy.py` RLS binding, `TenantContext`, `memberships_elsewhere` · `db/account_scope.py` per-account access
 - `workers/` job queue, scheduler, handlers · `storage.py` local, S3, Azure files
-- Plans and progress: `MASTER_PLAN.md` and the `*_PLAN.md` files (each has a progress log; add to it)
+- Plans and progress: `plans/` — `MASTER_PLAN.md` and the other `*_PLAN.md` files (each has a progress log; add to it);
+  what waits on a bank, a customer or infrastructure is in `PARKED_PLAN.md`
 
 ## Tests
 - One file: `.venv/bin/python -m pytest -q tests/path.py` (add `-n 6` for speed).
