@@ -714,7 +714,8 @@ third-party risk guidance):
   test history that attestations are proposed from.
 - **Controls** (Settings → Controls, `GET /api/v1/controls/status`, `openclear controls`): each
   control's live PASS / WARN / FAIL with its evidence. Record how the host encrypts disks and
-  the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`. The page groups the checks under
+  the database in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`, and its recovery objectives and last restore
+  test in `OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION` and `OPENCLEAR_LAST_RESTORE_TEST`. The page groups the checks under
   OpenClear's controls, each filed under NIST SP 800-53 ([docs/compliance/controls.md](docs/compliance/controls.md),
   `GET /api/v1/compliance/controls`), and what they rely on the bank, its customers and its host
   to do is the CUEC inventory ([docs/compliance/cuecs.md](docs/compliance/cuecs.md)). Both are

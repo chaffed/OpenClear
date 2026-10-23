@@ -34,6 +34,7 @@ FAMILIES = {
     "CM": "Configuration management",
     "CA": "Assessment and monitoring",
     "IR": "Incident response",
+    "CP": "Contingency planning",
 }
 TYPES = {
     "preventive": "stops something happening",
@@ -276,6 +277,12 @@ CONTROLS: tuple[OcControl, ...] = (
       "The evidence export records the version, the plugins and models in force with their digests, and the outside services "
       "turned on.",
       ("CM-2", "CM-8"), "detective", "built_in", ("outside_services",), ("B-SA-9-01",), "Controls → Export evidence"),
+    # --- Contingency planning ----------------------------------------------------------------
+    C("OC-CP-01", "Recovery objectives stated",
+      "The host's recovery time and recovery point objectives and the date of its last restore test are shown on the Controls "
+      "page, which warns until they're recorded or once the test is over a year old.",
+      ("CP-2", "CP-4"), "detective", "built_in", ("recovery_objectives",), ("H-CP-2-01", "H-CP-9-01", "B-CP-2-03"),
+      "Controls → Recovery objectives stated"),
     # --- Incident response -------------------------------------------------------------------
     C("OC-IR-01", "Incident notices to each bank",
       "The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's "

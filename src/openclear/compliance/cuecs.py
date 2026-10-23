@@ -122,6 +122,7 @@ NIST_TITLES = {
     "SI-7(6)": "Cryptographic Protection",
     "SI-10": "Information Input Validation",
     "SI-12": "Information Management and Retention",
+    "PS-3": "Personnel Screening",
     "SR-6": "Supplier Assessments and Reviews",
 }
 NIST_ID = re.compile(r"^(AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(\(\d{1,2}\))?$")
@@ -316,9 +317,20 @@ CUECS: tuple[Cuec, ...] = (
          "shown, decided and by whom.",
          "attested", None, "Yearly", "Customers → Accounts; docs/compliance/nacha.md (Regulation E)"),
     Cuec("B-RA-3-01", "bank", "RA-3", "Assess positive pay risk",
-         "Include OpenClear in the bank's risk assessment, and set each customer's services and default dispositions from it.",
+         "Include OpenClear in the bank's risk assessment and in the information security program's yearly report to the board "
+         "(12 CFR 364 App. B III.F), and set each customer's services and default dispositions from it.",
          "OpenClear applies each customer's services and default dispositions as set.",
          "attested", None, "Yearly", "Customers → Positive pay settings"),
+    Cuec("B-RA-3-03", "bank", "RA-3", "Keep the check-fraud controls positive pay doesn't provide",
+         "Keep account opening and monitoring, kiting detection and stop payments in the bank's own program and the core.",
+         "OpenClear catches checks that weren't issued, altered amounts and payees, duplicates and a check cashed at a branch, but "
+         "sees nothing of how an account was opened or of money moving between accounts.",
+         "attested", None, "Yearly", "The bank's fraud program"),
+    Cuec("B-SI-12-01", "bank", "SI-12", "Set retention and disposal",
+         "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and "
+         "at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
+         "OpenClear keeps a bank's business records until the bank's installation or data is deleted, and exports all of it.",
+         "attested", None, "Yearly, and at exit", "Settings → Data export; the host's deletion record", related=("MP-6",)),
     # --- The bank: monitoring ------------------------------------------------------------
     Cuec("B-CA-7-01", "bank", "CA-7", "Act on control status",
          "Watch control status (the Controls page, the API, or control.status.changed in the SIEM) and investigate a WARN or FAIL "
@@ -454,6 +466,11 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear applies each account's default disposition to undecided exceptions, and keeps the decisions to send once the "
          "core is back.",
          "assisted", "default_dispositions", "Yearly", "Customers → Positive pay settings", related=("CP-4",)),
+    Cuec("B-CP-2-03", "bank", "CP-2", "Exercise the cutoff outage plan",
+         "Exercise B-CP-2-01's plan at least yearly, including getting pay and return decisions to the core before the return "
+         "deadline without OpenClear, check the bank's recovery objectives against the host's, and record the result.",
+         "OpenClear shows the host's recovery objectives and last restore test on the Controls page.",
+         "assisted", "recovery_objectives", "Yearly", "Controls → Recovery objectives stated", related=("CP-4",)),
     Cuec("B-AT-3-01", "bank", "AT-3", "Train the deciders",
          "Train staff who decide exceptions (fraud red flags, return deadlines and reasons, when to call the customer) before they "
          "get access, and each year.",
@@ -461,14 +478,16 @@ CUECS: tuple[Cuec, ...] = (
          "attested", None, "Yearly", "The bank's training records"),
     Cuec("B-IR-6-01", "bank", "IR-6", "Handle incidents involving OpenClear",
          "Include OpenClear in the bank's incident response plan, keep the bank's incident contacts current with whoever hosts it, "
-         "and report incidents involving it as the bank's rules require.",
+         "and report incidents involving it as the bank's rules require, notifying customers and the FDIC as 12 CFR 364 App. B "
+         "Supplement A requires even when the unauthorized access was at the host.",
          "OpenClear's action log, security events and evidence export reconstruct who did what, and when.",
          "attested", None, "Yearly", "The bank's incident response plan", related=("IR-4", "IR-8")),
     # --- The bank: outside services ------------------------------------------------------
     Cuec("B-SA-9-02", "bank", "SA-9", "Write OpenClear into the third-party policy",
          "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a "
          "contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the "
-         "bank, representations and warranties, and deletion at exit (23 NYCRR 500.11).",
+         "bank or unauthorized access to its customers' information, representations and warranties, and deletion at exit "
+         "(23 NYCRR 500.11; 12 CFR 364 App. B III.D).",
          "OpenClear supplies the controls, CUECs, host attestations, security metrics and evidence export a contract and an "
          "assessment rely on.",
          "attested", None, "Yearly", "docs/compliance/tprm.md; docs/compliance/nydfs.md"),
@@ -598,6 +617,11 @@ CUECS: tuple[Cuec, ...] = (
          "Back up the database and file storage, encrypted and kept apart from the primary, and test a restore at least yearly.",
          "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
          "attested", None, "Daily; restore tested yearly", "The host's backup records", related=("CP-4", "CP-10")),
+    Cuec("H-CP-2-01", "host", "CP-2", "State recovery objectives",
+         "State the installation's recovery time and recovery point objectives, record them and each restore test's date in "
+         "OpenClear's settings, and give the banks the restore tests' results.",
+         "OpenClear shows them on every bank's Controls page, and warns when they're missing or the test is over a year old.",
+         "automated", "recovery_objectives", "Yearly", "Controls → Recovery objectives stated", related=("CP-4",)),
     Cuec("H-SI-2-01", "host", "SI-2", "Apply updates",
          "Apply OpenClear releases, and operating system, database and dependency patches, within the host's patching deadlines.",
          "OpenClear publishes versioned releases with a changelog, and shows the running version.",
@@ -626,6 +650,16 @@ CUECS: tuple[Cuec, ...] = (
          "cybersecurity event affecting its systems or data (23 NYCRR 500.11(b)(3)), and follow the runbook's Incidents section.",
          "OpenClear emails each bank's incident contacts, shows the notice until the bank acknowledges it, and records both.",
          "attested", None, "Per event", "Platform → Incidents; the host's incident records", related=("IR-4", "IR-8")),
+    Cuec("H-IR-6-02", "host", "IR-6", "Notify banks of unauthorized access to their customers' information",
+         "Notify each affected bank as soon as possible of unauthorized access to its customer information, whether or not it "
+         "disrupted the service, with what the logs show was reached (12 CFR 364 App. B Supplement A).",
+         "OpenClear's action log records who viewed check images and who exported data, so the reach can be shown.",
+         "attested", None, "Per event", "Platform → Incidents; the bank's action log", related=("IR-4",)),
+    Cuec("H-PS-3-01", "host", "PS-3", "Screen the host's staff",
+         "Screen everyone with access to the installation or to banks' data before granting it, as the banks' contracts require "
+         "(12 CFR 364 App. B III.C.1.e).",
+         "OpenClear gives platform staff no way into a bank except a grant the bank makes, and logs what they do.",
+         "attested", None, "On hire", "The host's personnel records"),
     Cuec("H-IR-8-01", "host", "IR-8", "Keep an incident response plan",
          "Keep an incident response and recovery plan for the installation (roles, decisions, communications with the banks, "
          "root cause), and test it each year.",

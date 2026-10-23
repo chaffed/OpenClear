@@ -242,3 +242,15 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   not built:** a status page or API for notices (small); SMS for notices (small); an independent
   penetration test of OpenClear for 500.5 (parked, needs funding); multi-factor authentication
   required of every bank user by default for 500.12 (medium; today the bank's setting).
+- 2026-10-22: RG4 done. **Findings:** the FFIEC BCM booklet has a bank check its recovery
+  objectives against its provider's, and OpenClear published none for a host to state; GLBA's
+  Guidelines (12 CFR 364 App. B II.B.4, III.C.4) name disposal, and OpenClear has no bank-set
+  retention or signed deletion at exit; Supplement A's notice of unauthorized access is wider than
+  the FDIC's disruption rule. Built: the check `recovery_objectives` and control OC-CP-01 (the
+  host's RTO, RPO and last restore test, from settings). CUECs B-RA-3-03, B-SI-12-01, B-CP-2-03,
+  H-CP-2-01, H-IR-6-02, H-PS-3-01; B-RA-3-01, B-IR-6-01 and B-SA-9-02 amended. Pages: `ffiec.md`
+  (Retail Payment Systems, BCM), `glba.md`, `cri-profile.md`. The FFIEC InfoBase refuses
+  automated reading, so the booklets' wording is from extracts and unconfirmed. **Follow-ups, not
+  built:** bank-set retention and disposal of business records, with a signed deletion record at
+  exit (medium; deleting records banks must keep for years needs the product owner's decision on
+  the design, and each bank's retention periods are its own legal call, B-SI-12-01).

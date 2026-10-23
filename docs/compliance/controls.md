@@ -107,3 +107,9 @@ Inventory version 1.3. The same list, with each check's live status for your ban
 | OC-IR-01 | **Incident notices to each bank.** The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's incident contacts (or its CEO and CIO) and shown to its administrators until one acknowledges it, with sending and acknowledging in the bank's action log and raised as security events. | **IR-6** Incident Reporting<br>**IR-4** Incident Handling | ID.IM-01, ID.IM-02, ID.IM-03, PR.IR-03, DE.AE-02, DE.AE-03, DE.AE-06, DE.AE-08, RS.MA-01, RS.MA-02, RS.MA-03, RS.MA-04, RS.MA-05, RS.AN-03, RS.AN-06, RS.AN-07, RS.AN-08, RS.CO-02, RS.CO-03, RS.MI-01, RS.MI-02, RC.RP-01, RC.RP-02, RC.RP-06, RC.CO-03, RC.CO-04 | corrective, built in | `incident_contacts` (live) | H-IR-6-01, B-IR-6-06, B-IR-6-07 | Platform → Incidents; the banner on every page |
 | OC-IR-02 | **Incident contacts kept current.** Each bank names its incident contacts, with its CEO and CIO as the fallback, and confirms them yearly; changing them is a high security event. | **IR-6** Incident Reporting | PR.IR-03, RS.MA-01, RS.MA-02, RS.MA-03, RS.MA-04, RS.AN-06, RS.AN-07, RS.CO-02, RS.CO-03, RC.CO-03 | preventive, configurable | `incident_contacts` (live) | B-IR-6-05 | Settings → Incident contacts |
 
+## Contingency planning
+
+| Id | Control | NIST | CSF 2.0 | Type | Checks | Relies on | Where |
+|---|---|---|---|---|---|---|---|
+| OC-CP-01 | **Recovery objectives stated.** The host's recovery time and recovery point objectives and the date of its last restore test are shown on the Controls page, which warns until they're recorded or once the test is over a year old. | **CP-2** Contingency Plan<br>**CP-4** Contingency Plan Testing | ID.IM-01, ID.IM-02, ID.IM-03, ID.IM-04, PR.IR-02, PR.IR-03, RC.RP-03, RC.CO-04 | detective, built in | `recovery_objectives` (live) | H-CP-2-01, H-CP-9-01, B-CP-2-03 | Controls → Recovery objectives stated |
+

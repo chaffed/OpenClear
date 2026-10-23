@@ -1,10 +1,11 @@
 # FFIEC IT Examination Handbook
 
-*Current as of 2026-10-17. Checked against its sources at least once a year (control check `regulatory_currency`).*
+*Current as of 2026-10-22. Checked against its sources at least once a year (control check `regulatory_currency`).*
 
 How OpenClear supports the areas the FFIEC IT Examination Handbook booklets examine, chiefly
 *Information Security*, *Architecture, Infrastructure, and Operations*, *Development,
-Acquisition, and Maintenance*, and *Audit*. The booklets are principles-based. This page maps
+Acquisition, and Maintenance*, *Audit*, *Retail Payment Systems* and *Business Continuity
+Management*. The booklets are principles-based. This page maps
 OpenClear's controls onto their themes, each with its [control id](controls.md) and NIST SP
 800-53 Rev. 5 controls; it doesn't cite the booklets' sections. It isn't legal
 advice ([Compliance](README.md)).
@@ -48,3 +49,52 @@ advice ([Compliance](README.md)).
 | Input handling | A corpus of malformed X9.37 and NACHA files run through the real parsers, which must refuse each cleanly and quickly. | OC-SI-01: SI-10<br>OC-SI-02: SI-10, SI-7 | Controls → "Malformed files refused" |
 | Production safety | Refuses to start in production with development keys or unsafe options. | OC-CM-01: CM-6 | Controls → "Production settings" |
 | Exit | A full export of a bank's data, for migration or offboarding. | — | Settings → Data export |
+
+## Retail Payment Systems
+
+The *Retail Payment Systems* booklet (February 2010, with a 2016 appendix on mobile services)
+names positive pay as a check-fraud control: the business sends the checks it issued, the bank
+compares presented checks, and a check not on file goes to the customer for a pay or no-pay
+decision. Examiners ask whether the bank uses positive pay and whether the issued-check files
+are protected. OpenClear is on the receiving side only: it decides presented checks and incoming
+ACH debits. It doesn't originate ACH, so the booklet's ODFI controls (originator limits, return
+rates) aren't OpenClear's.
+
+| Theme | What OpenClear does | Controls (NIST SP 800-53) | Evidence |
+|---|---|---|---|
+| Positive pay | Presented checks matched against issued checks; exceptions decided by the customer or the bank before the cut-off, with dual control if the bank turns it on; undecided items take the account's default. | OC-SI-05: SI-4, CP-2<br>OC-AC-06: AC-3(2), AC-5 | Exceptions; Controls → "Decisions and imports on time" |
+| Issued-check files | A customer's people reach only their own accounts. Each file is kept with its SHA-256 and a signature, parsed by hardened parsers and checked row by row. | OC-AC-03: AC-3, AC-4, AC-6<br>OC-AC-04: AC-3, AC-6<br>OC-SC-03: SI-7(6), SC-8<br>OC-SI-01: SI-10<br>OC-SI-02: SI-10, SI-7 | Bulk upload details; Controls → "Malformed files refused" |
+| Check fraud at a branch | Teller verification before cash is paid, recorded so a later presentment is a duplicate. | OC-SI-09: SI-4, AC-6 | `docs/guides/teller.md` |
+| ACH debits | A debit from an originator not on the account's authorizations is an exception; customers see the bank's unauthorized-debit statement form. | OC-AC-12: AC-3<br>OC-SI-07: IR-6 | Settings → Unauthorized debit statement; [Nacha](nacha.md) |
+| Returns | Each check's midnight deadline is worked out from the day it was presented, and its decision is due before it; decisions lock at the cut-off and go to the core through an outbox with retries. The booklet's return times predate later changes to Regulation CC; [Check law](check-law.md) has today's. | OC-SI-11: SI-4, SI-10<br>OC-SI-06: CA-3 | Controls → "Checks decided within their return deadline" |
+| Audit and third parties | A signed evidence export for any period; the third-party pack for due diligence. | OC-AU-05: AU-7, AU-11 | Controls → Export evidence; [Third-party risk](tprm.md) |
+
+The bank keeps what positive pay doesn't do: account opening and monitoring, kiting detection,
+and stop payments in the core (B-RA-3-03).
+
+## Business Continuity Management
+
+The *Business Continuity Management* booklet (November 2019) asks a bank to set recovery
+objectives (RTO, RPO, maximum tolerable downtime) for each critical process, including those a
+service provider runs, and to check them against what the provider has agreed; to know the
+provider's resilience and test results; to exercise its plans with critical providers; and to
+plan for a provider that stops operating.
+
+| Theme | What OpenClear does | Controls (NIST SP 800-53) | Evidence |
+|---|---|---|---|
+| An outage at the cut-off | Undecided exceptions take the account's default disposition at the deadline. Deadlines are stored, so if OpenClear itself was down, the first sweep after it returns applies them. Decisions wait in the outbox while the core is down. | OC-SI-05: SI-4, CP-2<br>OC-SI-06: CA-3 | Customers → Positive pay settings |
+| Recovery objectives | The host states its recovery time and point objectives and the date of its last restore test; the Controls page shows them, and warns without them or once the test is over a year old. | OC-CP-01: CP-2, CP-4 | Controls → "Recovery objectives stated" |
+| Notice of an outage | The host tells each bank affected, by email and in the app, and records the bank's acknowledgement. | OC-IR-01: IR-6, IR-4 | Platform → Incidents; [Incident notification](incident-notification.md) |
+| A provider that stops | A full export of a bank's data; OpenClear's source is open (AGPL), so another host or the bank can run it. | — | Settings → Data export |
+
+The bank's part: B-CP-2-01 (plan for an outage at the cut-off), B-CP-2-02 (the teller
+fallback), B-CP-2-03 (exercise the plan yearly, against the host's objectives). The host's:
+H-CP-2-01 (state recovery objectives), H-CP-9-01 (back up and test restores).
+
+## Sources
+
+Read 22 October 2026: the FFIEC IT Examination Handbook InfoBase, *Retail Payment Systems*
+(February 2010; Appendix E, April 2016) and *Business Continuity Management* (November 2019).
+In February 2026 the FFIEC removed the Handbook's references to reputation risk and said this
+sets no new requirements. The InfoBase refuses automated reading, so the booklets' themes here
+were taken from extracts of their pages, not a full read; their wording is unconfirmed.

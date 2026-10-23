@@ -30,6 +30,14 @@
   `docs/compliance/nydfs.md` (Part 500, section by section) and
   `docs/compliance/incident-notification.md`; controls OC-IR-01 and OC-IR-02; new bank and host
   CUECs; the runbook's *Incidents (for the service provider)*.
+- **Examination: FFIEC, GLBA and the CRI Profile** (RG4). `ffiec.md` gains *Retail Payment
+  Systems* and *Business Continuity Management*; new pages `glba.md` (12 CFR 364 Appendix B,
+  element by element) and `cri-profile.md` (answering the Profile from the CSF crosswalk). A new
+  control check, *Recovery objectives stated* (control OC-CP-01), shows the host's recovery time
+  and point objectives and its last restore test from `OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION`
+  and `OPENCLEAR_LAST_RESTORE_TEST`, and warns without them or once the test is over a year old.
+  New CUECs B-RA-3-03, B-SI-12-01, B-CP-2-03, H-CP-2-01, H-IR-6-02 and H-PS-3-01; B-RA-3-01,
+  B-IR-6-01 and B-SA-9-02 now name what the Guidelines ask.
 - **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
   sources, and the control check `regulatory_currency` warns when one is over a year old.
 

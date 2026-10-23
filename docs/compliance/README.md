@@ -5,7 +5,9 @@ what OpenClear does onto the guidance a bank is examined against, and say where 
 for each point is.
 
 - [Check law: UCC Articles 3 and 4, Regulation CC, Check 21 and ECCHO](check-law.md) (a draft, for counsel's review)
-- [FFIEC IT Examination Handbook](ffiec.md)
+- [FFIEC IT Examination Handbook](ffiec.md), including *Retail Payment Systems* and *Business Continuity Management*
+- [GLBA: the Interagency Guidelines Establishing Information Security Standards](glba.md) (12 CFR 364, Appendix B)
+- [The CRI Profile](cri-profile.md): answering it from the [NIST CSF 2.0 crosswalk](csf.md)
 - [New York DFS Part 500](nydfs.md): OpenClear's target for state rules, as a bank's service provider
 - [Incident notification](incident-notification.md): the FDIC's rule, Part 500's, and how the host tells a bank
 - [Nacha Operating Rules](nacha.md)
@@ -64,6 +66,9 @@ whoever hosts OpenClear for it:
   operating system and database.
   - Record how disk and database encryption are done in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`.
     The Controls page then shows that statement; without it, the control warns.
+  - Record the recovery time and point objectives in `OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION`
+    and the last restore test's date in `OPENCLEAR_LAST_RESTORE_TEST` (YYYY-MM-DD); the control
+    warns without them, or once the test is over a year old.
 - **Keys:** generating, storing and rotating the signing keys and the database encryption
   key. See the README, "Signing keys", and `OPENCLEAR_SSO_ENCRYPTION_KEY_PREVIOUS` for
   rotating the encryption key.
