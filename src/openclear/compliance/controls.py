@@ -33,6 +33,7 @@ FAMILIES = {
     "SI": "System and information integrity",
     "CM": "Configuration management",
     "CA": "Assessment and monitoring",
+    "IR": "Incident response",
 }
 TYPES = {
     "preventive": "stops something happening",
@@ -275,6 +276,17 @@ CONTROLS: tuple[OcControl, ...] = (
       "The evidence export records the version, the plugins and models in force with their digests, and the outside services "
       "turned on.",
       ("CM-2", "CM-8"), "detective", "built_in", ("outside_services",), ("B-SA-9-01",), "Controls → Export evidence"),
+    # --- Incident response -------------------------------------------------------------------
+    C("OC-IR-01", "Incident notices to each bank",
+      "The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's "
+      "incident contacts (or its CEO and CIO) and shown to its administrators until one acknowledges it, with sending and "
+      "acknowledging in the bank's action log and raised as security events.",
+      ("IR-6", "IR-4"), "corrective", "built_in", ("incident_contacts",), ("H-IR-6-01", "B-IR-6-06", "B-IR-6-07"),
+      "Platform → Incidents; the banner on every page"),
+    C("OC-IR-02", "Incident contacts kept current",
+      "Each bank names its incident contacts, with its CEO and CIO as the fallback, and confirms them yearly; changing them is a "
+      "high security event.",
+      ("IR-6",), "preventive", "configurable", ("incident_contacts",), ("B-IR-6-05",), "Settings → Incident contacts"),
     # --- Assessment and monitoring --------------------------------------------------------
     C("OC-CA-01", "Controls checked continuously",
       "Each control is checked when the Controls page or API is read and hourly; a change of status becomes a security event.",

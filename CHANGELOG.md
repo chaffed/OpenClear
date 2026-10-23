@@ -19,6 +19,17 @@
   has its current wording. The evidence export gains an ACH monitoring summary. `nacha.md` explains
   that Nacha's 2026 fraud-monitoring rule covers incoming credits, which OpenClear doesn't screen,
   and covers Regulation E.
+- **Incident notices from the service provider** (RG3; 12 CFR 304.24, NYDFS 500.11). A bank names
+  its incident contacts, with its CEO and CIO as the fallback, in Settings → Incident contacts, and
+  confirms them each year. The installation's operator sends incident and maintenance notices from
+  Platform → Incidents: each is emailed to the bank's contacts whatever their notification
+  settings, shown to its administrators until one acknowledges it, recorded in the bank's action
+  log and raised as security events (`incident.notice.sent`, `incident.notice.acknowledged`;
+  changing contacts is `incident_contact.changed`). The evidence export lists them. A control check
+  warns on no contacts, an unacknowledged notice or a year unconfirmed. New pages
+  `docs/compliance/nydfs.md` (Part 500, section by section) and
+  `docs/compliance/incident-notification.md`; controls OC-IR-01 and OC-IR-02; new bank and host
+  CUECs; the runbook's *Incidents (for the service provider)*.
 - **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
   sources, and the control check `regulatory_currency` warns when one is over a year old.
 

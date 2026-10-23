@@ -55,6 +55,10 @@ NIST_TITLES = {
     "AC-7": "Unsuccessful Logon Attempts",
     "AC-12": "Session Termination",
     "AC-21": "Information Sharing",
+    "PL-1": "Policy and Procedures",
+    "SA-11": "Developer Testing and Evaluation",
+    "CA-8": "Penetration Testing",
+    "MP-6": "Media Sanitization",
     "AT-2": "Literacy Training and Awareness",
     "AT-2(3)": "Social Engineering and Mining",
     "AT-3": "Role-based Training",
@@ -239,7 +243,8 @@ CUECS: tuple[Cuec, ...] = (
          "Controls → Admins use a second factor", related=("IA-2", "AC-6(5)")),
     Cuec("B-IA-2(2)-01", "bank", "IA-2(2)", "Second factor for staff",
          "Require a second factor (a security key or passkey, or the bank's identity provider) of everyone who can decide "
-         "exceptions or change data.",
+         "exceptions or change data; a bank under New York DFS Part 500 (500.12, from November 2025) requires it of every person "
+         "who signs in.",
          "OpenClear supports FIDO2 security keys and passkeys, and SSO-only sign-in per bank.",
          "automated", "staff_mfa", "Continuous",
          "Users → Export; Settings → Sign-on", related=("IA-2",)),
@@ -289,6 +294,21 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear enforces each customer's password policy, second factors and sign-on connection.",
          "automated", "customer_mfa", "On change; reviewed yearly",
          "Customers → Sign-on; Customers → Password policy", related=("IA-2(2)",)),
+    Cuec("B-PL-1-01", "bank", "PL-1", "Cover OpenClear in written policies",
+         "Cover positive pay in the bank's cybersecurity policies (vendor management, incident response and notification, "
+         "access control), and approve them each year (23 NYCRR 500.3).",
+         "OpenClear's controls and CUECs say what it does and what it relies on the bank for.",
+         "attested", None, "Yearly", "docs/compliance/controls.md; docs/compliance/cuecs.md"),
+    Cuec("B-CA-2-01", "bank", "CA-2", "Support the annual certification",
+         "Keep the evidence exports and host attestations that support the bank's annual cybersecurity certification (for New York "
+         "DFS, by April 15, 23 NYCRR 500.17(b)) for five years.",
+         "OpenClear's evidence export is signed, and its host attestations are recorded.",
+         "attested", None, "Yearly", "Settings → Controls → Export evidence"),
+    Cuec("B-CM-8-01", "bank", "CM-8", "Inventory OpenClear",
+         "List OpenClear and its host in the bank's asset inventory, with an owner, the data's classification and a recovery time "
+         "before the decision cut-off (23 NYCRR 500.13).",
+         "OpenClear lists the outside services turned on, and the evidence export records the version running.",
+         "attested", None, "Yearly", "Settings → Controls; docs/compliance/tprm.md"),
     Cuec("B-RA-3-02", "bank", "RA-3", "Know which accounts are consumer accounts",
          "Identify each account on OpenClear that is a consumer account under Regulation E, and apply the bank's Regulation E "
          "procedures to it alongside positive pay.",
@@ -320,7 +340,8 @@ CUECS: tuple[Cuec, ...] = (
          "Settings → Security event forwarding; Controls → Security events delivered", related=("AU-6(1)", "SI-4")),
     Cuec("B-AU-11-01", "bank", "AU-11", "Keep the evidence",
          "Take an evidence export at least quarterly and keep it, with the action log's archives, for as long as the bank's "
-         "retention schedule requires, in storage the bank controls.",
+         "retention schedule requires, in storage the bank controls; under New York DFS Part 500 (500.6), keep decision records "
+         "five years and security events three, in the bank's SIEM, since OpenClear keeps security events 30 days by default.",
          "OpenClear's evidence export is signed, so it can be checked years later without OpenClear.",
          "assisted", "evidence_export", "Quarterly",
          "Settings → Controls → Export evidence", related=("SI-12",)),
@@ -348,6 +369,21 @@ CUECS: tuple[Cuec, ...] = (
          "day after the bank finishes reviewing the signed Written Statement of Unauthorized Debit.",
          "OpenClear decides debits before they post; a late claim is the bank's, through its core.",
          "attested", None, "Yearly", "The bank's core and procedures", related=("IR-4",)),
+    Cuec("B-IR-6-05", "bank", "IR-6", "Name incident contacts",
+         "Name at least one incident contact in OpenClear, with the CEO and CIO as the fallback, keep them current, and confirm "
+         "them each year.",
+         "OpenClear sends the service provider's incident notices to them, and warns while there are none or they're a year old.",
+         "automated", "incident_contacts", "Yearly", "Settings → Incident contacts", related=("IR-4",)),
+    Cuec("B-IR-6-06", "bank", "IR-6", "Notify the FDIC within 36 hours",
+         "Decide whether an incident involving OpenClear is a notification incident and, if so, notify the FDIC supervisory office "
+         "as soon as possible and within 36 hours of that determination (12 CFR 304.23).",
+         "OpenClear's incident notice gives the bank the facts and when it was told, recorded with its acknowledgement.",
+         "attested", None, "Per event", "Settings → Incident contacts (notices received)", related=("IR-4",)),
+    Cuec("B-IR-6-07", "bank", "IR-6", "Notify New York DFS within 72 hours",
+         "A bank supervised by New York DFS notifies DFS within 72 hours of determining that a cybersecurity incident occurred at "
+         "OpenClear's host, and updates DFS with material new information (23 NYCRR 500.17(a)).",
+         "OpenClear's incident notice gives the bank the facts and when it was told.",
+         "attested", None, "Per event", "Settings → Incident contacts (notices received)", related=("IR-4",)),
     Cuec("B-IR-6-02", "bank", "IR-6", "Obtain and keep Written Statements of Unauthorized Debit",
          "Obtain a Written Statement of Unauthorized Debit from a customer who reports a consumer ACH debit as unauthorized, "
          "as the Nacha Rules require, and keep it for the period they set.",
@@ -429,6 +465,23 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear's action log, security events and evidence export reconstruct who did what, and when.",
          "attested", None, "Yearly", "The bank's incident response plan", related=("IR-4", "IR-8")),
     # --- The bank: outside services ------------------------------------------------------
+    Cuec("B-SA-9-02", "bank", "SA-9", "Write OpenClear into the third-party policy",
+         "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a "
+         "contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the "
+         "bank, representations and warranties, and deletion at exit (23 NYCRR 500.11).",
+         "OpenClear supplies the controls, CUECs, host attestations, security metrics and evidence export a contract and an "
+         "assessment rely on.",
+         "attested", None, "Yearly", "docs/compliance/tprm.md; docs/compliance/nydfs.md"),
+    Cuec("B-SA-9-03", "bank", "SA-9", "Tell the FDIC about the service relationship",
+         "Notify the FDIC of the relationship with OpenClear's host within 30 days of the contract or the first service, whichever "
+         "is first (Bank Service Company Act § 7(c)).",
+         "OpenClear's documentation names the services it performs, for the notice to describe.",
+         "attested", None, "Once, and on change", "The bank's records"),
+    Cuec("B-SA-11-01", "bank", "SA-11", "Evaluate OpenClear as an externally developed application",
+         "Review OpenClear's security evidence (the ASVS crosswalk, the threat model, advisories and each release's security "
+         "metrics) each year and before a major upgrade (23 NYCRR 500.8).",
+         "OpenClear publishes them with each release.",
+         "attested", None, "Yearly", "docs/compliance/asvs.md; docs/security/threat-model.md; the release notes"),
     Cuec("B-SA-9-01", "bank", "SA-9", "Assess the outside services turned on",
          "Assess each outside service the bank turns on (email and SMS providers, cloud OCR, object storage, identity providers, "
          "a hosting provider) as a third party, and review it each year.",
@@ -568,10 +621,34 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear reports its health and each scheduled job's last run.",
          "assisted", "scheduled_jobs", "Continuous", "/health; Controls", related=("CA-7",)),
     Cuec("H-IR-6-01", "host", "IR-6", "Notify banks of incidents",
-         "Notify each affected bank of an incident as soon as possible, as the computer-security incident notification rule for "
-         "bank service providers requires, and keep each bank's contacts current.",
-         "OpenClear's action log and security events show what happened in each bank.",
-         "attested", None, "Per event", "The host's incident records", related=("IR-4", "IR-8")),
+         "Issue an incident notice in OpenClear (Platform → Incidents) to each affected bank as soon as possible after determining "
+         "an incident that has disrupted or degraded its service, or is likely to, for four hours or more (12 CFR 304.24), or a "
+         "cybersecurity event affecting its systems or data (23 NYCRR 500.11(b)(3)), and follow the runbook's Incidents section.",
+         "OpenClear emails each bank's incident contacts, shows the notice until the bank acknowledges it, and records both.",
+         "attested", None, "Per event", "Platform → Incidents; the host's incident records", related=("IR-4", "IR-8")),
+    Cuec("H-IR-8-01", "host", "IR-8", "Keep an incident response plan",
+         "Keep an incident response and recovery plan for the installation (roles, decisions, communications with the banks, "
+         "root cause), and test it each year.",
+         "OpenClear's runbook has an Incidents section to build the plan on.",
+         "attested", None, "Yearly", "RUNBOOK.md (Incidents)", related=("IR-4",)),
+    Cuec("H-AT-2-01", "host", "AT-2", "Train the host's staff",
+         "Give everyone with access to the installation security awareness training, including social engineering, at least "
+         "yearly.",
+         "OpenClear limits platform staff to what their role allows and logs what they do.",
+         "attested", None, "Yearly", "The host's training records", related=("AT-2(3)",)),
+    Cuec("H-CA-8-01", "host", "CA-8", "Test penetration yearly",
+         "Have a qualified party penetration-test the installation at least yearly, and share the summary with the banks.",
+         "OpenClear's security metrics, advisories and ASVS crosswalk are published with each release.",
+         "attested", None, "Yearly", "The test report", related=("RA-5",)),
+    Cuec("H-MP-6-01", "host", "MP-6", "Delete a bank's data when it leaves",
+         "When a bank leaves, delete or return its data and backups as the contract says, and give the bank a written certificate.",
+         "OpenClear exports a bank's data for it to take.",
+         "attested", None, "Per event", "Settings → Data export; the host's certificate", related=("SI-12",)),
+    Cuec("H-CM-4-01", "host", "CM-4", "Announce maintenance",
+         "Announce scheduled maintenance and upgrades to each bank beforehand, as a maintenance notice in OpenClear, so they aren't "
+         "incidents under 12 CFR 304.24(b).",
+         "OpenClear sends maintenance notices the same way as incident notices.",
+         "attested", None, "Per event", "Platform → Incidents", related=("CM-3",)),
 )
 
 

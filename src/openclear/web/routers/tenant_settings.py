@@ -62,6 +62,7 @@ SECTIONS = {
     "security-events": "Security event forwarding",
     "auto-import": "Auto-import",
     "wsud-form": "Unauthorized debit statement",
+    "incident-contacts": "Incident contacts",
 }
 
 # Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
@@ -180,6 +181,13 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         }
     if key == "reminders":
         return _reminder_kwargs(db, ctx, tenant)
+    if key == "incident-contacts":
+        from openclear.services import incident_service
+
+        rows = incident_service.contacts(db, ctx.tenant_id)
+        return {"contacts": [c for c in rows if c.kind == "contact"], "ceo": next((c for c in rows if c.kind == "ceo"), None),
+                "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
+                "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS}
     if key == "wsud-form":
         from openclear.services import bank_form_service
 
@@ -716,6 +724,44 @@ def update_messages(
         _record(db, ctx, "tenant.update_messages", "Updated login/banner messages")
     db.commit()
     return _saved(request, key="messages")
+
+
+@router.post("/incident-contacts")
+async def update_incident_contacts(
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+    _csrf: None = Depends(verify_csrf),
+) -> HTMLResponse:
+    """Who hears of an incident at OpenClear's host (REGULATORY_PLAN.md RG3; 12 CFR 304.24(a)(1)),
+    with the CEO and CIO as the fallback. Saving also confirms them for the year."""
+    from openclear.services import incident_service
+
+    form = await request.form()
+    if form.get("confirm_only"):
+        try:
+            incident_service.confirm_contacts(db, ctx.tenant_id, user_id=ctx.user_id)
+        except incident_service.IncidentError as exc:
+            db.rollback()
+            return render_section(request, db, ctx, "incident-contacts", error=str(exc))
+        db.commit()
+        return _saved(request, "Incident contacts confirmed for the year.", key="incident-contacts")
+    wanted = []
+    for n in range(incident_service.MAX_CONTACTS):
+        if form.get(f"contact_{n}_name") or form.get(f"contact_{n}_email"):
+            wanted.append(incident_service.ContactInput("contact", str(form.get(f"contact_{n}_name") or ""), str(form.get(f"contact_{n}_email") or ""),
+                                                        str(form.get(f"contact_{n}_role") or ""), str(form.get(f"contact_{n}_phone") or "")))
+    for kind in ("ceo", "cio"):
+        if form.get(f"{kind}_name") or form.get(f"{kind}_email"):
+            wanted.append(incident_service.ContactInput(kind, str(form.get(f"{kind}_name") or ""), str(form.get(f"{kind}_email") or ""),
+                                                        None, str(form.get(f"{kind}_phone") or "")))
+    try:
+        incident_service.set_contacts(db, ctx.tenant_id, wanted, user_id=ctx.user_id)
+    except incident_service.IncidentError as exc:
+        db.rollback()
+        return render_section(request, db, ctx, "incident-contacts", error=str(exc))
+    db.commit()
+    return _saved(request, "Incident contacts saved: the service provider's incident notices go to them.", key="incident-contacts")
 
 
 @router.post("/wsud-form")

@@ -122,6 +122,8 @@ def build() -> TM:
     events = Data(name="Security events", classification=Classification.SENSITIVE)
     notices = Data(name="Notifications", classification=Classification.SENSITIVE, isPII=True)
     people = Data(name="People and group memberships", classification=Classification.SENSITIVE, isPII=True)
+    incident_notices = Data(name="Incident notices and contacts", classification=Classification.SENSITIVE, isPII=True,
+                            isStored=True)
 
     # --- Flows ---
     def flow(source, sink, name, data, protocol="HTTPS", encrypted=True, **controls):
@@ -153,6 +155,8 @@ def build() -> TM:
     flow(worker, webhook, "Signed webhooks", [decisions], authenticatesDestination=True)
     flow(worker, core, "Decisions delivered to the core", [decisions], authenticatesDestination=True)
     flow(worker, messaging, "Email and SMS", [notices], authenticatesDestination=True)
+    flow(worker, messaging, "Incident notices emailed to each bank's incident contacts", [incident_notices],
+         authenticatesDestination=True)
     flow(worker, cloud_ocr, "Check images for OCR (if configured)", [check_images], authenticatesDestination=True)
     flow(app, release_feed, "Release check", [])
     flow(app, clamd, "Every upload streamed for a malware scan (if configured)", [payment_files, check_images],
@@ -255,4 +259,11 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "event; a verification is cashed once, within 15 minutes, under the issued check's lock, and the paid check "
            "is a duplicate anywhere after.",
            "OC-SI-09; services/teller_service.py; TELLER_PLAN.md", "Mitigated"),
+    Threat("OC-T24", "R", "Service provider ↔ bank", "An incident at the host doesn't reach the bank in time, or the bank's "
+           "contacts are changed so notices go somewhere else, and the bank misses its own deadline to its regulator.",
+           "Notices emailed to the bank's named contacts whatever their settings (the CEO and CIO, then administrators, if "
+           "none), shown to administrators until acknowledged; sending, acknowledging and changing contacts are logged "
+           "and raised as security events; a control check warns on no contacts, an unacknowledged notice, or a year "
+           "unconfirmed.",
+           "OC-IR-01, OC-IR-02; services/incident_service.py; docs/compliance/incident-notification.md", "Mitigated"),
 )

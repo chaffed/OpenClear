@@ -1,0 +1,17 @@
+{{ kind }}: {{ notice.title }}
+
+To {{ bank_name }}'s incident contacts, from the service provider that runs OpenClear for you.
+
+{{ notice.message }}
+{% if notice.started_at %}
+Started: {{ notice.started_at.strftime("%Y-%m-%d %H:%M") }} UTC{% endif %}{% if notice.determined_at %}
+Determined: {{ notice.determined_at.strftime("%Y-%m-%d %H:%M") }} UTC{% endif %}{% if notice.services_affected %}
+Services affected: {{ notice.services_affected }}{% endif %}
+Your data affected: {{ "yes" if notice.bank_data_affected else "not as far as we know" }}
+
+An administrator can acknowledge this notice in OpenClear, where it shows until someone does.
+If you decide this is a notification incident, your own deadlines start now: as soon as possible,
+and within 36 hours, to the FDIC; within 72 hours to New York DFS if it supervises you.
+
+You're receiving this because your bank named you as an incident contact (Settings → Incident
+contacts), or as its CEO or CIO.

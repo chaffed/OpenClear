@@ -175,6 +175,9 @@ class Tenant(Base):
     # The bank opens on Federal Reserve holidays (REGULATORY_PLAN.md RG1): they're then banking days
     # under the UCC, so a check's return deadline (its midnight deadline) counts them.
     open_on_federal_holidays: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # When an administrator last confirmed the bank's incident contacts (domain/incident.py;
+    # REGULATORY_PLAN.md RG3): the control check incident_contacts asks for it yearly.
+    incident_contacts_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # When the bank last read its security events through the pull API (SIEM_PLAN.md S5):
     # with no destination configured, the "Security events delivered" control warns once
     # nobody has read them for a day.

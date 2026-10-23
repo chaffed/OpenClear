@@ -186,6 +186,17 @@
         visitors out are turned off.</p>
       {% endif %}
       {% include "partials/_flash.html" %}
+      {% for delivery_id, kind, title in (ctx.incident_notices if ctx else ()) %}
+      {# The service provider's incident notice (services/incident_service.py): until an administrator acknowledges it. #}
+      <div class="flash flash-error incident-notice" role="alert">
+        <strong>{{ kind }} from your service provider:</strong> {{ title }}. The details went to your incident contacts by email.
+        <form method="post" action="/ui/incident-notices/{{ delivery_id }}/acknowledge" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="{{ request.url.path }}">
+          <button type="submit" class="secondary">Acknowledge</button>
+        </form>
+      </div>
+      {% endfor %}
       {% if ctx and ctx.security_key_due %}
       {# A required security key's grace period (auth/security_key_policy.py): after it, signing in needs one. #}
       {% set days_left = ((ctx.security_key_due - now_utc()).total_seconds() / 86400) | round(0, "ceil") | int %}

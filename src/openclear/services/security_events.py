@@ -134,6 +134,10 @@ CATALOG: dict[str, EventType] = {
     # A posted-check file whose trailer doesn't match its lines (PAID_ITEM_LAYOUTS_PLAN.md PIL-D8): checks the
     # bank paid may never be reviewed.
     "bulk_upload.refused": EventType("integrity", "high"),
+    # Incident notices to a bank and their acknowledgement, and who receives them (REGULATORY_PLAN.md RG3).
+    "incident.notice.sent": EventType("integrity", "critical"),
+    "incident.notice.acknowledged": EventType("integrity", "medium"),
+    "incident_contact.changed": EventType("configuration", "high"),
     # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
     "decision.after_return_deadline": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
@@ -193,6 +197,9 @@ AUDIT_EVENTS: dict[str, str] = {
     "user.email.changed": "user.email.changed",
     "file.malware_detected": "file.malware_detected",
     "bulk_upload.refused": "bulk_upload.refused",
+    "incident.notice.sent": "incident.notice.sent",
+    "incident.notice.acknowledged": "incident.notice.acknowledged",
+    "incident_contact.changed": "incident_contact.changed",
     "teller.verify": "teller.verify",
     "teller.verify.declined": "teller.verify.declined",
     "teller.cashed": "teller.cashed",

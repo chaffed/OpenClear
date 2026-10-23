@@ -1,0 +1,50 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">When something at OpenClear's host disrupts your positive pay service, or affects your data,
+  the service provider must tell the contacts you name here as soon as possible (12 CFR 304.24; for New York
+  banks, 23 NYCRR 500.11). With no contact named, it falls back to your CEO and CIO. Confirm the contacts
+  once a year.</p>
+{% if confirmed_at %}<p>Last confirmed {{ confirmed_at.strftime("%Y-%m-%d") }}.</p>{% else %}<p class="flash flash-warn">Not set yet.</p>{% endif %}
+<form method="post" action="/ui/settings/incident-contacts">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset>
+    <legend>Incident contacts (at least one)</legend>
+    {% for n in range(3) %}{% set c = contacts[n] if n < contacts | length else none %}
+    <div class="inline-fields">
+      <label>Name <input type="text" name="contact_{{ n }}_name" value="{{ c.name if c else '' }}" maxlength="255" class="field-l"></label>
+      <label>Role <input type="text" name="contact_{{ n }}_role" value="{{ c.role or '' if c else '' }}" maxlength="255" class="field-m"></label>
+      <label>Email <input type="email" name="contact_{{ n }}_email" value="{{ c.email if c else '' }}" maxlength="320" class="field-l"></label>
+      <label>Phone <input type="tel" name="contact_{{ n }}_phone" value="{{ c.phone or '' if c else '' }}" maxlength="40" class="field-m"></label>
+    </div>
+    {% endfor %}
+  </fieldset>
+  <fieldset>
+    <legend>The fallback: your CEO and CIO</legend>
+    {% for kind, label, c in (("ceo", "CEO", ceo), ("cio", "CIO", cio)) %}
+    <div class="inline-fields">
+      <label>{{ label }} <input type="text" name="{{ kind }}_name" value="{{ c.name if c else '' }}" maxlength="255" class="field-l"></label>
+      <label>Email <input type="email" name="{{ kind }}_email" value="{{ c.email if c else '' }}" maxlength="320" class="field-l"></label>
+      <label>Phone <input type="tel" name="{{ kind }}_phone" value="{{ c.phone or '' if c else '' }}" maxlength="40" class="field-m"></label>
+    </div>
+    {% endfor %}
+  </fieldset>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save and confirm</button></div>
+</form>
+{% if contacts %}
+<form method="post" action="/ui/settings/incident-contacts">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="confirm_only" value="1">
+  <button type="submit" class="secondary">{{ icon("check_circle") }}They're still right: confirm for the year</button>
+</form>
+{% endif %}
+{% if notices %}
+<h3>Notices received</h3>
+<table>
+  <thead><tr><th>Sent</th><th>Notice</th><th>Acknowledged</th></tr></thead>
+  <tbody>
+    {% for delivery, notice in notices %}
+    <tr><td>{{ delivery.sent_at.strftime("%Y-%m-%d %H:%M") }} UTC</td><td>{{ kinds[notice.kind] }}: {{ notice.title }}</td>
+      <td>{{ delivery.acknowledged_at.strftime("%Y-%m-%d %H:%M") ~ " UTC" if delivery.acknowledged_at else "Not yet" }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

@@ -230,4 +230,15 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   a record at the cut-off for items left open with "leave open" (small); Saturday banking days
   (small); a per-item dispute export (medium); flagging check returns of $5,000 or more for the
   core's notice of nonpayment (small, optional).
-
+- 2026-10-22: RG3 built. **Finding:** OpenClear had no way for its host to tell a bank of an
+  incident, which 12 CFR 304.24 requires of a bank service provider and NYDFS 500.11(b)(3) lets a
+  bank require. Built: incident contacts per bank (CEO and CIO as the fallback; administrators if
+  neither), notices from Platform → Incidents emailed whatever the settings and shown to
+  administrators until acknowledged, both ends in the action log and raised as security events,
+  the evidence export's list, the check `incident_contacts`, controls OC-IR-01 and OC-IR-02,
+  migration `d867a5f28e73`, the runbook's incident section and threat OC-T24. CUECs B-IR-6-05,
+  B-IR-6-06, B-IR-6-07, B-SA-9-02, B-SA-9-03 and the host's H-IR-6-01, H-IR-8-01, H-CM-4-01.
+  Pages `nydfs.md` (500.11 and each section mapped) and `incident-notification.md`. **Follow-ups,
+  not built:** a status page or API for notices (small); SMS for notices (small); an independent
+  penetration test of OpenClear for 500.5 (parked, needs funding); multi-factor authentication
+  required of every bank user by default for 500.12 (medium; today the bank's setting).

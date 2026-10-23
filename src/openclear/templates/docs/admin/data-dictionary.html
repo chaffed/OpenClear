@@ -172,6 +172,7 @@ erDiagram
 <tr><td>time_zone</td><td>String(64)</td><td>yes</td><td></td><td>The bank's time zone (an IANA name, such as America/New_York), in which its decision cut-offs are set.</td></tr>
 <tr><td>decision_cutoffs</td><td>JSON</td><td>no</td><td></td><td>Each network's decision cut-off as a time of day ({"check": "11:00"}). Items are due at the first cut-off on a business day at least cutoff_min_review_minutes after they arrive; decisions can be changed until then (services/cutoff_service.py).</td></tr>
 <tr><td>cutoff_min_review_minutes</td><td>Integer</td><td>no</td><td></td><td>The least time an item gets before its cut-off; one arriving closer is due at the next business day's. Default 120.</td></tr>
+<tr><td>incident_contacts_confirmed_at</td><td>Timestamp</td><td>yes</td><td></td><td>When an administrator last set or confirmed the incident contacts; the control check warns after a year.</td></tr>
 <tr><td>open_on_federal_holidays</td><td>Boolean</td><td>no</td><td></td><td>The bank opens on the Federal Reserve's holidays, so they count as banking days for a check's return deadline. Default false.</td></tr>
 <tr><td>security_event_feed_read_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank last read its security events through the API (for the "Security events delivered" control).</td></tr>
 </tbody>
@@ -1602,6 +1603,58 @@ read filters by bank or by person.</p>
 <tr><td>status</td><td>String(10)</td><td>no</td><td></td><td>pending (write access awaiting approval), active, revoked or expired.</td></tr>
 <tr><td>granted_by_user_id / approved_by_user_id / ended_by_user_id</td><td>UUID</td><td>no / yes / yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>granted_at / starts_at / expires_at / ended_at / last_used_at</td><td>Timestamp</td><td>no / yes / no / yes / yes</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>incident_contact</h3>
+<p>Who at a bank hears of an incident at OpenClear's host (12 CFR 304.24; services/incident_service.py):
+its incident contacts, and its CEO and CIO as the fallback. Set in Settings → Incident contacts; a
+change is a high security event.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>kind</td><td>String(10)</td><td>no</td><td></td><td>contact, ceo or cio.</td></tr>
+<tr><td>name / role</td><td>String(255)</td><td>no / yes</td><td></td><td></td></tr>
+<tr><td>email</td><td>String(320)</td><td>no</td><td></td><td>Where notices are emailed.</td></tr>
+<tr><td>phone</td><td>String(40)</td><td>yes</td><td></td><td>For the host to call; never used by OpenClear.</td></tr>
+<tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>incident_notice</h3>
+<p>A notice the installation's operator issues: an incident, scheduled maintenance announced
+beforehand, an update or a closure. Installation-wide, so no row-level security; each bank's copy
+is an incident_notice_delivery.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>kind</td><td>String(15)</td><td>no</td><td></td><td>incident, maintenance, update or closed.</td></tr>
+<tr><td>title</td><td>String(200)</td><td>no</td><td></td><td></td></tr>
+<tr><td>message</td><td>Text</td><td>no</td><td></td><td>What happened, what's affected, what the bank should do.</td></tr>
+<tr><td>started_at / determined_at</td><td>Timestamp</td><td>yes</td><td></td><td>When it began, and when the host determined it was an incident.</td></tr>
+<tr><td>services_affected</td><td>String(500)</td><td>yes</td><td></td><td></td></tr>
+<tr><td>bank_data_affected</td><td>Boolean</td><td>no</td><td></td><td>Whether banks' data may be affected.</td></tr>
+<tr><td>follows_id</td><td>UUID</td><td>yes</td><td>FK → incident_notice.id</td><td>The notice this updates or closes.</td></tr>
+<tr><td>issued_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
+<tr><td>issued_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+</tbody>
+</table>
+
+<h3>incident_notice_delivery</h3>
+<p>A notice as one bank received it: who it was emailed to, and who acknowledged it and when. Until
+then it shows to the bank's administrators on every page. Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>notice_id</td><td>UUID</td><td>no</td><td>FK → incident_notice.id</td><td></td></tr>
+<tr><td>recipients</td><td>JSON</td><td>no</td><td></td><td>The addresses it was emailed to.</td></tr>
+<tr><td>sent_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
+<tr><td>acknowledged_at / acknowledged_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>— / FK → user.id</td><td></td></tr>
 </tbody>
 </table>
 

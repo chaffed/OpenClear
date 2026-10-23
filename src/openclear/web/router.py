@@ -4,6 +4,7 @@
 from fastapi import APIRouter
 
 from openclear.web.routers.accounts import router as accounts_router
+from openclear.web.routers.incidents import router as incidents_router
 from openclear.web.routers.access_reviews import router as access_reviews_router
 from openclear.web.routers.api_clients import router as api_clients_router
 from openclear.web.routers.control_results import router as control_results_router
@@ -70,6 +71,7 @@ web_router.include_router(branding_router)
 web_router.include_router(auth_router)
 web_router.include_router(session_router)
 web_router.include_router(dashboard_router)
+web_router.include_router(incidents_router)
 web_router.include_router(security_settings_router)
 web_router.include_router(email_change_router)
 web_router.include_router(tenant_switch_router)

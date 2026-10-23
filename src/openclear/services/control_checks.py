@@ -416,6 +416,31 @@ def reverse_accounts_agreed(session: Session, tenant_id: uuid.UUID) -> Control:
                    "its customer.", evidence)
 
 
+def incident_contacts(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The bank names who hears of an incident at OpenClear's host, and confirms them yearly
+    (REGULATORY_PLAN.md RG3; 12 CFR 304.24(a)(1)); and has acknowledged every notice sent."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import incident_service
+
+    tenant = session.get(Tenant, tenant_id)
+    rows = incident_service.contacts(session, tenant_id)
+    named = [c for c in rows if c.kind == "contact"]
+    waiting = incident_service.unacknowledged(session, tenant_id)
+    confirmed = _aware(tenant.incident_contacts_confirmed_at)
+    evidence = {"contacts": len(named), "ceo_and_cio": sorted(c.kind for c in rows if c.kind != "contact"),
+                "confirmed_at": confirmed.isoformat() if confirmed else None, "unacknowledged_notices": len(waiting)}
+    title = "Incident contacts named"
+    if not named:
+        return Control("incident_contacts", title, WARN, "No incident contacts are named, so the service provider's incident notices go "
+                       "to your CEO and CIO, or your administrators (Settings → Incident contacts).", evidence)
+    if waiting:
+        return Control("incident_contacts", title, WARN, f"{_plural(len(waiting), 'incident notice')} from the service provider "
+                       "not acknowledged yet.", evidence)
+    if confirmed is None or confirmed < _now() - timedelta(days=365):
+        return Control("incident_contacts", title, WARN, "The incident contacts haven't been confirmed in a year.", evidence)
+    return Control("incident_contacts", title, PASS, f"{_plural(len(named), 'incident contact')}, confirmed {confirmed:%Y-%m-%d}.", evidence)
+
+
 def return_deadline(session: Session, tenant_id: uuid.UUID) -> Control:
     """Checks decided within their midnight deadline (UCC 4-302; REGULATORY_PLAN.md RG1): FAIL when
     one in the last 30 days was sent after it; WARN when a customer's cut-off is later than the

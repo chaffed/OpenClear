@@ -6,6 +6,8 @@ for each point is.
 
 - [Check law: UCC Articles 3 and 4, Regulation CC, Check 21 and ECCHO](check-law.md) (a draft, for counsel's review)
 - [FFIEC IT Examination Handbook](ffiec.md)
+- [New York DFS Part 500](nydfs.md): OpenClear's target for state rules, as a bank's service provider
+- [Incident notification](incident-notification.md): the FDIC's rule, Part 500's, and how the host tells a bank
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack

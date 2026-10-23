@@ -146,6 +146,10 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("incident-contacts", "Security & access", "Incident contacts", "notifications_active", "/ui/settings/incident-contacts",
+             "Who hears of an incident at OpenClear's host, and your CEO and CIO as the fallback.",
+             _incident_state(db, ctx.tenant_id, tenant), tone="warn" if not tenant.incident_contacts_confirmed_at else "",
+             keywords="incident outage breach notice contact fdic nydfs 36 hours"),
         Tile("wsud-form", "Data & compliance", "Unauthorized debit statement", "gavel", "/ui/settings/wsud-form",
              "Your form for customers to report an unauthorized ACH debit: Markdown, HTML or a PDF.",
              wsud_state, tone="warn" if wsud_state == "Not set" else "",
@@ -457,6 +461,16 @@ def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
 
 def tile_for(db: Session, ctx: TenantContext, key: str) -> Tile | None:
     return next((t for t in tiles_for(db, ctx) if t.key == key), None)
+
+
+def _incident_state(db, tenant_id, tenant) -> str:
+    from openclear.services import incident_service
+
+    named = [c for c in incident_service.contacts(db, tenant_id) if c.kind == "contact"]
+    if not named:
+        return "Not set"
+    return f"{len(named)} contact{'s' if len(named) != 1 else ''}, confirmed {tenant.incident_contacts_confirmed_at:%Y-%m-%d}" \
+        if tenant.incident_contacts_confirmed_at else f"{len(named)} contact{'s' if len(named) != 1 else ''}"
 
 
 def _wsud_form_state(db, tenant_id) -> str:

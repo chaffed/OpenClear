@@ -28,6 +28,9 @@ not a self-service signup flow. Everything below assumes you can already log in.
   groups with a different permission mix. See the full permission catalog at
   `/ui/security-groups`.
 - The account numbers and names for every bank account OpenClear should monitor.
+- **Who hears of an incident.** At least one incident contact (name, role, email, phone), and your
+  CEO and CIO as the fallback, for Settings → Incident contacts. The service provider's incident
+  and maintenance notices go to them (12 CFR 304.24). Confirm them once a year.
 - Your initial staff list: each person's email and which security group they should
   start in.
 - If you plan to use single sign-on (Okta or Azure AD): the identity provider's issuer
@@ -126,3 +129,41 @@ Request counts are per process since it started; the rest is read from the datab
 A single-process SQLite installation uses write-ahead logging and waits up to five seconds for a
 write lock, so the in-process worker importing a file doesn't make web requests fail with
 "database is locked".
+
+## Incidents (for the service provider)
+
+The host of an installation is a bank service provider. When something disrupts the service, or
+touches a bank's data, the banks must hear it from you, fast: their own clocks are 36 hours to the
+FDIC and, for New York banks, 72 hours to DFS, and they start when the bank determines the
+incident. The page [Incident notification](docs/compliance/incident-notification.md) has the rules.
+
+**1. Decide whether it's a notice.** Send one when either is true:
+- it has disrupted or degraded a bank's positive pay service, or is reasonably likely to, **for four
+  hours or more** (12 CFR 304.24): pages, the API, imports, decisions reaching the core, the cut-off;
+- it's a cybersecurity event that **directly affects a bank's systems or the data you hold for it**
+  (23 NYCRR 500.11(b)(3)), including an attempt.
+
+When in doubt, send it: a notice the bank didn't need costs it a minute, a missing one can cost it
+a regulatory deadline. Record when you determined it; that's when your clock starts.
+
+**2. Find the banks affected.** All of them for an installation-wide outage; otherwise use the
+security events (`GET /api/v1/platform/security-events`), the operator's bank list and the metrics
+above.
+
+**3. Send the first notice within hours, not days.** Platform → Incidents, kind *Incident*: what
+happened and when it started, what's affected, whether bank data is, what the bank should do now
+(for example decide by hand before the cut-off, and keep its decisions ready for the core), and
+when you'll update it. It's emailed at once to each bank's incident contacts (or its CEO and CIO),
+and shows to its administrators until one acknowledges it. Platform → Incidents shows what you
+sent; the bank's Settings → Incident contacts shows what it received and when it acknowledged it.
+
+**4. Update, then close.** Send updates as kind *Update*, following the first notice, at the
+times you promised and whenever something material changes; close with kind *Closed*. Follow
+with the root cause within the time your contract says.
+
+**5. Keep the records.** The notices, the acknowledgements, your timeline and the root cause,
+for as long as your contracts and the banks' examiners need them.
+
+**Scheduled maintenance** isn't an incident if you announce it beforehand (304.24(b)): send a
+*Scheduled maintenance* notice to the banks it affects, before the window.
+

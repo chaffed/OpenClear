@@ -205,6 +205,20 @@ def _decisions(session: Session, tenant_id: uuid.UUID, start: datetime, end: dat
     return {"count": len(items), "truncated": truncated, "by_outcome": counts, "items": items}
 
 
+def _incident_notices(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
+    """The service provider's incident and maintenance notices to the bank in the period, whom
+    each was emailed to, and who acknowledged it when (REGULATORY_PLAN.md RG3)."""
+    from openclear.domain.incident import IncidentNotice, IncidentNoticeDelivery
+
+    rows = session.execute(select(IncidentNoticeDelivery, IncidentNotice).join(IncidentNotice, IncidentNotice.id == IncidentNoticeDelivery.notice_id)
+                           .where(IncidentNoticeDelivery.tenant_id == tenant_id, IncidentNoticeDelivery.sent_at >= start,
+                                  IncidentNoticeDelivery.sent_at < end).order_by(IncidentNoticeDelivery.sent_at)).all()
+    return [{"notice_id": str(n.id), "kind": n.kind, "title": n.title, "started_at": _iso(n.started_at), "determined_at": _iso(n.determined_at),
+             "bank_data_affected": n.bank_data_affected, "sent_at": _iso(d.sent_at), "emailed_to": d.recipients,
+             "acknowledged_at": _iso(d.acknowledged_at),
+             "acknowledged_by_user_id": str(d.acknowledged_by_user_id) if d.acknowledged_by_user_id else None} for d, n in rows]
+
+
 UNAUTHORIZED_RETURN_CODES = ("R10", "R11", "R29", "R17")
 
 
@@ -394,6 +408,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "audit": _audit(session, tenant_id, period_start, period_end),
         "decisions": _decisions(session, tenant_id, period_start, period_end),
         "ach_monitoring": _ach_monitoring(session, tenant_id, period_start, period_end),
+        "incident_notices": _incident_notices(session, tenant_id, period_start, period_end),
         "control_runs": _control_runs(session, tenant_id, period_start, period_end),
         "security_events": _security_events(session, tenant_id, period_start, period_end),
         "support_access": _support_access(session, tenant_id, period_start, period_end),
