@@ -297,7 +297,8 @@ CUECS: tuple[Cuec, ...] = (
          "Customers → Sign-on; Customers → Password policy", related=("IA-2(2)",)),
     Cuec("B-PL-1-01", "bank", "PL-1", "Cover OpenClear in written policies",
          "Cover positive pay in the bank's cybersecurity policies (vendor management, incident response and notification, "
-         "access control), and approve them each year (23 NYCRR 500.3).",
+         "access control) and its written information security program, and approve them each year (23 NYCRR 500.3; for "
+         "Massachusetts residents' information, 201 CMR 17.03).",
          "OpenClear's controls and CUECs say what it does and what it relies on the bank for.",
          "attested", None, "Yearly", "docs/compliance/controls.md; docs/compliance/cuecs.md"),
     Cuec("B-CA-2-01", "bank", "CA-2", "Support the annual certification",
@@ -326,6 +327,17 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear catches checks that weren't issued, altered amounts and payees, duplicates and a check cashed at a branch, but "
          "sees nothing of how an account was opened or of money moving between accounts.",
          "attested", None, "Yearly", "The bank's fraud program"),
+    Cuec("B-RA-3-04", "bank", "RA-3", "Screen for sanctions where the money moves",
+         "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT "
+         "parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",
+         "OpenClear doesn't screen for sanctions. It shows the payee as issued, as read from the image and as typed at a branch, "
+         "so a bank can check one when it has reason to.",
+         "attested", None, "Yearly", "docs/compliance/fincen-ofac.md", related=("SI-4",)),
+    Cuec("B-SC-28-01", "bank", "SC-28", "Protect downloads on the bank's devices",
+         "Encrypt laptops and portable media that hold OpenClear exports, decision files or check images, and keep such files off "
+         "unmanaged devices (201 CMR 17.04(5)).",
+         "OpenClear records each export and download in the action log.",
+         "attested", None, "Yearly", "The bank's device management", related=("MP-4",)),
     Cuec("B-SI-12-01", "bank", "SI-12", "Set retention and disposal",
          "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and "
          "at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
@@ -396,6 +408,13 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear's host, and updates DFS with material new information (23 NYCRR 500.17(a)).",
          "OpenClear's incident notice gives the bank the facts and when it was told.",
          "attested", None, "Per event", "Settings → Incident contacts (notices received)", related=("IR-4",)),
+    Cuec("B-IR-6-08", "bank", "IR-6", "Report check fraud to FinCEN, and keep SARs out of OpenClear",
+         "Decide and file suspicious activity reports for check fraud by the bank's own procedure, using OpenClear's records as "
+         "supporting documentation (with the key term FIN-2023-MAILTHEFT where it applies), and never record in OpenClear that a "
+         "SAR was or wasn't filed (31 CFR 1020.320(e)).",
+         "OpenClear keeps the victim-side facts a narrative needs (as issued, as presented, images, decisions, branch attempts) and "
+         "has no field for a SAR; customer users and support staff can read notes and reasons.",
+         "attested", None, "Per event", "docs/compliance/fincen-ofac.md", related=("IR-4",)),
     Cuec("B-IR-6-02", "bank", "IR-6", "Obtain and keep Written Statements of Unauthorized Debit",
          "Obtain a Written Statement of Unauthorized Debit from a customer who reports a consumer ACH debit as unauthorized, "
          "as the Nacha Rules require, and keep it for the period they set.",
@@ -487,7 +506,7 @@ CUECS: tuple[Cuec, ...] = (
          "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a "
          "contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the "
          "bank or unauthorized access to its customers' information, representations and warranties, and deletion at exit "
-         "(23 NYCRR 500.11; 12 CFR 364 App. B III.D).",
+         "(23 NYCRR 500.11; 12 CFR 364 App. B III.D; 201 CMR 17.03(2)(f)).",
          "OpenClear supplies the controls, CUECs, host attestations, security metrics and evidence export a contract and an "
          "assessment rely on.",
          "attested", None, "Yearly", "docs/compliance/tprm.md; docs/compliance/nydfs.md"),
@@ -614,7 +633,8 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear checks its own settings at startup and on the Controls page.",
          "automated", "production_safety", "Continuous", "Controls → Production settings", related=("CM-2",)),
     Cuec("H-CP-9-01", "host", "CP-9", "Back up and test restores",
-         "Back up the database and file storage, encrypted and kept apart from the primary, and test a restore at least yearly.",
+         "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or "
+         "offline behind sign-in separate from production, and test a clean restore at least yearly.",
          "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
          "attested", None, "Daily; restore tested yearly", "The host's backup records", related=("CP-4", "CP-10")),
     Cuec("H-CP-2-01", "host", "CP-2", "State recovery objectives",

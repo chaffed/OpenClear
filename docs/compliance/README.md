@@ -10,6 +10,8 @@ for each point is.
 - [The CRI Profile](cri-profile.md): answering it from the [NIST CSF 2.0 crosswalk](csf.md)
 - [New York DFS Part 500](nydfs.md): OpenClear's target for state rules, as a bank's service provider
 - [Incident notification](incident-notification.md): the FDIC's rule, Part 500's, and how the host tells a bank
+- [State rules](state-rules.md): Massachusetts 201 CMR 17.00 and the CSBS tools (R-SAT)
+- [Check fraud, SARs and OFAC](fincen-ofac.md): what a SAR narrative needs from OpenClear, and why it doesn't screen
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack

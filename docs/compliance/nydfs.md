@@ -5,8 +5,8 @@
 New York's cybersecurity regulation, 23 NYCRR Part 500, binds banks licensed under the New York
 Banking Law. It doesn't bind OpenClear. But section 500.11 makes each bank set what its third-party
 service providers must do, and **OpenClear aims to meet everything a bank can ask of one there**, and
-to give a New York bank the evidence for each section that touches positive pay. Other states' rules
-are evaluated separately. This isn't legal advice ([Compliance](README.md)).
+to give a New York bank the evidence for each section that touches positive pay. Other states are on
+[State rules](state-rules.md). This isn't legal advice ([Compliance](README.md)).
 
 **Who's the service provider?** Whoever hosts OpenClear for the bank. A bank that hosts it itself
 has no service provider for OpenClear; to that bank, OpenClear is an externally developed

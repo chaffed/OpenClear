@@ -254,3 +254,15 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   built:** bank-set retention and disposal of business records, with a signed deletion record at
   exit (medium; deleting records banks must keep for years needs the product owner's decision on
   the design, and each bank's retention periods are its own legal call, B-SI-12-01).
+- 2026-10-22: RG5 done. **Findings:** Massachusetts 201 CMR 17.00 binds any bank with
+  Massachusetts customers and reaches the host by contract; OpenClear holds personal information
+  under it for individuals' and sole proprietors' accounts. A check-fraud SAR narrative's
+  victim-side facts are all in OpenClear except the bank of first deposit (X9.37 addenda 26–28 are
+  skipped), and declined teller attempts were on screen for seven days only. OFAC screening stays
+  where the money moves, not in OpenClear (decided: not worth building). Built: teller
+  verifications in the data export. CUECs B-RA-3-04, B-SC-28-01, B-IR-6-08; B-PL-1-01, B-SA-9-02
+  and H-CP-9-01 amended. Pages `state-rules.md`, `fincen-ofac.md`. **Follow-ups, not built:** a
+  searchable teller verification history with CSV (small–medium); keeping the bank of first
+  deposit from X9.37 type 26 addenda (medium; the field layout in X9.100-187 to confirm); an item
+  history export for investigations, signed, bank-only and not labelled SAR (medium); IAT addenda
+  names (small, only if a bank screens from OpenClear).

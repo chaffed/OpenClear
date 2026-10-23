@@ -38,6 +38,14 @@
   and `OPENCLEAR_LAST_RESTORE_TEST`, and warns without them or once the test is over a year old.
   New CUECs B-RA-3-03, B-SI-12-01, B-CP-2-03, H-CP-2-01, H-IR-6-02 and H-PS-3-01; B-RA-3-01,
   B-IR-6-01 and B-SA-9-02 now name what the Guidelines ask.
+- **State rules, check-fraud SARs and OFAC** (RG5). The data export now includes every teller
+  verification (`teller_verifications.json`), declined or not, so a check refused at a branch
+  stays evidence beyond the exceptions page's seven days. New pages `state-rules.md`
+  (Massachusetts 201 CMR 17.00, the CSBS Ransomware Self-Assessment Tool) and `fincen-ofac.md`
+  (what a check-fraud SAR narrative needs from OpenClear; why it doesn't screen for sanctions). New
+  CUECs B-RA-3-04 (screen for sanctions where the money moves), B-SC-28-01 (encrypt downloads on
+  the bank's devices) and B-IR-6-08 (keep SARs out of OpenClear); H-CP-9-01 now asks for an
+  immutable or offline backup.
 - **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
   sources, and the control check `regulatory_currency` warns when one is over a year old.
 

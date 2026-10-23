@@ -26,6 +26,8 @@ PAGES: tuple[Page, ...] = (
     Page("cri-profile.md", "The CRI Profile", date(2026, 10, 22)),
     Page("incident-notification.md", "Incident notification", date(2026, 10, 22)),
     Page("nydfs.md", "New York DFS Part 500", date(2026, 10, 22)),
+    Page("state-rules.md", "State rules: Massachusetts and CSBS", date(2026, 10, 22)),
+    Page("fincen-ofac.md", "Check fraud, SARs and OFAC", date(2026, 10, 22)),
     Page("nacha.md", "Nacha Operating Rules and Regulation E", date(2026, 10, 22)),
     Page("sr-11-7.md", "Model risk management (SR 11-7)", date(2026, 10, 21)),
     Page("tprm.md", "Third-party risk management", date(2026, 10, 21)),

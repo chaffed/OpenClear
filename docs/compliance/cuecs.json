@@ -577,7 +577,7 @@
       "oscal_id": "pl-1",
       "related": [],
       "title": "Cover OpenClear in written policies",
-      "statement": "Cover positive pay in the bank's cybersecurity policies (vendor management, incident response and notification, access control), and approve them each year (23 NYCRR 500.3).",
+      "statement": "Cover positive pay in the bank's cybersecurity policies (vendor management, incident response and notification, access control) and its written information security program, and approve them each year (23 NYCRR 500.3; for Massachusetts residents' information, 201 CMR 17.03).",
       "complements": "OpenClear's controls and CUECs say what it does and what it relies on the bank for.",
       "evidence": "attested",
       "check": null,
@@ -933,6 +933,116 @@
         }
       ],
       "where": "The bank's fraud program",
+      "withdrawn": false
+    },
+    {
+      "id": "B-RA-3-04",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Screen for sanctions where the money moves",
+      "statement": "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",
+      "complements": "OpenClear doesn't screen for sanctions. It shows the payee as issued, as read from the image and as typed at a branch, so a bank can check one when it has reason to.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "docs/compliance/fincen-ofac.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SC-28-01",
+      "party": "bank",
+      "nist": "SC-28",
+      "nist_title": "Protection of Information at Rest",
+      "oscal_id": "sc-28",
+      "related": [
+        "MP-4"
+      ],
+      "title": "Protect downloads on the bank's devices",
+      "statement": "Encrypt laptops and portable media that hold OpenClear exports, decision files or check images, and keep such files off unmanaged devices (201 CMR 17.04(5)).",
+      "complements": "OpenClear records each export and download in the action log.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        }
+      ],
+      "where": "The bank's device management",
       "withdrawn": false
     },
     {
@@ -1606,6 +1716,67 @@
       "withdrawn": false
     },
     {
+      "id": "B-IR-6-08",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Report check fraud to FinCEN, and keep SARs out of OpenClear",
+      "statement": "Decide and file suspicious activity reports for check fraud by the bank's own procedure, using OpenClear's records as supporting documentation (with the key term FIN-2023-MAILTHEFT where it applies), and never record in OpenClear that a SAR was or wasn't filed (31 CFR 1020.320(e)).",
+      "complements": "OpenClear keeps the victim-side facts a narrative needs (as issued, as presented, images, decisions, branch attempts) and has no field for a SAR; customer users and support staff can read notes and reasons.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "docs/compliance/fincen-ofac.md",
+      "withdrawn": false
+    },
+    {
       "id": "B-IR-6-02",
       "party": "bank",
       "nist": "IR-6",
@@ -2243,7 +2414,7 @@
       "oscal_id": "sa-9",
       "related": [],
       "title": "Write OpenClear into the third-party policy",
-      "statement": "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the bank or unauthorized access to its customers' information, representations and warranties, and deletion at exit (23 NYCRR 500.11; 12 CFR 364 App. B III.D).",
+      "statement": "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the bank or unauthorized access to its customers' information, representations and warranties, and deletion at exit (23 NYCRR 500.11; 12 CFR 364 App. B III.D; 201 CMR 17.03(2)(f)).",
       "complements": "OpenClear supplies the controls, CUECs, host attestations, security metrics and evidence export a contract and an assessment rely on.",
       "evidence": "attested",
       "check": null,
@@ -3265,7 +3436,7 @@
         "CP-10"
       ],
       "title": "Back up and test restores",
-      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, and test a restore at least yearly.",
+      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or offline behind sign-in separate from production, and test a clean restore at least yearly.",
       "complements": "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
       "evidence": "attested",
       "check": null,
