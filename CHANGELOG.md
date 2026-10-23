@@ -2,6 +2,64 @@
 
 ## Unreleased
 
+- **A check is never due after its midnight deadline** (`REGULATORY_PLAN.md` RG1). Each check's
+  return deadline is now worked out from the day it was presented, in the bank's banking days, and
+  its decision deadline is never later than the bank's cut-off on that day. Before, it was counted
+  from when the check reached OpenClear, so the minimum review time (120 minutes by default), a
+  late file or a holiday could push it past the deadline the UCC sets for returning a check. A
+  decision sent after it is still sent, but marked `after_return_deadline` in the decision feed and
+  the `exception.decided` webhook, and raised as a `decision.after_return_deadline` security event;
+  a new control check fails for 30 days after one, and warns when a customer's cut-off is later
+  than the bank's. Settings → Decision cut-off can say the bank opens on the Federal Reserve's
+  holidays. An X9.37 cash letter without a readable Business Date is now refused instead of dated
+  today. New page `docs/compliance/check-law.md` (a draft for counsel), new CUECs B-CA-3-03,
+  B-CA-3-04, B-SI-4-03, B-AU-11-02 and C-SI-4-02, control OC-SI-11.
+- **ACH return reasons and fraud monitoring** (RG2). The default ACH return reasons gain R29 (a
+  business account's unauthorized debit) and R17 (suspected fraud), added to every bank, and R11
+  has its current wording. The evidence export gains an ACH monitoring summary. `nacha.md` explains
+  that Nacha's 2026 fraud-monitoring rule covers incoming credits, which OpenClear doesn't screen,
+  and covers Regulation E.
+- **Incident notices from the service provider** (RG3; 12 CFR 304.24, NYDFS 500.11). A bank names
+  its incident contacts, with its CEO and CIO as the fallback, in Settings → Incident contacts, and
+  confirms them each year. The installation's operator sends incident and maintenance notices from
+  Platform → Incidents: each is emailed to the bank's contacts whatever their notification
+  settings, shown to its administrators until one acknowledges it, recorded in the bank's action
+  log and raised as security events (`incident.notice.sent`, `incident.notice.acknowledged`;
+  changing contacts is `incident_contact.changed`). The evidence export lists them. A control check
+  warns on no contacts, an unacknowledged notice or a year unconfirmed. New pages
+  `docs/compliance/nydfs.md` (Part 500, section by section) and
+  `docs/compliance/incident-notification.md`; controls OC-IR-01 and OC-IR-02; new bank and host
+  CUECs; the runbook's *Incidents (for the service provider)*.
+- **Examination: FFIEC, GLBA and the CRI Profile** (RG4). `ffiec.md` gains *Retail Payment
+  Systems* and *Business Continuity Management*; new pages `glba.md` (12 CFR 364 Appendix B,
+  element by element) and `cri-profile.md` (answering the Profile from the CSF crosswalk). A new
+  control check, *Recovery objectives stated* (control OC-CP-01), shows the host's recovery time
+  and point objectives and its last restore test from `OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION`
+  and `OPENCLEAR_LAST_RESTORE_TEST`, and warns without them or once the test is over a year old.
+  New CUECs B-RA-3-03, B-SI-12-01, B-CP-2-03, H-CP-2-01, H-IR-6-02 and H-PS-3-01; B-RA-3-01,
+  B-IR-6-01 and B-SA-9-02 now name what the Guidelines ask.
+- **State rules, check-fraud SARs and OFAC** (RG5). The data export now includes every teller
+  verification (`teller_verifications.json`), declined or not, so a check refused at a branch
+  stays evidence beyond the exceptions page's seven days. New pages `state-rules.md`
+  (Massachusetts 201 CMR 17.00, the CSBS Ransomware Self-Assessment Tool) and `fincen-ofac.md`
+  (what a check-fraud SAR narrative needs from OpenClear; why it doesn't screen for sanctions). New
+  CUECs B-RA-3-04 (screen for sanctions where the money moves), B-SC-28-01 (encrypt downloads on
+  the bank's devices) and B-IR-6-08 (keep SARs out of OpenClear); H-CP-9-01 now asks for an
+  immutable or offline backup.
+- **Accessibility and AI** (RG6). The automated accessibility checks now cover WCAG 2.2 (axe's
+  `wcag22a` and `wcag22aa`, so a 24px target size at every width) and the in-app guides and data
+  dictionary, and check that a control focused from the keyboard isn't hidden behind the decision
+  bar. Fixed what they found: row actions (Edit, Deactivate, a note's toggle) are at least 24px
+  high on desktops, the page scrolls a focused control clear of the decision and bulk-action
+  bars, and the data dictionary's diagram labels are readable in the dark theme. **Fraud
+  scoring:** a bank's first model is now activated only after 200 of its own decisions, like a
+  replacement (it had been 10), as `sr-11-7.md` said; and defaults applied at the deadline are no
+  longer training labels, since they say what the account's setting is, not whether the item was
+  fraud. New pages `accessibility.md`, `ai-rmf.md` and `cfpb-1033.md`; CUECs B-SA-4-01 and
+  B-RA-3-05; B-RA-3-02 names Section 1033.
+- **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
+  sources, and the control check `regulatory_currency` warns when one is over a year old.
+
 ## 1.28.1 — 2026-10-22
 
 - **Teller verification: enrollment and the payee** (the product owner's decisions on

@@ -380,3 +380,34 @@ def test_run_export_job_falls_back_to_global_default_timeout(db_session, tenant_
     _run_job_sync(db_session, job)
 
     assert captured["timeout_seconds"] == get_settings().data_export_timeout_seconds
+
+
+def test_teller_verifications_are_exported_to_the_bank_and_to_their_own_customer(db_session, tenant_factory):
+    """REGULATORY_PLAN.md RG5: a check declined at a branch is evidence for a fraud investigation
+    or a SAR narrative, so the data export keeps it beyond the screen's seven days."""
+    from datetime import datetime, timedelta, timezone
+
+    from openclear.domain.teller_verification import TellerVerification
+
+    tenant, _house_account, users = tenant_factory.make(slug="export-teller")
+    customer_a = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="T-A", name="A"))
+    customer_b = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="T-B", name="B"))
+    now = datetime.now(timezone.utc)
+    for customer_id, check_number in ((customer_a.id, "100"), (customer_b.id, "200"), (None, "300")):
+        db_session.add(TellerVerification(tenant_id=tenant.id, customer_id=customer_id, account_number="1234", check_number=check_number,
+                                          amount=Decimal("950.00"), payee_name="Cash Kwik", result="declined",
+                                          problems=["not_issued"], branch="Main", teller_id="T7", expires_at=now + timedelta(minutes=15)))
+    db_session.commit()
+
+    def exported(customer_id):
+        job = data_export_service.request_export(db_session, tenant.id, users["admin"].id, customer_id=customer_id)
+        db_session.commit()
+        _run_job_sync(db_session, job)
+        db_session.expire_all()
+        with zipfile.ZipFile(db_session.get(type(job), job.id).archive_path) as zf:
+            return _read_json(zf, "data/teller_verifications.json")
+
+    whole = exported(None)
+    assert sorted(v["check_number"] for v in whole) == ["100", "200", "300"]
+    assert whole[0]["branch"] == "Main" and whole[0]["problems"] == ["not_issued"]
+    assert [v["check_number"] for v in exported(customer_a.id)] == ["100"]

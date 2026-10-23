@@ -40,6 +40,7 @@ from openclear.domain import (  # noqa: F401
     exception_item,
     idempotency_record,
     import_layout,
+    incident,
     installation_setting_digest,
     issued_item,
     job,

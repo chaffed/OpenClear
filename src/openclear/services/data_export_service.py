@@ -110,6 +110,20 @@ def _decision_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UU
     )
 
 
+def _teller_verification_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None):
+    """Every teller verification, declined or not: the record of a check presented at a branch,
+    which a fraud investigation or a SAR narrative needs (REGULATORY_PLAN.md RG5). One on an
+    account OpenClear doesn't know has no customer, so only the bank's own export has it."""
+    from sqlalchemy import select
+
+    from openclear.domain.teller_verification import TellerVerification
+
+    query = select(TellerVerification).where(TellerVerification.tenant_id == tenant_id).order_by(TellerVerification.created_at)
+    if customer_id is not None:
+        query = query.where(TellerVerification.customer_id == customer_id)
+    return query
+
+
 def _users_dicts(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list[dict]:
     """Custom composition, not _row_to_dict: pulls in the user's email and the
     membership's resolved security group NAME (never the whole security_group table for
@@ -154,6 +168,7 @@ _SCOPED_EXPORTERS: list[tuple[str, Any]] = [
     ("exceptions", lambda s, t, c: _stream(s, ExceptionRepository(s, t, c).query())),
     ("decisions", lambda s, t, c: _stream(s, _decision_query(s, t, c))),
     ("check_images", lambda s, t, c: _stream(s, _check_image_query(s, t, c))),
+    ("teller_verifications", lambda s, t, c: _stream(s, _teller_verification_query(s, t, c))),
     ("users", _users_dicts),
     ("sso_connections", lambda s, t, c: [_row_to_dict(r) for r in SsoConnectionRepository(s, t).list(customer_id=c)]),
     ("sso_group_mappings", _sso_group_mapping_dicts),

@@ -202,4 +202,81 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
 - 2026-10-22: The product owner set New York DFS Part 500 as the target (RG-D7); it moves to RG3
   with incident notification, and examination becomes RG4. The CRI Profile: the CSF crosswalk now,
   a direct crosswalk when a bank asks (RG-D6). Stages are now RG1–RG7.
-
+- 2026-10-22: Research for RG1–RG6 done from primary sources (notes kept with the PRs).
+- 2026-10-22: RG2 built. **Finding:** Nacha's 2026 RDFI fraud-monitoring rule covers incoming
+  *credits*; OpenClear's ACH positive pay screens debits, so it doesn't meet it (bank CUEC
+  B-SI-4-02). Regulation E covers consumer accounts only; positive pay customers are businesses.
+  Built: R29 and R17 in the default return reasons and R11's current wording (migration
+  `81bc96eb16ef` adds them to every bank), and the evidence export's ACH monitoring summary
+  (control OC-SI-10). New CUECs B-RA-3-02, B-SI-4-02, B-IR-6-03, B-IR-6-04; C-IR-6-01 no longer
+  asks business customers for the consumer form. `nacha.md` gains *Fraud monitoring (2026)*,
+  *Regulation E* and its sources. **Follow-ups, not built:** a consumer/business flag on accounts
+  with an exception when a consumer SEC code debits a business account (medium); recording WSUD
+  review dates against the sixth-banking-day return (medium, only if banks run late claims
+  through OpenClear); incoming-credit monitoring (large; the bank's own, B-SI-4-02).
+- 2026-10-22: RG7's mechanism built first, as it watches every page: `compliance/regulatory.py`,
+  each page's "Current as of" line (kept in step by a test; `csf.md`'s from the generator), the
+  check `regulatory_currency` and control OC-CA-03.
+- 2026-10-22: RG1 built. **Finding:** a check's decision deadline was counted from when it reached
+  OpenClear, so the minimum review time (120 minutes by default), a late file or a holiday could
+  put it after the UCC midnight deadline (worked cases: the Wednesday before Thanksgiving, New
+  Year's Eve, a Friday before Columbus Day for a bank open that day). Built: `return_deadline` on
+  each check exception from its presented date in the bank's banking days, the decision deadline
+  capped at the cut-off on that day, `tenant.open_on_federal_holidays` (migration `44ed7f9be66a`),
+  late decisions flagged (feed, webhook, a high security event), the check `return_deadline` and
+  control OC-SI-11, and X9.37 files without a readable Business Date refused. CUECs B-CA-3-03,
+  B-CA-3-04, B-SI-4-03, B-AU-11-02, C-SI-4-02. `check-law.md`, a draft for counsel. Regulation CC's
+  citations corrected: the paying bank's duties are in 229.31 since 2018. **Follow-ups, not built:**
+  a record at the cut-off for items left open with "leave open" (small); Saturday banking days
+  (small); a per-item dispute export (medium); flagging check returns of $5,000 or more for the
+  core's notice of nonpayment (small, optional).
+- 2026-10-22: RG3 built. **Finding:** OpenClear had no way for its host to tell a bank of an
+  incident, which 12 CFR 304.24 requires of a bank service provider and NYDFS 500.11(b)(3) lets a
+  bank require. Built: incident contacts per bank (CEO and CIO as the fallback; administrators if
+  neither), notices from Platform → Incidents emailed whatever the settings and shown to
+  administrators until acknowledged, both ends in the action log and raised as security events,
+  the evidence export's list, the check `incident_contacts`, controls OC-IR-01 and OC-IR-02,
+  migration `d867a5f28e73`, the runbook's incident section and threat OC-T24. CUECs B-IR-6-05,
+  B-IR-6-06, B-IR-6-07, B-SA-9-02, B-SA-9-03 and the host's H-IR-6-01, H-IR-8-01, H-CM-4-01.
+  Pages `nydfs.md` (500.11 and each section mapped) and `incident-notification.md`. **Follow-ups,
+  not built:** a status page or API for notices (small); SMS for notices (small); an independent
+  penetration test of OpenClear for 500.5 (parked, needs funding); multi-factor authentication
+  required of every bank user by default for 500.12 (medium; today the bank's setting).
+- 2026-10-22: RG4 done. **Findings:** the FFIEC BCM booklet has a bank check its recovery
+  objectives against its provider's, and OpenClear published none for a host to state; GLBA's
+  Guidelines (12 CFR 364 App. B II.B.4, III.C.4) name disposal, and OpenClear has no bank-set
+  retention or signed deletion at exit; Supplement A's notice of unauthorized access is wider than
+  the FDIC's disruption rule. Built: the check `recovery_objectives` and control OC-CP-01 (the
+  host's RTO, RPO and last restore test, from settings). CUECs B-RA-3-03, B-SI-12-01, B-CP-2-03,
+  H-CP-2-01, H-IR-6-02, H-PS-3-01; B-RA-3-01, B-IR-6-01 and B-SA-9-02 amended. Pages: `ffiec.md`
+  (Retail Payment Systems, BCM), `glba.md`, `cri-profile.md`. The FFIEC InfoBase refuses
+  automated reading, so the booklets' wording is from extracts and unconfirmed. **Follow-ups, not
+  built:** bank-set retention and disposal of business records, with a signed deletion record at
+  exit (medium; deleting records banks must keep for years needs the product owner's decision on
+  the design, and each bank's retention periods are its own legal call, B-SI-12-01).
+- 2026-10-22: RG5 done. **Findings:** Massachusetts 201 CMR 17.00 binds any bank with
+  Massachusetts customers and reaches the host by contract; OpenClear holds personal information
+  under it for individuals' and sole proprietors' accounts. A check-fraud SAR narrative's
+  victim-side facts are all in OpenClear except the bank of first deposit (X9.37 addenda 26–28 are
+  skipped), and declined teller attempts were on screen for seven days only. OFAC screening stays
+  where the money moves, not in OpenClear (decided: not worth building). Built: teller
+  verifications in the data export. CUECs B-RA-3-04, B-SC-28-01, B-IR-6-08; B-PL-1-01, B-SA-9-02
+  and H-CP-9-01 amended. Pages `state-rules.md`, `fincen-ofac.md`. **Follow-ups, not built:** a
+  searchable teller verification history with CSV (small–medium); keeping the bank of first
+  deposit from X9.37 type 26 addenda (medium; the field layout in X9.100-187 to confirm); an item
+  history export for investigations, signed, bank-only and not labelled SAR (medium); IAT addenda
+  names (small, only if a bank screens from OpenClear).
+- 2026-10-22: RG6 done. **Findings:** WCAG 2.2 wasn't checked (axe ran 2.0 and 2.1 tags only);
+  with it, 106 row actions on desktop were under 24px and the data dictionary's diagram labels
+  failed contrast in the dark theme, and on phones the decision bar could hide the control focused
+  just above it (2.4.11). In the model: defaults applied at the deadline were training labels, and
+  a first model was activated on 10 decisions while `sr-11-7.md` said 200. Section 1033 doesn't
+  reach positive pay (business accounts; the rule's dates stayed by the court). Built: the axe
+  runs on WCAG 2.2 and the guides, a focus-not-obscured check, the fixes for each finding, human
+  decisions only as labels, and the 200 floor for the first model. CUECs B-SA-4-01, B-RA-3-05;
+  B-RA-3-02 amended. Pages `accessibility.md`, `ai-rmf.md`, `cfpb-1033.md`. **Follow-ups, not
+  built:** the manual screen-reader and keyboard pass, then a VPAT (parked, needs a person);
+  3.3.7 Redundant Entry evaluated (small, with that pass); score drift and agreement monitoring
+  (medium); a check of the bulk-action bar's focus case on every build (small).
+- 2026-10-22: RG7 done: all fifteen regulatory pages are in `compliance/regulatory.py` with
+  their "Current as of" lines, kept in step by `test_regulatory_currency`.

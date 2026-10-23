@@ -53,6 +53,9 @@ PAGES = [
     ("controls", "/ui/admin/controls", True),
     ("action_log", "/ui/audit-log", True),
     ("not_found", "/ui/no-such-page", True),
+    ("docs_end_user", "/ui/docs/end-user", True),
+    ("docs_admin", "/ui/docs/admin", True),
+    ("docs_data_dictionary", "/ui/docs/admin/data-dictionary", True),
 ]
 
 # What a customer's user sees (their pages, not the bank's settings).
@@ -141,7 +144,7 @@ def test_main_pages_have_no_new_accessibility_problems(client, db_session, tenan
             if signed_in:  # really the page, not a redirect to sign in
                 assert "/ui/login" not in page.url, f"{name} redirected to {page.url}"
             page.add_script_tag(content=axe)
-            results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']}})")
+            results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']}})")
             found[name if view == "desktop" else f"{view}/{name}"] = sorted(_problems(results))
     finally:
         browser.close()

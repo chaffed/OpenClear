@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Incidents — OpenClear{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card">
+  <h1>Incident and maintenance notices</h1>
+  <p>Tell the banks an incident affects as soon as you've determined it: one that has disrupted or degraded their positive pay
+    service, or is likely to, for four hours or more (12 CFR 304.24), or a cybersecurity event that affects a bank's systems or data
+    (23 NYCRR 500.11). Announce scheduled maintenance beforehand. Each notice is emailed to each bank's incident contacts (or its CEO
+    and CIO), and shown to its administrators until one acknowledges it. The runbook's <em>Incidents</em> section has the steps.</p>
+  <form method="post" action="/ui/platform/incidents">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Kind
+      <select name="kind">{% for value, label in kinds.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label>Follows an earlier notice (for an update or closure)
+      <select name="follows_id"><option value="">—</option>{% for n in notices %}<option value="{{ n.id }}">{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} {{ n.title }}</option>{% endfor %}</select>
+    </label>
+    <label>Title <input type="text" name="title" maxlength="200" required class="field-xl"></label>
+    <label>What happened, what's affected, what the bank should do, and when you'll update them
+      <textarea name="message" rows="8" required></textarea></label>
+    <div class="inline-fields">
+      <label>Started (UTC) <input type="datetime-local" name="started_at"></label>
+      <label>Determined (UTC) <input type="datetime-local" name="determined_at"></label>
+    </div>
+    <label>Services affected <input type="text" name="services_affected" maxlength="500" class="field-xl" placeholder="e.g. decision files to the core; the web pages"></label>
+    <label><input type="checkbox" name="bank_data_affected" value="true"> Banks' data is affected</label>
+    <fieldset>
+      <legend>Banks</legend>
+      <label><input type="checkbox" name="all_banks" value="true"> Every bank</label>
+      {% for b in banks %}<label><input type="checkbox" name="tenant_ids" value="{{ b.tenant.id }}"> {{ b.tenant.name }}</label>{% endfor %}
+    </fieldset>
+    <button type="submit" data-confirm="Send this notice now? It's emailed to each bank's incident contacts at once.">{{ icon("send") }}Send now</button>
+  </form>
+</div>
+{% if notices %}
+<div class="card">
+  <h2>Sent</h2>
+  <table>
+    <thead><tr><th>Sent</th><th>Kind</th><th>Title</th></tr></thead>
+    <tbody>{% for n in notices %}<tr><td>{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} UTC</td><td>{{ kinds[n.kind] }}</td><td>{{ n.title }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

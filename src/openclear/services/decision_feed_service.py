@@ -89,6 +89,8 @@ def read_feed(
     user_ids = {d.decided_by_user_id for d, _ in rows if d.decided_by_user_id}
     users = {u.id: u for u in session.execute(select(User).where(User.id.in_(user_ids))).scalars()} if user_ids else {}
 
+    from openclear.services.decision_service import after_return_deadline  # here: decision_service imports this module
+
     feed = []
     for decision, exception in rows:
         item = checks.get(exception.source_item_id) if exception.network_code == "check" else debits.get(exception.source_item_id)
@@ -109,6 +111,8 @@ def read_feed(
             "account_number": account.account_number if account else None,
             "account_name": account.name if account else None,
             "customer_number": customer.customer_number if customer else None,
+            # Sent after the check's midnight deadline (REGULATORY_PLAN.md RG1); always false for ACH.
+            "after_return_deadline": after_return_deadline(decision, exception),
         }
         if exception.network_code == "check" and item is not None:
             entry.update(check_number=item.check_number, amount=str(item.presented_amount), presented_date=item.presented_date.isoformat())
@@ -124,7 +128,7 @@ def read_feed(
 CSV_COLUMNS = (
     "sequence", "network", "outcome", "reason_code", "return_transaction_code", "account_number", "customer_number",
     "check_number", "trace_number", "amount", "presented_date", "effective_date", "originator_id", "originator_name",
-    "sec_code", "source", "decided_by", "decided_at", "decision_id", "exception_id",
+    "sec_code", "source", "decided_by", "decided_at", "decision_id", "exception_id", "after_return_deadline",
 )
 
 

@@ -289,6 +289,48 @@ def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get
     return see_other("/ui/platform/host-attestations", flash=f"{attestation.cuec_id} accepted and signed.")
 
 
+@router.get("/incidents")
+def incidents(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """Incident and maintenance notices to banks (services/incident_service.py; REGULATORY_PLAN.md RG3)."""
+    from openclear.services import incident_service
+
+    return render_template(request, "platform/incidents.html", user=user, banks=operator_service.banks(db, include_sandboxes=True),
+                           notices=incident_service.issued(db), kinds=incident_service.KINDS)
+
+
+@router.post("/incidents")
+async def issue_incident_notice(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                                _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """Issues a notice at once to the banks chosen: speed comes first (12 CFR 304.24 says as soon as
+    possible), so it doesn't wait for a second operator; the platform's action log records it."""
+    from datetime import datetime, timezone
+
+    from openclear.services import incident_service
+
+    form = await request.form()
+
+    def when(name: str):
+        value = str(form.get(name) or "").strip()
+        return datetime.fromisoformat(value).replace(tzinfo=timezone.utc) if value else None
+
+    try:
+        chosen = [uuid.UUID(v) for v in form.getlist("tenant_ids")]
+        if form.get("all_banks") == "true":
+            chosen = [b.tenant.id for b in operator_service.banks(db, include_sandboxes=True)]
+        follows = uuid.UUID(str(form["follows_id"])) if form.get("follows_id") else None
+        notice = incident_service.issue(
+            db, kind=str(form.get("kind") or ""), title=str(form.get("title") or ""), message=str(form.get("message") or ""),
+            tenant_ids=chosen, user_id=user.id, started_at=when("started_at"), determined_at=when("determined_at"),
+            services_affected=str(form.get("services_affected") or ""), bank_data_affected=form.get("bank_data_affected") == "true",
+            follows_id=follows)
+    except (incident_service.IncidentError, ValueError) as exc:
+        db.rollback()
+        message = str(exc) if isinstance(exc, incident_service.IncidentError) else "Check the dates and the banks chosen."
+        return see_other("/ui/platform/incidents", flash=message)
+    db.commit()
+    return see_other("/ui/platform/incidents", flash=f"Notice {notice.title!r} sent.")
+
+
 @router.get("/banks/new")
 def new_bank(request: Request, _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     return render_template(request, "platform/provision.html")

@@ -488,6 +488,12 @@ class Settings(BaseSettings):
     # KMS key alias/openclear; EBS volumes encrypted"). OpenClear can't see this itself; the
     # Controls page (services/controls_service.py) shows the statement, or warns without one.
     storage_encryption_attestation: str | None = None
+    # The host's recovery objectives (e.g. "RTO 4 hours, RPO 15 minutes; restored to a second
+    # region") and the date of its last restore test (REGULATORY_PLAN.md RG4; the FFIEC BCM
+    # booklet asks a bank to check its own objectives against its provider's). Shown on the
+    # Controls page, which warns without them or once the test is over a year old.
+    recovery_objectives_attestation: str | None = None
+    last_restore_test: date | None = None
     oidc_http_timeout_seconds: float = 10.0
     # Lets SSO connections point at http:// and private/loopback addresses (a local test
     # identity provider such as a Keycloak container on localhost). Off by default, and

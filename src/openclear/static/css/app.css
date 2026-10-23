@@ -226,6 +226,11 @@ button.danger, .button.danger { background: var(--danger); }
   background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; font-size: 0.9rem;
 }
 .link-button:hover { color: var(--accent-text); }
+/* WCAG 2.2 2.5.8 Target Size (Minimum): row actions are at least 24px at every width (44px below
+   desktop, further down). */
+:is(.cell-actions, [id$="-actions"]) :is(a, .link-button), .decision-note summary, td a[aria-label^="Edit "] {
+  display: inline-flex; align-items: center; min-height: 24px; min-width: 24px;
+}
 
 .flash { padding: 0.6rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; }
 .flash-ok { background: var(--badge-ok-bg); color: var(--badge-ok-fg); }
@@ -452,6 +457,9 @@ th.sort-desc .sort-button::after { content: "\2193"; opacity: 1; }
   overflow: hidden; background: var(--bg);
 }
 .mermaid-container svg { width: 100%; height: 100%; }
+/* Mermaid's dark theme puts relationship labels on a translucent box too faint to read (WCAG 1.4.3):
+   the page's own colours instead. */
+.mermaid-container .edgeLabel p, .mermaid-container .labelBkg { background: var(--bg) !important; color: var(--text) !important; }
 .mermaid-toolbar {
   position: absolute; top: 0.6rem; right: 0.6rem; z-index: 10;
   display: flex; gap: 0.3rem;
@@ -606,6 +614,8 @@ tr.row-focused { outline: 2px solid var(--accent-text); outline-offset: -2px; }
    and the bar would never stick; the queue's table scrolls inside .table-scroll instead. */
 .card:has(> .bulk-form) { overflow: visible; }
 .bulk-form { position: sticky; bottom: 0; z-index: 5; }
+/* WCAG 2.2 2.4.11 Focus Not Obscured: what the keyboard focuses scrolls clear of the bar. */
+html:has(.bulk-bar:not([hidden])) { scroll-padding-bottom: 5rem; }
 .bulk-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; background: var(--text); color: var(--bg); border-radius: 8px; padding: .6rem .8rem; margin: .5rem 0; }
 .bulk-return-body { display: grid; gap: .5rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .75rem; margin-top: .5rem; min-width: min(22rem, 80vw); }
 .bulk-return > summary { list-style: none; }
@@ -650,6 +660,7 @@ tr.row-focused { outline: 2px solid var(--accent-text); outline-offset: -2px; }
    R2): the fraud risk, Pay and Return in one row, a note below; Return's reasons in a sheet. */
 @media (max-width: 1023.98px) {
   .decision-card { position: sticky; bottom: 0; z-index: 4; box-shadow: 0 -4px 14px rgba(0,0,0,.12); padding: .75rem 1rem; }
+  html:has(.decision-card) { scroll-padding-bottom: 12rem; }  /* clear of the bar when focused (WCAG 2.4.11) */
   /* Two cards (revising a recommendation and approving it): only the last one sticks. */
   .decision-card:has(~ .decision-card) { position: static; box-shadow: none; }
   .decision-heading { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

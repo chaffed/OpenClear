@@ -316,7 +316,7 @@
         "IA-2"
       ],
       "title": "Second factor for staff",
-      "statement": "Require a second factor (a security key or passkey, or the bank's identity provider) of everyone who can decide exceptions or change data.",
+      "statement": "Require a second factor (a security key or passkey, or the bank's identity provider) of everyone who can decide exceptions or change data; a bank under New York DFS Part 500 (500.12, from November 2025) requires it of every person who signs in.",
       "complements": "OpenClear supports FIDO2 security keys and passkeys, and SSO-only sign-in per bank.",
       "evidence": "automated",
       "check": "staff_mfa",
@@ -570,6 +570,206 @@
       "withdrawn": false
     },
     {
+      "id": "B-PL-1-01",
+      "party": "bank",
+      "nist": "PL-1",
+      "nist_title": "Policy and Procedures",
+      "oscal_id": "pl-1",
+      "related": [],
+      "title": "Cover OpenClear in written policies",
+      "statement": "Cover positive pay in the bank's cybersecurity policies (vendor management, incident response and notification, access control) and its written information security program, and approve them each year (23 NYCRR 500.3; for Massachusetts residents' information, 201 CMR 17.03).",
+      "complements": "OpenClear's controls and CUECs say what it does and what it relies on the bank for.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.OC-03",
+          "title": "Legal, regulatory, and contractual requirements regarding cybersecurity - including privacy and civil liberties obligations - are understood and managed"
+        },
+        {
+          "id": "GV.PO-01",
+          "title": "Policy for managing cybersecurity risks is established based on organizational context, cybersecurity strategy, and priorities and is communicated and enforced"
+        },
+        {
+          "id": "GV.PO-02",
+          "title": "Policy for managing cybersecurity risks is reviewed, updated, communicated, and enforced to reflect changes in requirements, threats, technology, and organizational mission"
+        },
+        {
+          "id": "GV.OV-01",
+          "title": "Cybersecurity risk management strategy outcomes are reviewed to inform and adjust strategy and direction"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        }
+      ],
+      "where": "docs/compliance/controls.md; docs/compliance/cuecs.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-CA-2-01",
+      "party": "bank",
+      "nist": "CA-2",
+      "nist_title": "Control Assessments",
+      "oscal_id": "ca-2",
+      "related": [],
+      "title": "Support the annual certification",
+      "statement": "Keep the evidence exports and host attestations that support the bank's annual cybersecurity certification (for New York DFS, by April 15, 23 NYCRR 500.17(b)) for five years.",
+      "complements": "OpenClear's evidence export is signed, and its host attestations are recorded.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        }
+      ],
+      "where": "Settings \u2192 Controls \u2192 Export evidence",
+      "withdrawn": false
+    },
+    {
+      "id": "B-CM-8-01",
+      "party": "bank",
+      "nist": "CM-8",
+      "nist_title": "System Component Inventory",
+      "oscal_id": "cm-8",
+      "related": [],
+      "title": "Inventory OpenClear",
+      "statement": "List OpenClear and its host in the bank's asset inventory, with an owner, the data's classification and a recovery time before the decision cut-off (23 NYCRR 500.13).",
+      "complements": "OpenClear lists the outside services turned on, and the evidence export records the version running.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.AM-01",
+          "title": "Inventories of hardware managed by the organization are maintained"
+        },
+        {
+          "id": "ID.AM-02",
+          "title": "Inventories of software, services, and systems managed by the organization are maintained"
+        },
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        }
+      ],
+      "where": "Settings \u2192 Controls; docs/compliance/tprm.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-RA-3-02",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [],
+      "title": "Know which accounts are consumer accounts",
+      "statement": "Identify each account on OpenClear that is a consumer account under Regulation E, and apply the bank's Regulation E procedures to it alongside positive pay, and meet any duty under the CFPB's personal financial data rights rule (12 CFR 1033) for it through the bank's own interfaces.",
+      "complements": "OpenClear protects business and consumer accounts the same way, and its decision history shows when an item was shown, decided and by whom.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "Customers \u2192 Accounts; docs/compliance/nacha.md (Regulation E)",
+      "withdrawn": false
+    },
+    {
       "id": "B-RA-3-01",
       "party": "bank",
       "nist": "RA-3",
@@ -577,7 +777,7 @@
       "oscal_id": "ra-3",
       "related": [],
       "title": "Assess positive pay risk",
-      "statement": "Include OpenClear in the bank's risk assessment, and set each customer's services and default dispositions from it.",
+      "statement": "Include OpenClear in the bank's risk assessment and in the information security program's yearly report to the board (12 CFR 364 App. B III.F), and set each customer's services and default dispositions from it.",
       "complements": "OpenClear applies each customer's services and default dispositions as set.",
       "evidence": "attested",
       "check": null,
@@ -650,6 +850,314 @@
         }
       ],
       "where": "Customers \u2192 Positive pay settings",
+      "withdrawn": false
+    },
+    {
+      "id": "B-RA-3-03",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [],
+      "title": "Keep the check-fraud controls positive pay doesn't provide",
+      "statement": "Keep account opening and monitoring, kiting detection and stop payments in the bank's own program and the core.",
+      "complements": "OpenClear catches checks that weren't issued, altered amounts and payees, duplicates and a check cashed at a branch, but sees nothing of how an account was opened or of money moving between accounts.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "The bank's fraud program",
+      "withdrawn": false
+    },
+    {
+      "id": "B-RA-3-04",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Screen for sanctions where the money moves",
+      "statement": "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",
+      "complements": "OpenClear doesn't screen for sanctions. It shows the payee as issued, as read from the image and as typed at a branch, so a bank can check one when it has reason to.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "docs/compliance/fincen-ofac.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SC-28-01",
+      "party": "bank",
+      "nist": "SC-28",
+      "nist_title": "Protection of Information at Rest",
+      "oscal_id": "sc-28",
+      "related": [
+        "MP-4"
+      ],
+      "title": "Protect downloads on the bank's devices",
+      "statement": "Encrypt laptops and portable media that hold OpenClear exports, decision files or check images, and keep such files off unmanaged devices (201 CMR 17.04(5)).",
+      "complements": "OpenClear records each export and download in the action log.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        }
+      ],
+      "where": "The bank's device management",
+      "withdrawn": false
+    },
+    {
+      "id": "B-RA-3-05",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [
+        "CA-7",
+        "CM-4"
+      ],
+      "title": "Govern the scoring model",
+      "statement": "Before turning fraud scoring on, inventory the bank's model under its model-risk or AI policy, tier it and name an owner; while it's on, review its metrics, champion/challenger record and replays at least yearly, and turn it off if they degrade.",
+      "complements": "OpenClear keeps scoring off until the bank turns it on, activates a model only after 200 of the bank's own decisions, learns only from decisions people made, and shows each model's metrics and how it was chosen.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "Settings \u2192 ML models; docs/compliance/ai-rmf.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SI-12-01",
+      "party": "bank",
+      "nist": "SI-12",
+      "nist_title": "Information Management and Retention",
+      "oscal_id": "si-12",
+      "related": [
+        "MP-6"
+      ],
+      "title": "Set retention and disposal",
+      "statement": "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
+      "complements": "OpenClear keeps a bank's business records until the bank's installation or data is deleted, and exports all of it.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly, and at exit",
+      "csf": [
+        {
+          "id": "ID.AM-07",
+          "title": "Inventories of data and corresponding metadata for designated data types are maintained"
+        },
+        {
+          "id": "ID.AM-08",
+          "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
+        }
+      ],
+      "where": "Settings \u2192 Data export; the host's deletion record",
       "withdrawn": false
     },
     {
@@ -835,7 +1343,7 @@
         "SI-12"
       ],
       "title": "Keep the evidence",
-      "statement": "Take an evidence export at least quarterly and keep it, with the action log's archives, for as long as the bank's retention schedule requires, in storage the bank controls.",
+      "statement": "Take an evidence export at least quarterly and keep it, with the action log's archives, for as long as the bank's retention schedule requires, in storage the bank controls; under New York DFS Part 500 (500.6), keep decision records five years and security events three, in the bank's SIEM, since OpenClear keeps security events 30 days by default.",
       "complements": "OpenClear's evidence export is signed, so it can be checked years later without OpenClear.",
       "evidence": "assisted",
       "check": "evidence_export",
@@ -917,6 +1425,441 @@
         }
       ],
       "where": "Controls \u2192 Decisions and imports on time",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SI-4-02",
+      "party": "bank",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "RA-3"
+      ],
+      "title": "Monitor incoming ACH credits for fraud",
+      "statement": "Run, and review at least yearly, the bank's own risk-based process to identify incoming ACH credits initiated by fraud, as the Nacha Rules require of every RDFI from 2026.",
+      "complements": "OpenClear's ACH positive pay monitors debits only and isn't that process; its evidence export summarizes debits, exceptions and returns for the bank's fraud-monitoring file.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "Settings \u2192 Controls \u2192 Export evidence (ach_monitoring)",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-03",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Treat an unauthorized consumer return as a notice of error",
+      "statement": "When a consumer account's ACH debit is returned as unauthorized through OpenClear, treat it as the consumer's notice under Regulation E and meet the investigation, provisional-credit and reporting times in 12 CFR 1005.11.",
+      "complements": "OpenClear records the decision, its reason, who made it and when, with notes and images, in the evidence and data exports.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Exceptions; Settings \u2192 Controls \u2192 Export evidence",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-04",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Return late unauthorized consumer debits on time",
+      "statement": "For a consumer debit reported unauthorized after OpenClear's decision, return it by the opening of the sixth banking day after the bank finishes reviewing the signed Written Statement of Unauthorized Debit.",
+      "complements": "OpenClear decides debits before they post; a late claim is the bank's, through its core.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "The bank's core and procedures",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-05",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Name incident contacts",
+      "statement": "Name at least one incident contact in OpenClear, with the CEO and CIO as the fallback, keep them current, and confirm them each year.",
+      "complements": "OpenClear sends the service provider's incident notices to them, and warns while there are none or they're a year old.",
+      "evidence": "automated",
+      "check": "incident_contacts",
+      "check_status": "live",
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Settings \u2192 Incident contacts",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-06",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Notify the FDIC within 36 hours",
+      "statement": "Decide whether an incident involving OpenClear is a notification incident and, if so, notify the FDIC supervisory office as soon as possible and within 36 hours of that determination (12 CFR 304.23).",
+      "complements": "OpenClear's incident notice gives the bank the facts and when it was told, recorded with its acknowledgement.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Settings \u2192 Incident contacts (notices received)",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-07",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Notify New York DFS within 72 hours",
+      "statement": "A bank supervised by New York DFS notifies DFS within 72 hours of determining that a cybersecurity incident occurred at OpenClear's host, and updates DFS with material new information (23 NYCRR 500.17(a)).",
+      "complements": "OpenClear's incident notice gives the bank the facts and when it was told.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Settings \u2192 Incident contacts (notices received)",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-08",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Report check fraud to FinCEN, and keep SARs out of OpenClear",
+      "statement": "Decide and file suspicious activity reports for check fraud by the bank's own procedure, using OpenClear's records as supporting documentation (with the key term FIN-2023-MAILTHEFT where it applies), and never record in OpenClear that a SAR was or wasn't filed (31 CFR 1020.320(e)).",
+      "complements": "OpenClear keeps the victim-side facts a narrative needs (as issued, as presented, images, decisions, branch attempts) and has no field for a SAR; customer users and support staff can read notes and reasons.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "docs/compliance/fincen-ofac.md",
       "withdrawn": false
     },
     {
@@ -1011,6 +1954,174 @@
         }
       ],
       "where": "Settings \u2192 Outside services (malware scanning); file.malware_detected in the action log",
+      "withdrawn": false
+    },
+    {
+      "id": "B-CA-3-03",
+      "party": "bank",
+      "nist": "CA-3",
+      "nist_title": "Information Exchange",
+      "oscal_id": "ca-3",
+      "related": [
+        "SA-9"
+      ],
+      "title": "Put loss allocation in the positive pay agreement",
+      "statement": "Agree in writing with each positive pay customer the cut-off, the default decision, that undecided items follow it, the customer's duty to send issue files before checks are presented and to review exceptions, and how loss falls if it doesn't (UCC 4-103), and have counsel confirm it under the state's UCC.",
+      "complements": "OpenClear records the settings the agreement names, and for each item when it was raised, shown, decided and by whom.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "On change; reviewed yearly",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Customers \u2192 Default decision; Settings \u2192 Decision cut-off",
+      "withdrawn": false
+    },
+    {
+      "id": "B-CA-3-04",
+      "party": "bank",
+      "nist": "CA-3",
+      "nist_title": "Information Exchange",
+      "oscal_id": "ca-3",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Return checks in time",
+      "statement": "Set cut-offs so the core can send every return before the midnight deadline and Regulation CC's expeditious-return time (12 CFR 229.31(b)), and give notice of nonpayment for returns of $5,000 or more (229.31(c)) from the core.",
+      "complements": "OpenClear keeps each check's decision deadline within its midnight deadline, counted from the day it was presented, and flags a decision sent after it.",
+      "evidence": "automated",
+      "check": "return_deadline",
+      "check_status": "live",
+      "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Settings \u2192 Decision cut-off; Controls \u2192 Checks decided within their return deadline",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SI-4-03",
+      "party": "bank",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "CP-2"
+      ],
+      "title": "Tell OpenClear the bank's banking days",
+      "statement": "Record the days the bank is closed, and whether it opens on the Federal Reserve's holidays, so deadlines follow the bank's banking days.",
+      "complements": "OpenClear counts a check's return deadline in the bank's banking days.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "Settings \u2192 Decision cut-off",
+      "withdrawn": false
+    },
+    {
+      "id": "B-AU-11-02",
+      "party": "bank",
+      "nist": "AU-11",
+      "nist_title": "Audit Record Retention",
+      "oscal_id": "au-11",
+      "related": [
+        "SI-12"
+      ],
+      "title": "Keep decision records for disputes",
+      "statement": "Keep exception, decision and image records at least as long as UCC claims can be brought (at least a year, UCC 4-406(f)), plus any litigation hold.",
+      "complements": "OpenClear keeps every decision, its revisions and the action log, signed, and exports them.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.PS-04",
+          "title": "Log records are generated and made available for continuous monitoring"
+        }
+      ],
+      "where": "Settings \u2192 Controls \u2192 Export evidence; Settings \u2192 Data export",
       "withdrawn": false
     },
     {
@@ -1240,6 +2351,59 @@
       "withdrawn": false
     },
     {
+      "id": "B-CP-2-03",
+      "party": "bank",
+      "nist": "CP-2",
+      "nist_title": "Contingency Plan",
+      "oscal_id": "cp-2",
+      "related": [
+        "CP-4"
+      ],
+      "title": "Exercise the cutoff outage plan",
+      "statement": "Exercise B-CP-2-01's plan at least yearly, including getting pay and return decisions to the core before the return deadline without OpenClear, check the bank's recovery objectives against the host's, and record the result.",
+      "complements": "OpenClear shows the host's recovery objectives and last restore test on the Controls page.",
+      "evidence": "assisted",
+      "check": "recovery_objectives",
+      "check_status": "live",
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "ID.IM-04",
+          "title": "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved"
+        },
+        {
+          "id": "PR.IR-02",
+          "title": "The organization's technology assets are protected from environmental threats"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RC.RP-03",
+          "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
+        },
+        {
+          "id": "RC.CO-04",
+          "title": "Public updates on incident recovery are shared using approved methods and messaging"
+        }
+      ],
+      "where": "Controls \u2192 Recovery objectives stated",
+      "withdrawn": false
+    },
+    {
       "id": "B-AT-3-01",
       "party": "bank",
       "nist": "AT-3",
@@ -1277,7 +2441,7 @@
         "IR-8"
       ],
       "title": "Handle incidents involving OpenClear",
-      "statement": "Include OpenClear in the bank's incident response plan, keep the bank's incident contacts current with whoever hosts it, and report incidents involving it as the bank's rules require.",
+      "statement": "Include OpenClear in the bank's incident response plan, keep the bank's incident contacts current with whoever hosts it, and report incidents involving it as the bank's rules require, notifying customers and the FDIC as 12 CFR 364 App. B Supplement A requires even when the unauthorized access was at the host.",
       "complements": "OpenClear's action log, security events and evidence export reconstruct who did what, and when.",
       "evidence": "attested",
       "check": null,
@@ -1326,6 +2490,230 @@
         }
       ],
       "where": "The bank's incident response plan",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SA-4-01",
+      "party": "bank",
+      "nist": "SA-4",
+      "nist_title": "Acquisition Process",
+      "oscal_id": "sa-4",
+      "related": [],
+      "title": "Check accessibility against the bank's obligations",
+      "statement": "Compare OpenClear's accessibility statement with the bank's own ADA and policy obligations, and report any barrier the bank's staff or customers meet.",
+      "complements": "OpenClear checks WCAG 2.2 A and AA automatically on every build, and states what isn't yet checked.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.SC-05",
+          "title": "Requirements to address cybersecurity risks in supply chains are established, prioritized, and integrated into contracts and other types of agreements with suppliers and other relevant third parties"
+        },
+        {
+          "id": "GV.SC-06",
+          "title": "Planning and due diligence are performed to reduce risks before entering into formal supplier or other third-party relationships"
+        },
+        {
+          "id": "GV.SC-07",
+          "title": "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship"
+        },
+        {
+          "id": "GV.SC-08",
+          "title": "Relevant suppliers and other third parties are included in incident planning, response, and recovery activities"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-08",
+          "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
+        },
+        {
+          "id": "ID.RA-09",
+          "title": "The authenticity and integrity of hardware and software are assessed prior to acquisition and use"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        }
+      ],
+      "where": "docs/compliance/accessibility.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SA-9-02",
+      "party": "bank",
+      "nist": "SA-9",
+      "nist_title": "External System Services",
+      "oscal_id": "sa-9",
+      "related": [],
+      "title": "Write OpenClear into the third-party policy",
+      "statement": "Assess OpenClear and its host under the bank's third-party service provider policy before use and periodically, with a contract covering access controls and multi-factor sign-in, encryption, notice of cybersecurity events affecting the bank or unauthorized access to its customers' information, representations and warranties, and deletion at exit (23 NYCRR 500.11; 12 CFR 364 App. B III.D; 201 CMR 17.03(2)(f)).",
+      "complements": "OpenClear supplies the controls, CUECs, host attestations, security metrics and evidence export a contract and an assessment rely on.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.OC-05",
+          "title": "Outcomes, capabilities, and services that the organization depends on are understood and communicated"
+        },
+        {
+          "id": "GV.SC-04",
+          "title": "Suppliers are known and prioritized by criticality"
+        },
+        {
+          "id": "GV.SC-05",
+          "title": "Requirements to address cybersecurity risks in supply chains are established, prioritized, and integrated into contracts and other types of agreements with suppliers and other relevant third parties"
+        },
+        {
+          "id": "GV.SC-06",
+          "title": "Planning and due diligence are performed to reduce risks before entering into formal supplier or other third-party relationships"
+        },
+        {
+          "id": "GV.SC-07",
+          "title": "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship"
+        },
+        {
+          "id": "GV.SC-08",
+          "title": "Relevant suppliers and other third parties are included in incident planning, response, and recovery activities"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-02",
+          "title": "Inventories of software, services, and systems managed by the organization are maintained"
+        },
+        {
+          "id": "ID.AM-04",
+          "title": "Inventories of services provided by suppliers are maintained"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        }
+      ],
+      "where": "docs/compliance/tprm.md; docs/compliance/nydfs.md",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SA-9-03",
+      "party": "bank",
+      "nist": "SA-9",
+      "nist_title": "External System Services",
+      "oscal_id": "sa-9",
+      "related": [],
+      "title": "Tell the FDIC about the service relationship",
+      "statement": "Notify the FDIC of the relationship with OpenClear's host within 30 days of the contract or the first service, whichever is first (Bank Service Company Act \u00a7 7(c)).",
+      "complements": "OpenClear's documentation names the services it performs, for the notice to describe.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Once, and on change",
+      "csf": [
+        {
+          "id": "GV.OC-05",
+          "title": "Outcomes, capabilities, and services that the organization depends on are understood and communicated"
+        },
+        {
+          "id": "GV.SC-04",
+          "title": "Suppliers are known and prioritized by criticality"
+        },
+        {
+          "id": "GV.SC-05",
+          "title": "Requirements to address cybersecurity risks in supply chains are established, prioritized, and integrated into contracts and other types of agreements with suppliers and other relevant third parties"
+        },
+        {
+          "id": "GV.SC-06",
+          "title": "Planning and due diligence are performed to reduce risks before entering into formal supplier or other third-party relationships"
+        },
+        {
+          "id": "GV.SC-07",
+          "title": "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship"
+        },
+        {
+          "id": "GV.SC-08",
+          "title": "Relevant suppliers and other third parties are included in incident planning, response, and recovery activities"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-02",
+          "title": "Inventories of software, services, and systems managed by the organization are maintained"
+        },
+        {
+          "id": "ID.AM-04",
+          "title": "Inventories of services provided by suppliers are maintained"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        }
+      ],
+      "where": "The bank's records",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SA-11-01",
+      "party": "bank",
+      "nist": "SA-11",
+      "nist_title": "Developer Testing and Evaluation",
+      "oscal_id": "sa-11",
+      "related": [],
+      "title": "Evaluate OpenClear as an externally developed application",
+      "statement": "Review OpenClear's security evidence (the ASVS crosswalk, the threat model, advisories and each release's security metrics) each year and before a major upgrade (23 NYCRR 500.8).",
+      "complements": "OpenClear publishes them with each release.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-09",
+          "title": "The authenticity and integrity of hardware and software are assessed prior to acquisition and use"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.PS-06",
+          "title": "Secure software development practices are integrated, and their performance is monitored throughout the software development life cycle"
+        }
+      ],
+      "where": "docs/compliance/asvs.md; docs/security/threat-model.md; the release notes",
       "withdrawn": false
     },
     {
@@ -1724,6 +3112,75 @@
       "withdrawn": false
     },
     {
+      "id": "C-SI-4-02",
+      "party": "customer",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "IR-6"
+      ],
+      "title": "Review statements promptly",
+      "statement": "Examine bank statements and paid items with reasonable promptness, and report any unauthorized or altered item to the bank at once (UCC 4-406).",
+      "complements": "OpenClear shows each exception with its deadline, and records what the customer saw and decided.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Monthly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "The bank's statements; Exceptions",
+      "withdrawn": false
+    },
+    {
       "id": "C-SI-4-01",
       "party": "customer",
       "nist": "SI-4",
@@ -1833,7 +3290,7 @@
         "IR-4"
       ],
       "title": "Report fraud at once",
-      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's Written Statement of Unauthorized Debit when returning an ACH debit as unauthorized.",
+      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's statement of unauthorized debit when the bank asks for one (the Nacha Rules require it for consumer accounts).",
       "complements": "OpenClear shows the customer the bank's statement form, and returns the debit when the customer decides to.",
       "evidence": "attested",
       "check": null,
@@ -2124,7 +3581,7 @@
         "CP-10"
       ],
       "title": "Back up and test restores",
-      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, and test a restore at least yearly.",
+      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or offline behind sign-in separate from production, and test a clean restore at least yearly.",
       "complements": "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
       "evidence": "attested",
       "check": null,
@@ -2153,6 +3610,59 @@
         }
       ],
       "where": "The host's backup records",
+      "withdrawn": false
+    },
+    {
+      "id": "H-CP-2-01",
+      "party": "host",
+      "nist": "CP-2",
+      "nist_title": "Contingency Plan",
+      "oscal_id": "cp-2",
+      "related": [
+        "CP-4"
+      ],
+      "title": "State recovery objectives",
+      "statement": "State the installation's recovery time and recovery point objectives, record them and each restore test's date in OpenClear's settings, and give the banks the restore tests' results.",
+      "complements": "OpenClear shows them on every bank's Controls page, and warns when they're missing or the test is over a year old.",
+      "evidence": "automated",
+      "check": "recovery_objectives",
+      "check_status": "live",
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "ID.IM-04",
+          "title": "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved"
+        },
+        {
+          "id": "PR.IR-02",
+          "title": "The organization's technology assets are protected from environmental threats"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RC.RP-03",
+          "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
+        },
+        {
+          "id": "RC.CO-04",
+          "title": "Public updates on incident recovery are shared using approved methods and messaging"
+        }
+      ],
+      "where": "Controls \u2192 Recovery objectives stated",
       "withdrawn": false
     },
     {
@@ -2369,8 +3879,8 @@
         "IR-8"
       ],
       "title": "Notify banks of incidents",
-      "statement": "Notify each affected bank of an incident as soon as possible, as the computer-security incident notification rule for bank service providers requires, and keep each bank's contacts current.",
-      "complements": "OpenClear's action log and security events show what happened in each bank.",
+      "statement": "Issue an incident notice in OpenClear (Platform \u2192 Incidents) to each affected bank as soon as possible after determining an incident that has disrupted or degraded its service, or is likely to, for four hours or more (12 CFR 304.24), or a cybersecurity event affecting its systems or data (23 NYCRR 500.11(b)(3)), and follow the runbook's Incidents section.",
+      "complements": "OpenClear emails each bank's incident contacts, shows the notice until the bank acknowledges it, and records both.",
       "evidence": "attested",
       "check": null,
       "check_status": null,
@@ -2417,7 +3927,274 @@
           "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
         }
       ],
-      "where": "The host's incident records",
+      "where": "Platform \u2192 Incidents; the host's incident records",
+      "withdrawn": false
+    },
+    {
+      "id": "H-IR-6-02",
+      "party": "host",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Notify banks of unauthorized access to their customers' information",
+      "statement": "Notify each affected bank as soon as possible of unauthorized access to its customer information, whether or not it disrupted the service, with what the logs show was reached (12 CFR 364 App. B Supplement A).",
+      "complements": "OpenClear's action log records who viewed check images and who exported data, so the reach can be shown.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Platform \u2192 Incidents; the bank's action log",
+      "withdrawn": false
+    },
+    {
+      "id": "H-PS-3-01",
+      "party": "host",
+      "nist": "PS-3",
+      "nist_title": "Personnel Screening",
+      "oscal_id": "ps-3",
+      "related": [],
+      "title": "Screen the host's staff",
+      "statement": "Screen everyone with access to the installation or to banks' data before granting it, as the banks' contracts require (12 CFR 364 App. B III.C.1.e).",
+      "complements": "OpenClear gives platform staff no way into a bank except a grant the bank makes, and logs what they do.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "On hire",
+      "csf": [],
+      "where": "The host's personnel records",
+      "withdrawn": false
+    },
+    {
+      "id": "H-IR-8-01",
+      "party": "host",
+      "nist": "IR-8",
+      "nist_title": "Incident Response Plan",
+      "oscal_id": "ir-8",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Keep an incident response plan",
+      "statement": "Keep an incident response and recovery plan for the installation (roles, decisions, communications with the banks, root cause), and test it each year.",
+      "complements": "OpenClear's runbook has an Incidents section to build the plan on.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "ID.IM-04",
+          "title": "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved"
+        },
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        },
+        {
+          "id": "DE.AE-08",
+          "title": "Incidents are declared when adverse events meet the defined incident criteria"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-05",
+          "title": "The criteria for initiating incident recovery are applied"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        },
+        {
+          "id": "RC.RP-01",
+          "title": "The recovery portion of the incident response plan is executed once initiated from the incident response process"
+        },
+        {
+          "id": "RC.RP-02",
+          "title": "Recovery actions are selected, scoped, prioritized, and performed"
+        },
+        {
+          "id": "RC.RP-04",
+          "title": "Critical mission functions and cybersecurity risk management are considered to establish post-incident operational norms"
+        },
+        {
+          "id": "RC.RP-06",
+          "title": "The end of incident recovery is declared based on criteria, and incident-related documentation is completed"
+        }
+      ],
+      "where": "RUNBOOK.md (Incidents)",
+      "withdrawn": false
+    },
+    {
+      "id": "H-AT-2-01",
+      "party": "host",
+      "nist": "AT-2",
+      "nist_title": "Literacy Training and Awareness",
+      "oscal_id": "at-2",
+      "related": [
+        "AT-2(3)"
+      ],
+      "title": "Train the host's staff",
+      "statement": "Give everyone with access to the installation security awareness training, including social engineering, at least yearly.",
+      "complements": "OpenClear limits platform staff to what their role allows and logs what they do.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.AT-01",
+          "title": "Personnel are provided with awareness and training so that they possess the knowledge and skills to perform general tasks with cybersecurity risks in mind"
+        }
+      ],
+      "where": "The host's training records",
+      "withdrawn": false
+    },
+    {
+      "id": "H-CA-8-01",
+      "party": "host",
+      "nist": "CA-8",
+      "nist_title": "Penetration Testing",
+      "oscal_id": "ca-8",
+      "related": [
+        "RA-5"
+      ],
+      "title": "Test penetration yearly",
+      "statement": "Have a qualified party penetration-test the installation at least yearly, and share the summary with the banks.",
+      "complements": "OpenClear's security metrics, advisories and ASVS crosswalk are published with each release.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        }
+      ],
+      "where": "The test report",
+      "withdrawn": false
+    },
+    {
+      "id": "H-MP-6-01",
+      "party": "host",
+      "nist": "MP-6",
+      "nist_title": "Media Sanitization",
+      "oscal_id": "mp-6",
+      "related": [
+        "SI-12"
+      ],
+      "title": "Delete a bank's data when it leaves",
+      "statement": "When a bank leaves, delete or return its data and backups as the contract says, and give the bank a written certificate.",
+      "complements": "OpenClear exports a bank's data for it to take.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [],
+      "where": "Settings \u2192 Data export; the host's certificate",
+      "withdrawn": false
+    },
+    {
+      "id": "H-CM-4-01",
+      "party": "host",
+      "nist": "CM-4",
+      "nist_title": "Impact Analyses",
+      "oscal_id": "cm-4",
+      "related": [
+        "CM-3"
+      ],
+      "title": "Announce maintenance",
+      "statement": "Announce scheduled maintenance and upgrades to each bank beforehand, as a maintenance notice in OpenClear, so they aren't incidents under 12 CFR 304.24(b).",
+      "complements": "OpenClear sends maintenance notices the same way as incident notices.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "ID.RA-07",
+          "title": "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked"
+        },
+        {
+          "id": "PR.PS-01",
+          "title": "Configuration management practices are established and applied"
+        }
+      ],
+      "where": "Platform \u2192 Incidents",
       "withdrawn": false
     }
   ]

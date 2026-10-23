@@ -11,7 +11,7 @@ evidence (counts, and names where a person would act on them)."""
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -414,6 +414,86 @@ def reverse_accounts_agreed(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("reverse_accounts_agreed", title, PASS,
                    f"{_plural(len(reverse), 'account')} on reverse positive pay{detail}. Match each to a written agreement with "
                    "its customer.", evidence)
+
+
+def incident_contacts(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The bank names who hears of an incident at OpenClear's host, and confirms them yearly
+    (REGULATORY_PLAN.md RG3; 12 CFR 304.24(a)(1)); and has acknowledged every notice sent."""
+    from openclear.domain.tenant import Tenant
+    from openclear.services import incident_service
+
+    tenant = session.get(Tenant, tenant_id)
+    rows = incident_service.contacts(session, tenant_id)
+    named = [c for c in rows if c.kind == "contact"]
+    waiting = incident_service.unacknowledged(session, tenant_id)
+    confirmed = _aware(tenant.incident_contacts_confirmed_at)
+    evidence = {"contacts": len(named), "ceo_and_cio": sorted(c.kind for c in rows if c.kind != "contact"),
+                "confirmed_at": confirmed.isoformat() if confirmed else None, "unacknowledged_notices": len(waiting)}
+    title = "Incident contacts named"
+    if not named:
+        return Control("incident_contacts", title, WARN, "No incident contacts are named, so the service provider's incident notices go "
+                       "to your CEO and CIO, or your administrators (Settings → Incident contacts).", evidence)
+    if waiting:
+        return Control("incident_contacts", title, WARN, f"{_plural(len(waiting), 'incident notice')} from the service provider "
+                       "not acknowledged yet.", evidence)
+    if confirmed is None or confirmed < _now() - timedelta(days=365):
+        return Control("incident_contacts", title, WARN, "The incident contacts haven't been confirmed in a year.", evidence)
+    return Control("incident_contacts", title, PASS, f"{_plural(len(named), 'incident contact')}, confirmed {confirmed:%Y-%m-%d}.", evidence)
+
+
+def return_deadline(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Checks decided within their midnight deadline (UCC 4-302; REGULATORY_PLAN.md RG1): FAIL when
+    one in the last 30 days was sent after it; WARN when a customer's cut-off is later than the
+    bank's, which leaves the core less time to return."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
+    from openclear.domain.decision import Decision
+    from openclear.domain.exception_item import ExceptionItem
+    from openclear.domain.tenant import Tenant
+    from openclear.services import cutoff_service
+
+    late = session.execute(select(func.count()).select_from(Decision).join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id)
+                           .where(Decision.tenant_id == tenant_id, ExceptionItem.return_deadline.is_not(None),
+                                  Decision.locked_at > ExceptionItem.return_deadline,
+                                  Decision.locked_at >= _now() - timedelta(days=30))).scalar_one()
+    tenant = session.get(Tenant, tenant_id)
+    later = []
+    for name, network, cutoff in session.execute(
+            select(Customer.name, CustomerDispositionSetting.network_code, CustomerDispositionSetting.cutoff_time)
+            .join(Customer, Customer.id == CustomerDispositionSetting.customer_id)
+            .where(CustomerDispositionSetting.tenant_id == tenant_id, CustomerDispositionSetting.cutoff_time.is_not(None))).all():
+        bank = cutoff_service.cutoff_for(session, tenant, None, network)
+        if bank and cutoff and cutoff > bank:
+            later.append(f"{name} ({network} {cutoff}, the bank's {bank})")
+    evidence = {"decided_after_return_deadline_30_days": late, "customer_cutoffs_later_than_the_banks": later[:LIST_LIMIT],
+                "open_on_federal_holidays": tenant.open_on_federal_holidays}
+    title = "Checks decided within their return deadline"
+    if late:
+        return Control("return_deadline", title, FAIL, f"{_plural(late, 'check')} decided after {'its' if late == 1 else 'their'} midnight "
+                       "deadline in the last 30 days: the bank may be accountable for them (UCC 4-302).", evidence)
+    if later:
+        return Control("return_deadline", title, WARN, f"{_plural(len(later), 'customer cut-off')} later than the bank's, which leaves "
+                       f"the core less time to return a check: {', '.join(later[:5])}.", evidence)
+    return Control("return_deadline", title, PASS, "No check was decided after its midnight deadline in the last 30 days, and no "
+                   "customer's cut-off is later than the bank's.", evidence)
+
+
+def regulatory_currency(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The compliance pages that map OpenClear onto a law, rule or guidance, each checked against its
+    sources within a year (compliance/regulatory.py, REGULATORY_PLAN.md RG7). A page past its year
+    is one whose rule may have changed since: upgrade, or ask the project to review it."""
+    from openclear.compliance import regulatory
+
+    old = regulatory.stale(_now().date())
+    evidence = {"pages": [{"page": p.path, "current_as_of": p.current_as_of.isoformat()} for p in regulatory.PAGES],
+                "review_days": regulatory.REVIEW_DAYS}
+    title = "Regulatory pages current"
+    if old:
+        return Control("regulatory_currency", title, WARN,
+                       f"{_plural(len(old), 'page')} not checked against {'its' if len(old) == 1 else 'their'} sources in over a year: "
+                       f"{', '.join(f'{p.title} ({p.current_as_of.isoformat()})' for p in old)}.", evidence)
+    return Control("regulatory_currency", title, PASS,
+                   f"All {len(regulatory.PAGES)} regulatory pages were checked against their sources within a year.", evidence)
 
 
 def evidence_export(session: Session, tenant_id: uuid.UUID) -> Control:

@@ -100,6 +100,14 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
 
         count, nearest = exception_service.attention_summary(db, ctx.tenant_id, customer_id=ctx.customer_id)
         ctx = dataclasses.replace(ctx, needs_attention_count=count, nearest_deadline=nearest)
+    if ctx.customer_id is None and ({"admin:manage", "tenant:manage"} & set(ctx.permissions)):
+        import dataclasses
+
+        from openclear.services import incident_service
+
+        waiting = incident_service.unacknowledged(db, ctx.tenant_id)
+        if waiting:
+            ctx = dataclasses.replace(ctx, incident_notices=tuple((str(d.id), incident_service.KINDS[n.kind], n.title) for d, n in waiting))
     if ctx.customer_id is None and "customer:manage" in ctx.permissions:
         import dataclasses
 

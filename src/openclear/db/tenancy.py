@@ -126,6 +126,9 @@ class TenantContext:
     # awaiting approval), in this session's scope. Web pages only (web/deps.py), and only
     # for those who can see exceptions.
     needs_attention_count: int = 0
+    # The service provider's incident notices nobody at the bank has acknowledged (services/incident_service.py):
+    # (delivery id, kind, title) for each, shown to the bank's administrators on every page.
+    incident_notices: tuple = ()
     # The soonest decision deadline among them (base.html's "decide now" banner).
     nearest_deadline: datetime | None = None
     # For base.html's "New customer users" nav entry: people a customer's side added who wait

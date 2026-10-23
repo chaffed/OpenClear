@@ -71,6 +71,25 @@ def _storage_encryption() -> Control:
                    "then record how they're done in OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION.", {"attestation": None})
 
 
+def _recovery_objectives() -> Control:
+    settings = get_settings()
+    statement, tested = settings.recovery_objectives_attestation, settings.last_restore_test
+    title = "Recovery objectives stated"
+    evidence = {"attestation": statement, "last_restore_test": tested.isoformat() if tested else None, "verified_by_openclear": False}
+    if not statement:
+        return Control("recovery_objectives", title, WARN,
+                       "The host's recovery time and recovery point objectives aren't recorded. Agree them with your provider, then "
+                       "record them in OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION and the last restore test's date in "
+                       "OPENCLEAR_LAST_RESTORE_TEST.", evidence)
+    if tested is None or (_now().date() - tested).days > 365:
+        when = f"was on {tested.isoformat()}" if tested else "isn't recorded"
+        return Control("recovery_objectives", title, WARN,
+                       f"Stated by the operator: {statement}. The last restore test {when}; test one at least yearly and record "
+                       "its date in OPENCLEAR_LAST_RESTORE_TEST.", evidence)
+    return Control("recovery_objectives", title, PASS,
+                   f"Stated by the operator: {statement}. Last restore test {tested.isoformat()}.", evidence)
+
+
 def _sla(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.domain.bulk_upload_file import BulkUploadFile, BulkUploadStatus
     from openclear.domain.decision_outbox import DecisionOutbox

@@ -107,9 +107,10 @@ def test_return_records_are_rejected():
         parse_x937_file(data)
 
 
-def test_blank_business_date_falls_back_to_today():
-    [item] = parse_x937_file(single("1001/", "5001", 100, business_date="        "))
-    assert item.presented_date == date.today()
+def test_a_blank_business_date_refuses_the_file():
+    """A check's return deadline is counted from it, so it isn't guessed (REGULATORY_PLAN.md RG1)."""
+    with pytest.raises(X937ParseError, match="Business Date"):
+        parse_x937_file(single("1001/", "5001", 100, business_date="        "))
 
 
 # --- Structural problems --------------------------------------------------------------------

@@ -74,7 +74,7 @@ def test_an_item_is_due_at_the_customers_own_cutoff_else_the_banks(db_session, t
 
     def presented(account_id, number):
         paid = ingest_paid_item(db_session, tenant.id, PaidItemSubmission(account_id=account_id, check_number=number,
-                                                                          presented_amount=Decimal("10.00"), presented_date=date(2026, 10, 1)))
+                                                                          presented_amount=Decimal("10.00"), presented_date=date.today()))
         return ExceptionRepository(db_session, tenant.id).list(source_item_id=paid.id)[0].decision_deadline
 
     # No cut-off yet: as before, the bank's own item has no deadline.

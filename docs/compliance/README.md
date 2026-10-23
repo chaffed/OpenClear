@@ -4,9 +4,19 @@ These pages are for a bank's compliance, risk and audit staff, and for examiners
 what OpenClear does onto the guidance a bank is examined against, and say where the evidence
 for each point is.
 
-- [FFIEC IT Examination Handbook](ffiec.md)
+- [Check law: UCC Articles 3 and 4, Regulation CC, Check 21 and ECCHO](check-law.md) (a draft, for counsel's review)
+- [FFIEC IT Examination Handbook](ffiec.md), including *Retail Payment Systems* and *Business Continuity Management*
+- [GLBA: the Interagency Guidelines Establishing Information Security Standards](glba.md) (12 CFR 364, Appendix B)
+- [The CRI Profile](cri-profile.md): answering it from the [NIST CSF 2.0 crosswalk](csf.md)
+- [New York DFS Part 500](nydfs.md): OpenClear's target for state rules, as a bank's service provider
+- [Incident notification](incident-notification.md): the FDIC's rule, Part 500's, and how the host tells a bank
+- [State rules](state-rules.md): Massachusetts 201 CMR 17.00 and the CSBS tools (R-SAT)
+- [Check fraud, SARs and OFAC](fincen-ofac.md): what a SAR narrative needs from OpenClear, and why it doesn't screen
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)
+- [AI risk management (NIST AI RMF)](ai-rmf.md): the fraud-scoring model, function by function
+- [Accessibility](accessibility.md): WCAG 2.2 AA, Section 508 and the ADA; what's checked and what a VPAT would hold
+- [CFPB Section 1033](cfpb-1033.md): why positive pay isn't covered
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack
 - [Security metrics](security-metrics.md): ASVS coverage, advisories fixed, dependency age and
   the SBOM, for the latest release
@@ -61,6 +71,9 @@ whoever hosts OpenClear for it:
   operating system and database.
   - Record how disk and database encryption are done in `OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION`.
     The Controls page then shows that statement; without it, the control warns.
+  - Record the recovery time and point objectives in `OPENCLEAR_RECOVERY_OBJECTIVES_ATTESTATION`
+    and the last restore test's date in `OPENCLEAR_LAST_RESTORE_TEST` (YYYY-MM-DD); the control
+    warns without them, or once the test is over a year old.
 - **Keys:** generating, storing and rotating the signing keys and the database encryption
   key. See the README, "Signing keys", and `OPENCLEAR_SSO_ENCRYPTION_KEY_PREVIOUS` for
   rotating the encryption key.

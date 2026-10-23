@@ -33,6 +33,8 @@ FAMILIES = {
     "SI": "System and information integrity",
     "CM": "Configuration management",
     "CA": "Assessment and monitoring",
+    "IR": "Incident response",
+    "CP": "Contingency planning",
 }
 TYPES = {
     "preventive": "stops something happening",
@@ -253,6 +255,14 @@ CONTROLS: tuple[OcControl, ...] = (
       "numbers raises a security event.",
       ("SI-4", "AC-6"), "preventive", "configurable", (), ("B-CP-2-02",), "API: /api/v1/checks/verify and /cashed"),
     # --- Configuration management ---------------------------------------------------------
+    C("OC-SI-10", "ACH monitoring summary",
+      "The evidence export summarizes the period's ACH debits by SEC code, exceptions, returns by reason code, unauthorized "
+      "returns by originator, and decision times against their deadlines, for the bank's fraud-monitoring file and Rules audit.",
+      ("SI-4", "AU-6"), "detective", "built_in", ("evidence_export",), ("B-SI-4-02", "B-IR-6-03"), "Settings → Controls → Export evidence"),
+    C("OC-SI-11", "Checks decided within their return deadline",
+      "Each check's return deadline is worked out from the day it was presented, in the bank's banking days, and its decision "
+      "deadline is never later than the cut-off on that day; a decision sent after it is flagged and raised as a security event.",
+      ("SI-4", "SI-10"), "preventive", "built_in", ("return_deadline",), ("B-CA-3-04", "B-SI-4-03"), "Settings → Decision cut-off"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "
@@ -267,6 +277,23 @@ CONTROLS: tuple[OcControl, ...] = (
       "The evidence export records the version, the plugins and models in force with their digests, and the outside services "
       "turned on.",
       ("CM-2", "CM-8"), "detective", "built_in", ("outside_services",), ("B-SA-9-01",), "Controls → Export evidence"),
+    # --- Contingency planning ----------------------------------------------------------------
+    C("OC-CP-01", "Recovery objectives stated",
+      "The host's recovery time and recovery point objectives and the date of its last restore test are shown on the Controls "
+      "page, which warns until they're recorded or once the test is over a year old.",
+      ("CP-2", "CP-4"), "detective", "built_in", ("recovery_objectives",), ("H-CP-2-01", "H-CP-9-01", "B-CP-2-03"),
+      "Controls → Recovery objectives stated"),
+    # --- Incident response -------------------------------------------------------------------
+    C("OC-IR-01", "Incident notices to each bank",
+      "The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's "
+      "incident contacts (or its CEO and CIO) and shown to its administrators until one acknowledges it, with sending and "
+      "acknowledging in the bank's action log and raised as security events.",
+      ("IR-6", "IR-4"), "corrective", "built_in", ("incident_contacts",), ("H-IR-6-01", "B-IR-6-06", "B-IR-6-07"),
+      "Platform → Incidents; the banner on every page"),
+    C("OC-IR-02", "Incident contacts kept current",
+      "Each bank names its incident contacts, with its CEO and CIO as the fallback, and confirms them yearly; changing them is a "
+      "high security event.",
+      ("IR-6",), "preventive", "configurable", ("incident_contacts",), ("B-IR-6-05",), "Settings → Incident contacts"),
     # --- Assessment and monitoring --------------------------------------------------------
     C("OC-CA-01", "Controls checked continuously",
       "Each control is checked when the Controls page or API is read and hourly; a change of status becomes a security event.",
@@ -274,6 +301,10 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-CA-02", "Health and jobs reported",
       "/health reports whether the database answers, and each scheduled job's last run is kept.",
       ("CA-7", "SI-4"), "detective", "built_in", ("scheduled_jobs",), ("H-SI-4-01",), "/health"),
+    C("OC-CA-03", "Regulatory pages kept current",
+      "Each page mapping OpenClear onto a law, rule or guidance says when it was last checked against its sources, and a check "
+      "warns when one is more than a year old.",
+      ("CA-7",), "detective", "built_in", ("regulatory_currency",), (), "Controls; docs/compliance/"),
 )
 del C
 

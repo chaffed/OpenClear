@@ -63,7 +63,7 @@ def test_the_banks_roll_up(client, db_session, tenant_factory):
 
     rows = {r["name"]: r for r in attestation_service.customer_rollup(db_session, tenant.id, date(2025, 1, 1), date(2025, 12, 31))}
     mine = rows[customer.name]
-    assert (mine["attested"], mine["waiting"], mine["can_attest"], mine["cuecs"]) == (1, 1, 1, 15) and mine["last_accepted_at"]
+    assert (mine["attested"], mine["waiting"], mine["can_attest"], mine["cuecs"]) == (1, 1, 1, 16) and mine["last_accepted_at"]
     assert rows[_quiet.name]["can_attest"] == 0 and rows[_quiet.name]["attested"] == 0
 
     admin = login_headers(client, tenant.slug, users["admin"].email)

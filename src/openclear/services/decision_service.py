@@ -251,6 +251,13 @@ def changeable_until(exception: ExceptionItem, now: datetime | None = None) -> d
     return deadline if deadline is not None and deadline > (now or datetime.now(timezone.utc)) else None
 
 
+def after_return_deadline(decision: Decision, exception: ExceptionItem) -> bool:
+    """Sent out after the check's midnight deadline (UCC 4-302: the bank may be accountable for it)."""
+    returns_by = _aware(exception.return_deadline)
+    sent = _aware(decision.locked_at) or datetime.now(timezone.utc)
+    return returns_by is not None and sent > returns_by
+
+
 def lock(session: Session, decision: Decision, exception: ExceptionItem) -> None:
     """Makes a decision final and sends it out: its number in the decision feed (so the
     bank's core and the decision files see it), the exception.decided webhook, and an ACH
@@ -259,9 +266,18 @@ def lock(session: Session, decision: Decision, exception: ExceptionItem) -> None
         return
     decision.locked_at = datetime.now(timezone.utc)
     decision_feed_service.assign_sequence(session, decision, exception)
+    late = after_return_deadline(decision, exception)
     webhook_service.emit(session, exception.tenant_id, "exception.decided", {
         "exception_id": exception.id, "decision_id": decision.id, "sequence": decision.feed_sequence, "outcome": decision.outcome.value,
+        "after_return_deadline": late,
     })
+    if late:
+        # Sent anyway: the bank may still return it and accept the liability, but it must know (REGULATORY_PLAN.md RG1).
+        from openclear.services import security_events
+
+        security_events.emit(session, "decision.after_return_deadline", tenant_id=exception.tenant_id, outcome="failure",
+                             reason="Decided after the check's midnight deadline", target_type="exception_item", target_id=exception.id,
+                             details={"return_deadline": _aware(exception.return_deadline).isoformat(), "outcome": decision.outcome.value})
     if decision.outcome == DecisionOutcome.RETURN and exception.network_code == "ach":
         source_item = get_adapter(exception.network_code).load_source_item(session, exception.source_item_id)
         if isinstance(source_item, AchTransaction):

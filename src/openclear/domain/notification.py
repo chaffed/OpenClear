@@ -58,6 +58,10 @@ class NotificationType(str, enum.Enum):
     # approval (or, with nobody else to approve, applies after 24 hours); and the requester's
     # change was decided.
     CHANGE_REQUESTED = "change_requested"
+    # services/incident_service.py (REGULATORY_PLAN.md RG3): the service provider's incident or
+    # maintenance notice, to a bank's incident contacts. Always emailed: it's the bank's notice
+    # under 12 CFR 304.24.
+    INCIDENT_NOTICE = "incident_notice"
     CHANGE_DECIDED = "change_decided"
     # services/controls_service.py (DUAL_CONTROL_PLAN.md DC-D17): a second-person rule the bank has
     # on no longer has anyone else to approve, so its changes now take the 24-hour cooling-off.

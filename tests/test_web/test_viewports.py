@@ -3,7 +3,8 @@
 
 """The key pages measured on a phone, a tablet and two desktop widths (MOBILE_PLAN.md R0).
 At each width: no sideways page scroll, touch targets of at least 44x44px (below 1024px),
-Pay and Return visible without scrolling on an exception, and axe clean (WCAG 2.1 A, AA).
+Pay and Return visible without scrolling on an exception, a focused control never hidden behind a
+sticky bar (WCAG 2.2 2.4.11), and axe clean (WCAG 2.2 A, AA).
 At 1280px each page's screenshot is compared with the reference, so phone and tablet work
 can't change the desktop.
 
@@ -197,6 +198,25 @@ MEASURE = """({width, touch, decision}) => {
       details.push(`small target: ${key} (${sizes.length}x, e.g. ${sizes[0]})`);
     });
   }
+
+  // WCAG 2.2 2.4.11 Focus Not Obscured: a control reached from the keyboard just before a bar
+  // that sticks to the bottom of the screen isn't hidden behind it once focused.
+  document.querySelectorAll('.decision-card, .bulk-form').forEach((bar) => {
+    if (getComputedStyle(bar).position !== 'sticky' || !shown(bar)) return;
+    const focusable = Array.from(document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary'))
+      .filter((el) => shown(el) && !bar.contains(el) && (el.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const el = focusable[focusable.length - 1];
+    if (!el) return;
+    window.scrollTo(0, 0);
+    el.focus();
+    const r = el.getBoundingClientRect(), b = bar.getBoundingClientRect();
+    if (r.top >= b.top - 0.5 && b.height > 0) {
+      problems.push('focus hidden by a sticky bar: ' + name(el));
+      details.push(`focus hidden by a sticky bar: ${name(el)} (top ${Math.round(r.top)}px, bar from ${Math.round(b.top)}px)`);
+    }
+    el.blur();
+    window.scrollTo(0, 0);
+  });
 
   if (decision) {
     // Return is its <summary> on a desktop, and a button opening the reasons' sheet below it.
@@ -485,7 +505,7 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
             measured = page.evaluate(MEASURE, {"width": width, "touch": TOUCH_TARGET if width < 1024 else 0,
                                                "decision": name == "exception"})
             page.add_script_tag(content=axe)
-            results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']}})")
+            results = page.evaluate("axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']}})")
             found[name] = sorted(set(measured["problems"])) + _axe_problems(results)
             details[name] = measured["details"]
 

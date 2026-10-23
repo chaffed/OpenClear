@@ -30,7 +30,11 @@
   <label>Minimum time to review, in minutes
     <input type="number" name="min_review_minutes" value="{{ min_review_minutes }}" min="0" max="1440" inputmode="numeric">
   </label>
-  <p class="hint">An item arriving closer to the cut-off than this is due at the next business day's.</p>
+  <p class="hint">An item arriving closer to the cut-off than this is due at the next business day's. A check is never due
+    later than the cut-off on its return day, the banking day after it was presented (its midnight deadline), so the
+    core can still return it.</p>
+  <label><input type="checkbox" name="open_on_federal_holidays" value="true" {{ "checked" if open_on_federal_holidays else "" }}>
+    The bank opens on the Federal Reserve's holidays (they then count as banking days for a check's return deadline)</label>
   <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
 </form>
 

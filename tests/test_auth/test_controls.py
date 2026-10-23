@@ -33,6 +33,24 @@ def test_a_new_bank_s_controls(db_session, tenant_factory):
     assert controls_service.summary(list(controls.values()))["overall"] == "WARN"
 
 
+def test_the_hosts_recovery_objectives(monkeypatch):
+    """REGULATORY_PLAN.md RG4: the FFIEC BCM booklet has a bank check its recovery objectives against
+    its provider's, so the host states them, and the last restore test, on the Controls page."""
+    from datetime import date
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "recovery_objectives_attestation", None)
+    monkeypatch.setattr(settings, "last_restore_test", None)
+    assert controls_service._recovery_objectives().status == "WARN"
+    monkeypatch.setattr(settings, "recovery_objectives_attestation", "RTO 4 hours, RPO 15 minutes")
+    assert "isn't recorded" in controls_service._recovery_objectives().detail
+    monkeypatch.setattr(settings, "last_restore_test", date.today() - timedelta(days=400))
+    assert controls_service._recovery_objectives().status == "WARN"
+    monkeypatch.setattr(settings, "last_restore_test", date.today() - timedelta(days=30))
+    passed = controls_service._recovery_objectives()
+    assert passed.status == "PASS" and "RPO 15 minutes" in passed.detail and passed.evidence["verified_by_openclear"] is False
+
+
 def test_controls_move_to_pass_and_fail(db_session, tenant_factory, monkeypatch):
     tenant, _account, _users = tenant_factory.make(slug="controls-move")
     _separate_duties(db_session, tenant)

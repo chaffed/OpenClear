@@ -1,0 +1,1 @@
+{{ kind }} from your positive pay service provider: {{ notice.title }}. Details by email and in OpenClear.
