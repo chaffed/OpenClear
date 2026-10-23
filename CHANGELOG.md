@@ -24,6 +24,8 @@
   records. New security event `customer.offboarding`; control OC-SI-13; CUEC B-SI-12-02; threat
   OC-T26.
 
+## 1.29.0 — 2026-10-22
+
 - **A check is never due after its midnight deadline** (`REGULATORY_PLAN.md` RG1). Each check's
   return deadline is now worked out from the day it was presented, in the bank's banking days, and
   its decision deadline is never later than the bank's cut-off on that day. Before, it was counted
