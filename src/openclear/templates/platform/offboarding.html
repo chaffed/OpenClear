@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Offboarding {{ bank.name }} — OpenClear platform{% endblock %}
+{% block content %}
+<div class="card card-narrow">
+  <h1>Offboarding {{ bank.name }}</h1>
+  <p>When a bank leaves, its data is deleted, with a signed certificate for the bank. Each step is a change
+    another operator approves under Changes, except stopping offboarding and putting the data on legal
+    hold, which keep data and take effect at once.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+
+  {% if bank.is_demo or bank.is_sandbox %}
+  <p>The demo bank and sandboxes are wiped on their own schedule, not offboarded.</p>
+  {% elif bank.data_deleted_at %}
+  <p><span class="badge badge-danger">Data deleted</span> on
+    <time datetime="{{ bank.data_deleted_at | iso_utc }}" data-local-time>{{ bank.data_deleted_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.
+    The bank's row is kept, inactive, so its slug is never reused.</p>
+  {% if deletion and deletion.certificate %}
+  <p><a class="button" href="/ui/platform/banks/{{ bank.id }}/deletion-certificate">{{ icon("download") }}Download the certificate</a></p>
+  <p class="hint">Signed by this installation; SHA-256 {{ deletion.certificate_sha256 }}. Send it to the bank.</p>
+  {% endif %}
+  {% else %}
+
+  <h2>1. Tell the bank</h2>
+  {% if bank.offboarding_started_at %}
+  <p><span class="badge badge-warn">Offboarding</span> since
+    <time datetime="{{ bank.offboarding_started_at | iso_utc }}" data-local-time>{{ bank.offboarding_started_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.
+    The bank was told to take its final data export. Its data can be deleted from {{ deletable_from.strftime("%Y-%m-%d") }}.</p>
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/offboarding">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="stop">
+    <button type="submit" class="secondary">{{ icon("undo") }}Stop offboarding{% if deletion and deletion.status == "queued" %} and the waiting deletion{% endif %}</button>
+  </form>
+  {% else %}
+  <p>Emails the bank's incident contacts and shows its administrators a notice until one acknowledges it:
+    its data will be deleted after {{ wait_days }} days, and it should take a final data export now.</p>
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/offboarding">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="start">
+    <button type="submit">{{ icon("send") }}Ask to start offboarding</button>
+  </form>
+  {% endif %}
+
+  <h2>Legal hold</h2>
+  {% if bank.legal_hold_reason %}
+  <p><span class="badge badge-warn">On hold</span> {{ bank.legal_hold_reason }}. Its data can't be deleted.</p>
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/offboarding">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="release">
+    <button type="submit" class="secondary">Ask to take it off hold</button>
+  </form>
+  {% else %}
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/offboarding">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="hold">
+    <label>Why (a regulator's request, litigation) <input type="text" name="reason" required maxlength="500" value="{{ form.reason or '' }}"></label>
+    <button type="submit" class="secondary">Put on legal hold</button>
+  </form>
+  {% endif %}
+
+  {% if bank.offboarding_started_at %}
+  <h2>2. Delete its data</h2>
+  {% if deletion and deletion.status == "queued" %}
+  <p><span class="badge badge-danger">Deletion approved</span> It runs at
+    <time datetime="{{ deletion.runs_at | iso_utc }}" data-local-time>{{ deletion.runs_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    unless offboarding is stopped or the data is put on hold first.</p>
+  {% else %}
+  {% if deletion and deletion.status in ("refused", "cancelled") %}<p class="hint">The last deletion was {{ deletion.status }}: {{ deletion.last_error }}</p>{% endif %}
+  <p>What would be deleted:</p>
+  <ul>
+    <li>{{ preview.total }} rows in {{ preview.rows | length }} tables{% if preview.rows %}
+      <details class="more-details"><summary>By table</summary>
+        <table><tbody>{% for name, count in preview.rows.items() %}<tr><td>{{ name }}</td><td>{{ count }}</td></tr>{% endfor %}</tbody></table>
+      </details>{% endif %}</li>
+    <li>Every file: check images, uploads, exports, action-log archives, branding and model files.</li>
+    <li>{{ preview.people_deleted | length }} people who belong to no other bank{% if preview.people_kept %};
+      {{ preview.people_kept | length }} kept, as they belong to another bank or are platform staff{% endif %}.</li>
+  </ul>
+  <p>{% if preview.final_export_at %}The bank took its final data export on {{ preview.final_export_at.strftime("%Y-%m-%d") }}.
+    {% else %}<strong>The bank hasn't taken a full data export since offboarding started.</strong>{% endif %}
+    Copies stay in the host's backups until they expire.</p>
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/offboarding">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="delete">
+    <label>Type the bank's slug, <code>{{ bank.slug }}</code>, to confirm
+      <input type="text" name="confirm_slug" required autocomplete="off" value="{{ form.confirm_slug or '' }}"></label>
+    {% if not preview.final_export_at %}
+    <label>Why delete without a final export (for example, the bank declined in writing)
+      <input type="text" name="override_reason" required maxlength="500" value="{{ form.override_reason or '' }}"></label>
+    {% endif %}
+    <button type="submit" class="button-return">{{ icon("delete") }}Ask to delete its data</button>
+  </form>
+  <p class="hint">Once approved, it runs {{ delay_hours }} hours later and can still be stopped until then.</p>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+  <p class="link-line"><a href="/ui/platform">Back</a></p>
+</div>
+{% endblock %}

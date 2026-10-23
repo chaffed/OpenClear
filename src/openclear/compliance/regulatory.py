@@ -22,7 +22,7 @@ class Page:
 PAGES: tuple[Page, ...] = (
     Page("check-law.md", "Check law: UCC 3 and 4, Regulation CC, Check 21, ECCHO", date(2026, 10, 22)),
     Page("ffiec.md", "FFIEC IT Examination Handbook", date(2026, 10, 22)),
-    Page("glba.md", "GLBA: Interagency Guidelines (12 CFR 364 App. B)", date(2026, 10, 22)),
+    Page("glba.md", "GLBA: Interagency Guidelines (12 CFR 364 App. B)", date(2026, 10, 23)),
     Page("cri-profile.md", "The CRI Profile", date(2026, 10, 22)),
     Page("incident-notification.md", "Incident notification", date(2026, 10, 22)),
     Page("nydfs.md", "New York DFS Part 500", date(2026, 10, 22)),

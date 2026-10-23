@@ -22,6 +22,7 @@ Collected on 2026-10-22, at the product owner's request, from a survey of every 
 | **Per-bank enablement for payment networks** | A network plugin existing | PLUGIN_PLAN.md PL2 |
 | **A direct CRI Profile crosswalk** (and confirming its licence lets it be published); until then banks use the CSF 2.0 crosswalk | A bank that assesses with the CRI Profile | REGULATORY_PLAN.md RG-D6 |
 | **Counsel's review of the check-law page** (UCC 3/4, Regulation CC, Check 21 and ECCHO); the page is published as a draft until then | A bank's counsel | REGULATORY_PLAN.md RG-D4 |
+| **Retention periods for a bank's records**: the bank sets how long issued checks, items, images and decisions are kept, with a floor, and sees what would go before anything is deleted (offboarding deletes everything when a bank leaves) | A bank asking for it | OFFBOARDING_PLAN.md OB-D1 |
 
 ## Waiting on a customer
 
@@ -56,4 +57,4 @@ The product owner's decision of 2026-10-12: these wait for a first client, who w
   when what it waits for arrives, into its own plan or a new one.
 - 2026-10-22: Counsel's review of the check-law page added (REGULATORY_PLAN.md RG-D4).
 - 2026-10-22: A direct CRI Profile crosswalk added (REGULATORY_PLAN.md RG-D6).
-
+- 2026-10-23: Retention periods for a bank's records added (OFFBOARDING_PLAN.md OB-D1).

@@ -178,6 +178,13 @@ class Tenant(Base):
     # When an administrator last confirmed the bank's incident contacts (domain/incident.py;
     # REGULATORY_PLAN.md RG3): the control check incident_contacts asks for it yearly.
     incident_contacts_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Offboarding (plans/OFFBOARDING_PLAN.md): when the service provider started it, so the bank's
+    # data can be deleted once the wait is over; and when it was deleted (the row stays, inactive,
+    # so the slug is never reused).
+    offboarding_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    data_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set while the bank's data is on legal hold (a regulator's request, litigation): it can't be deleted.
+    legal_hold_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # When the bank last read its security events through the pull API (SIEM_PLAN.md S5):
     # with no destination configured, the "Security events delivered" control warns once
     # nobody has read them for a day.

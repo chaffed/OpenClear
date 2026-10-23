@@ -494,6 +494,10 @@ class Settings(BaseSettings):
     # Controls page, which warns without them or once the test is over a year old.
     recovery_objectives_attestation: str | None = None
     last_restore_test: date | None = None
+    # Offboarding a bank (plans/OFFBOARDING_PLAN.md): the days between telling the bank and being
+    # able to delete its data, and the hours an approved deletion waits, still cancellable.
+    bank_offboarding_wait_days: int = 30
+    bank_deletion_delay_hours: int = 24
     oidc_http_timeout_seconds: float = 10.0
     # Lets SSO connections point at http:// and private/loopback addresses (a local test
     # identity provider such as a Keycloak container on localhost). Off by default, and

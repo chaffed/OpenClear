@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Offboarding a bank** (`plans/OFFBOARDING_PLAN.md`; GLBA's disposal requirement). When a bank
+  leaves, Platform → the bank's Offboarding deletes its data, with a signed certificate. Two
+  operators start it, which emails the bank's incident contacts and shows its administrators a
+  notice to take a final data export; after 30 days (`OPENCLEAR_BANK_OFFBOARDING_WAIT_DAYS`) two
+  operators approve deleting, having typed the bank's slug and seen exactly what goes. It's refused
+  without a final export unless a reason is given, while the data is on legal hold, and for the
+  demo bank and sandboxes, and it runs 24 hours later (`OPENCLEAR_BANK_DELETION_DELAY_HOURS`),
+  stoppable until then. Every row and file of the bank is deleted, and the people who belong
+  nowhere else; the bank's row stays, inactive, so its slug is never reused. The certificate
+  records what was deleted and the action log's last hash. New security events
+  `bank.offboarding` (critical) and `bank.legal_hold.changed`; control OC-SI-12; threat OC-T25.
+
 - **A check is never due after its midnight deadline** (`REGULATORY_PLAN.md` RG1). Each check's
   return deadline is now worked out from the day it was presented, in the bank's banking days, and
   its decision deadline is never later than the bank's cut-off on that day. Before, it was counted

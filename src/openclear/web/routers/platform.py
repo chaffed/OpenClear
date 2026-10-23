@@ -218,6 +218,88 @@ def reset_admin_key(request: Request, tenant_id: uuid.UUID, email: str = Form(..
     return see_other("/ui/platform/changes", flash="Another operator resets them by approving it under Changes.")
 
 
+def _offboarding_page(request: Request, db: Session, bank, *, error: str | None = None, status_code: int = 200, **form) -> HTMLResponse:
+    from openclear.services import offboarding_service
+
+    preview = None
+    if bank.data_deleted_at is None and not bank.is_demo and not bank.is_sandbox:
+        preview = offboarding_service.preview(db, bank.id)
+    return render_template(request, "platform/offboarding.html", bank=bank, preview=preview, error=error, form=form,
+                           deletable_from=offboarding_service.deletable_from(bank), wait_days=offboarding_service.wait_days(),
+                           delay_hours=offboarding_service.delay_hours(), deletion=offboarding_service.latest(db, bank.id),
+                           status_code=status_code)
+
+
+@router.get("/banks/{tenant_id}/offboarding")
+def offboarding_form(request: Request, tenant_id: uuid.UUID, db: Session = Depends(get_db),
+                     _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """Offboarding a bank: telling it, the wait, its legal hold, and deleting its data with a
+    signed certificate (plans/OFFBOARDING_PLAN.md). Each step is a change under Changes."""
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return see_other("/ui/platform")
+    return _offboarding_page(request, db, bank)
+
+
+@router.post("/banks/{tenant_id}/offboarding")
+def offboarding(request: Request, tenant_id: uuid.UUID, step: str = Form(...), reason: str = Form(""), confirm_slug: str = Form(""),
+                override_reason: str = Form(""), db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    from openclear.services import change_request_service, offboarding_service
+
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return see_other("/ui/platform")
+    bank_id = str(bank.id)
+    if step == "start":
+        kind, payload, summary = "platform.bank.offboard", {"bank_id": bank_id, "offboarding": True}, f"Start offboarding {bank.name}"
+    elif step == "stop":
+        kind, payload, summary = "platform.bank.offboard", {"bank_id": bank_id, "offboarding": False}, f"Stop offboarding {bank.name}"
+    elif step == "hold":
+        kind, payload, summary = "platform.bank.hold", {"bank_id": bank_id, "held": True, "reason": reason.strip()[:500]}, \
+            f"Put {bank.name}'s data on legal hold: {reason.strip()[:300]}"
+    elif step == "release":
+        kind, payload, summary = "platform.bank.hold", {"bank_id": bank_id, "held": False}, f"Take {bank.name}'s data off legal hold"
+    elif step == "delete":
+        preview = offboarding_service.preview(db, bank.id)
+        kind = "platform.bank.delete"
+        payload = {"bank_id": bank_id, "confirm_slug": confirm_slug.strip().lower(), "override_reason": override_reason.strip()[:500] or None,
+                   "requested_by": str(user.id), "rows": preview.total, "tables": len(preview.rows),
+                   "people_deleted": len(preview.people_deleted), "people_kept": len(preview.people_kept)}
+        summary = (f"Delete {bank.name}'s data: {preview.total} rows in {len(preview.rows)} tables, "
+                   f"{len(preview.people_deleted)} people ({len(preview.people_kept)} kept, at other banks); "
+                   + (f"final export {preview.final_export_at:%Y-%m-%d}" if preview.final_export_at
+                      else f"no final export, because: {override_reason.strip()[:200]}"))
+    else:
+        return see_other(f"/ui/platform/banks/{bank_id}/offboarding")
+    try:
+        outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=None, user_id=user.id, summary=summary)
+    except change_request_service.ChangeRequestError as exc:
+        db.rollback()
+        return _offboarding_page(request, db, bank, error=str(exc), status_code=422, reason=reason, confirm_slug=confirm_slug,
+                                 override_reason=override_reason)
+    db.commit()
+    if outcome.applied:
+        return see_other(f"/ui/platform/banks/{bank_id}/offboarding", flash=outcome.summary)
+    return see_other("/ui/platform/changes", flash="Another operator makes it by approving it under Changes.")
+
+
+@router.get("/banks/{tenant_id}/deletion-certificate")
+def deletion_certificate(tenant_id: uuid.UUID, db: Session = Depends(get_db),
+                         _user: User = Depends(platform_session.require_operator)) -> Response:
+    """The signed certificate of a bank's deletion, for the operator to send to the bank."""
+    import json
+
+    from openclear.services import offboarding_service
+
+    record = offboarding_service.latest(db, tenant_id)
+    if record is None or record.certificate is None:
+        return see_other(f"/ui/platform/banks/{tenant_id}/offboarding")
+    slug = record.certificate["bundle"]["bank"]["slug"]
+    return Response(json.dumps(record.certificate, indent=2, sort_keys=True), media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="openclear-deletion-{slug}.json"'})
+
+
 @router.get("/host-attestations")
 def host_attestations(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     """The host's CUECs, attested once for the installation (CONTROLS_PLAN.md CT-D12), when

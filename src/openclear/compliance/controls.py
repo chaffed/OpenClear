@@ -263,6 +263,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "Each check's return deadline is worked out from the day it was presented, in the bank's banking days, and its decision "
       "deadline is never later than the cut-off on that day; a decision sent after it is flagged and raised as a security event.",
       ("SI-4", "SI-10"), "preventive", "built_in", ("return_deadline",), ("B-CA-3-04", "B-SI-4-03"), "Settings → Decision cut-off"),
+    C("OC-SI-12", "A leaving bank's data deleted, with a certificate",
+      "When a bank leaves, two of the service provider's operators start offboarding, which tells the bank to take its final "
+      "export, and, after a wait, two approve deleting its data; it runs a day later unless stopped or put on legal hold, "
+      "removes every row and file of the bank, and signs a certificate of what was deleted.",
+      ("SI-12", "MP-6"), "corrective", "built_in", (), ("H-MP-6-01", "B-SI-12-01"), "Platform → a bank's Offboarding"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "

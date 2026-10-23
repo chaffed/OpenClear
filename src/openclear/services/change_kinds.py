@@ -1253,6 +1253,83 @@ register(Kind(
 ))
 
 
+# Offboarding a bank (plans/OFFBOARDING_PLAN.md): starting it, deleting its data, and its legal hold.
+
+
+def _offboarding(call, *args, **kwargs):
+    from openclear.services import offboarding_service
+
+    try:
+        return call(offboarding_service, *args, **kwargs)
+    except offboarding_service.OffboardingError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+def _offboard_current(session, tenant_id, customer_id, payload) -> dict:
+    bank = _offboarding(lambda s: s._bank(session, uuid.UUID(payload["bank_id"])))
+    return {"offboarding": bank.offboarding_started_at is not None}
+
+
+def _offboard_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    bank_id = uuid.UUID(payload["bank_id"])
+    if payload["offboarding"]:
+        bank = _offboarding(lambda s: s.start(session, bank_id, user_id=user_id))
+        return f"Started offboarding {bank.name}; the bank has been told"
+    bank = _offboarding(lambda s: s.cancel(session, bank_id, user_id=user_id))
+    return f"Stopped offboarding {bank.name}"
+
+
+register(Kind(
+    "platform.bank.offboard", "Offboarding a bank", "protection", _OPERATOR, _offboard_current,
+    lambda payload: {"offboarding": bool(payload["offboarding"])},
+    loosens=lambda before, after: after["offboarding"],  # stopping it keeps data: one operator
+    apply=_offboard_apply, scope="provider", setting=lambda payload: f"bank_offboard:{payload['bank_id']}",
+    describe=lambda before, after: "Start offboarding a bank" if after["offboarding"] else "Stop offboarding a bank",
+))
+
+
+def _delete_current(session, tenant_id, customer_id, payload) -> dict:
+    bank_id = uuid.UUID(payload["bank_id"])
+    bank = _offboarding(lambda s: s.check_can_delete(session, bank_id, override_reason=payload.get("override_reason")))
+    if (payload.get("confirm_slug") or "").strip().lower() != bank.slug:
+        raise ChangeError(f"Type the bank's slug, {bank.slug}, to confirm.")
+    return {"deleted": False}
+
+
+def _delete_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    record = _offboarding(lambda s: s.queue_deletion(
+        session, uuid.UUID(payload["bank_id"]), requested_by=uuid.UUID(payload["requested_by"]) if payload.get("requested_by") else None,
+        approved_by=user_id, confirm_slug=payload.get("confirm_slug", ""), override_reason=payload.get("override_reason")))
+    return f"Deleting the bank's data at {record.runs_at:%Y-%m-%d %H:%M} UTC unless offboarding is stopped first"
+
+
+register(Kind(
+    "platform.bank.delete", "Deleting a bank's data", "protection", _OPERATOR, _delete_current, lambda payload: {"deleted": True},
+    loosens=lambda before, after: True,  # always two operators
+    apply=_delete_apply, scope="provider", setting=lambda payload: f"bank_delete:{payload['bank_id']}",
+    describe=lambda before, after: "Delete a bank's data",
+))
+
+
+def _hold_current(session, tenant_id, customer_id, payload) -> dict:
+    bank = _offboarding(lambda s: s._bank(session, uuid.UUID(payload["bank_id"])))
+    return {"held": bank.legal_hold_reason is not None}
+
+
+def _hold_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    bank = _offboarding(lambda s: s.set_hold(session, uuid.UUID(payload["bank_id"]), bool(payload["held"]),
+                                             reason=payload.get("reason"), user_id=user_id))
+    return f"{bank.name}'s data is {'on' if payload['held'] else 'off'} legal hold"
+
+
+register(Kind(
+    "platform.bank.hold", "A bank's legal hold", "protection", _OPERATOR, _hold_current, lambda payload: {"held": bool(payload["held"])},
+    loosens=lambda before, after: before["held"] and not after["held"],  # putting it on keeps data: one operator
+    apply=_hold_apply, scope="provider", setting=lambda payload: f"bank_hold:{payload['bank_id']}",
+    describe=lambda before, after: "Put a bank's data on legal hold" if after["held"] else "Take a bank's data off legal hold",
+))
+
+
 def _key_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     from openclear.services import platform_api_key_service
 

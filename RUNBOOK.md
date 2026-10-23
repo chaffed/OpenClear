@@ -167,3 +167,28 @@ for as long as your contracts and the banks' examiners need them.
 **Scheduled maintenance** isn't an incident if you announce it beforehand (304.24(b)): send a
 *Scheduled maintenance* notice to the banks it affects, before the window.
 
+## Offboarding a bank (for the service provider)
+
+When a bank leaves, its data is deleted and it gets a signed certificate (`plans/OFFBOARDING_PLAN.md`).
+Everything is on Platform → the bank's **Offboarding**.
+
+1. **Start offboarding**, when the contract ends. A second operator approves it under Changes. The
+   bank is emailed (its incident contacts) and its administrators see a notice until one
+   acknowledges it: its data goes after `OPENCLEAR_BANK_OFFBOARDING_WAIT_DAYS` (30), and it should
+   take a final data export now. Nothing else changes: the bank keeps working until deletion.
+2. **Wait, and check the export.** The page shows whether the bank has taken a full export since
+   offboarding started. If it won't, get its refusal in writing: deleting without one needs the
+   reason.
+3. **Legal hold**, if a regulator or litigation needs the data kept: any operator puts it on, with
+   the reason; taking it off needs two. Deletion is refused while it's on.
+4. **Delete.** Type the bank's slug; the request shows exactly what goes (rows by table, files, the
+   people who belong nowhere else). A second operator approves. It runs
+   `OPENCLEAR_BANK_DELETION_DELAY_HOURS` (24) later, and **Stop offboarding** or a hold still
+   stops it until then.
+5. **Send the certificate.** Download it from the same page and send it to the bank's contacts with
+   how long your backups keep copies. It's signed with the installation's file-signing key, so the
+   bank can check it, and its action-log entry count and last hash let the bank check its export.
+
+The bank's row stays, inactive, so its slug is never reused. The demo bank and sandboxes aren't
+offboarded; they're wiped on their own schedule.
+

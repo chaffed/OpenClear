@@ -1,6 +1,6 @@
 # GLBA: Interagency Guidelines Establishing Information Security Standards
 
-*Current as of 2026-10-22. Checked against its sources at least once a year (control check `regulatory_currency`).*
+*Current as of 2026-10-23. Checked against its sources at least once a year (control check `regulatory_currency`).*
 
 For an FDIC-supervised bank the Gramm-Leach-Bliley Act's safeguards are 12 CFR Part 364,
 Appendix B, with Supplement A on responding to unauthorized access to customer information.
@@ -28,7 +28,7 @@ information. (How examiners treat business accounts' data here is a question for
 | Response program (III.C.1.g; Supplement A) | Assess the scope; tell the FDIC as soon as possible; file a SAR when required; contain; tell customers when misuse is reasonably possible | The signed action log, including who viewed check images and who exported data, shows whose information was reached, so notice can be limited to them; the host's notices (OC-IR-01) | B-IR-6-01; H-IR-6-01, H-IR-6-02 |
 | Environmental and technical failure (III.C.1.h) | Protect against loss | The host's recovery objectives and restore test (OC-CP-01) | H-CP-2-01, H-CP-9-01 |
 | Training and testing (III.C.2, III.C.3) | Train staff; test key controls, independently | Live controls (OC-CA-01), anomaly tests (OC-SI-03) | B-AT-3-01, B-CA-7-02 |
-| Disposal (II.B.4, III.C.4) | Dispose of customer information properly | **A gap.** OpenClear keeps a bank's business records until the bank's data is deleted, and exports all of it; it has no bank-set retention for items, issued checks and images, and no signed record of deletion at exit | B-SI-12-01 |
+| Disposal (II.B.4, III.C.4) | Dispose of customer information properly | When a bank leaves, its data is deleted after it's told and has taken its final export, with two operators' approval, and a signed certificate of what was deleted (OC-SI-12). While the bank stays, OpenClear keeps its records: retention periods that delete records as they age wait until a bank asks | B-SI-12-01; H-MP-6-01 |
 | Service providers (III.D) | Due diligence; a contract to meet the Guidelines; monitoring, reviewing audits or test results | [Third-party risk](tprm.md); the signed evidence export; the host's attestations on the Controls page | B-SA-9-01, B-SA-9-02 |
 
 ## Unauthorized access at the host

@@ -59,7 +59,9 @@
       {% for b in banks %}
       <tr>
         <td>{{ b.tenant.name }}<br><span class="hint">{{ b.tenant.slug }}{% if not b.tenant.is_active %} · inactive{% endif %}{% if b.tenant.is_sandbox %} · sandbox{% endif %}</span>
-          {% if user.platform_role == "operator" %}<br><a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/reset-admin-key">Admin lost their key?</a>{% endif %}</td>
+          {% if b.tenant.data_deleted_at %} · <span class="tone-danger">data deleted</span>{% elif b.tenant.offboarding_started_at %} · <span class="tone-warn">offboarding</span>{% endif %}{% if b.tenant.legal_hold_reason %} · legal hold{% endif %}
+          {% if user.platform_role == "operator" %}<br><a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/reset-admin-key">Admin lost their key?</a>
+          · <a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/offboarding">Offboarding</a>{% endif %}</td>
         <td>{{ b.customers }}</td>
         <td>{{ b.open_exceptions }}</td>
         <td>{% if b.overdue %}<span class="badge badge-danger">{{ b.overdue }}</span>{% else %}0{% endif %}</td>
