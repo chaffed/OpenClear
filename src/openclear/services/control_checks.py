@@ -416,6 +416,24 @@ def reverse_accounts_agreed(session: Session, tenant_id: uuid.UUID) -> Control:
                    "its customer.", evidence)
 
 
+def regulatory_currency(session: Session, tenant_id: uuid.UUID) -> Control:
+    """The compliance pages that map OpenClear onto a law, rule or guidance, each checked against its
+    sources within a year (compliance/regulatory.py, REGULATORY_PLAN.md RG7). A page past its year
+    is one whose rule may have changed since: upgrade, or ask the project to review it."""
+    from openclear.compliance import regulatory
+
+    old = regulatory.stale(_now().date())
+    evidence = {"pages": [{"page": p.path, "current_as_of": p.current_as_of.isoformat()} for p in regulatory.PAGES],
+                "review_days": regulatory.REVIEW_DAYS}
+    title = "Regulatory pages current"
+    if old:
+        return Control("regulatory_currency", title, WARN,
+                       f"{_plural(len(old), 'page')} not checked against {'its' if len(old) == 1 else 'their'} sources in over a year: "
+                       f"{', '.join(f'{p.title} ({p.current_as_of.isoformat()})' for p in old)}.", evidence)
+    return Control("regulatory_currency", title, PASS,
+                   f"All {len(regulatory.PAGES)} regulatory pages were checked against their sources within a year.", evidence)
+
+
 def evidence_export(session: Session, tenant_id: uuid.UUID) -> Control:
     from openclear.domain.audit_log_entry import AuditLogEntry
 

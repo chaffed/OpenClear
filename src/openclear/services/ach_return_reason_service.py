@@ -33,9 +33,15 @@ DEFAULT_ACH_RETURN_REASONS: list[tuple[str, str | None]] = [
     ("Account Closed", "R02"),
     ("No Account/Unable to Locate Account", "R03"),
     ("Customer Advises Not Authorized", "R10"),
-    ("Amount Not Same As Indicated", "R11"),  # R11: entry not in accordance with the authorization
+    # R11's meaning since 2021: authorized, but not as authorized (wrong amount or date).
+    ("Customer Advises Entry Not in Accordance with the Terms of the Authorization", "R11"),
     ("Payment Stopped", "R08"),
     ("Uncollected Funds", "R09"),
+    # A business account's unauthorized debit (CCD, CTX): R10 is for consumer accounts. Positive pay
+    # customers are businesses, so this is the code they need most (REGULATORY_PLAN.md RG2).
+    ("Corporate Customer Advises Not Authorized", "R29"),
+    # Suspected fraud, returned as "QUESTIONABLE" (Nacha, since 1 October 2024).
+    ("Suspected Fraud (Questionable)", "R17"),
 ]
 
 

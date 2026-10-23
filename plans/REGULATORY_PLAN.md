@@ -202,4 +202,19 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
 - 2026-10-22: The product owner set New York DFS Part 500 as the target (RG-D7); it moves to RG3
   with incident notification, and examination becomes RG4. The CRI Profile: the CSF crosswalk now,
   a direct crosswalk when a bank asks (RG-D6). Stages are now RG1–RG7.
+- 2026-10-22: Research for RG1–RG6 done from primary sources (notes kept with the PRs).
+- 2026-10-22: RG2 built. **Finding:** Nacha's 2026 RDFI fraud-monitoring rule covers incoming
+  *credits*; OpenClear's ACH positive pay screens debits, so it doesn't meet it (bank CUEC
+  B-SI-4-02). Regulation E covers consumer accounts only; positive pay customers are businesses.
+  Built: R29 and R17 in the default return reasons and R11's current wording (migration
+  `81bc96eb16ef` adds them to every bank), and the evidence export's ACH monitoring summary
+  (control OC-SI-10). New CUECs B-RA-3-02, B-SI-4-02, B-IR-6-03, B-IR-6-04; C-IR-6-01 no longer
+  asks business customers for the consumer form. `nacha.md` gains *Fraud monitoring (2026)*,
+  *Regulation E* and its sources. **Follow-ups, not built:** a consumer/business flag on accounts
+  with an exception when a consumer SEC code debits a business account (medium); recording WSUD
+  review dates against the sixth-banking-day return (medium, only if banks run late claims
+  through OpenClear); incoming-credit monitoring (large; the bank's own, B-SI-4-02).
+- 2026-10-22: RG7's mechanism built first, as it watches every page: `compliance/regulatory.py`,
+  each page's "Current as of" line (kept in step by a test; `csf.md`'s from the generator), the
+  check `regulatory_currency` and control OC-CA-03.
 

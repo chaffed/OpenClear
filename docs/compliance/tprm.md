@@ -1,5 +1,7 @@
 # Third-party risk management
 
+*Current as of 2026-10-21. Checked against its sources at least once a year (control check `regulatory_currency`).*
+
 The 2023 *Interagency Guidance on Third-Party Relationships: Risk Management* (Federal
 Reserve, FDIC and OCC) asks a bank to manage each third-party relationship through its life
 cycle:

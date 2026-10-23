@@ -1,5 +1,7 @@
 # FFIEC IT Examination Handbook
 
+*Current as of 2026-10-17. Checked against its sources at least once a year (control check `regulatory_currency`).*
+
 How OpenClear supports the areas the FFIEC IT Examination Handbook booklets examine, chiefly
 *Information Security*, *Architecture, Infrastructure, and Operations*, *Development,
 Acquisition, and Maintenance*, and *Audit*. The booklets are principles-based. This page maps

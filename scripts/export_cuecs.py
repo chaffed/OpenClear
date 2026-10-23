@@ -158,7 +158,16 @@ def render_controls_markdown() -> str:
     return "\n".join(parts) + "\n"
 
 
+def _as_of(page: str) -> str:
+    """The date a regulatory page was last checked against its sources (compliance/regulatory.py)."""
+    from openclear.compliance import regulatory
+
+    return next(p.current_as_of.isoformat() for p in regulatory.PAGES if p.path == page)
+
+
 CSF_INTRO = """# NIST CSF 2.0
+
+*Current as of {as_of}. Checked against its sources at least once a year (control check `regulatory_currency`).*
 
 OpenClear's [controls](controls.md) and the [complementary user entity controls](cuecs.md)
 (CUECs) by NIST Cybersecurity Framework 2.0 subcategory. Both inventories are filed under
@@ -181,7 +190,7 @@ def render_csf_markdown() -> str:
     unmapped = [n for n in unmapped if not crosswalks.csf_for(n)]
     uncovered = ("NIST's mapping links no subcategory to " + ", ".join(f"`{n}`" for n in unmapped) +
                  ", so a control or CUEC filed only under those isn't on this page.") if unmapped else ""
-    parts = [CSF_INTRO.format(catalog=cuecs.NIST_CATALOG, url=crosswalks.CSF_SOURCE_URL, uncovered=uncovered).rstrip() + "\n"]
+    parts = [CSF_INTRO.format(catalog=cuecs.NIST_CATALOG, url=crosswalks.CSF_SOURCE_URL, uncovered=uncovered, as_of=_as_of("csf.md")).rstrip() + "\n"]
     for function, label in crosswalks.CSF_FUNCTIONS.items():
         parts.append(f"## {label} ({function})\n")
         parts.append("| Subcategory | OpenClear controls | CUECs |")

@@ -289,6 +289,12 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear enforces each customer's password policy, second factors and sign-on connection.",
          "automated", "customer_mfa", "On change; reviewed yearly",
          "Customers → Sign-on; Customers → Password policy", related=("IA-2(2)",)),
+    Cuec("B-RA-3-02", "bank", "RA-3", "Know which accounts are consumer accounts",
+         "Identify each account on OpenClear that is a consumer account under Regulation E, and apply the bank's Regulation E "
+         "procedures to it alongside positive pay.",
+         "OpenClear protects business and consumer accounts the same way, and its decision history shows when an item was "
+         "shown, decided and by whom.",
+         "attested", None, "Yearly", "Customers → Accounts; docs/compliance/nacha.md (Regulation E)"),
     Cuec("B-RA-3-01", "bank", "RA-3", "Assess positive pay risk",
          "Include OpenClear in the bank's risk assessment, and set each customer's services and default dispositions from it.",
          "OpenClear applies each customer's services and default dispositions as set.",
@@ -325,6 +331,23 @@ CUECS: tuple[Cuec, ...] = (
          "anything left undecided.",
          "automated", "sla", "Daily",
          "Controls → Decisions and imports on time", related=("IR-4",)),
+    Cuec("B-SI-4-02", "bank", "SI-4", "Monitor incoming ACH credits for fraud",
+         "Run, and review at least yearly, the bank's own risk-based process to identify incoming ACH credits initiated by "
+         "fraud, as the Nacha Rules require of every RDFI from 2026.",
+         "OpenClear's ACH positive pay monitors debits only and isn't that process; its evidence export summarizes debits, "
+         "exceptions and returns for the bank's fraud-monitoring file.",
+         "attested", None, "Yearly", "Settings → Controls → Export evidence (ach_monitoring)", related=("RA-3",)),
+    Cuec("B-IR-6-03", "bank", "IR-6", "Treat an unauthorized consumer return as a notice of error",
+         "When a consumer account's ACH debit is returned as unauthorized through OpenClear, treat it as the consumer's notice "
+         "under Regulation E and meet the investigation, provisional-credit and reporting times in 12 CFR 1005.11.",
+         "OpenClear records the decision, its reason, who made it and when, with notes and images, in the evidence and data "
+         "exports.",
+         "attested", None, "Yearly", "Exceptions; Settings → Controls → Export evidence", related=("IR-4",)),
+    Cuec("B-IR-6-04", "bank", "IR-6", "Return late unauthorized consumer debits on time",
+         "For a consumer debit reported unauthorized after OpenClear's decision, return it by the opening of the sixth banking "
+         "day after the bank finishes reviewing the signed Written Statement of Unauthorized Debit.",
+         "OpenClear decides debits before they post; a late claim is the bank's, through its core.",
+         "attested", None, "Yearly", "The bank's core and procedures", related=("IR-4",)),
     Cuec("B-IR-6-02", "bank", "IR-6", "Obtain and keep Written Statements of Unauthorized Debit",
          "Obtain a Written Statement of Unauthorized Debit from a customer who reports a consumer ACH debit as unauthorized, "
          "as the Nacha Rules require, and keep it for the period they set.",
@@ -445,8 +468,8 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear raises an exception for an ACH debit no authorization covers.",
          "assisted", "stale_ach_authorizations", "Quarterly", "ACH authorizations"),
     Cuec("C-IR-6-01", "customer", "IR-6", "Report fraud at once",
-         "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's Written Statement of "
-         "Unauthorized Debit when returning an ACH debit as unauthorized.",
+         "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's statement of "
+         "unauthorized debit when the bank asks for one (the Nacha Rules require it for consumer accounts).",
          "OpenClear shows the customer the bank's statement form, and returns the debit when the customer decides to.",
          "attested", None, "Yearly", "Unauthorized debit statement; Exceptions", related=("IR-4",)),
     Cuec("C-SC-28-01", "customer", "SC-28", "Protect what's downloaded",

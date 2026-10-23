@@ -205,6 +205,59 @@ def _decisions(session: Session, tenant_id: uuid.UUID, start: datetime, end: dat
     return {"count": len(items), "truncated": truncated, "by_outcome": counts, "items": items}
 
 
+UNAUTHORIZED_RETURN_CODES = ("R10", "R11", "R29", "R17")
+
+
+def _ach_monitoring(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> dict:
+    """The period's ACH debits, exceptions and returns, shaped for a bank's fraud-monitoring file and
+    its yearly Rules audit (REGULATORY_PLAN.md RG2; control OC-SI-10). Debits only: OpenClear doesn't
+    monitor incoming credits, which the bank's own process covers (CUEC B-SI-4-02)."""
+    import statistics
+
+    from sqlalchemy import func
+
+    from openclear.domain.ach_transaction import AchTransaction, AchTransactionType
+    from openclear.domain.decision import Decision, DecisionOutcome
+    from openclear.domain.exception_item import ExceptionItem
+
+    debits = dict(session.execute(select(AchTransaction.sec_code, func.count()).where(
+        AchTransaction.tenant_id == tenant_id, AchTransaction.transaction_type == AchTransactionType.DEBIT,
+        AchTransaction.created_at >= start, AchTransaction.created_at < end).group_by(AchTransaction.sec_code)).all())
+    exceptions = session.execute(select(func.count()).select_from(ExceptionItem).where(
+        ExceptionItem.tenant_id == tenant_id, ExceptionItem.network_code == "ach", ExceptionItem.created_at >= start,
+        ExceptionItem.created_at < end)).scalar_one()
+    decided = session.execute(select(Decision, ExceptionItem, AchTransaction)
+                              .join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id)
+                              .join(AchTransaction, AchTransaction.id == ExceptionItem.source_item_id).where(
+        Decision.tenant_id == tenant_id, ExceptionItem.network_code == "ach", Decision.decided_at >= start, Decision.decided_at < end)).all()
+    returns: dict[str, int] = {}
+    unauthorized: dict[tuple[str, str], int] = {}
+    minutes, late = [], 0
+    for decision, exception, txn in decided:
+        if decision.outcome == DecisionOutcome.RETURN:
+            code = decision.return_transaction_code or "unset"
+            returns[code] = returns.get(code, 0) + 1
+            if code in UNAUTHORIZED_RETURN_CODES:
+                unauthorized[(txn.originator_id, txn.originator_name)] = unauthorized.get((txn.originator_id, txn.originator_name), 0) + 1
+        made, due = _aware(decision.decided_at), _aware(exception.decision_deadline)
+        minutes.append((made - _aware(exception.created_at)).total_seconds() / 60)
+        late += due is not None and made > due
+    top = sorted(unauthorized.items(), key=lambda kv: -kv[1])[:50]
+    return {
+        "scope": "ACH debits on positive pay accounts; incoming credits aren't monitored by OpenClear (CUEC B-SI-4-02)",
+        "debits_by_sec_code": debits, "exceptions": exceptions, "decisions": len(decided),
+        "returns_by_reason_code": returns,
+        "unauthorized_returns_by_originator": [{"originator_id": oid, "originator_name": name, "returns": n} for (oid, name), n in top],
+        "minutes_to_decision": {"median": round(statistics.median(minutes), 1) if minutes else None,
+                                "max": round(max(minutes), 1) if minutes else None},
+        "decided_after_deadline": late,
+    }
+
+
+def _aware(value):
+    return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
+
+
 def _control_runs(session: Session, tenant_id: uuid.UUID, start: datetime, end: datetime) -> list[dict]:
     from openclear.domain.control_run import ControlRun
 
@@ -340,6 +393,7 @@ def build(session: Session, tenant_id: uuid.UUID, *, start: date, end: date, gen
         "settings": _settings(session, tenant_id),
         "audit": _audit(session, tenant_id, period_start, period_end),
         "decisions": _decisions(session, tenant_id, period_start, period_end),
+        "ach_monitoring": _ach_monitoring(session, tenant_id, period_start, period_end),
         "control_runs": _control_runs(session, tenant_id, period_start, period_end),
         "security_events": _security_events(session, tenant_id, period_start, period_end),
         "support_access": _support_access(session, tenant_id, period_start, period_end),

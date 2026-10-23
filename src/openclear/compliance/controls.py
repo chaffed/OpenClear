@@ -253,6 +253,10 @@ CONTROLS: tuple[OcControl, ...] = (
       "numbers raises a security event.",
       ("SI-4", "AC-6"), "preventive", "configurable", (), ("B-CP-2-02",), "API: /api/v1/checks/verify and /cashed"),
     # --- Configuration management ---------------------------------------------------------
+    C("OC-SI-10", "ACH monitoring summary",
+      "The evidence export summarizes the period's ACH debits by SEC code, exceptions, returns by reason code, unauthorized "
+      "returns by originator, and decision times against their deadlines, for the bank's fraud-monitoring file and Rules audit.",
+      ("SI-4", "AU-6"), "detective", "built_in", ("evidence_export",), ("B-SI-4-02", "B-IR-6-03"), "Settings → Controls → Export evidence"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "
@@ -274,6 +278,10 @@ CONTROLS: tuple[OcControl, ...] = (
     C("OC-CA-02", "Health and jobs reported",
       "/health reports whether the database answers, and each scheduled job's last run is kept.",
       ("CA-7", "SI-4"), "detective", "built_in", ("scheduled_jobs",), ("H-SI-4-01",), "/health"),
+    C("OC-CA-03", "Regulatory pages kept current",
+      "Each page mapping OpenClear onto a law, rule or guidance says when it was last checked against its sources, and a check "
+      "warns when one is more than a year old.",
+      ("CA-7",), "detective", "built_in", ("regulatory_currency",), (), "Controls; docs/compliance/"),
 )
 del C
 

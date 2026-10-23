@@ -570,6 +570,89 @@
       "withdrawn": false
     },
     {
+      "id": "B-RA-3-02",
+      "party": "bank",
+      "nist": "RA-3",
+      "nist_title": "Risk Assessment",
+      "oscal_id": "ra-3",
+      "related": [],
+      "title": "Know which accounts are consumer accounts",
+      "statement": "Identify each account on OpenClear that is a consumer account under Regulation E, and apply the bank's Regulation E procedures to it alongside positive pay.",
+      "complements": "OpenClear protects business and consumer accounts the same way, and its decision history shows when an item was shown, decided and by whom.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "GV.RM-06",
+          "title": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated"
+        },
+        {
+          "id": "GV.RM-07",
+          "title": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions"
+        },
+        {
+          "id": "GV.SC-03",
+          "title": "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes"
+        },
+        {
+          "id": "GV.SC-09",
+          "title": "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle"
+        },
+        {
+          "id": "GV.SC-10",
+          "title": "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement"
+        },
+        {
+          "id": "ID.AM-05",
+          "title": "Assets are prioritized based on classification, criticality, resources, and impact on the mission"
+        },
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.RA-03",
+          "title": "Internal and external threats to the organization are identified and recorded"
+        },
+        {
+          "id": "ID.RA-04",
+          "title": "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded"
+        },
+        {
+          "id": "ID.RA-05",
+          "title": "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "DE.AE-06",
+          "title": "Information on adverse events is provided to authorized staff and tools"
+        },
+        {
+          "id": "DE.AE-07",
+          "title": "Cyber threat intelligence and other contextual information are integrated into the analysis"
+        },
+        {
+          "id": "RS.AN-08",
+          "title": "An incident's magnitude is estimated and validated"
+        }
+      ],
+      "where": "Customers \u2192 Accounts; docs/compliance/nacha.md (Regulation E)",
+      "withdrawn": false
+    },
+    {
       "id": "B-RA-3-01",
       "party": "bank",
       "nist": "RA-3",
@@ -917,6 +1000,197 @@
         }
       ],
       "where": "Controls \u2192 Decisions and imports on time",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SI-4-02",
+      "party": "bank",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "RA-3"
+      ],
+      "title": "Monitor incoming ACH credits for fraud",
+      "statement": "Run, and review at least yearly, the bank's own risk-based process to identify incoming ACH credits initiated by fraud, as the Nacha Rules require of every RDFI from 2026.",
+      "complements": "OpenClear's ACH positive pay monitors debits only and isn't that process; its evidence export summarizes debits, exceptions and returns for the bank's fraud-monitoring file.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "Settings \u2192 Controls \u2192 Export evidence (ach_monitoring)",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-03",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Treat an unauthorized consumer return as a notice of error",
+      "statement": "When a consumer account's ACH debit is returned as unauthorized through OpenClear, treat it as the consumer's notice under Regulation E and meet the investigation, provisional-credit and reporting times in 12 CFR 1005.11.",
+      "complements": "OpenClear records the decision, its reason, who made it and when, with notes and images, in the evidence and data exports.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "Exceptions; Settings \u2192 Controls \u2192 Export evidence",
+      "withdrawn": false
+    },
+    {
+      "id": "B-IR-6-04",
+      "party": "bank",
+      "nist": "IR-6",
+      "nist_title": "Incident Reporting",
+      "oscal_id": "ir-6",
+      "related": [
+        "IR-4"
+      ],
+      "title": "Return late unauthorized consumer debits on time",
+      "statement": "For a consumer debit reported unauthorized after OpenClear's decision, return it by the opening of the sixth banking day after the bank finishes reviewing the signed Written Statement of Unauthorized Debit.",
+      "complements": "OpenClear decides debits before they post; a late claim is the bank's, through its core.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.IR-03",
+          "title": "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations"
+        },
+        {
+          "id": "RS.MA-01",
+          "title": "The incident response plan is executed in coordination with relevant third parties once an incident is declared"
+        },
+        {
+          "id": "RS.MA-02",
+          "title": "Incident reports are triaged and validated"
+        },
+        {
+          "id": "RS.MA-03",
+          "title": "Incidents are categorized and prioritized"
+        },
+        {
+          "id": "RS.MA-04",
+          "title": "Incidents are escalated or elevated as needed"
+        },
+        {
+          "id": "RS.AN-06",
+          "title": "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.AN-07",
+          "title": "Incident data and metadata are collected, and their integrity and provenance are preserved"
+        },
+        {
+          "id": "RS.CO-02",
+          "title": "Internal and external stakeholders are notified of incidents"
+        },
+        {
+          "id": "RS.CO-03",
+          "title": "Information is shared with designated internal and external stakeholders"
+        },
+        {
+          "id": "RC.CO-03",
+          "title": "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders"
+        }
+      ],
+      "where": "The bank's core and procedures",
       "withdrawn": false
     },
     {
@@ -1833,7 +2107,7 @@
         "IR-4"
       ],
       "title": "Report fraud at once",
-      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's Written Statement of Unauthorized Debit when returning an ACH debit as unauthorized.",
+      "statement": "Report suspected fraud or an unauthorized debit to the bank at once, and complete the bank's statement of unauthorized debit when the bank asks for one (the Nacha Rules require it for consumer accounts).",
       "complements": "OpenClear shows the customer the bank's statement form, and returns the debit when the customer decides to.",
       "evidence": "attested",
       "check": null,
