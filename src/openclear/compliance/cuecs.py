@@ -329,6 +329,12 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear catches checks that weren't issued, altered amounts and payees, duplicates and a check cashed at a branch, but "
          "sees nothing of how an account was opened or of money moving between accounts.",
          "attested", None, "Yearly", "The bank's fraud program"),
+    Cuec("B-SI-12-02", "bank", "SI-12", "Offboard customers that leave",
+         "When a customer leaves the bank or stops positive pay, set its last service day in OpenClear, stop the core sending its "
+         "items, and keep the records the bank must keep in the core, which is the system of record.",
+         "OpenClear ends the customer's sign-in and refuses its accounts' items after the last service day, and deletes its "
+         "data 90 days later with a signed certificate, unless it's on legal hold.",
+         "attested", None, "Per event", "Customers → a customer's Offboarding; Customers → Deleted customers", related=("AC-2",)),
     Cuec("B-RA-3-04", "bank", "RA-3", "Screen for sanctions where the money moves",
          "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT "
          "parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",
@@ -350,8 +356,9 @@ CUECS: tuple[Cuec, ...] = (
     Cuec("B-SI-12-01", "bank", "SI-12", "Set retention and disposal",
          "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and "
          "at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
-         "OpenClear keeps a bank's business records until the bank's installation or data is deleted, and exports all of it.",
-         "attested", None, "Yearly, and at exit", "Settings → Data export; the host's deletion record", related=("MP-6",)),
+         "OpenClear keeps a bank's business records until the bank leaves; then, after the bank is told and a wait, it deletes "
+         "them and signs a certificate whose action-log hash lets the bank check its final export is complete.",
+         "attested", None, "Yearly, and at exit", "Settings → Data export; the deletion certificate", related=("MP-6",)),
     # --- The bank: monitoring ------------------------------------------------------------
     Cuec("B-CA-7-01", "bank", "CA-7", "Act on control status",
          "Watch control status (the Controls page, the API, or control.status.changed in the SIEM) and investigate a WARN or FAIL "
@@ -648,7 +655,8 @@ CUECS: tuple[Cuec, ...] = (
          "automated", "production_safety", "Continuous", "Controls → Production settings", related=("CM-2",)),
     Cuec("H-CP-9-01", "host", "CP-9", "Back up and test restores",
          "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or "
-         "offline behind sign-in separate from production, and test a clean restore at least yearly.",
+         "offline behind sign-in separate from production; state how long backups are kept; and test a clean restore at least "
+         "yearly.",
          "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
          "attested", None, "Daily; restore tested yearly", "The host's backup records", related=("CP-4", "CP-10")),
     Cuec("H-CP-2-01", "host", "CP-2", "State recovery objectives",
@@ -709,9 +717,11 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear's security metrics, advisories and ASVS crosswalk are published with each release.",
          "attested", None, "Yearly", "The test report", related=("RA-5",)),
     Cuec("H-MP-6-01", "host", "MP-6", "Delete a bank's data when it leaves",
-         "When a bank leaves, delete or return its data and backups as the contract says, and give the bank a written certificate.",
-         "OpenClear exports a bank's data for it to take.",
-         "attested", None, "Per event", "Settings → Data export; the host's certificate", related=("SI-12",)),
+         "When a bank leaves, offboard it in OpenClear (Platform → the bank's Offboarding) as the contract says, send the bank the "
+         "signed deletion certificate, and tell it how long the host's backups keep copies.",
+         "OpenClear tells the bank to take its final export, deletes every row and file of the bank after a wait and two "
+         "operators' approval, and signs a certificate of what was deleted.",
+         "attested", None, "Per event", "Platform → the bank's Offboarding; the deletion certificate", related=("SI-12",)),
     Cuec("H-CM-4-01", "host", "CM-4", "Announce maintenance",
          "Announce scheduled maintenance and upgrades to each bank beforehand, as a maintenance notice in OpenClear, so they aren't "
          "incidents under 12 CFR 304.24(b).",

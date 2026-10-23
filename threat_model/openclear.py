@@ -266,4 +266,17 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "and raised as security events; a control check warns on no contacts, an unacknowledged notice, or a year "
            "unconfirmed.",
            "OC-IR-01, OC-IR-02; services/incident_service.py; docs/compliance/incident-notification.md", "Mitigated"),
+    Threat("OC-T25", "D", "Service provider", "A bank's data is deleted by mistake, by one rogue operator, or while a regulator "
+           "or a court needs it kept; or deleted without proof, so the bank can't show it was disposed of.",
+           "Two operators to start offboarding and two to delete; the bank told and given a wait for its final export; "
+           "deletion refused without that export unless a reason is given, while on legal hold, or for the demo and "
+           "sandboxes; the slug typed and a preview approved; a day's delay in which it can still be stopped; critical "
+           "security events; a signed certificate of what was deleted.",
+           "OC-SI-12, OC-AC-13; services/offboarding_service.py; plans/OFFBOARDING_PLAN.md", "Mitigated"),
+    Threat("OC-T26", "D", "Customer ↔ bank", "A customer's data is deleted by mistake or too soon, another customer's with it, "
+           "or a customer that has left keeps signing in or having its items reviewed.",
+           "Two bank administrators set the last service day, and the customer is told; after it, sign-in ends and its "
+           "accounts' items are refused; deletion waits 90 days and a legal hold; it follows the schema's foreign keys from "
+           "that one customer, within its bank, and keeps the bank's action log; a signed certificate.",
+           "OC-SI-13; services/customer_offboarding_service.py; plans/CUSTOMER_OFFBOARDING_PLAN.md", "Mitigated"),
 )

@@ -84,6 +84,13 @@ def _retrain_model_slot(session: Session, job: Job) -> None:
     _train_and_log(session, job.payload["network_code"], tenant_id=uuid.UUID(job.payload["tenant_id"]))
 
 
+@handler("bank.delete")  # services/offboarding_service.DELETE_JOB_KIND
+def _delete_bank(session: Session, job: Job) -> None:
+    from openclear.services import offboarding_service
+
+    offboarding_service.run(session, uuid.UUID(job.payload["deletion_id"]))
+
+
 @handler("control_run.execute")  # services/long_runs.JOB_KIND
 def _execute_control_run(session: Session, job: Job) -> None:
     from openclear.services import long_runs

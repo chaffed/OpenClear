@@ -1,0 +1,1 @@
+Positive pay for {{ customer_name }} at {{ bank_name }} ends {{ last_day.isoformat() }}. Take your data export before then; details by email.

@@ -138,6 +138,12 @@ CATALOG: dict[str, EventType] = {
     "incident.notice.sent": EventType("integrity", "critical"),
     "incident.notice.acknowledged": EventType("integrity", "medium"),
     "incident_contact.changed": EventType("configuration", "high"),
+    # Offboarding a bank: starting it, cancelling it, and approving, starting and finishing the deletion of its
+    # data; and its legal hold (plans/OFFBOARDING_PLAN.md).
+    "bank.offboarding": EventType("data", "critical"),
+    "bank.legal_hold.changed": EventType("data", "high"),
+    # A customer's positive pay ended and its data deleted 90 days later (plans/CUSTOMER_OFFBOARDING_PLAN.md).
+    "customer.offboarding": EventType("data", "high"),
     # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
     "decision.after_return_deadline": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
@@ -200,6 +206,17 @@ AUDIT_EVENTS: dict[str, str] = {
     "incident.notice.sent": "incident.notice.sent",
     "incident.notice.acknowledged": "incident.notice.acknowledged",
     "incident_contact.changed": "incident_contact.changed",
+    "bank.offboard.start": "bank.offboarding",
+    "bank.offboard.cancel": "bank.offboarding",
+    "bank.delete.approve": "bank.offboarding",
+    "bank.legal_hold.on": "bank.legal_hold.changed",
+    "bank.legal_hold.off": "bank.legal_hold.changed",
+    "customer.offboard.schedule": "customer.offboarding",
+    "customer.offboard.stop": "customer.offboarding",
+    "customer.offboard.ended": "customer.offboarding",
+    "customer.offboard.delete": "customer.offboarding",
+    "customer.legal_hold.on": "customer.offboarding",
+    "customer.legal_hold.off": "customer.offboarding",
     "teller.verify": "teller.verify",
     "teller.verify.declined": "teller.verify.declined",
     "teller.cashed": "teller.cashed",

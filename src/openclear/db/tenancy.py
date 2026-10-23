@@ -129,6 +129,9 @@ class TenantContext:
     # The service provider's incident notices nobody at the bank has acknowledged (services/incident_service.py):
     # (delivery id, kind, title) for each, shown to the bank's administrators on every page.
     incident_notices: tuple = ()
+    # A customer's last positive pay service day, once its bank has scheduled it
+    # (services/customer_offboarding_service.py): shown to its people on every page until then.
+    service_ends_at: datetime | None = None
     # The soonest decision deadline among them (base.html's "decide now" banner).
     nearest_deadline: datetime | None = None
     # For base.html's "New customer users" nav entry: people a customer's side added who wait

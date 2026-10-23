@@ -58,4 +58,21 @@ default decision, so it's never paid by silence.</p>
     <code>PUT /api/v1/accounts/{account_number}</code> (it answers 202 while it waits for approval).</li>
 </ol>
 <p>Checks only for now. To review every ACH debit on an account, give it no ACH authorizations.</p>
+
+<h2 id="offboarding">When a customer leaves or stops positive pay</h2>
+<p>OpenClear isn't the bank's system of record (the core is), so a customer's data is deleted 90 days after its
+  last service day. On the customer's page, under <strong>Offboarding</strong>:</p>
+<ol>
+  <li>Choose the <strong>last service day</strong> and <strong>End positive pay</strong>. A second administrator approves it
+    under Changes. The customer's people are emailed and see the date on every page: they should take a data export
+    before then.</li>
+  <li>After that day, nobody at the customer can sign in, files that name its accounts are refused row by row (so the
+    core's file shows it still sends them), and tellers are told its checks aren't on positive pay. Open exceptions take
+    the account's default at their deadline. Stop the core sending its items too.</li>
+  <li>90 days later its data is deleted: the customer, its accounts, items, exceptions, decisions, images and uploads, and
+    its people unless they belong elsewhere or are named in the bank's records. The bank's action log keeps what was done.
+    The signed certificate is under <a href="/ui/customers/deleted">Customers → Deleted customers</a>.</li>
+</ol>
+<p><strong>Keep positive pay</strong> stops it before the last day. Restoring a customer whose service has ended, and
+  taking its data off <strong>legal hold</strong>, need a second administrator; while it's on hold, nothing is deleted.</p>
 {% endblock %}

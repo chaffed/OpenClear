@@ -1,0 +1,10 @@
+Positive pay for {{ customer_name }} ends on {{ last_day.isoformat() }}
+
+{{ bank_name }} is ending {{ customer_name }}'s positive pay service in OpenClear. The last service day is
+{{ last_day.isoformat() }}. After it, nobody at {{ customer_name }} can sign in, checks are no longer
+matched against your issued checks, and exceptions are no longer sent to you.
+
+Before then, an administrator can take a full export of your data (Settings → Data export) to keep
+with your records. OpenClear deletes your data on or after {{ deleted_on.isoformat() }}.
+
+If this is a mistake, contact {{ bank_name }} now.

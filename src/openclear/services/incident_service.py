@@ -24,7 +24,8 @@ from openclear.domain.incident import IncidentContact, IncidentNotice, IncidentN
 from openclear.domain.tenant import Tenant
 from openclear.services import audit_log_service
 
-KINDS = {"incident": "Incident", "maintenance": "Scheduled maintenance", "update": "Update", "closed": "Closed"}
+KINDS = {"incident": "Incident", "maintenance": "Scheduled maintenance", "update": "Update", "closed": "Closed",
+         "offboarding": "Offboarding"}  # offboarding: services/offboarding_service.py, never chosen by hand
 CONTACT_KINDS = ("contact", "ceo", "cio")
 MAX_CONTACTS = 10
 

@@ -936,6 +936,35 @@
       "withdrawn": false
     },
     {
+      "id": "B-SI-12-02",
+      "party": "bank",
+      "nist": "SI-12",
+      "nist_title": "Information Management and Retention",
+      "oscal_id": "si-12",
+      "related": [
+        "AC-2"
+      ],
+      "title": "Offboard customers that leave",
+      "statement": "When a customer leaves the bank or stops positive pay, set its last service day in OpenClear, stop the core sending its items, and keep the records the bank must keep in the core, which is the system of record.",
+      "complements": "OpenClear ends the customer's sign-in and refuses its accounts' items after the last service day, and deletes its data 90 days later with a signed certificate, unless it's on legal hold.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "ID.AM-07",
+          "title": "Inventories of data and corresponding metadata for designated data types are maintained"
+        },
+        {
+          "id": "ID.AM-08",
+          "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
+        }
+      ],
+      "where": "Customers \u2192 a customer's Offboarding; Customers \u2192 Deleted customers",
+      "withdrawn": false
+    },
+    {
       "id": "B-RA-3-04",
       "party": "bank",
       "nist": "RA-3",
@@ -1142,7 +1171,7 @@
       ],
       "title": "Set retention and disposal",
       "statement": "Decide how long positive pay records (issued checks, items, images, decisions) are kept and how they're disposed of, and at exit obtain the host's record that the bank's data was deleted (12 CFR 364 App. B II.B.4, III.C.4).",
-      "complements": "OpenClear keeps a bank's business records until the bank's installation or data is deleted, and exports all of it.",
+      "complements": "OpenClear keeps a bank's business records until the bank leaves; then, after the bank is told and a wait, it deletes them and signs a certificate whose action-log hash lets the bank check its final export is complete.",
       "evidence": "attested",
       "check": null,
       "check_status": null,
@@ -1157,7 +1186,7 @@
           "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
         }
       ],
-      "where": "Settings \u2192 Data export; the host's deletion record",
+      "where": "Settings \u2192 Data export; the deletion certificate",
       "withdrawn": false
     },
     {
@@ -3581,7 +3610,7 @@
         "CP-10"
       ],
       "title": "Back up and test restores",
-      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or offline behind sign-in separate from production, and test a clean restore at least yearly.",
+      "statement": "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or offline behind sign-in separate from production; state how long backups are kept; and test a clean restore at least yearly.",
       "complements": "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
       "evidence": "attested",
       "check": null,
@@ -4158,14 +4187,14 @@
         "SI-12"
       ],
       "title": "Delete a bank's data when it leaves",
-      "statement": "When a bank leaves, delete or return its data and backups as the contract says, and give the bank a written certificate.",
-      "complements": "OpenClear exports a bank's data for it to take.",
+      "statement": "When a bank leaves, offboard it in OpenClear (Platform \u2192 the bank's Offboarding) as the contract says, send the bank the signed deletion certificate, and tell it how long the host's backups keep copies.",
+      "complements": "OpenClear tells the bank to take its final export, deletes every row and file of the bank after a wait and two operators' approval, and signs a certificate of what was deleted.",
       "evidence": "attested",
       "check": null,
       "check_status": null,
       "frequency": "Per event",
       "csf": [],
-      "where": "Settings \u2192 Data export; the host's certificate",
+      "where": "Platform \u2192 the bank's Offboarding; the deletion certificate",
       "withdrawn": false
     },
     {

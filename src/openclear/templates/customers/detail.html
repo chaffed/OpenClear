@@ -208,6 +208,50 @@
 </div>
 {% endif %}
 
+<div class="card" id="offboarding">
+  <h2>Offboarding</h2>
+  {% if customer.service_ended_at %}
+  <p><span class="badge badge-danger">Service ended</span> on {{ customer.service_ended_at.strftime("%Y-%m-%d") }}. Its people
+    can't sign in and files naming its accounts are refused. Its data is deleted on or after
+    {{ offboarding_deletion_due.strftime("%Y-%m-%d") }}{% if customer.legal_hold_reason %}, once it's off legal hold{% endif %}.</p>
+  {% elif customer.service_ends_at %}
+  <p><span class="badge badge-warn">Ending</span> Positive pay ends at the end of {{ offboarding_last_day }} ({{ bank_time_zone }});
+    its people were emailed to take their data export. Its data is deleted on or after {{ offboarding_deletion_due.strftime("%Y-%m-%d") }}.</p>
+  {% else %}
+  <p>When the customer leaves the bank or stops positive pay: from its last service day nobody at the customer can sign in and
+    its items aren't matched; {{ retention_days }} days later its data is deleted, with a signed certificate the bank keeps.
+    OpenClear isn't the bank's system of record: the core is.</p>
+  <form method="post" action="/ui/customers/{{ customer.id }}/offboarding" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="schedule">
+    <label>Last service day <input type="date" name="last_service_day" required min="{{ today }}"></label>
+    <button type="submit" class="secondary">{{ icon("event_busy") }}End positive pay</button>
+  </form>
+  {% endif %}
+  {% if customer.service_ends_at or customer.service_ended_at %}
+  <form method="post" action="/ui/customers/{{ customer.id }}/offboarding" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="stop">
+    <button type="submit" class="secondary">{{ icon("undo") }}{{ "Restore positive pay" if customer.service_ended_at else "Keep positive pay" }}</button>
+  </form>
+  {% endif %}
+  {% if customer.legal_hold_reason %}
+  <p><span class="badge badge-warn">Legal hold</span> {{ customer.legal_hold_reason }}. Its data isn't deleted while it's on.</p>
+  <form method="post" action="/ui/customers/{{ customer.id }}/offboarding" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="release">
+    <button type="submit" class="secondary">Take off legal hold</button>
+  </form>
+  {% else %}
+  <form method="post" action="/ui/customers/{{ customer.id }}/offboarding" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="hold">
+    <label>Legal hold, because <input type="text" name="reason" required maxlength="500" placeholder="a regulator's request, litigation"></label>
+    <button type="submit" class="secondary">Put on legal hold</button>
+  </form>
+  {% endif %}
+</div>
+
 {% if disposition_summary is not none %}
 <div class="card">
   <div class="toolbar">

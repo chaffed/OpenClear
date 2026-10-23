@@ -62,6 +62,8 @@ class NotificationType(str, enum.Enum):
     # maintenance notice, to a bank's incident contacts. Always emailed: it's the bank's notice
     # under 12 CFR 304.24.
     INCIDENT_NOTICE = "incident_notice"
+    # A customer's last positive pay service day (services/customer_offboarding_service.py): always emailed.
+    SERVICE_ENDING = "service_ending"
     CHANGE_DECIDED = "change_decided"
     # services/controls_service.py (DUAL_CONTROL_PLAN.md DC-D17): a second-person rule the bank has
     # on no longer has anyone else to approve, so its changes now take the 24-hour cooling-off.
