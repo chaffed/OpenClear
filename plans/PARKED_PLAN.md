@@ -20,6 +20,7 @@ Collected on 2026-10-22, at the product owner's request, from a survey of every 
 | **Pushing edge rules through the provider's API** | A bank whose edge provider and policy call for it | WAF_PLAN.md W-D6 |
 | **ASVS 10.3.5 and 10.4.14 at Level 3** | Data no bank's core sends today | OWASP_PLAN.md |
 | **Per-bank enablement for payment networks** | A network plugin existing | PLUGIN_PLAN.md PL2 |
+| **Counsel's review of the check-law page** (UCC 3/4, Regulation CC, Check 21 and ECCHO); the page is published as a draft until then | A bank's counsel | REGULATORY_PLAN.md RG-D4 |
 
 ## Waiting on a customer
 
@@ -52,3 +53,5 @@ The product owner's decision of 2026-10-12: these wait for a first client, who w
 
 - 2026-10-22: Plan written from a survey of every plan. Nothing is built here: an item moves out
   when what it waits for arrives, into its own plan or a new one.
+- 2026-10-22: Counsel's review of the check-law page added (REGULATORY_PLAN.md RG-D4).
+

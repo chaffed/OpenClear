@@ -5,8 +5,13 @@ against: the FFIEC IT Handbook's security booklets, NIST SP 800-53 and CSF 2.0, 
 and SAMM, SR 11-7, the 2023 interagency third-party guidance, SOC 2 (through AICPA's mapping)
 and the Nacha Operating Rules. What's missing is mostly the payments law positive pay exists
 for (who bears a check-fraud loss, and the deadlines a return must meet), and several rules and
-frameworks a bank's counsel, examiner or due-diligence team will raise. This plan evaluates 14
+frameworks a bank's counsel, examiner or due-diligence team will raise. This plan evaluates 15
 of them, then writes up the results in the order that matters most to a bank.
+
+**The banks this is for** (the product owner, 2026-10-22): state-chartered, with the FDIC as their
+federal regulator. They're examined by the FDIC and their state banking department, jointly or in
+turn, under the FFIEC IT Handbook; so FFIEC and FDIC rules come first, and state rules are taken
+from the state with the most complete public guidance (New York) as the benchmark.
 
 **This isn't legal advice, and neither are the pages it produces.** Each page says what
 OpenClear does and where the evidence is; each bank's counsel decides what its use of OpenClear
@@ -25,7 +30,7 @@ meets.
 | Accessibility | Automated checks on every key page, light and dark, phone to desktop | `tests/test_web/test_accessibility.py`, `test_viewports.py` |
 | Advisory model | A bank's own model, off by default; model risk replay and anomaly capture | SIMPLIFY_PLAN.md SP2; `docs/compliance/sr-11-7.md` |
 
-## The 14
+## The 15
 
 | # | Rule, guidance or framework | Why it matters to positive pay | Priority |
 |---|---|---|---|
@@ -35,14 +40,30 @@ meets.
 | 4 | **Regulation E** (12 CFR 1005) | Consumer ACH: unauthorized-transfer claims, error resolution timelines, the WSUD's role | High |
 | 5 | **Nacha's 2026 fraud-monitoring rules** | Originators and receiving banks monitoring for fraud, phased in during 2026; ACH positive pay as part of how a receiving bank meets it | High |
 | 6 | **FFIEC IT Handbook: Retail Payment Systems; Business Continuity Management** | The booklet that covers check and ACH processing, and continuity at the cut-off | Medium |
-| 7 | **FFIEC CAT's successor: the CRI Profile** (alongside CSF 2.0) | What community banks now assess against, as far as we know since the CAT's retirement | Medium |
+| 7 | **The CRI Profile** (alongside CSF 2.0), the FFIEC CAT's successor in practice | What community banks now assess against since the CAT's retirement (see below) | Medium |
 | 8 | **GLBA: the Interagency Guidelines Establishing Information Security Standards** | The bank's duty to safeguard customer information, and to oversee service providers doing so | Medium |
-| 9 | **State rules, chiefly NYDFS 23 NYCRR 500** | Often passed to vendors of New York-chartered banks: MFA, access reviews, incident notice | Medium |
+| 9 | **State rules: NYDFS 23 NYCRR 500 as the benchmark; Massachusetts 201 CMR 17.00; CSBS tools** | NYDFS Part 500 is the most complete public state cybersecurity rule, and the one vendor questionnaires copy, though it binds only NYDFS-licensed institutions. Massachusetts 201 CMR 17.00 binds anyone holding Massachusetts residents' personal information, whatever the charter. The Conference of State Bank Supervisors publishes the tools state examiners share (such as the Ransomware Self-Assessment Tool) | Medium |
 | 10 | **FinCEN's check-fraud alert (2023) and SAR expectations** | How decisions, returns and declined teller verifications feed a bank's fraud reporting | Medium |
 | 11 | **WCAG 2.2 AA; Section 508; the ADA** | A conformance statement or VPAT, asked for by larger banks | Low |
 | 12 | **NIST AI RMF 1.0** (and its generative-AI profile, if relevant) | The usual companion to SR 11-7 for any model, even an advisory one | Low |
 | 13 | **CFPB Section 1033** (personal financial data rights) | Whether any OpenClear API is consumer-data access; most likely not, with the reason written down | Low |
 | 14 | **OFAC sanctions screening** | Whether payee screening is OpenClear's, the core's or the bank's | Low |
+| 15 | **The computer-security incident notification rule** (2021; for FDIC banks, 12 CFR Part 304 Subpart C); the **Bank Service Company Act** notice | Binds OpenClear itself: a bank service provider must notify its bank customers of a significant incident promptly. The banks must also notify the FDIC of the service relationship | High |
+
+### The CRI Profile, defined
+
+A cybersecurity assessment framework for financial institutions, maintained by the Cyber Risk
+Institute, an industry non-profit (it began as the Financial Services Sector Cybersecurity
+Profile). It builds on NIST's Cybersecurity Framework and turns it into **diagnostic
+statements**, specific questions a bank answers with evidence about its controls, each mapped to
+the regulations and guidance it satisfies (the FFIEC handbooks, the GLBA guidelines, NYDFS Part
+500 and others), so one assessment answers several regulators. It scales by an **impact tier**,
+so a small bank answers fewer statements than a large one. When the FFIEC retired its
+Cybersecurity Assessment Tool in 2025, it pointed banks to NIST CSF 2.0 and to industry tools
+like the Profile, and many community banks moved to it. A crosswalk from the Profile to
+OpenClear's controls and CUECs lets a bank lift OpenClear's evidence straight into its own
+assessment; the CSF 2.0 crosswalk already does much of the mapping. The current version (as far
+as we know, 2.0, aligned to CSF 2.0) and its licence terms are confirmed before building on it.
 
 ## How each is evaluated
 
@@ -83,12 +104,13 @@ The same five steps for every one, so the results can be compared and audited.
 | 6 Retail Payment Systems; BCM | Each booklet section's examination objectives against OpenClear's controls, as the existing FFIEC page does; the cut-off outage CUEC against BCM |
 | 7 CRI Profile | A crosswalk from the CRI Profile's diagnostic statements to OpenClear's controls and CUECs, the way `csf.md` maps CSF 2.0, if the Profile's licence allows publishing it; otherwise a page explaining how to use the CSF crosswalk with it |
 | 8 GLBA Interagency Guidelines | Their elements (risk assessment, access controls, encryption, monitoring, service-provider oversight, incident response) against controls and the TPRM pack |
-| 9 NYDFS Part 500 | Which sections a vendor is usually asked to meet (MFA, access privileges, audit trail, encryption, incident notice within 72 hours), and what OpenClear's controls and CUECs say for each |
+| 9 State rules | NYDFS Part 500 section by section (MFA, access privileges and reviews, audit trail, encryption, vendor management, incident notice): what OpenClear's controls and CUECs say for each, written as the benchmark for any state. Massachusetts 201 CMR 17.00's written-program and encryption requirements. Which CSBS tools a state examiner may use, and what they'd ask of OpenClear |
 | 10 FinCEN | What a bank needs to file a SAR for check fraud, and whether OpenClear's exports and the action log give it: decision history, declined teller verifications, the payee, images |
 | 11 WCAG 2.2 | A conformance review of the key journeys against WCAG 2.2 AA: what the automated checks cover and what needs a person (already parked as the manual screen-reader pass) |
 | 12 AI RMF | Govern, Map, Measure, Manage, against the advisory model's lifecycle: off by default, the bank's own data, replay, champion and challenger, the audit trail |
 | 13 CFPB 1033 | Whether OpenClear is a "data provider" or holds "covered data" for consumers; the likely answer is no (business accounts, the bank's own vendor), recorded with reasons |
 | 14 OFAC | Where payee screening happens in a bank's check flow; whether OpenClear's payee data or teller verification should note it; most likely a CUEC that it's the core's or the bank's |
+| 15 Incident notification | What counts as a notification incident for a bank service provider, how fast the bank customers must be told and how, and whether OpenClear's security events, SIEM forwarding and runbook support it; who OpenClear's operator notifies; the bank's own 36-hour notice to the FDIC, and its Bank Service Company Act notice of the relationship, as CUECs |
 
 ## Decisions
 
@@ -103,8 +125,9 @@ The same five steps for every one, so the results can be compared and audited.
 - **RG-D3. Primary sources, dated.** Every page cites the primary source and the date it was
   read, and the progress log notes what changed. Anything we can't confirm from the source is
   marked as unconfirmed, not stated.
-- **RG-D4. Counsel reviews the check-law page before it's published as more than a draft.** It
-  makes the claims a bank relies on most. Until then it carries "draft, for counsel's review".
+- **RG-D4. The check-law page is published as a draft until a bank's counsel reviews it.** It
+  makes the claims a bank relies on most, so it carries "draft, for counsel's review" until then.
+  The review waits on a bank (`plans/PARKED_PLAN.md`), and doesn't hold up the other stages.
 - **RG-D5. A yearly review.** Each page names when it was last checked against its source; the
   control `regulatory_currency` warns when any page is more than a year old (like
   `software_currency`).
@@ -119,8 +142,8 @@ crosswalk exports regenerated.
 |---|---|---|---|---|
 | **RG1. Check law** | `check-law.md`: UCC 3/4, Regulation CC, Check 21 and ECCHO, evaluated and mapped; timing tests through the cut-off service | 1, 2, 3 | A warning when a decision cut-off is set later than the bank's return deadline allows (likely, once confirmed); a CUEC for the positive pay agreement's loss allocation | It's why positive pay exists, and the first thing counsel asks. The cut-off checks it needs inform RG2. |
 | **RG2. ACH: Regulation E and Nacha 2026** | A Regulation E section in `nacha.md`; the 2026 fraud-monitoring rules evaluated, with the receiving-bank side mapped to ACH positive pay | 4, 5 | Possibly evidence a bank can export for its fraud-monitoring program (authorizations, unauthorized-debit returns and their timing) | The 2026 rules are in force now, so banks are asking. Regulation E shares the consumer-debit facts. |
-| **RG3. Examination** | `ffiec.md` gains Retail Payment Systems and Business Continuity Management; `cri-profile.md` (or guidance on using CSF with it); `glba.md` | 6, 7, 8 | None expected: mappings onto existing controls, perhaps new CUECs | Examiners' questions, built on the controls RG1 and RG2 may add. The CRI Profile's licence is checked first. |
-| **RG4. Vendor due diligence** | `nydfs.md`; FinCEN and SAR support in a section of `check-law.md` or its own page; OFAC as a CUEC with its reasoning | 9, 10, 14 | Maybe a decision-history export shaped for a SAR narrative | Asked for in a bank's vendor questionnaire, after the examiner's view is settled. |
+| **RG3. Examination and incident notice** | `ffiec.md` gains Retail Payment Systems and Business Continuity Management; `cri-profile.md` (or guidance on using CSF with it); `glba.md` (with FDIC Part 364); `incident-notification.md` | 6, 7, 8, 15 | For 15: how the operator notifies its bank customers (the runbook and, likely, an in-app and email notice to each bank's admins) | Examiners' questions for FDIC banks, built on the controls RG1 and RG2 may add; 15 binds OpenClear itself. The CRI Profile's licence is checked first. |
+| **RG4. Vendor due diligence** | `state-rules.md` (NYDFS Part 500 as the benchmark, Massachusetts 201 CMR 17.00, CSBS tools); FinCEN and SAR support in a section of `check-law.md` or its own page; OFAC as a CUEC with its reasoning | 9, 10, 14 | Maybe a decision-history export shaped for a SAR narrative | Asked for in a bank's vendor questionnaire, after the examiner's view is settled. |
 | **RG5. Accessibility and AI** | An accessibility conformance statement (WCAG 2.2 AA) and a VPAT template; `ai-rmf.md` beside `sr-11-7.md`; the CFPB 1033 note | 11, 12, 13 | Fixes for any WCAG failures the review finds | Lower priority, and the manual accessibility pass is parked for a person; the statement can say what's automated. |
 | **RG6. Keeping it current** | The `regulatory_currency` control and check; the yearly review in `docs/compliance/README.md` | all | The control | Last, once the pages it watches exist. |
 
@@ -141,16 +164,22 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
 4. **Check**: the compliance and docs tests; the full suites when there's code; for RG1, the page
    marked as a draft for counsel (RG-D4).
 
-## Questions for the product owner
+## Questions answered
 
-- Whether a bank's counsel, or the project's own, will review the check-law page (RG-D4), and when.
-- Whether the CRI Profile is the framework your target banks use, or another (for example, a
-  state's or a bank association's).
-- Whether any of your target banks are New York-chartered, which decides how much of RG4's NYDFS
-  page is needed now.
+- **Counsel's review of the check-law page** waits on a bank (`plans/PARKED_PLAN.md`); the page
+  is published as a draft until then (RG-D4).
+- **The target banks** are state-chartered, with the FDIC as their federal regulator. State rules
+  use NYDFS Part 500 as the benchmark, with Massachusetts 201 CMR 17.00 and the CSBS tools.
+- **The CRI Profile** is defined above; whether target banks use it is confirmed with the first
+  bank, and the crosswalk is useful either way, since it maps onto CSF 2.0.
 
 ## Progress log
 
 - 2026-10-22: Plan written: 14 rules, guidance and frameworks to evaluate, how each is evaluated,
-  and the stages RG1–RG6 in order. Nothing evaluated yet; the current texts are to be confirmed
+  and the stages RG1–RG6 in order.
+- 2026-10-22: The product owner's answers: counsel's review is parked until a bank; the banks are
+  state-chartered and FDIC-supervised, so state rules take NYDFS Part 500 as the benchmark, with
+  Massachusetts 201 CMR 17.00 and the CSBS tools; the CRI Profile is defined. Added item 15, the
+  computer-security incident notification rule, which binds OpenClear as a bank service provider,
+  in RG3. Nothing evaluated yet; the current texts are to be confirmed
   against their primary sources first (RG-D3).
