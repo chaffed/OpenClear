@@ -197,6 +197,13 @@
         </form>
       </div>
       {% endfor %}
+      {% if ctx and ctx.service_ends_at %}
+      {# The bank is ending this customer's positive pay (services/customer_offboarding_service.py). #}
+      <div class="flash flash-warn" role="status">
+        <strong>Your positive pay service ends</strong> on <time datetime="{{ ctx.service_ends_at | iso_utc }}" data-local-time>{{ ctx.service_ends_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.
+        {% if can(ctx, "data_export:run") %}Take a <a href="/ui/settings/data-export">data export</a> before then to keep with your records.{% else %}Ask your administrator to take a data export before then.{% endif %}
+      </div>
+      {% endif %}
       {% if ctx and ctx.security_key_due %}
       {# A required security key's grace period (auth/security_key_policy.py): after it, signing in needs one. #}
       {% set days_left = ((ctx.security_key_due - now_utc()).total_seconds() / 86400) | round(0, "ceil") | int %}

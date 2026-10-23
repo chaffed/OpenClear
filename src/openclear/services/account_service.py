@@ -53,6 +53,22 @@ def list_accounts(
     return AccountRepository(session, tenant_id, customer_id).list(limit=limit, offset=offset, order_by=order_by)
 
 
+class ServiceEnded(RowFieldError):
+    """A file names an account whose customer's positive pay has ended (services/
+    customer_offboarding_service.py): its row is refused, so the bank sees the core still sends it."""
+
+
+def _refuse_ended(session: Session, account: Account | None) -> Account | None:
+    from openclear.domain.customer import Customer
+
+    if account is not None and account.customer_id is not None:
+        customer = session.get(Customer, account.customer_id)
+        if customer is not None and customer.service_ended_at is not None:
+            raise ServiceEnded(f"Positive pay ended for {customer.name}, this account's customer, on "
+                               f"{customer.service_ended_at:%Y-%m-%d}; its items are no longer read.", "account_number")
+    return account
+
+
 def get_account_by_number(
     session: Session, tenant_id: uuid.UUID, account_number: str, *, customer_id: uuid.UUID | None = None
 ) -> Account | None:
@@ -68,9 +84,9 @@ def get_account_by_number(
     repo = AccountRepository(session, tenant_id, customer_id)
     matches = repo.list(account_number=account_number)
     if matches:
-        return matches[0]
+        return _refuse_ended(session, matches[0])
     matches = repo.list(external_account_id=account_number)
-    return matches[0] if matches else None
+    return _refuse_ended(session, matches[0]) if matches else None
 
 
 def get_or_create_account_by_number(

@@ -30,3 +30,20 @@ class BankDeletion(Base):
     certificate: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # {"bundle": ..., "signature": ...}
     certificate_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class CustomerDeletion(Base):
+    """The deletion of a customer's data after its last service day, with its signed certificate
+    (plans/CUSTOMER_OFFBOARDING_PLAN.md). The bank's record: it outlives the customer's rows."""
+
+    __tablename__ = "customer_deletion"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
+    customer_id: Mapped[uuid.UUID] = mapped_column(nullable=False)  # not a foreign key: the customer is gone
+    customer_number: Mapped[str] = mapped_column(String(64), nullable=False)
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    service_ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    certificate: Mapped[dict] = mapped_column(JSON, nullable=False)  # {"bundle": ..., "signature": ...}
+    certificate_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

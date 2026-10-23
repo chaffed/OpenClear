@@ -269,9 +269,20 @@ def _delete_files(bank_id: uuid.UUID, model_paths: list[str]) -> None:
         storage.delete_tenant(area, bank_id)
 
 
+# What's a person's own, and goes with them: their sign-in material, messages and links to identity
+# providers. Every other reference to a person is a record of what they did (the action log,
+# decisions, approvals), which keeps them.
+_PERSONAL = (("email_change", "user_id"), ("email_change", "requested_by_user_id"), ("idempotency_record", "user_id"),
+             ("login_session", "user_id"), ("notification", "recipient_user_id"), ("notification_preference", "user_id"),
+             ("password_reset", "user_id"), ("password_reset", "requested_by_user_id"), ("revoked_session", "user_id"),
+             ("user_device", "user_id"), ("webauthn_challenge", "user_id"), ("webauthn_credential", "user_id"),
+             ("sso_identity", "user_id"), ("scim_user", "user_id"), ("embed_launch", "user_id"))
+
+
 def _forget(session: Session, user_ids: list[uuid.UUID]) -> tuple[int, int]:
-    """Deletes these people, one at a time; someone still named in another bank's records (a
-    membership there since removed) is kept. Returns (deleted, kept)."""
+    """Deletes these people and what's theirs, one at a time; someone still named in a record of
+    what they did (the bank's action log, a decision, another bank's records) is kept, signed out
+    for good since they belong nowhere. Returns (deleted, kept)."""
     from sqlalchemy.exc import IntegrityError
 
     from openclear.domain.user import User
@@ -281,12 +292,19 @@ def _forget(session: Session, user_ids: list[uuid.UUID]) -> tuple[int, int]:
     for user_id in user_ids:
         savepoint = session.begin_nested()
         try:
+            for name, column in _PERSONAL:
+                table = Base.metadata.tables.get(name)
+                if table is not None and column in table.columns:
+                    session.execute(delete(table).where(table.c[column] == user_id))
             delete_users(session, User.id == user_id)
             session.flush()
             savepoint.commit()
             deleted += 1
         except IntegrityError:
             savepoint.rollback()
+            user = session.get(User, user_id)
+            if user is not None:
+                user.is_active = False
             kept += 1
     return deleted, kept
 
@@ -365,7 +383,7 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
         "rows_deleted_total": sum(rows.values()),
         "storage_areas_cleared": [*FILE_AREAS, "ml_models"],
         "people_deleted": people_deleted,
-        "people_kept_because_they_belong_elsewhere": len(kept) + still_referenced,
+        "people_kept_because_they_belong_elsewhere_or_are_named_in_records": len(kept) + still_referenced,
         "kept": "The bank's name and slug, inactive, so the slug is never reused; this certificate; the service provider's "
                 "own action log and incident notices.",
         "backups": BACKUPS_NOTE,

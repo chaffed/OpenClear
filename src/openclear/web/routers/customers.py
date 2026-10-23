@@ -160,6 +160,32 @@ def create_customer(
 # and rejected as an invalid UUID before this route is ever tried.
 
 
+@router.get("/deleted")
+def deleted_customers(request: Request, db: Session = Depends(get_db),
+                      ctx: TenantContext = Depends(require_web_permission("customer:manage"))) -> HTMLResponse:
+    """Customers whose data was deleted after their last service day, with their certificates
+    (plans/CUSTOMER_OFFBOARDING_PLAN.md)."""
+    from openclear.services import customer_offboarding_service
+
+    return render_template(request, "customers/deleted.html", ctx=ctx, deletions=customer_offboarding_service.deletions(db, ctx.tenant_id))
+
+
+@router.get("/deleted/{deletion_id}/certificate")
+def deletion_certificate(deletion_id: uuid.UUID, db: Session = Depends(get_db),
+                         ctx: TenantContext = Depends(require_web_permission("customer:manage"))):
+    import json
+
+    from fastapi.responses import Response
+
+    from openclear.domain.bank_deletion import CustomerDeletion
+
+    record = db.get(CustomerDeletion, deletion_id)
+    if record is None or record.tenant_id != ctx.tenant_id:
+        raise WebNotFound()
+    return Response(json.dumps(record.certificate, indent=2, sort_keys=True), media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="openclear-customer-deletion-{record.customer_number}.json"'})
+
+
 @router.get("/{customer_id}")
 def customer_detail(
     request: Request,
@@ -199,7 +225,60 @@ def customer_detail(
         bank_time_zone=cutoff_service.time_zone_for(tenant),
         customer_cutoffs=cutoff_service.customer_cutoffs(db, ctx.tenant_id, customer.id), networks=registered_codes(),
         offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
+        **_offboarding_context(customer, tenant),
     )
+
+
+def _offboarding_context(customer, tenant) -> dict:
+    from datetime import date, timedelta
+    from zoneinfo import ZoneInfo
+
+    from openclear.services import customer_offboarding_service
+
+    last_day = None
+    if customer.service_ends_at is not None:
+        ends = customer.service_ends_at
+        ends = ends.replace(tzinfo=ZoneInfo("UTC")) if ends.tzinfo is None else ends
+        last_day = (ends.astimezone(ZoneInfo(tenant.time_zone or "UTC")) - timedelta(seconds=1)).date().isoformat()
+    return {"offboarding_deletion_due": customer_offboarding_service.deletion_due(customer), "offboarding_last_day": last_day,
+            "retention_days": customer_offboarding_service.retention_days(), "today": date.today().isoformat()}
+
+
+@router.post("/{customer_id}/offboarding")
+def offboarding(customer_id: uuid.UUID, step: str = Form(...), last_service_day: str = Form(""), reason: str = Form(""),
+                db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("customer:manage")),
+                _csrf: None = Depends(verify_csrf)) -> RedirectResponse:
+    """Ending a customer's positive pay on its last service day, and its legal hold
+    (plans/CUSTOMER_OFFBOARDING_PLAN.md). Ending it, restoring it once ended, and taking the
+    hold off each need a second administrator."""
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+    if customer is None:
+        raise WebNotFound()
+    target = {"customer_id": str(customer.id)}
+    if step == "schedule":
+        kind, payload, summary = "customer.offboard", {**target, "last_service_day": last_service_day.strip()}, \
+            f"End positive pay for {customer.name} on {last_service_day.strip()}"
+    elif step == "stop":
+        kind, payload, summary = "customer.offboard", {**target, "last_service_day": None}, f"Keep {customer.name} on positive pay"
+    elif step == "hold":
+        kind, payload, summary = "customer.legal_hold", {**target, "held": True, "reason": reason.strip()[:500]}, \
+            f"Put {customer.name}'s data on legal hold: {reason.strip()[:300]}"
+    elif step == "release":
+        kind, payload, summary = "customer.legal_hold", {**target, "held": False}, f"Take {customer.name}'s data off legal hold"
+    else:
+        return see_other(f"/ui/customers/{customer_id}#offboarding")
+    try:
+        outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id, summary=summary)
+    except ValueError as exc:
+        db.rollback()
+        return see_other(f"/ui/customers/{customer_id}#offboarding", error=str(exc))
+    db.commit()
+    if outcome.waiting:
+        return see_other(f"/ui/customers/{customer_id}#offboarding", flash=waiting_message(outcome))
+    return see_other(f"/ui/customers/{customer_id}#offboarding", flash=outcome.summary)
 
 
 @router.post("/{customer_id}/self-service")

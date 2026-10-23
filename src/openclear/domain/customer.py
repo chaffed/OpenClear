@@ -99,3 +99,9 @@ class Customer(Base):
     # This customer's own reminder timing (services/reminder_service.py), set by its own
     # users holding customer_banner:manage: null follows the bank's, "" turns them off.
     reminder_offsets_minutes: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Offboarding (plans/CUSTOMER_OFFBOARDING_PLAN.md): the end of the last service day, once two
+    # bank administrators have scheduled it; when the daily run ended the service; and, while set,
+    # why its data is on legal hold. Its data is deleted customer_data_retention_days after the end.
+    service_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    service_ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    legal_hold_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)

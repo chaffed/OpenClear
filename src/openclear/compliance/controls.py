@@ -268,6 +268,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "export, and, after a wait, two approve deleting its data; it runs a day later unless stopped or put on legal hold, "
       "removes every row and file of the bank, and signs a certificate of what was deleted.",
       ("SI-12", "MP-6"), "corrective", "built_in", (), ("H-MP-6-01", "B-SI-12-01"), "Platform → a bank's Offboarding"),
+    C("OC-SI-13", "A leaving customer's data deleted, with a certificate",
+      "Two bank administrators set a customer's last service day, and its people are told; after it, nobody there signs in "
+      "and its accounts' items are refused; 90 days later, unless on legal hold, every row and file about the customer is "
+      "deleted, the bank's action log is kept, and the bank keeps a signed certificate.",
+      ("SI-12", "MP-6", "AC-2"), "corrective", "built_in", (), ("B-SI-12-02",), "Customers → a customer's Offboarding"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "

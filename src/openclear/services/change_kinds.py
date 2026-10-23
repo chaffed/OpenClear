@@ -1253,6 +1253,69 @@ register(Kind(
 ))
 
 
+# Offboarding a customer (plans/CUSTOMER_OFFBOARDING_PLAN.md): its last service day, and its legal hold.
+
+
+def _customer_offboarding(call):
+    from openclear.services import customer_offboarding_service
+
+    try:
+        return call(customer_offboarding_service)
+    except customer_offboarding_service.CustomerOffboardingError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+def _customer_offboard_current(session, tenant_id, customer_id, payload) -> dict:
+    customer = _customer_offboarding(lambda s: s._customer(session, tenant_id, uuid.UUID(payload["customer_id"])))
+    # "scheduled" stands for whatever day is set now, so stopping it is a change and setting a day always is.
+    return {"last_service_day": "scheduled" if customer.service_ends_at or customer.service_ended_at else None,
+            "ended": customer.service_ended_at is not None}
+
+
+def _customer_offboard_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from datetime import date
+
+    target = uuid.UUID(payload["customer_id"])
+    if payload.get("last_service_day"):
+        customer = _customer_offboarding(lambda s: s.schedule(session, tenant_id, target, date.fromisoformat(payload["last_service_day"]),
+                                                                user_id=user_id))
+        return f"Positive pay for {customer.name} ends on {payload['last_service_day']}; its people have been emailed"
+    customer = _customer_offboarding(lambda s: s.stop(session, tenant_id, target, user_id=user_id))
+    return f"{customer.name} stays on positive pay"
+
+
+register(Kind(
+    "customer.offboard", "Ending a customer's positive pay", "protection", "customer:manage", _customer_offboard_current,
+    lambda payload: {"last_service_day": payload.get("last_service_day")},
+    # Scheduling the end needs a second administrator; stopping it before the last day keeps the service, so one
+    # administrator can; restoring a customer whose service already ended reopens access, so it takes two.
+    loosens=lambda before, after: bool(after["last_service_day"]) or before["ended"],
+    apply=_customer_offboard_apply, setting=lambda payload: f"customer_offboard:{payload['customer_id']}",
+    describe=lambda before, after: (f"End a customer's positive pay on {after['last_service_day']}" if after["last_service_day"]
+                                    else "Keep a customer on positive pay"),
+))
+
+
+def _customer_hold_current(session, tenant_id, customer_id, payload) -> dict:
+    customer = _customer_offboarding(lambda s: s._customer(session, tenant_id, uuid.UUID(payload["customer_id"])))
+    return {"held": customer.legal_hold_reason is not None}
+
+
+def _customer_hold_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    customer = _customer_offboarding(lambda s: s.set_hold(session, tenant_id, uuid.UUID(payload["customer_id"]), bool(payload["held"]),
+                                                          reason=payload.get("reason"), user_id=user_id))
+    return f"{customer.name}'s data is {'on' if payload['held'] else 'off'} legal hold"
+
+
+register(Kind(
+    "customer.legal_hold", "A customer's legal hold", "protection", "customer:manage", _customer_hold_current,
+    lambda payload: {"held": bool(payload["held"])},
+    loosens=lambda before, after: before["held"] and not after["held"],  # putting it on keeps data: one administrator
+    apply=_customer_hold_apply, setting=lambda payload: f"customer_hold:{payload['customer_id']}",
+    describe=lambda before, after: "Put a customer's data on legal hold" if after["held"] else "Take a customer's data off legal hold",
+))
+
+
 # Offboarding a bank (plans/OFFBOARDING_PLAN.md): starting it, deleting its data, and its legal hold.
 
 

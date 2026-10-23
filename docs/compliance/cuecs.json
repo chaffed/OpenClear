@@ -936,6 +936,35 @@
       "withdrawn": false
     },
     {
+      "id": "B-SI-12-02",
+      "party": "bank",
+      "nist": "SI-12",
+      "nist_title": "Information Management and Retention",
+      "oscal_id": "si-12",
+      "related": [
+        "AC-2"
+      ],
+      "title": "Offboard customers that leave",
+      "statement": "When a customer leaves the bank or stops positive pay, set its last service day in OpenClear, stop the core sending its items, and keep the records the bank must keep in the core, which is the system of record.",
+      "complements": "OpenClear ends the customer's sign-in and refuses its accounts' items after the last service day, and deletes its data 90 days later with a signed certificate, unless it's on legal hold.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Per event",
+      "csf": [
+        {
+          "id": "ID.AM-07",
+          "title": "Inventories of data and corresponding metadata for designated data types are maintained"
+        },
+        {
+          "id": "ID.AM-08",
+          "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
+        }
+      ],
+      "where": "Customers \u2192 a customer's Offboarding; Customers \u2192 Deleted customers",
+      "withdrawn": false
+    },
+    {
       "id": "B-RA-3-04",
       "party": "bank",
       "nist": "RA-3",

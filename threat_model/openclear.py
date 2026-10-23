@@ -273,4 +273,10 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "sandboxes; the slug typed and a preview approved; a day's delay in which it can still be stopped; critical "
            "security events; a signed certificate of what was deleted.",
            "OC-SI-12, OC-AC-13; services/offboarding_service.py; plans/OFFBOARDING_PLAN.md", "Mitigated"),
+    Threat("OC-T26", "D", "Customer ↔ bank", "A customer's data is deleted by mistake or too soon, another customer's with it, "
+           "or a customer that has left keeps signing in or having its items reviewed.",
+           "Two bank administrators set the last service day, and the customer is told; after it, sign-in ends and its "
+           "accounts' items are refused; deletion waits 90 days and a legal hold; it follows the schema's foreign keys from "
+           "that one customer, within its bank, and keeps the bank's action log; a signed certificate.",
+           "OC-SI-13; services/customer_offboarding_service.py; plans/CUSTOMER_OFFBOARDING_PLAN.md", "Mitigated"),
 )

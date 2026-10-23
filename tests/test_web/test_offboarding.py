@@ -91,7 +91,7 @@ def test_a_bank_is_told_waits_and_its_data_is_deleted_with_a_certificate(db_sess
     certificate = record.certificate["bundle"]
     assert certificate["bank"]["slug"] == "leaving" and certificate["rows_deleted"]["account"] >= 1
     assert certificate["deletion_requested_by"] == ops[0].email and certificate["deletion_approved_by"] == ops[1].email
-    assert certificate["action_log"]["entries"] > 0 and certificate["people_kept_because_they_belong_elsewhere"] == 1
+    assert certificate["action_log"]["entries"] > 0 and certificate["people_kept_because_they_belong_elsewhere_or_are_named_in_records"] == 1
     assert "backups" in certificate and certificate["final_data_export_completed_at"]
     actions = set(db_session.execute(select(PlatformActionEntry.action)).scalars())
     assert {"platform.bank.offboard.start", "platform.bank.delete.approve", "platform.bank.delete.done"} <= actions

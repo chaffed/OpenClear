@@ -108,6 +108,14 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
         waiting = incident_service.unacknowledged(db, ctx.tenant_id)
         if waiting:
             ctx = dataclasses.replace(ctx, incident_notices=tuple((str(d.id), incident_service.KINDS[n.kind], n.title) for d, n in waiting))
+    if ctx.customer_id is not None:
+        import dataclasses
+
+        from openclear.domain.customer import Customer
+
+        customer = db.get(Customer, ctx.customer_id)
+        if customer is not None and customer.service_ends_at is not None:
+            ctx = dataclasses.replace(ctx, service_ends_at=customer.service_ends_at)
     if ctx.customer_id is None and "customer:manage" in ctx.permissions:
         import dataclasses
 

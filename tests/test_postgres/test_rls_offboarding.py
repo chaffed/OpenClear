@@ -45,3 +45,33 @@ def test_the_deletion_job_removes_every_row_of_the_bank_and_no_other(app_session
     assert _rows(db_session, bank.id) == 0
     assert _rows(db_session, other.id) == other_rows
     assert db_session.get(Tenant, bank.id).data_deleted_at is not None
+
+
+def test_the_daily_run_ends_a_customers_service_and_deletes_its_data(app_session_factory, db_session, tenant_factory):
+    from openclear.domain.customer import Customer
+    from openclear.services import customer_offboarding_service
+    from tests.items import _make_customer_with_account
+
+    tenant, _account, _users = tenant_factory.make(slug="rls-co")
+    leaving, account = _make_customer_with_account(db_session, tenant, "RLS-LEAVE")
+    staying, _other = _make_customer_with_account(db_session, tenant, "RLS-STAY")
+    leaving.service_ends_at = datetime.now(timezone.utc) - timedelta(days=1)
+    db_session.commit()
+    leaving_id, account_id = leaving.id, account.id
+
+    with app_session_factory() as session:
+        customer_offboarding_service.sweep_all(session)  # ends the service
+    db_session.expire_all()
+    customer = db_session.get(Customer, leaving_id)
+    assert customer.service_ended_at is not None and not customer.is_active
+    customer.service_ended_at = datetime.now(timezone.utc) - timedelta(days=91)
+    db_session.commit()
+    with app_session_factory() as session:
+        customer_offboarding_service.sweep_all(session)  # deletes its data
+
+    db_session.expire_all()
+    from openclear.domain.account import Account
+
+    assert db_session.get(Customer, leaving_id) is None and db_session.get(Account, account_id) is None
+    assert db_session.get(Customer, staying.id) is not None
+    assert len(customer_offboarding_service.deletions(db_session, tenant.id)) == 1

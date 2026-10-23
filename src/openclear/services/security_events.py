@@ -142,6 +142,8 @@ CATALOG: dict[str, EventType] = {
     # data; and its legal hold (plans/OFFBOARDING_PLAN.md).
     "bank.offboarding": EventType("data", "critical"),
     "bank.legal_hold.changed": EventType("data", "high"),
+    # A customer's positive pay ended and its data deleted 90 days later (plans/CUSTOMER_OFFBOARDING_PLAN.md).
+    "customer.offboarding": EventType("data", "high"),
     # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
     "decision.after_return_deadline": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
@@ -209,6 +211,12 @@ AUDIT_EVENTS: dict[str, str] = {
     "bank.delete.approve": "bank.offboarding",
     "bank.legal_hold.on": "bank.legal_hold.changed",
     "bank.legal_hold.off": "bank.legal_hold.changed",
+    "customer.offboard.schedule": "customer.offboarding",
+    "customer.offboard.stop": "customer.offboarding",
+    "customer.offboard.ended": "customer.offboarding",
+    "customer.offboard.delete": "customer.offboarding",
+    "customer.legal_hold.on": "customer.offboarding",
+    "customer.legal_hold.off": "customer.offboarding",
     "teller.verify": "teller.verify",
     "teller.verify.declined": "teller.verify.declined",
     "teller.cashed": "teller.cashed",

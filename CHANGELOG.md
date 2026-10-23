@@ -13,6 +13,16 @@
   nowhere else; the bank's row stays, inactive, so its slug is never reused. The certificate
   records what was deleted and the action log's last hash. New security events
   `bank.offboarding` (critical) and `bank.legal_hold.changed`; control OC-SI-12; threat OC-T25.
+- **Offboarding a customer** (`plans/CUSTOMER_OFFBOARDING_PLAN.md`). When a customer leaves the bank
+  or stops positive pay, a bank administrator sets its last service day on the customer's page and
+  a second approves. Its people are emailed and see the date on every page. After that day nobody
+  there can sign in, files naming its accounts are refused row by row, and tellers are told its
+  checks aren't on positive pay. 90 days later (`OPENCLEAR_CUSTOMER_DATA_RETENTION_DAYS`), unless
+  it's on legal hold, its data is deleted, with a signed certificate under Customers → Deleted
+  customers; the bank's action log keeps what was done. OpenClear isn't the bank's system of
+  record. People are deleted only when they belong nowhere else and aren't named in the bank's
+  records. New security event `customer.offboarding`; control OC-SI-13; CUEC B-SI-12-02; threat
+  OC-T26.
 
 - **A check is never due after its midnight deadline** (`REGULATORY_PLAN.md` RG1). Each check's
   return deadline is now worked out from the day it was presented, in the bank's banking days, and

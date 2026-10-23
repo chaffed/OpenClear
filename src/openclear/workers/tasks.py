@@ -397,8 +397,9 @@ def malware_recheck_job() -> None:
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
     jobs, sent notifications, old bulk-upload row results and expired export archives; then
-    each bank's rules for inactive access (services/inactivity_service.py)."""
-    from openclear.services import housekeeping_service, inactivity_service
+    each bank's rules for inactive access (services/inactivity_service.py); then customers whose
+    last service day or retention has passed (services/customer_offboarding_service.py)."""
+    from openclear.services import customer_offboarding_service, housekeeping_service, inactivity_service
 
     session = get_session_factory()()
     try:
@@ -408,6 +409,11 @@ def housekeeping_job() -> None:
         except Exception:  # noqa: BLE001
             session.rollback()
             logger.exception("Deactivating and removing inactive access failed")
+        try:
+            customer_offboarding_service.sweep_all(session)
+        except Exception:  # noqa: BLE001
+            session.rollback()
+            logger.exception("Ending customers' service and deleting their data failed")
     finally:
         session.close()
 

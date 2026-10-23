@@ -329,6 +329,12 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear catches checks that weren't issued, altered amounts and payees, duplicates and a check cashed at a branch, but "
          "sees nothing of how an account was opened or of money moving between accounts.",
          "attested", None, "Yearly", "The bank's fraud program"),
+    Cuec("B-SI-12-02", "bank", "SI-12", "Offboard customers that leave",
+         "When a customer leaves the bank or stops positive pay, set its last service day in OpenClear, stop the core sending its "
+         "items, and keep the records the bank must keep in the core, which is the system of record.",
+         "OpenClear ends the customer's sign-in and refuses its accounts' items after the last service day, and deletes its "
+         "data 90 days later with a signed certificate, unless it's on legal hold.",
+         "attested", None, "Per event", "Customers → a customer's Offboarding; Customers → Deleted customers", related=("AC-2",)),
     Cuec("B-RA-3-04", "bank", "RA-3", "Screen for sanctions where the money moves",
          "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT "
          "parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",

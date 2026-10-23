@@ -498,6 +498,9 @@ class Settings(BaseSettings):
     # able to delete its data, and the hours an approved deletion waits, still cancellable.
     bank_offboarding_wait_days: int = 30
     bank_deletion_delay_hours: int = 24
+    # A customer's data is deleted this many days after its last service day
+    # (plans/CUSTOMER_OFFBOARDING_PLAN.md CO-D1): positive pay isn't the bank's system of record.
+    customer_data_retention_days: int = 90
     oidc_http_timeout_seconds: float = 10.0
     # Lets SSO connections point at http:// and private/loopback addresses (a local test
     # identity provider such as a Keycloak container on localhost). Off by default, and

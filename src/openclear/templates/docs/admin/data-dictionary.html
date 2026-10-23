@@ -207,6 +207,9 @@ transactional record.</p>
 <tr><td>address_line1 / address_line2 / city / state / postal_code</td><td>String</td><td>yes</td><td></td><td></td></tr>
 <tr><td>notes</td><td>String(1000)</td><td>yes</td><td></td><td></td></tr>
 <tr><td>reminder_offsets_minutes</td><td>String(64)</td><td>yes</td><td></td><td>This customer's own reminder timing, set by its own users. Null follows the bank's; empty turns them off.</td></tr>
+<tr><td>service_ends_at</td><td>Timestamp</td><td>yes</td><td></td><td>The end of the customer's last positive pay service day, once two bank administrators set it (plans/CUSTOMER_OFFBOARDING_PLAN.md).</td></tr>
+<tr><td>service_ended_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the daily run ended its service: no sign-in, its accounts' items refused. Its data is deleted customer_data_retention_days (90) later.</td></tr>
+<tr><td>legal_hold_reason</td><td>String(500)</td><td>yes</td><td></td><td>Set while the customer's data is on legal hold; it isn't deleted.</td></tr>
 <tr><td>changes_need_approval</td><td>Boolean</td><td>no</td><td></td><td>This customer's own sensitive changes wait for a second person, even when the bank's customer_changes_need_approval is off. A customer can turn it on for itself; only the bank can turn it off.</td></tr>
 <tr><td>updated_at</td><td>Timestamp</td><td>no</td><td></td><td>When the row last changed; the API lists' <code>updated_since</code> filters on it.</td></tr>
 </tbody>
@@ -1658,6 +1661,22 @@ then it shows to the bank's administrators on every page. Row-level security by 
 <tr><td>recipients</td><td>JSON</td><td>no</td><td></td><td>The addresses it was emailed to.</td></tr>
 <tr><td>sent_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>acknowledged_at / acknowledged_by_user_id</td><td>Timestamp / UUID</td><td>yes</td><td>— / FK → user.id</td><td></td></tr>
+</tbody>
+</table>
+
+<h3>customer_deletion</h3>
+<p>The bank's record of deleting a customer's data after its last service day, with the signed
+certificate (services/customer_offboarding_service.py). Row-level security by bank.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>customer_id</td><td>UUID</td><td>no</td><td></td><td>The deleted customer's id; not a foreign key, as the customer is gone.</td></tr>
+<tr><td>customer_number / customer_name</td><td>String(64) / String(255)</td><td>no</td><td></td><td></td></tr>
+<tr><td>service_ended_at / completed_at</td><td>Timestamp</td><td>yes / no</td><td></td><td></td></tr>
+<tr><td>certificate</td><td>JSON</td><td>no</td><td></td><td>The signed certificate: rows deleted per table, files, people deleted or kept.</td></tr>
+<tr><td>certificate_sha256</td><td>String(64)</td><td>no</td><td></td><td></td></tr>
 </tbody>
 </table>
 
