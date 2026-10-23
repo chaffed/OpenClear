@@ -10,8 +10,10 @@ of them, then writes up the results in the order that matters most to a bank.
 
 **The banks this is for** (the product owner, 2026-10-22): state-chartered, with the FDIC as their
 federal regulator. They're examined by the FDIC and their state banking department, jointly or in
-turn, under the FFIEC IT Handbook; so FFIEC and FDIC rules come first, and state rules are taken
-from the state with the most complete public guidance (New York) as the benchmark.
+turn, under the FFIEC IT Handbook; so FFIEC and FDIC rules come first. For state rules, OpenClear
+**aims to meet New York DFS Part 500**, the most complete public state rule: what it asks of a
+covered institution's third-party service provider, and the evidence a New York-regulated bank
+needs for its own compliance.
 
 **This isn't legal advice, and neither are the pages it produces.** Each page says what
 OpenClear does and where the evidence is; each bank's counsel decides what its use of OpenClear
@@ -40,9 +42,9 @@ meets.
 | 4 | **Regulation E** (12 CFR 1005) | Consumer ACH: unauthorized-transfer claims, error resolution timelines, the WSUD's role | High |
 | 5 | **Nacha's 2026 fraud-monitoring rules** | Originators and receiving banks monitoring for fraud, phased in during 2026; ACH positive pay as part of how a receiving bank meets it | High |
 | 6 | **FFIEC IT Handbook: Retail Payment Systems; Business Continuity Management** | The booklet that covers check and ACH processing, and continuity at the cut-off | Medium |
-| 7 | **The CRI Profile** (alongside CSF 2.0), the FFIEC CAT's successor in practice | What community banks now assess against since the CAT's retirement (see below) | Medium |
+| 7 | **The CRI Profile** (alongside CSF 2.0), the FFIEC CAT's successor in practice | What community banks now assess against since the CAT's retirement (see below). Decided: rely on the CSF 2.0 crosswalk now; a direct crosswalk waits for a bank that uses the Profile (RG-D6) | Low |
 | 8 | **GLBA: the Interagency Guidelines Establishing Information Security Standards** | The bank's duty to safeguard customer information, and to oversee service providers doing so | Medium |
-| 9 | **State rules: NYDFS 23 NYCRR 500 as the benchmark; Massachusetts 201 CMR 17.00; CSBS tools** | NYDFS Part 500 is the most complete public state cybersecurity rule, and the one vendor questionnaires copy, though it binds only NYDFS-licensed institutions. Massachusetts 201 CMR 17.00 binds anyone holding Massachusetts residents' personal information, whatever the charter. The Conference of State Bank Supervisors publishes the tools state examiners share (such as the Ransomware Self-Assessment Tool) | Medium |
+| 9 | **State rules: NYDFS 23 NYCRR 500 as the target; Massachusetts 201 CMR 17.00; CSBS tools** | NYDFS Part 500 is the most complete public state cybersecurity rule, and the one vendor questionnaires copy; OpenClear aims to meet it (RG-D7). Massachusetts 201 CMR 17.00 binds anyone holding Massachusetts residents' personal information, whatever the charter. The Conference of State Bank Supervisors publishes the tools state examiners share (such as the Ransomware Self-Assessment Tool) | High |
 | 10 | **FinCEN's check-fraud alert (2023) and SAR expectations** | How decisions, returns and declined teller verifications feed a bank's fraud reporting | Medium |
 | 11 | **WCAG 2.2 AA; Section 508; the ADA** | A conformance statement or VPAT, asked for by larger banks | Low |
 | 12 | **NIST AI RMF 1.0** (and its generative-AI profile, if relevant) | The usual companion to SR 11-7 for any model, even an advisory one | Low |
@@ -128,6 +130,17 @@ The same five steps for every one, so the results can be compared and audited.
 - **RG-D4. The check-law page is published as a draft until a bank's counsel reviews it.** It
   makes the claims a bank relies on most, so it carries "draft, for counsel's review" until then.
   The review waits on a bank (`plans/PARKED_PLAN.md`), and doesn't hold up the other stages.
+- **RG-D6. The CRI Profile: the CSF 2.0 crosswalk now, a direct one when a bank asks.** The
+  Profile is built on CSF 2.0, so a bank can get from `csf.md` to its Profile questions itself.
+  `cri-profile.md` is a short page saying how. A direct crosswalk (and checking the Profile's
+  licence lets it be published) waits for a bank that assesses with it (`plans/PARKED_PLAN.md`).
+- **RG-D7. NYDFS Part 500 is a target, not a reference.** OpenClear meets, as a third-party
+  service provider, what Part 500 lets a covered bank require of one (its 500.11 policy: access
+  controls and MFA, encryption, notice of a cybersecurity event affecting the bank, and the
+  bank's right to assess), and gives a covered bank evidence for each section that touches
+  OpenClear. Where OpenClear falls short, the gap is built, not just recorded; where only the bank
+  can meet a section, a CUEC says so. A New York-regulated bank's own Part 500 obligations
+  (its CISO, its annual certification) stay its own.
 - **RG-D5. A yearly review.** Each page names when it was last checked against its source; the
   control `regulatory_currency` warns when any page is more than a year old (like
   `software_currency`).
@@ -142,10 +155,11 @@ crosswalk exports regenerated.
 |---|---|---|---|---|
 | **RG1. Check law** | `check-law.md`: UCC 3/4, Regulation CC, Check 21 and ECCHO, evaluated and mapped; timing tests through the cut-off service | 1, 2, 3 | A warning when a decision cut-off is set later than the bank's return deadline allows (likely, once confirmed); a CUEC for the positive pay agreement's loss allocation | It's why positive pay exists, and the first thing counsel asks. The cut-off checks it needs inform RG2. |
 | **RG2. ACH: Regulation E and Nacha 2026** | A Regulation E section in `nacha.md`; the 2026 fraud-monitoring rules evaluated, with the receiving-bank side mapped to ACH positive pay | 4, 5 | Possibly evidence a bank can export for its fraud-monitoring program (authorizations, unauthorized-debit returns and their timing) | The 2026 rules are in force now, so banks are asking. Regulation E shares the consumer-debit facts. |
-| **RG3. Examination and incident notice** | `ffiec.md` gains Retail Payment Systems and Business Continuity Management; `cri-profile.md` (or guidance on using CSF with it); `glba.md` (with FDIC Part 364); `incident-notification.md` | 6, 7, 8, 15 | For 15: how the operator notifies its bank customers (the runbook and, likely, an in-app and email notice to each bank's admins) | Examiners' questions for FDIC banks, built on the controls RG1 and RG2 may add; 15 binds OpenClear itself. The CRI Profile's licence is checked first. |
-| **RG4. Vendor due diligence** | `state-rules.md` (NYDFS Part 500 as the benchmark, Massachusetts 201 CMR 17.00, CSBS tools); FinCEN and SAR support in a section of `check-law.md` or its own page; OFAC as a CUEC with its reasoning | 9, 10, 14 | Maybe a decision-history export shaped for a SAR narrative | Asked for in a bank's vendor questionnaire, after the examiner's view is settled. |
-| **RG5. Accessibility and AI** | An accessibility conformance statement (WCAG 2.2 AA) and a VPAT template; `ai-rmf.md` beside `sr-11-7.md`; the CFPB 1033 note | 11, 12, 13 | Fixes for any WCAG failures the review finds | Lower priority, and the manual accessibility pass is parked for a person; the statement can say what's automated. |
-| **RG6. Keeping it current** | The `regulatory_currency` control and check; the yearly review in `docs/compliance/README.md` | all | The control | Last, once the pages it watches exist. |
+| **RG3. New York DFS Part 500 and incident notice** | `nydfs.md`: Part 500 section by section, each met by OpenClear, supported (with a CUEC) or the bank's alone, and the third-party service provider requirements met (RG-D7); `incident-notification.md` for the FDIC rule and Part 500's event notice together | 9 (NYDFS), 15 | Whatever gaps Part 500 shows (likely: how the operator notifies each bank of an incident, in the app and by email, with a runbook; possibly access-review and MFA evidence shaped for 500.7 and 500.12) | The product owner's target, and Part 500's vendor requirements and the FDIC notification rule overlap, so one stage builds both. |
+| **RG4. Examination** | `ffiec.md` gains Retail Payment Systems and Business Continuity Management; `glba.md` (with FDIC Part 364); `cri-profile.md`, the short page on using the CSF crosswalk (RG-D6) | 6, 7, 8 | None expected: mappings onto existing controls, perhaps new CUECs | Examiners' questions for FDIC banks, mostly mapping what RG1–RG3 built. |
+| **RG5. Vendor due diligence** | `state-rules.md`: Massachusetts 201 CMR 17.00 and the CSBS tools, beside the NYDFS page; FinCEN and SAR support; OFAC as a CUEC with its reasoning | 9 (others), 10, 14 | Maybe a decision-history export shaped for a SAR narrative | Asked for in a bank's vendor questionnaire, after the examiner's view is settled. |
+| **RG6. Accessibility and AI** | An accessibility conformance statement (WCAG 2.2 AA) and a VPAT template; `ai-rmf.md` beside `sr-11-7.md`; the CFPB 1033 note | 11, 12, 13 | Fixes for any WCAG failures the review finds | Lower priority, and the manual accessibility pass is parked for a person; the statement can say what's automated. |
+| **RG7. Keeping it current** | The `regulatory_currency` control and check; the yearly review in `docs/compliance/README.md` | all | The control | Last, once the pages it watches exist. |
 
 Each stage's evaluation (the five steps) comes before its writing: RG1 starts by confirming the
 current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
@@ -170,8 +184,10 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   is published as a draft until then (RG-D4).
 - **The target banks** are state-chartered, with the FDIC as their federal regulator. State rules
   use NYDFS Part 500 as the benchmark, with Massachusetts 201 CMR 17.00 and the CSBS tools.
-- **The CRI Profile** is defined above; whether target banks use it is confirmed with the first
-  bank, and the crosswalk is useful either way, since it maps onto CSF 2.0.
+- **The CRI Profile** is defined above. Decided: the CSF 2.0 crosswalk now, a direct one when a
+  bank asks (RG-D6).
+- **New York DFS Part 500** is the target for state rules, not just a reference (RG-D7), and moves
+  up to RG3.
 
 ## Progress log
 
@@ -183,3 +199,7 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
   computer-security incident notification rule, which binds OpenClear as a bank service provider,
   in RG3. Nothing evaluated yet; the current texts are to be confirmed
   against their primary sources first (RG-D3).
+- 2026-10-22: The product owner set New York DFS Part 500 as the target (RG-D7); it moves to RG3
+  with incident notification, and examination becomes RG4. The CRI Profile: the CSF crosswalk now,
+  a direct crosswalk when a bank asks (RG-D6). Stages are now RG1–RG7.
+
