@@ -4,6 +4,7 @@ These pages are for a bank's compliance, risk and audit staff, and for examiners
 what OpenClear does onto the guidance a bank is examined against, and say where the evidence
 for each point is.
 
+- [Check law: UCC Articles 3 and 4, Regulation CC, Check 21 and ECCHO](check-law.md) (a draft, for counsel's review)
 - [FFIEC IT Examination Handbook](ffiec.md)
 - [Nacha Operating Rules](nacha.md)
 - [Model risk management (SR 11-7 / OCC 2011-12)](sr-11-7.md)

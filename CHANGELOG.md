@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **A check is never due after its midnight deadline** (`REGULATORY_PLAN.md` RG1). Each check's
+  return deadline is now worked out from the day it was presented, in the bank's banking days, and
+  its decision deadline is never later than the bank's cut-off on that day. Before, it was counted
+  from when the check reached OpenClear, so the minimum review time (120 minutes by default), a
+  late file or a holiday could push it past the deadline the UCC sets for returning a check. A
+  decision sent after it is still sent, but marked `after_return_deadline` in the decision feed and
+  the `exception.decided` webhook, and raised as a `decision.after_return_deadline` security event;
+  a new control check fails for 30 days after one, and warns when a customer's cut-off is later
+  than the bank's. Settings → Decision cut-off can say the bank opens on the Federal Reserve's
+  holidays. An X9.37 cash letter without a readable Business Date is now refused instead of dated
+  today. New page `docs/compliance/check-law.md` (a draft for counsel), new CUECs B-CA-3-03,
+  B-CA-3-04, B-SI-4-03, B-AU-11-02 and C-SI-4-02, control OC-SI-11.
+- **ACH return reasons and fraud monitoring** (RG2). The default ACH return reasons gain R29 (a
+  business account's unauthorized debit) and R17 (suspected fraud), added to every bank, and R11
+  has its current wording. The evidence export gains an ACH monitoring summary. `nacha.md` explains
+  that Nacha's 2026 fraud-monitoring rule covers incoming credits, which OpenClear doesn't screen,
+  and covers Regulation E.
+- **A yearly review of the regulatory pages** (RG7): each says when it was last checked against its
+  sources, and the control check `regulatory_currency` warns when one is over a year old.
+
 ## 1.28.1 — 2026-10-22
 
 - **Teller verification: enrollment and the payee** (the product owner's decisions on

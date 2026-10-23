@@ -61,7 +61,7 @@ class X937CheckItem:
     account_number: str  # from the On-Us field, before the on-us symbol; may be blank
     check_number: str  # Auxiliary On-Us, or the On-Us part after the symbol; may be blank
     amount: Decimal
-    presented_date: date  # from the enclosing Cash Letter Header's Business Date, or today if unparseable
+    presented_date: date  # from the enclosing Cash Letter Header's Business Date (a file without one is refused)
     front_image_bytes: bytes  # empty if no Image View Data record followed this check's detail record
     back_image_bytes: bytes | None
     # Set instead of the bytes above when parsed with lazy_images=True: (start, end)
@@ -123,10 +123,12 @@ _ON_US_SYMBOL = "/"
 
 
 def _parse_business_date(raw: str) -> date:
+    """The Cash Letter Header's Business Date. A file without a readable one is refused: a check's
+    return deadline is counted from it (REGULATORY_PLAN.md RG1), so guessing today could miss it."""
     try:
         return date(int(raw[0:4]), int(raw[4:6]), int(raw[6:8]))
     except (ValueError, IndexError):
-        return date.today()
+        raise X937ParseError(f"The cash letter's Business Date {raw!r} isn't a date (YYYYMMDD).") from None
 
 
 def _declared(text: str, field: slice, *, field_name: str, offset: int) -> int:

@@ -163,6 +163,71 @@ def deadline_for(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID 
     return next_cutoff(arrived or datetime.now(timezone.utc), cutoff, zone.key, tenant.cutoff_min_review_minutes, closed)
 
 
+# --- A check's return deadline (REGULATORY_PLAN.md RG1) ------------------------------------------
+
+
+def is_banking_day(day: date, closed: frozenset[date] = frozenset(), *, open_on_federal_holidays: bool = False) -> bool:
+    """A weekday the bank is open (UCC 4-104(a)(3)): not one of its closures, and not a Federal
+    Reserve holiday unless the bank opens on them."""
+    if day.weekday() >= 5 or day in closed:
+        return False
+    return open_on_federal_holidays or day not in federal_reserve_holidays(day.year)
+
+
+def _next_banking_day(day: date, closed: frozenset[date], open_on_holidays: bool, *, after: bool) -> date:
+    day = day + timedelta(days=1) if after else day
+    for _ in range(400):
+        if is_banking_day(day, closed, open_on_federal_holidays=open_on_holidays):
+            return day
+        day += timedelta(days=1)
+    raise CutoffError("No banking day was found within a year; check the bank's closures.")
+
+
+def midnight_deadline_day(presented: date, closed: frozenset[date] = frozenset(), *, open_on_federal_holidays: bool = False) -> date:
+    """The banking day a check presented on `presented` must be returned by (UCC 4-104(a)(10),
+    4-301): the next banking day after the banking day of receipt. A check presented on a day the
+    bank is closed counts as received on its next banking day."""
+    received = _next_banking_day(presented, closed, open_on_federal_holidays, after=False)
+    return _next_banking_day(received, closed, open_on_federal_holidays, after=True)
+
+
+def return_deadline(session: Session, tenant_id: uuid.UUID, presented: date) -> datetime | None:
+    """A check's midnight deadline as a moment: midnight at the end of its return day, in the
+    bank's zone, in UTC."""
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
+        return None
+    try:
+        zone = ZoneInfo(time_zone_for(tenant))
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo("UTC")
+    closed = frozenset(c.closed_on for c in closures(session, tenant_id))
+    day = midnight_deadline_day(presented, closed, open_on_federal_holidays=tenant.open_on_federal_holidays)
+    return datetime.combine(day + timedelta(days=1), time(0, 0), tzinfo=zone).astimezone(timezone.utc)
+
+
+def within_return_deadline(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, network_code: str,
+                           deadline: datetime | None, returns_by: datetime | None) -> datetime | None:
+    """`deadline`, or earlier: never after the cut-off on the check's return day (or, with no
+    cut-off, the return deadline itself), so the core can still send the return in time. A
+    check that arrives after that is due at once. No deadline (no cut-off anywhere: the tests)
+    stays none."""
+    if returns_by is None or deadline is None:
+        return deadline
+    tenant = session.get(Tenant, tenant_id)
+    cutoff = cutoff_for(session, tenant, customer_id, network_code) if tenant is not None else None
+    latest = returns_by
+    if cutoff:
+        try:
+            zone = ZoneInfo(time_zone_for(tenant))
+        except ZoneInfoNotFoundError:
+            zone = ZoneInfo("UTC")
+        hours, minutes = (int(part) for part in cutoff.split(":"))
+        last_day = (returns_by.astimezone(zone) - timedelta(days=1)).date()
+        latest = datetime.combine(last_day, time(hours, minutes), tzinfo=zone).astimezone(timezone.utc)
+    return latest if deadline is None or deadline > latest else deadline
+
+
 def describe(tenant: Tenant) -> str:
     """The control-panel tile's state: "Checks 11:00 · ACH 15:00 (New York)", or the default."""
     cutoffs = tenant.decision_cutoffs or {}
@@ -176,7 +241,7 @@ def describe(tenant: Tenant) -> str:
 
 
 def apply_bank_cutoffs(session: Session, tenant_id: uuid.UUID, *, time_zone: str, cutoffs: dict[str, str | None],
-                       min_review_minutes: int) -> Tenant:
+                       min_review_minutes: int, open_on_federal_holidays: bool | None = None) -> Tenant:
     """Sets the bank's cut-offs. Called by the protected change (services/change_kinds.py)."""
     tenant = session.get(Tenant, tenant_id)
     tenant.time_zone = parse_time_zone(time_zone)
@@ -185,6 +250,8 @@ def apply_bank_cutoffs(session: Session, tenant_id: uuid.UUID, *, time_zone: str
     if not 0 <= min_review_minutes <= MAX_REVIEW_MINUTES:
         raise CutoffError("The minimum review time is 0 to 1,440 minutes (a day).")
     tenant.cutoff_min_review_minutes = min_review_minutes
+    if open_on_federal_holidays is not None:
+        tenant.open_on_federal_holidays = open_on_federal_holidays
     session.flush()
     return tenant
 

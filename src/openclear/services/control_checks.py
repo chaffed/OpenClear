@@ -11,7 +11,7 @@ evidence (counts, and names where a person would act on them)."""
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
@@ -414,6 +414,43 @@ def reverse_accounts_agreed(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("reverse_accounts_agreed", title, PASS,
                    f"{_plural(len(reverse), 'account')} on reverse positive pay{detail}. Match each to a written agreement with "
                    "its customer.", evidence)
+
+
+def return_deadline(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Checks decided within their midnight deadline (UCC 4-302; REGULATORY_PLAN.md RG1): FAIL when
+    one in the last 30 days was sent after it; WARN when a customer's cut-off is later than the
+    bank's, which leaves the core less time to return."""
+    from openclear.domain.customer import Customer
+    from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
+    from openclear.domain.decision import Decision
+    from openclear.domain.exception_item import ExceptionItem
+    from openclear.domain.tenant import Tenant
+    from openclear.services import cutoff_service
+
+    late = session.execute(select(func.count()).select_from(Decision).join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id)
+                           .where(Decision.tenant_id == tenant_id, ExceptionItem.return_deadline.is_not(None),
+                                  Decision.locked_at > ExceptionItem.return_deadline,
+                                  Decision.locked_at >= _now() - timedelta(days=30))).scalar_one()
+    tenant = session.get(Tenant, tenant_id)
+    later = []
+    for name, network, cutoff in session.execute(
+            select(Customer.name, CustomerDispositionSetting.network_code, CustomerDispositionSetting.cutoff_time)
+            .join(Customer, Customer.id == CustomerDispositionSetting.customer_id)
+            .where(CustomerDispositionSetting.tenant_id == tenant_id, CustomerDispositionSetting.cutoff_time.is_not(None))).all():
+        bank = cutoff_service.cutoff_for(session, tenant, None, network)
+        if bank and cutoff and cutoff > bank:
+            later.append(f"{name} ({network} {cutoff}, the bank's {bank})")
+    evidence = {"decided_after_return_deadline_30_days": late, "customer_cutoffs_later_than_the_banks": later[:LIST_LIMIT],
+                "open_on_federal_holidays": tenant.open_on_federal_holidays}
+    title = "Checks decided within their return deadline"
+    if late:
+        return Control("return_deadline", title, FAIL, f"{_plural(late, 'check')} decided after {'its' if late == 1 else 'their'} midnight "
+                       "deadline in the last 30 days: the bank may be accountable for them (UCC 4-302).", evidence)
+    if later:
+        return Control("return_deadline", title, WARN, f"{_plural(len(later), 'customer cut-off')} later than the bank's, which leaves "
+                       f"the core less time to return a check: {', '.join(later[:5])}.", evidence)
+    return Control("return_deadline", title, PASS, "No check was decided after its midnight deadline in the last 30 days, and no "
+                   "customer's cut-off is later than the bank's.", evidence)
 
 
 def regulatory_currency(session: Session, tenant_id: uuid.UUID) -> Control:

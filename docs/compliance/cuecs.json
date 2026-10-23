@@ -1288,6 +1288,174 @@
       "withdrawn": false
     },
     {
+      "id": "B-CA-3-03",
+      "party": "bank",
+      "nist": "CA-3",
+      "nist_title": "Information Exchange",
+      "oscal_id": "ca-3",
+      "related": [
+        "SA-9"
+      ],
+      "title": "Put loss allocation in the positive pay agreement",
+      "statement": "Agree in writing with each positive pay customer the cut-off, the default decision, that undecided items follow it, the customer's duty to send issue files before checks are presented and to review exceptions, and how loss falls if it doesn't (UCC 4-103), and have counsel confirm it under the state's UCC.",
+      "complements": "OpenClear records the settings the agreement names, and for each item when it was raised, shown, decided and by whom.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "On change; reviewed yearly",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Customers \u2192 Default decision; Settings \u2192 Decision cut-off",
+      "withdrawn": false
+    },
+    {
+      "id": "B-CA-3-04",
+      "party": "bank",
+      "nist": "CA-3",
+      "nist_title": "Information Exchange",
+      "oscal_id": "ca-3",
+      "related": [
+        "SI-4"
+      ],
+      "title": "Return checks in time",
+      "statement": "Set cut-offs so the core can send every return before the midnight deadline and Regulation CC's expeditious-return time (12 CFR 229.31(b)), and give notice of nonpayment for returns of $5,000 or more (229.31(c)) from the core.",
+      "complements": "OpenClear keeps each check's decision deadline within its midnight deadline, counted from the day it was presented, and flags a decision sent after it.",
+      "evidence": "automated",
+      "check": "return_deadline",
+      "check_status": "live",
+      "frequency": "Daily",
+      "csf": [
+        {
+          "id": "ID.AM-03",
+          "title": "Representations of the organization's authorized network communication and internal and external network data flows are maintained"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        }
+      ],
+      "where": "Settings \u2192 Decision cut-off; Controls \u2192 Checks decided within their return deadline",
+      "withdrawn": false
+    },
+    {
+      "id": "B-SI-4-03",
+      "party": "bank",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "CP-2"
+      ],
+      "title": "Tell OpenClear the bank's banking days",
+      "statement": "Record the days the bank is closed, and whether it opens on the Federal Reserve's holidays, so deadlines follow the bank's banking days.",
+      "complements": "OpenClear counts a check's return deadline in the bank's banking days.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "Settings \u2192 Decision cut-off",
+      "withdrawn": false
+    },
+    {
+      "id": "B-AU-11-02",
+      "party": "bank",
+      "nist": "AU-11",
+      "nist_title": "Audit Record Retention",
+      "oscal_id": "au-11",
+      "related": [
+        "SI-12"
+      ],
+      "title": "Keep decision records for disputes",
+      "statement": "Keep exception, decision and image records at least as long as UCC claims can be brought (at least a year, UCC 4-406(f)), plus any litigation hold.",
+      "complements": "OpenClear keeps every decision, its revisions and the action log, signed, and exports them.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "PR.PS-04",
+          "title": "Log records are generated and made available for continuous monitoring"
+        }
+      ],
+      "where": "Settings \u2192 Controls \u2192 Export evidence; Settings \u2192 Data export",
+      "withdrawn": false
+    },
+    {
       "id": "B-CA-3-01",
       "party": "bank",
       "nist": "CA-3",
@@ -1995,6 +2163,75 @@
         }
       ],
       "where": "Uploads \u2192 result",
+      "withdrawn": false
+    },
+    {
+      "id": "C-SI-4-02",
+      "party": "customer",
+      "nist": "SI-4",
+      "nist_title": "System Monitoring",
+      "oscal_id": "si-4",
+      "related": [
+        "IR-6"
+      ],
+      "title": "Review statements promptly",
+      "statement": "Examine bank statements and paid items with reasonable promptness, and report any unauthorized or altered item to the bank at once (UCC 4-406).",
+      "complements": "OpenClear shows each exception with its deadline, and records what the customer saw and decided.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Monthly",
+      "csf": [
+        {
+          "id": "ID.RA-01",
+          "title": "Vulnerabilities in assets are identified, validated, and recorded"
+        },
+        {
+          "id": "ID.IM-01",
+          "title": "Improvements are identified from evaluations"
+        },
+        {
+          "id": "ID.IM-02",
+          "title": "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties"
+        },
+        {
+          "id": "ID.IM-03",
+          "title": "Improvements are identified from execution of operational processes, procedures, and activities"
+        },
+        {
+          "id": "PR.DS-01",
+          "title": "The confidentiality, integrity, and availability of data-at-rest are protected"
+        },
+        {
+          "id": "PR.DS-02",
+          "title": "The confidentiality, integrity, and availability of data-in-transit are protected"
+        },
+        {
+          "id": "PR.DS-10",
+          "title": "The confidentiality, integrity, and availability of data-in-use are protected"
+        },
+        {
+          "id": "DE.CM-01",
+          "title": "Networks and network services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-06",
+          "title": "External service provider activities and services are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.CM-09",
+          "title": "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events"
+        },
+        {
+          "id": "DE.AE-02",
+          "title": "Potentially adverse events are analyzed to better understand associated activities"
+        },
+        {
+          "id": "DE.AE-03",
+          "title": "Information is correlated from multiple sources"
+        }
+      ],
+      "where": "The bank's statements; Exceptions",
       "withdrawn": false
     },
     {

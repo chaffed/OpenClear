@@ -226,6 +226,7 @@ def _cutoff_kwargs(db: Session, tenant: Tenant, **typed) -> dict:
     return {"time_zone": cutoff_service.time_zone_for(tenant), "cutoffs": dict(tenant.decision_cutoffs or {}),
             "default_cutoff": (get_settings().default_decision_cutoff or "").strip(),
             "min_review_minutes": tenant.cutoff_min_review_minutes, "networks": registered_codes(),
+            "open_on_federal_holidays": tenant.open_on_federal_holidays,
             "zones_first": zones, "zones_other": sorted(cutoff_service.available_time_zones() - set(zones)),
             "closures": cutoff_service.closures(db, tenant.id), **typed}
 
@@ -848,8 +849,10 @@ async def update_cutoff(request: Request, db: Session = Depends(get_db), ctx: Te
 
     form = await request.form()
     payload = {"time_zone": str(form.get("time_zone") or ""), "min_review_minutes": str(form.get("min_review_minutes") or "0"),
-               "cutoffs": {code: str(form.get(f"cutoff_{code}") or "") for code in registered_codes()}}
-    typed = {"time_zone": payload["time_zone"], "cutoffs": payload["cutoffs"], "min_review_minutes": payload["min_review_minutes"]}
+               "cutoffs": {code: str(form.get(f"cutoff_{code}") or "") for code in registered_codes()},
+               "open_on_federal_holidays": form.get("open_on_federal_holidays") == "true"}
+    typed = {"time_zone": payload["time_zone"], "cutoffs": payload["cutoffs"], "min_review_minutes": payload["min_review_minutes"],
+             "open_on_federal_holidays": payload["open_on_federal_holidays"]}
     return _change(request, db, ctx, "decision_cutoff", payload, key="cutoff",
                    record=("tenant.update_cutoffs", "Decision cut-off changed"), error_overrides=typed)
 

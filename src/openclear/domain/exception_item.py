@@ -88,6 +88,10 @@ class ExceptionItem(Base):
     change_recommended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     decision_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # A check's midnight deadline (UCC 4-104, 4-301): the end of the banking day after the one it
+    # was presented on, in the bank's zone. The decision deadline is never later than the bank's
+    # cut-off on that day (services/cutoff_service.py; REGULATORY_PLAN.md RG1). None for ACH.
+    return_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # When the exception.deadline_approaching webhook went out (services/webhook_service.py
     # warn_deadlines_approaching), so each exception is announced once.
     deadline_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

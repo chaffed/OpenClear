@@ -74,7 +74,14 @@ def ingest_paid_item(
             issued_item.status = IssuedItemStatus.PAID
     else:
         paid_item.match_status = PaidItemMatchStatus.EXCEPTION
-        deadline = auto_disposition_service.compute_decision_deadline(session, tenant_id, paid_item.customer_id, "check")
+        from openclear.services import cutoff_service
+
+        # Kept within the check's midnight deadline, counted from when it was presented, not from
+        # when it reached OpenClear (REGULATORY_PLAN.md RG1).
+        returns_by = cutoff_service.return_deadline(session, tenant_id, paid_item.presented_date)
+        deadline = cutoff_service.within_return_deadline(
+            session, tenant_id, paid_item.customer_id, "check",
+            auto_disposition_service.compute_decision_deadline(session, tenant_id, paid_item.customer_id, "check"), returns_by)
         exception_item = ExceptionItem(
             tenant_id=tenant_id,
             network_code="check",
@@ -83,6 +90,7 @@ def ingest_paid_item(
             related_reference_id=result.related_reference_id,
             exception_types=",".join(result.exception_types),
             decision_deadline=deadline,
+            return_deadline=returns_by,
         )
         session.add(exception_item)
         session.flush()

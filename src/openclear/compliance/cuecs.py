@@ -361,6 +361,30 @@ CUECS: tuple[Cuec, ...] = (
          "VirusTotal's hash lookups, refusing malware and quarantining a file found later (both optional).",
          "attested", None, "Yearly", "Settings → Outside services (malware scanning); file.malware_detected in the action log",
          related=("SI-4",)),
+    Cuec("B-CA-3-03", "bank", "CA-3", "Put loss allocation in the positive pay agreement",
+         "Agree in writing with each positive pay customer the cut-off, the default decision, that undecided items follow it, the "
+         "customer's duty to send issue files before checks are presented and to review exceptions, and how loss falls if it "
+         "doesn't (UCC 4-103), and have counsel confirm it under the state's UCC.",
+         "OpenClear records the settings the agreement names, and for each item when it was raised, shown, decided and by whom.",
+         "attested", None, "On change; reviewed yearly", "Customers → Default decision; Settings → Decision cut-off",
+         related=("SA-9",)),
+    Cuec("B-CA-3-04", "bank", "CA-3", "Return checks in time",
+         "Set cut-offs so the core can send every return before the midnight deadline and Regulation CC's expeditious-return "
+         "time (12 CFR 229.31(b)), and give notice of nonpayment for returns of $5,000 or more (229.31(c)) from the core.",
+         "OpenClear keeps each check's decision deadline within its midnight deadline, counted from the day it was presented, "
+         "and flags a decision sent after it.",
+         "automated", "return_deadline", "Daily", "Settings → Decision cut-off; Controls → Checks decided within their return deadline",
+         related=("SI-4",)),
+    Cuec("B-SI-4-03", "bank", "SI-4", "Tell OpenClear the bank's banking days",
+         "Record the days the bank is closed, and whether it opens on the Federal Reserve's holidays, so deadlines follow the "
+         "bank's banking days.",
+         "OpenClear counts a check's return deadline in the bank's banking days.",
+         "attested", None, "Yearly", "Settings → Decision cut-off", related=("CP-2",)),
+    Cuec("B-AU-11-02", "bank", "AU-11", "Keep decision records for disputes",
+         "Keep exception, decision and image records at least as long as UCC claims can be brought (at least a year, UCC "
+         "4-406(f)), plus any litigation hold.",
+         "OpenClear keeps every decision, its revisions and the action log, signed, and exports them.",
+         "attested", None, "Yearly", "Settings → Controls → Export evidence; Settings → Data export", related=("SI-12",)),
     Cuec("B-CA-3-01", "bank", "CA-3", "Connect the core",
          "Agree and document the interface with the core system (presented items in, decisions out), and confirm decisions are "
          "applied in the core before its cutoff.",
@@ -458,6 +482,11 @@ CUECS: tuple[Cuec, ...] = (
          "Review each upload's result and correct or resubmit any rejected rows the same business day.",
          "OpenClear validates every row, rejects what it can't match on, and says why.",
          "assisted", "rejected_rows", "Every upload", "Uploads → result", related=("SI-7",)),
+    Cuec("C-SI-4-02", "customer", "SI-4", "Review statements promptly",
+         "Examine bank statements and paid items with reasonable promptness, and report any unauthorized or altered item to "
+         "the bank at once (UCC 4-406).",
+         "OpenClear shows each exception with its deadline, and records what the customer saw and decided.",
+         "attested", None, "Monthly", "The bank's statements; Exceptions", related=("IR-6",)),
     Cuec("C-SI-4-01", "customer", "SI-4", "Decide exceptions every day",
          "Review exceptions every business day, decide each before its deadline, and return anything not recognized.",
          "OpenClear raises exceptions with their deadline, reminds before the cutoff, and applies the default disposition otherwise.",

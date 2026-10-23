@@ -1319,7 +1319,7 @@ def _cutoff_current(session, tenant_id, customer_id, payload) -> dict:
 
     tenant = session.get(Tenant, tenant_id)
     return {"time_zone": tenant.time_zone, "cutoffs": dict(tenant.decision_cutoffs or {}),
-            "min_review_minutes": tenant.cutoff_min_review_minutes}
+            "min_review_minutes": tenant.cutoff_min_review_minutes, "open_on_federal_holidays": tenant.open_on_federal_holidays}
 
 
 def _cutoff_value(payload: dict) -> dict:
@@ -1328,7 +1328,8 @@ def _cutoff_value(payload: dict) -> dict:
     try:
         cutoffs = {n: v for n, v in ((n, cutoff_service.parse_time(v)) for n, v in (payload.get("cutoffs") or {}).items()) if v}
         return {"time_zone": cutoff_service.parse_time_zone(payload.get("time_zone")), "cutoffs": cutoffs,
-                "min_review_minutes": int(payload.get("min_review_minutes"))}
+                "min_review_minutes": int(payload.get("min_review_minutes")),
+                "open_on_federal_holidays": bool(payload.get("open_on_federal_holidays"))}
     except (cutoff_service.CutoffError, TypeError, ValueError) as exc:
         raise ChangeError(str(exc) if isinstance(exc, cutoff_service.CutoffError) else "The minimum review time is a number of minutes.") from None
 
@@ -1339,7 +1340,8 @@ def _cutoff_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     value = _cutoff_value(payload)
     try:
         tenant = cutoff_service.apply_bank_cutoffs(session, tenant_id, time_zone=value["time_zone"], cutoffs=value["cutoffs"],
-                                                   min_review_minutes=value["min_review_minutes"])
+                                                   min_review_minutes=value["min_review_minutes"],
+                                                   open_on_federal_holidays=value["open_on_federal_holidays"])
     except cutoff_service.CutoffError as exc:
         raise ChangeError(str(exc)) from None
     return f"Decision cut-off: {cutoff_service.describe(tenant)}, at least {value['min_review_minutes']} minutes to review"

@@ -26,7 +26,7 @@ def default_cutoff(monkeypatch):
 
 def _presented(db_session, tenant, account, number):
     paid = ingest_paid_item(db_session, tenant.id, PaidItemSubmission(account_id=account.id, check_number=number,
-                                                                      presented_amount=Decimal("10.00"), presented_date=date(2026, 10, 1)))
+                                                                      presented_amount=Decimal("10.00"), presented_date=date.today()))
     db_session.commit()
     return ExceptionRepository(db_session, tenant.id).list(source_item_id=paid.id)[0]
 

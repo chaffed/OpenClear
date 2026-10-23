@@ -172,6 +172,7 @@ erDiagram
 <tr><td>time_zone</td><td>String(64)</td><td>yes</td><td></td><td>The bank's time zone (an IANA name, such as America/New_York), in which its decision cut-offs are set.</td></tr>
 <tr><td>decision_cutoffs</td><td>JSON</td><td>no</td><td></td><td>Each network's decision cut-off as a time of day ({"check": "11:00"}). Items are due at the first cut-off on a business day at least cutoff_min_review_minutes after they arrive; decisions can be changed until then (services/cutoff_service.py).</td></tr>
 <tr><td>cutoff_min_review_minutes</td><td>Integer</td><td>no</td><td></td><td>The least time an item gets before its cut-off; one arriving closer is due at the next business day's. Default 120.</td></tr>
+<tr><td>open_on_federal_holidays</td><td>Boolean</td><td>no</td><td></td><td>The bank opens on the Federal Reserve's holidays, so they count as banking days for a check's return deadline. Default false.</td></tr>
 <tr><td>security_event_feed_read_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank last read its security events through the API (for the "Security events delivered" control).</td></tr>
 </tbody>
 </table>
@@ -990,7 +991,8 @@ erDiagram
 <tr><td>ml_score / ml_model_version</td><td>Float / String(64)</td><td>yes</td><td></td><td>Null until enough history exists to score it.</td></tr>
 <tr><td>recommended_outcome / recommended_reason_code / recommended_return_transaction_code / recommended_notes</td><td>String</td><td>yes</td><td></td><td>Set by the "recommend" step, before a final decision.</td></tr>
 <tr><td>recommended_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
-<tr><td>decision_deadline</td><td>Timestamp</td><td>yes</td><td></td><td>When the default-disposition sweep will auto-decide this if nobody responds.</td></tr>
+<tr><td>decision_deadline</td><td>Timestamp</td><td>yes</td><td></td><td>When the default-disposition sweep will auto-decide this if nobody responds. For a check, never later than the bank's cut-off on its return day.</td></tr>
+<tr><td>return_deadline</td><td>Timestamp</td><td>yes</td><td></td><td>A check's midnight deadline (UCC 4-104, 4-301): the end of the banking day after the one it was presented on, in the bank's zone. A decision sent after it is flagged. None for ACH.</td></tr>
 <tr><td>change_recommended_at</td><td>Timestamp</td><td>yes</td><td></td><td>Under dual control, when a change to its decision was recommended; the recommended_* columns then hold the change, and the decision in place stands until someone else approves it. Cleared on approval or at the cut-off.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td><code>LIVE</code> (real activity), the only value.</td></tr>

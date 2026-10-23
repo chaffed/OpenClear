@@ -134,6 +134,8 @@ CATALOG: dict[str, EventType] = {
     # A posted-check file whose trailer doesn't match its lines (PAID_ITEM_LAYOUTS_PLAN.md PIL-D8): checks the
     # bank paid may never be reviewed.
     "bulk_upload.refused": EventType("integrity", "high"),
+    # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
+    "decision.after_return_deadline": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
     # what looks like someone trying check numbers.
     "teller.verify": EventType("data", "low"),

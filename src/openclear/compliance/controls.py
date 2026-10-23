@@ -257,6 +257,10 @@ CONTROLS: tuple[OcControl, ...] = (
       "The evidence export summarizes the period's ACH debits by SEC code, exceptions, returns by reason code, unauthorized "
       "returns by originator, and decision times against their deadlines, for the bank's fraud-monitoring file and Rules audit.",
       ("SI-4", "AU-6"), "detective", "built_in", ("evidence_export",), ("B-SI-4-02", "B-IR-6-03"), "Settings → Controls → Export evidence"),
+    C("OC-SI-11", "Checks decided within their return deadline",
+      "Each check's return deadline is worked out from the day it was presented, in the bank's banking days, and its decision "
+      "deadline is never later than the cut-off on that day; a decision sent after it is flagged and raised as a security event.",
+      ("SI-4", "SI-10"), "preventive", "built_in", ("return_deadline",), ("B-CA-3-04", "B-SI-4-03"), "Settings → Decision cut-off"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "

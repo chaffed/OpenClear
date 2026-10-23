@@ -217,4 +217,17 @@ current UCC, Regulation CC and ECCHO texts, and its gaps decide its code.
 - 2026-10-22: RG7's mechanism built first, as it watches every page: `compliance/regulatory.py`,
   each page's "Current as of" line (kept in step by a test; `csf.md`'s from the generator), the
   check `regulatory_currency` and control OC-CA-03.
+- 2026-10-22: RG1 built. **Finding:** a check's decision deadline was counted from when it reached
+  OpenClear, so the minimum review time (120 minutes by default), a late file or a holiday could
+  put it after the UCC midnight deadline (worked cases: the Wednesday before Thanksgiving, New
+  Year's Eve, a Friday before Columbus Day for a bank open that day). Built: `return_deadline` on
+  each check exception from its presented date in the bank's banking days, the decision deadline
+  capped at the cut-off on that day, `tenant.open_on_federal_holidays` (migration `44ed7f9be66a`),
+  late decisions flagged (feed, webhook, a high security event), the check `return_deadline` and
+  control OC-SI-11, and X9.37 files without a readable Business Date refused. CUECs B-CA-3-03,
+  B-CA-3-04, B-SI-4-03, B-AU-11-02, C-SI-4-02. `check-law.md`, a draft for counsel. Regulation CC's
+  citations corrected: the paying bank's duties are in 229.31 since 2018. **Follow-ups, not built:**
+  a record at the cut-off for items left open with "leave open" (small); Saturday banking days
+  (small); a per-item dispute export (medium); flagging check returns of $5,000 or more for the
+  core's notice of nonpayment (small, optional).
 
