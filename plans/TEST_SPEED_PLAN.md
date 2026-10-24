@@ -34,13 +34,27 @@ drew it:
 
 ## Stages
 
-| Stage | What |
-|---|---|
-| TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` |
-| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines |
-| TS3 | Shard the Postgres job and `run_tests.sh postgres`; trim its system packages |
-| TS4 | Short timeouts; measure and record |
+| Stage | What | Status |
+|---|---|---|
+| TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | In review |
+| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | |
+| TS3 | Shard the Postgres job and `run_tests.sh postgres`; trim its system packages | |
+| TS4 | Short timeouts; measure and record | |
 
 ## Progress log
 
 - 2026-10-23: Plan written; CI at about 10½ minutes (Postgres job), 6 (each SQLite job).
+- 2026-10-23: TS1. **Finding:** CI never installed Playwright's Chromium, so the 32 browser tests
+  (axe accessibility, viewports, the phone layouts) skipped themselves in every CI job and in the
+  Linux suite; they only ever ran on the developer's Mac. So they weren't what made CI slow, and
+  CI wasn't checking accessibility. Built: `tests/conftest.py` marks a test `browser` when it
+  uses `browser_page` or starts Playwright; the Python 3.13 CI job installs Chromium and runs
+  them, the 3.11 and Postgres jobs and the local Postgres and Linux suites leave them out; every
+  run uses `--dist worksteal` and reports skip reasons (`-ra`). Locally the SQLite suite went from
+  157 s to 135 s; without the browser tests it takes 86 s. In CI the 32 browser tests now run (the
+  3.13 job: 2228 passed against 2196 in the 3.11 job). Running them showed one test-setup slip:
+  `test_the_modal_in_a_browser` lacked `bypass_csp`, so Playwright's polling hit the page's CSP on
+  CI's slower runner. No accessibility or layout problem showed on Linux. CI wall time stays about
+  10½ minutes: the 3.13 job now does more (Chromium and the browser tests, ~10½ min), the 3.11 job
+  varies 4¾–6½ min between runs, the Postgres job ~10 min. worksteal helps little on CI's small
+  runners; TS2 and TS3 are where CI's time comes down.
