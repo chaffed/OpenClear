@@ -1,0 +1,49 @@
+# Third-party components: inventory and notices
+
+A bank's due diligence, and the licenses of what OpenClear ships, both ask for a list of the
+third-party components in it. Each release's CycloneDX SBOM (`scripts/sbom.py`) lists the Python
+packages in the image and the two vendored JavaScript files. What's missing:
+- a page a person can read;
+- the license notices that MIT, BSD and Apache-2.0 components ask to travel with the software;
+- the icons compiled into the sprite;
+- the image's operating-system packages;
+- the SDKs' own dependencies;
+- the components used only for tests and development.
+
+## Decisions (the product owner, 2026-10-23: "go with your recommendation")
+
+- **TP-D1. One source, two outputs.** The page and the notices are generated from the same
+  sources as the SBOM (the hashed locks and the vendored-assets list), so they can't drift. A test
+  fails when the committed page is stale, as for the other generated pages.
+- **TP-D2. A readable inventory, `docs/compliance/third-party.md`:** each component's name,
+  version, license and where it's used, grouped as:
+  - in the image (Python);
+  - vendored into the web pages (JavaScript, icons);
+  - in the image's operating system;
+  - in the SDKs;
+  - used only for development and tests (not shipped).
+- **TP-D3. Notices.** `THIRD_PARTY_NOTICES.md` carries each shipped component's copyright and
+  license text, from the installed package's own license file where it has one. The in-app
+  License page links to it, and it's in the image beside `LICENSE`.
+- **TP-D4. Vendored assets, not only JavaScript.** `requirements/vendored-js.json` becomes
+  `requirements/vendored.json` and gains Material Symbols (Apache-2.0, in
+  `static/icons/sprite.svg`), checked by the existing SBOM test (version, file hash).
+- **TP-D5. The image's own SBOM.** The release workflow also scans the built image (Syft) and
+  attaches `openclear-<version>-image.cdx.json`, covering the base image and the system packages
+  (Tesseract, WeasyPrint's libraries, libpq). The Python SBOM stays as it is.
+- **TP-D6. The SDKs.** Each SDK's dependencies are listed on the page from its own manifest
+  (`package.json`, `.csproj`, `pyproject.toml`); each SDK's release carries its own SBOM later, in
+  its own repository.
+
+## Stages
+
+| Stage | What |
+|---|---|
+| TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test |
+| TP2 | The License page's link; the notices file in the image |
+| TP3 | The image SBOM in the release workflow |
+| TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG |
+
+## Progress log
+
+- 2026-10-23: Plan written with the product owner's decisions TP-D1 to TP-D6.
