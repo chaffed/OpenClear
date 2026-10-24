@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.30.0 — 2026-10-23
+
 - **Offboarding a bank** (`plans/OFFBOARDING_PLAN.md`; GLBA's disposal requirement). When a bank
   leaves, Platform → the bank's Offboarding deletes its data, with a signed certificate. Two
   operators start it, which emails the bank's incident contacts and shows its administrators a
@@ -23,6 +25,9 @@
   record. People are deleted only when they belong nowhere else and aren't named in the bank's
   records. New security event `customer.offboarding`; control OC-SI-13; CUEC B-SI-12-02; threat
   OC-T26.
+
+- **Dependencies:** brotli 1.2.1 (PYSEC-2026-4322, GHSA-9v8h-qqgm-4m35) in the image, and
+  setuptools 84.2.1 (GHSA-xmj3-9gf7-h52w) for development and builds.
 
 ## 1.29.0 — 2026-10-22
 
