@@ -70,7 +70,7 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
                                                                presented_amount=Decimal("75.00"), presented_date=date.today()))
     db_session.commit()
 
-    _schedule(db_session, tenant, users, leaving, date.today() + timedelta(days=1))
+    _schedule(db_session, tenant, users, leaving, customer_offboarding_service.bank_today(db_session, tenant.id) + timedelta(days=1))
     db_session.expire_all()
     leaving = db_session.get(Customer, leaving.id)
     assert leaving.service_ends_at is not None and leaving.is_active
@@ -119,7 +119,8 @@ def test_a_hold_stops_the_deletion_and_the_end_can_be_undone(db_session, bank):
     db_session.commit()
     with pytest.raises(change_request_service.ChangeRequestError, match="past"):
         change_request_service.request_or_apply(db_session, "customer.offboard", {"customer_id": str(customer.id),
-                                                "last_service_day": (date.today() - timedelta(days=3)).isoformat()},
+                                                "last_service_day": (customer_offboarding_service.bank_today(db_session, tenant.id)
+                                                                     - timedelta(days=3)).isoformat()},
                                                 tenant_id=tenant.id, user_id=users["admin"].id)
         db_session.commit()
         change_request_service.decide(db_session, tenant.id, change_request_service.pending(db_session, tenant.id)[0].id,
@@ -129,7 +130,7 @@ def test_a_hold_stops_the_deletion_and_the_end_can_be_undone(db_session, bank):
         change_request_service.withdraw(db_session, tenant.id, change.id, user_id=users["admin"].id)
     db_session.commit()
 
-    _schedule(db_session, tenant, users, customer, date.today())
+    _schedule(db_session, tenant, users, customer, customer_offboarding_service.bank_today(db_session, tenant.id))
     customer_offboarding_service.sweep(db_session, tenant.id, now=datetime.now(timezone.utc) + timedelta(days=2))
     # One administrator can put it on hold.
     change_request_service.request_or_apply(db_session, "customer.legal_hold", {"customer_id": str(customer.id), "held": True,
@@ -169,3 +170,14 @@ def test_the_customer_page_and_the_deleted_list(client, db_session, bank):
     listed = client.get("/ui/customers/deleted")
     assert listed.status_code == 200 and "Gone Co" in listed.text
     assert client.get(f"/ui/customers/deleted/{db_session.execute(select(CustomerDeletion.id)).scalar_one()}/certificate").status_code == 200
+
+
+def test_the_last_service_day_is_a_day_at_the_bank_not_on_the_server(db_session, bank):
+    """At 00:30 UTC it's still the evening before in Los Angeles: "today" is the bank's day, and
+    its last service day ends at midnight there."""
+    tenant, _users = bank
+    tenant.time_zone = "America/Los_Angeles"
+    db_session.commit()
+    evening = datetime(2026, 10, 24, 0, 30, tzinfo=timezone.utc)
+    assert customer_offboarding_service.bank_today(db_session, tenant.id, now=evening) == date(2026, 10, 23)
+    assert customer_offboarding_service._end_of_day(db_session, tenant.id, date(2026, 10, 23)) == datetime(2026, 10, 24, 7, 0, tzinfo=timezone.utc)
