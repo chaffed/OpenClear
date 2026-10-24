@@ -102,4 +102,6 @@ markers = [
   "asvs(requirement): the ASVS 5.0 requirement this test is evidence for",
   # Two sessions acting at once on Postgres (FULL_REVIEW_PLAN.md FR9, O4): `pytest -m concurrency`.
   "concurrency: two sessions acting on the same rows at once (needs Postgres)",
+  # Drives Chromium through Playwright (tests/conftest.py marks them; plans/TEST_SPEED_PLAN.md TS-D1).
+  "browser: drives Chromium through Playwright; CI runs these in one job",
 ]

@@ -12,6 +12,8 @@
 #   postgres  a commit (default HEAD) in its own worktree, against the Postgres test container
 #             (OPENCLEAR_TEST_DATABASE_URL, default the pospay-pg-test container on port 55432)
 #   linux     a commit (default HEAD) in a python:3.11-slim container (Docker or Colima)
+# The browser tests (pytest -m browser) run in the sqlite suite only: they test the pages, not the
+# database or the Python version (plans/TEST_SPEED_PLAN.md TS-D1).
 # Exit status is pytest's. Extra workers: OPENCLEAR_TEST_WORKERS (default: one per CPU).
 
 set -euo pipefail
@@ -31,7 +33,7 @@ python="$root/.venv/bin/python"
 case "$suite" in
   sqlite)
     cd "$root"
-    "$python" -m pytest -n "$workers" -p no:cacheprovider -q -ra >> "$log" 2>&1
+    "$python" -m pytest -n "$workers" --dist worksteal -p no:cacheprovider -q -ra >> "$log" 2>&1
     ;;
   postgres)
     tree="$HOME/.openclear-wt-tests"
@@ -39,7 +41,8 @@ case "$suite" in
     git -C "$root" worktree add -q --detach "$tree" "$commit"
     cd "$tree"
     OPENCLEAR_TEST_DATABASE_URL="${OPENCLEAR_TEST_DATABASE_URL:-postgresql+psycopg://pospay:pospay@127.0.0.1:55432/pospay_test_p0}" \
-      PYTHONPATH=src:sdks/python/src "$python" -m pytest -n "$workers" -p no:cacheprovider -q -ra >> "$log" 2>&1
+      PYTHONPATH=src:sdks/python/src "$python" -m pytest -n "$workers" --dist worksteal -p no:cacheprovider -q -ra \
+      -m "not browser" >> "$log" 2>&1
     ;;
   linux)
     export DOCKER_HOST="${DOCKER_HOST:-unix://$HOME/.colima/default/docker.sock}"
@@ -47,7 +50,7 @@ case "$suite" in
       mkdir /src && cd /src && tar x && apt-get update -qq >/dev/null && apt-get install -y -qq tesseract-ocr >/dev/null 2>&1
       pip install -q --require-hashes -r requirements/dev.txt 2>&1 | grep -v notice | tail -3
       pip install -q --no-deps -e . 2>&1 | grep -v notice | tail -3
-      python -m pytest -n $workers -p no:cacheprovider -q -ra" >> "$log" 2>&1
+      python -m pytest -n $workers --dist worksteal -p no:cacheprovider -q -ra -m 'not browser'" >> "$log" 2>&1
     ;;
   *)
     echo "unknown suite: $suite (sqlite, postgres or linux)" >&2
