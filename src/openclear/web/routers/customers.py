@@ -225,23 +225,25 @@ def customer_detail(
         bank_time_zone=cutoff_service.time_zone_for(tenant),
         customer_cutoffs=cutoff_service.customer_cutoffs(db, ctx.tenant_id, customer.id), networks=registered_codes(),
         offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
-        **_offboarding_context(customer, tenant),
+        **_offboarding_context(db, customer, tenant),
     )
 
 
-def _offboarding_context(customer, tenant) -> dict:
-    from datetime import date, timedelta
+def _offboarding_context(db: Session, customer, tenant) -> dict:
+    from datetime import timedelta
     from zoneinfo import ZoneInfo
 
-    from openclear.services import customer_offboarding_service
+    from openclear.services import customer_offboarding_service, cutoff_service
 
     last_day = None
     if customer.service_ends_at is not None:
         ends = customer.service_ends_at
         ends = ends.replace(tzinfo=ZoneInfo("UTC")) if ends.tzinfo is None else ends
-        last_day = (ends.astimezone(ZoneInfo(tenant.time_zone or "UTC")) - timedelta(seconds=1)).date().isoformat()
+        last_day = (ends.astimezone(ZoneInfo(cutoff_service.time_zone_for(tenant))) - timedelta(seconds=1)).date().isoformat()
+    # The earliest last service day is today at the bank, not on the server.
     return {"offboarding_deletion_due": customer_offboarding_service.deletion_due(customer), "offboarding_last_day": last_day,
-            "retention_days": customer_offboarding_service.retention_days(), "today": date.today().isoformat()}
+            "retention_days": customer_offboarding_service.retention_days(),
+            "today": customer_offboarding_service.bank_today(db, tenant.id).isoformat()}
 
 
 @router.post("/{customer_id}/offboarding")

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fixed: a customer's last service day is a day at the bank.** The earliest day the customer
+  page offered was the server's date, not the bank's, and a bank with no time zone of its own
+  used UTC instead of the installation's default. In the evening west of UTC, a bank couldn't
+  choose today.
+
 ## 1.30.0 — 2026-10-23
 
 - **Offboarding a bank** (`plans/OFFBOARDING_PLAN.md`; GLBA's disposal requirement). When a bank

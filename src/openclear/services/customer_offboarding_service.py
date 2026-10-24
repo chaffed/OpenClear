@@ -77,9 +77,20 @@ def _record(session: Session, customer: Customer, action: str, summary: str, *, 
                                     metadata=metadata)
 
 
+def _zone(session: Session, tenant_id: uuid.UUID) -> ZoneInfo:
+    """The bank's time zone, else the installation's default, as everywhere else (cutoff_service)."""
+    from openclear.services.cutoff_service import time_zone_for
+
+    return ZoneInfo(time_zone_for(session.get(Tenant, tenant_id)))
+
+
+def bank_today(session: Session, tenant_id: uuid.UUID, *, now: datetime | None = None) -> date:
+    """Today at the bank: a last service day is a day in the bank's zone, not the server's."""
+    return (now or _now()).astimezone(_zone(session, tenant_id)).date()
+
+
 def _end_of_day(session: Session, tenant_id: uuid.UUID, day: date) -> datetime:
-    zone = ZoneInfo(session.get(Tenant, tenant_id).time_zone or "UTC")
-    return datetime.combine(day + timedelta(days=1), time(0), tzinfo=zone).astimezone(timezone.utc)
+    return datetime.combine(day + timedelta(days=1), time(0), tzinfo=_zone(session, tenant_id)).astimezone(timezone.utc)
 
 
 def _people(session: Session, customer: Customer) -> list:
