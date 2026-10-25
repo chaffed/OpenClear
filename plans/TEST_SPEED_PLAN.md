@@ -36,8 +36,8 @@ drew it:
 
 | Stage | What | Status |
 |---|---|---|
-| TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | In review |
-| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | |
+| TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | Done (#47) |
+| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | In review |
 | TS3 | Shard the Postgres job and `run_tests.sh postgres`; trim its system packages | |
 | TS4 | Short timeouts; measure and record | |
 
@@ -58,3 +58,10 @@ drew it:
   10½ minutes: the 3.13 job now does more (Chromium and the browser tests, ~10½ min), the 3.11 job
   varies 4¾–6½ min between runs, the Postgres job ~10 min. worksteal helps little on CI's small
   runners; TS2 and TS3 are where CI's time comes down.
+- 2026-10-24: TS2. The viewport check runs as 12 tests (each width in three parts, pages dealt in
+  turn) and the accessibility check as 10 (each view in two). **Finding:** the control pages share
+  state (opening one records the control results the others show), so they always run together,
+  in order (`TOGETHER`). Rewriting the baselines from the parts leaves the viewport baseline, report
+  and screenshots unchanged, and the axe baseline's problems unchanged. The longest browser test
+  fell from 26 s to 14 s; locally the suite's total is unchanged (136 s), since all eight workers
+  are already busy. CI times to follow from the PR.

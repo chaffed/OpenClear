@@ -85,6 +85,11 @@ VIEWS = [
 ]
 
 
+# Each view's pages run as this many tests, dealt in turn, so no one test holds a run for long
+# (plans/TEST_SPEED_PLAN.md TS-D2).
+PARTS = 2
+
+
 def _problems(results: dict) -> set[str]:
     """One "rule: target" per failing element, stable across runs."""
     found = set()
@@ -94,8 +99,9 @@ def _problems(results: dict) -> set[str]:
     return found
 
 
+@pytest.mark.parametrize("part", range(PARTS), ids=lambda part: f"part{part + 1}")
 @pytest.mark.parametrize("view, who, theme, width, accent", VIEWS, ids=[v[0] for v in VIEWS])
-def test_main_pages_have_no_new_accessibility_problems(client, db_session, tenant_factory, view, who, theme, width, accent):
+def test_main_pages_have_no_new_accessibility_problems(client, db_session, tenant_factory, view, who, theme, width, accent, part):
     try:
         browser_context = playwright.sync_playwright().start()
         browser = browser_context.chromium.launch()
@@ -112,6 +118,7 @@ def test_main_pages_have_no_new_accessibility_problems(client, db_session, tenan
                                                          password=TenantFactory.PASSWORD, security_group_id=admin_group.id,
                                                          customer_id=customer.id).email
         pages = CUSTOMER_PAGES
+    pages = pages[part::PARTS]
     paid = ingest_paid_item(db_session, tenant.id, PaidItemSubmission(account_id=account.id, check_number="1001",
                                                                       presented_amount=Decimal("50.00"), presented_date=date(2026, 3, 2)))
     db_session.commit()
@@ -150,11 +157,18 @@ def test_main_pages_have_no_new_accessibility_problems(client, db_session, tenan
         browser.close()
         browser_context.stop()
 
-    baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
     if os.environ.get("OPENCLEAR_AXE_WRITE_BASELINE"):
-        mine = {key for key in baseline if (view == "desktop") == ("/" not in key) and (view == "desktop" or key.startswith(view + "/"))}
-        BASELINE.write_text(json.dumps({**{k: v for k, v in baseline.items() if k not in mine}, **found}, indent=2, sort_keys=True) + "\n")
+        import fcntl
+
+        # This view's entries for this part's pages only: the other parts write the same file alongside.
+        with open(BASELINE.with_suffix(".lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
+            mine = {name if view == "desktop" else f"{view}/{name}" for name, _path, _signed_in in pages}
+            BASELINE.write_text(json.dumps({**{k: v for k, v in baseline.items() if k not in mine}, **found}, indent=2, sort_keys=True) + "\n")
+        BASELINE.with_suffix(".lock").unlink(missing_ok=True)
         return
+    baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
     new = {name: sorted(set(problems) - set(baseline.get(name, []))) for name, problems in found.items()}
     new = {name: problems for name, problems in new.items() if problems}
     assert not new, "New accessibility problems (fix them, see tests/fixtures/axe/README.md):\n" + json.dumps(new, indent=2)
