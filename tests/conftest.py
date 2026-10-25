@@ -46,6 +46,26 @@ _gensalt = bcrypt.gensalt
 bcrypt.gensalt = lambda rounds=4, prefix=b"2b": _gensalt(rounds, prefix)
 
 
+def pytest_collection_modifyitems(items):
+    """Marks the tests that drive Chromium (plans/TEST_SPEED_PLAN.md TS-D1): those using the
+    `browser_page` fixture, or starting Playwright themselves. `-m "not browser"` leaves them out;
+    CI runs them in one job, which installs Chromium."""
+    import inspect
+
+    sources: dict = {}
+    for item in items:
+        function = getattr(item, "function", None)
+        if function is None:
+            continue
+        if function not in sources:
+            try:
+                sources[function] = "sync_playwright" in inspect.getsource(function)
+            except (OSError, TypeError):
+                sources[function] = False
+        if "browser_page" in item.fixturenames or sources[function]:
+            item.add_marker(pytest.mark.browser)
+
+
 @pytest.fixture(autouse=True)
 def isolated_filesystem_settings(tmp_path, monkeypatch):
     """Every test gets its own throwaway directory for anything the app writes to disk

@@ -191,7 +191,9 @@ def test_the_modal_in_a_browser(client, tenant_factory):
         route.fulfill(status=response.status_code, headers=headers, body=response.content)
 
     try:
-        context = browser.new_context()
+        # As every browser test: the page's CSP rightly forbids eval, which Playwright's
+        # wait_for_function needs once it has to poll (it does on a slower machine, such as CI's).
+        context = browser.new_context(bypass_csp=True)
         context.route("http://testserver/**", serve)
         page = context.new_page()
         errors = []
