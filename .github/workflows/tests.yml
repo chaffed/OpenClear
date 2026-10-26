@@ -11,7 +11,11 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  # Each suite runs in three shards side by side (OPENCLEAR_TEST_SHARD; tests/conftest.py splits by
+  # file). The jobs the ruleset requires, test (3.11), test (3.13) and test-postgres, are at the end:
+  # each passes only when all its shards did (plans/TEST_SPEED_PLAN.md TS-D3).
+  shard:
+    name: shard (${{ matrix.python-version }}, ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -19,6 +23,7 @@ jobs:
         # Lower bound of pyproject.toml's requires-python, plus the version this repo is
         # actually developed against — not a full matrix of everything in between.
         python-version: ["3.11", "3.13"]
+        shard: [1, 2, 3]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -53,11 +58,18 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Run tests
+        env:
+          OPENCLEAR_TEST_SHARD: ${{ matrix.shard }}/3
         # worksteal: idle workers take queued tests from busy ones, so a long test doesn't hold the run.
         # (Not `cond && '' || ...`: an empty string is false in an expression, so that always picks the right side.)
         run: pytest -n auto --dist worksteal -ra ${{ matrix.python-version != '3.13' && '-m "not browser"' || '' }}
 
-  test-postgres:
+  postgres-shard:
+    name: postgres shard (${{ matrix.shard }}/3)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     # The same suite against a real Postgres (tests/conftest.py's OPENCLEAR_TEST_DATABASE_URL):
     # the schema comes from `alembic upgrade head`, so this also proves the migrations work
     # on Postgres, and tests/test_postgres/ checks row-level security under a
@@ -101,4 +113,27 @@ jobs:
           pip install --no-deps -e .
 
       - name: Run tests against Postgres
+        env:
+          OPENCLEAR_TEST_SHARD: ${{ matrix.shard }}/3
         run: pytest -n auto --dist worksteal -ra -m "not browser"
+
+  # The checks the ruleset requires: one per suite, passing only when every shard of it passed.
+  test:
+    name: test (${{ matrix.python-version }})
+    if: always()
+    needs: shard
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: All shards passed
+        run: test "${{ needs.shard.result }}" = success
+
+  test-postgres:
+    if: always()
+    needs: postgres-shard
+    runs-on: ubuntu-latest
+    steps:
+      - name: All shards passed
+        run: test "${{ needs.postgres-shard.result }}" = success
