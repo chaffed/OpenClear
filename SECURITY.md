@@ -59,3 +59,8 @@ reasonable time to fix the problem before anything is made public.
 
 See the [risk profile](docs/security/risk-profile.md), the [threat model](docs/security/threat-model.md),
 and [OWASP_PLAN.md](plans/OWASP_PLAN.md) for the ASVS 5.0 target and how it's checked.
+
+A ZAP active scan runs every week. When it finds something of medium risk or worse, it opens an
+issue that names no vulnerable request, and keeps the full reports with the run for 30 days,
+encrypted to the maintainers' scan key ([ADR 0002](docs/adr/0002-security-gaps-stay-private-until-fixed.md)).
+Maintainers read them with `scripts/open_scan_evidence.sh <run id>`.
