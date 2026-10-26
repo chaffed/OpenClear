@@ -62,11 +62,35 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: python3 scripts/zap_scan.py --network zapnet --target http://openclear-zap:8000 --active --minutes 5 --summary zap-summary.md
 
+      # The full reports, encrypted to the maintainers' scan key (plans/SCAN_EVIDENCE_PLAN.md): the
+      # repository is public, so the log and the issue name no vulnerable request, but the evidence
+      # is kept. Anyone can download the artifact; only the YubiKey or the paper key can read it.
+      - name: Encrypt the evidence
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && hashFiles('zap-summary.md') != ''
+        run: |
+          sudo apt-get install -y age
+          tar -czf - .zap | age -R .github/scan-recipients.txt -o zap-evidence.tar.gz.age
+
+      - name: Keep the encrypted evidence with the run
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && hashFiles('zap-summary.md') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: zap-evidence
+          path: zap-evidence.tar.gz.age
+          retention-days: 30
+
       - name: Open an issue for what the active scan found
         if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && hashFiles('zap-summary.md') != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          {
+            echo
+            echo "The full reports are kept encrypted with [the run]($RUN_URL) for 30 days (artifact \`zap-evidence\`)."
+            echo "Read them with \`scripts/open_scan_evidence.sh $RUN\` and the scan key's YubiKey or paper key."
+          } >> zap-summary.md
           gh issue create --title "ZAP active scan: findings ($(date -u +%Y-%m-%d))" --body-file zap-summary.md --label needs-triage
 
   crs:

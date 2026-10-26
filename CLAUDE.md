@@ -87,7 +87,8 @@ Then check `https://openclear-sandbox.fly.dev/health`, the version in `/openapi.
 `scripts/edge_check.py https://openclear-sandbox.fly.dev --expect-ip <your IP>`.
 
 ## Live checks against real tools (not in the suite)
-`scripts/siem_live_check.py` (Splunk, syslog-ng) · `scripts/sso_live_check.py` (Keycloak, OIDC and
+`scripts/open_scan_evidence.sh <run id>` decrypts a ZAP run's evidence (the YubiKey, or `--paper`;
+plans/SCAN_EVIDENCE_PLAN.md) · `scripts/siem_live_check.py` (Splunk, syslog-ng) · `scripts/sso_live_check.py` (Keycloak, OIDC and
 SAML) · `scripts/edge_check.py`. Port 18080 is taken by the Moov ACH container.
 
 ## Agent skills

@@ -11,5 +11,10 @@ exploitable tells an attacker where to look, and banks in production can't patch
 an attacker reads. Keeping everything private was rejected because banks' reviewers need the
 crosswalk itself, not a promise under NDA.
 
+The weekly ZAP active scan runs in public too. Its log and the issue it opens name no vulnerable
+request; the full reports are kept with the run, encrypted to the maintainers' scan key, which only
+a YubiKey or a paper key in a safe can unlock (plans/SCAN_EVIDENCE_PLAN.md). Anyone can download
+them; nobody else can read them.
+
 Reports come in through GitHub private vulnerability reporting. There's no `security@`
 address until OpenClear has a domain of its own.
