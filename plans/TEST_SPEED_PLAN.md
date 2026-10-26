@@ -27,6 +27,13 @@ drew it:
   in a conftest hook: no new dependency. `scripts/run_tests.sh postgres` takes the same option.
 - **TS-D4. Only the system packages the tests need** in the Postgres job.
 - **TS-D5. Short timeouts in tests** that wait on something absent (the Redis limiter test).
+- **TS-D8. A prebuilt CI image, so CI never runs `apt`** (the product owner, 2026-10-26). An image
+  with Tesseract, WeasyPrint's libraries, the Postgres client and Chromium's system libraries,
+  built from a Dockerfile in the repo, published to GitHub's container registry and pinned by
+  digest in `tests.yml`. It's rebuilt weekly and when its Dockerfile changes; each build gets an
+  SBOM and a vulnerability scan, like the release image. The browser tests use the Google Chrome
+  already on GitHub's runners (Playwright's `chrome` channel), chosen in `tests/conftest.py` for CI
+  only; locally they keep Playwright's own Chromium.
 - **TS-D6. Not now:** larger paid runners; skipping suites for docs-only changes (the required
   checks must still report, which needs care).
 - **TS-D7. Measure.** Each stage records CI's wall time before and after in the log below. Aim:
@@ -38,8 +45,9 @@ drew it:
 |---|---|---|
 | TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | Done (#47) |
 | TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
-| TS3 | Shard every CI suite (both Python versions and Postgres) in three | In review |
+| TS3 | Shard every CI suite (both Python versions and Postgres) in three | Done (#52) |
 | TS4 | Short timeouts; measure and record | |
+| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and weekly build with SBOM and scan; `tests.yml` runs in it; Chrome for the browser tests | |
 
 ## Progress log
 
@@ -77,3 +85,8 @@ drew it:
   so the ruleset is unchanged. Not done: TS-D4's trim (the shards still need Tesseract and the PDF
   libraries, for OCR and PDF tests), and sharding `run_tests.sh postgres` (its workers create test
   databases by name, so local shards side by side would collide).
+- 2026-10-26: TS3 in CI (#52): the tests take 1.9–4.1 min per shard, against 6–8½ min per suite
+  before. But the run took ~14¾ min: setup, not tests. `apt-get` took 0.1–0.4 min in most jobs and
+  2.2–2.9 min in three, and the Chromium install (`--with-deps`, which also runs `apt`) 0.3 min in
+  most and 6.2 min in one: a slow Ubuntu mirror, random per runner, and nine jobs make one slow job
+  likelier. Typical runs should take about 5 min; TS5 removes `apt` from CI to end the variance.
