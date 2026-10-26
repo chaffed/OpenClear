@@ -93,7 +93,6 @@ drew it:
   2.2–2.9 min in three, and the Chromium install (`--with-deps`, which also runs `apt`) 0.3 min in
   most and 6.2 min in one: a slow Ubuntu mirror, random per runner, and nine jobs make one slow job
   likelier. Typical runs should take about 5 min; TS5 removes `apt` from CI to end the variance.
-
 - 2026-10-26: TS5a. `ci/Dockerfile` and `.github/workflows/ci-image.yml`. The image is 1.41 GB
   with only the headless Chromium (2.03 GB with the full browser). The whole SQLite suite run inside
   it passes as CI's 3.13 job does (2241 passed, 58 skipped), and no skip is for Node, Chromium,
