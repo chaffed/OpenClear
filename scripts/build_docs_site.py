@@ -11,6 +11,7 @@ site, and built with MkDocs (Material theme) into ./site.
     python scripts/build_docs_site.py --serve    # live preview"""
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -142,7 +143,9 @@ def build(serve: bool = False, out: Path = ROOT / "site") -> int:
         command = [sys.executable, "-m", "mkdocs", "serve" if serve else "build", "-f", str(config)]
         if not serve:
             command += ["--clean"]
-        return subprocess.call(command)
+        # mkdocs-material 9.8 announces its end of life (5 May 2027) on every build; we know, and
+        # the move to its successor, Zensical, is planned (plans/THIRD_PARTY_PLAN.md).
+        return subprocess.call(command, env={**os.environ, "NO_MKDOCS_2_WARNING": "1"})
 
 
 def main() -> int:

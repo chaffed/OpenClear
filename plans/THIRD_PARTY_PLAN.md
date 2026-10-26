@@ -47,3 +47,7 @@ packages in the image and the two vendored JavaScript files. What's missing:
 ## Progress log
 
 - 2026-10-23: Plan written with the product owner's decisions TP-D1 to TP-D6.
+- 2026-10-26: **Follow-up:** mkdocs-material 9.8 announces its end of life on 5 May 2027, with
+  Zensical, by the same team, as its successor. The docs site (`scripts/build_docs_site.py`) moves
+  to Zensical before then; until then the build sets `NO_MKDOCS_2_WARNING=1`, and its test fails
+  only on MkDocs' own warning lines, not on a banner that mentions the word.
