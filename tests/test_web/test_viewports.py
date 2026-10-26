@@ -57,6 +57,19 @@ VIEWPORTS = {360: 780, 768: 1024, 1024: 768, 1280: 800}  # width: height
 REFERENCE_WIDTH = 1280
 TOLERANCE = 24  # per colour channel: anti-aliasing varies a little between runs
 TOUCH_TARGET = 44
+# Each width's pages run as this many tests, dealt in turn (the 1st, 4th, 7th... to the first), so
+# no one test holds a run for long and the heavy pages spread (plans/TEST_SPEED_PLAN.md TS-D2).
+PARTS = 3
+# Pages that share state, kept in one part in their order: opening the control pages records control
+# results the others then show.
+TOGETHER = ("control_panel", "controls", "control_deviations", "control_check")
+
+
+def _pages(part: int) -> list[tuple[str, str, str]]:
+    """This part's pages: every PARTS-th one, and the TOGETHER pages all in the first's part."""
+    first = next(i for i, (name, _p, _w) in enumerate(PAGES) if name == TOGETHER[0])
+    return [page for i, page in enumerate(PAGES)
+            if (first % PARTS if page[0] in TOGETHER else i % PARTS) == part]
 # (name, path, who): the bank's administrator, or the customer's (People is theirs).
 PAGES = [
     ("dashboard", "/ui/", "bank"),
@@ -438,26 +451,36 @@ def _write_report(found: dict, details: dict) -> None:
     REPORT.write_text("\n".join(lines).rstrip() + "\n")
 
 
-def _write_width(width: int, found: dict, details: dict) -> None:
-    """Writing the baseline: this width's problems replace its entries in baseline.json, and
-    its details are kept in .openclear-run/viewport-results/ until all four widths have been
-    written, when REPORT.md is written from them (the widths run as separate tests)."""
-    baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
-    for name, _path, _who in PAGES:
-        baseline.setdefault(name, {})[str(width)] = found[name]
-    BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+def _write_part(width: int, part: int, found: dict, details: dict) -> None:
+    """Writing the baseline: each test's results are kept in .openclear-run/viewport-results/
+    until every width and part has been written; the last one writes baseline.json and REPORT.md
+    from them all (they run as separate tests, side by side, so none writes the shared files alone)."""
+    import fcntl
+
     RESULTS.mkdir(parents=True, exist_ok=True)
-    (RESULTS / f"{width}.json").write_text(json.dumps(details, ensure_ascii=False))
-    written = {w: RESULTS / f"{w}.json" for w in VIEWPORTS}
-    if all(f.exists() for f in written.values()):
-        by_width = {w: json.loads(f.read_text()) for w, f in written.items()}
+    with open(RESULTS / ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        (RESULTS / f"{width}-{part}.json").write_text(json.dumps({"found": found, "details": details}, ensure_ascii=False))
+        written = [RESULTS / f"{w}-{p}.json" for w in VIEWPORTS for p in range(PARTS)]
+        if not all(f.exists() for f in written):
+            return
+        baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
+        by_width: dict[int, dict] = {w: {} for w in VIEWPORTS}
+        for w in VIEWPORTS:
+            for p in range(PARTS):
+                result = json.loads((RESULTS / f"{w}-{p}.json").read_text())
+                for name, problems in result["found"].items():
+                    baseline.setdefault(name, {})[str(w)] = problems
+                by_width[w].update(result["details"])
+        BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
         _write_report(baseline, {name: {str(w): by_width[w][name] for w in VIEWPORTS} for name, _path, _who in PAGES})
-        shutil.rmtree(RESULTS)
+    shutil.rmtree(RESULTS)
 
 
+@pytest.mark.parametrize("part", range(PARTS), ids=lambda part: f"part{part + 1}")
 @pytest.mark.parametrize("width", list(VIEWPORTS), ids=lambda width: f"{width}px")
-def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, tenant_factory):
-    """One width per test, so the four run side by side under xdist."""
+def test_key_pages_on_phones_tablets_and_desktops(width, part, client, db_session, tenant_factory):
+    """One width and a third of the pages per test, so they run side by side under xdist."""
     try:
         runner = playwright.sync_playwright().start()
         browser = runner.chromium.launch()
@@ -474,8 +497,11 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
         route.fulfill(status=response.status_code, headers=dict(response.headers), body=response.content)
 
     writing = bool(os.environ.get("OPENCLEAR_VIEWPORT_WRITE_BASELINE"))
-    if width == REFERENCE_WIDTH:
-        shutil.rmtree(DIFFS, ignore_errors=True)
+    pages = _pages(part)
+    if width == REFERENCE_WIDTH:  # this part's old differences only: the other parts run alongside
+        for name, _path, _who in pages:
+            for old in DIFFS.glob(f"{name}.*.png"):
+                old.unlink(missing_ok=True)
     axe = (FIXTURES / "axe" / "axe.min.js").read_text()
     found: dict[str, list[str]] = {}
     details: dict[str, list[str]] = {}
@@ -488,7 +514,7 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
         context.route("http://testserver/**", serve)
         page = context.new_page()
         page.on("pageerror", lambda error: errors.append(f"{width}px {page.url}: {error}"))
-        for name, path, who in PAGES:
+        for name, path, who in pages:
             limiter._hits.clear()  # ~50 pages, each with its scripts: past the per-minute limit
             if who != signed_in:
                 if who == "platform":
@@ -531,7 +557,7 @@ def test_key_pages_on_phones_tablets_and_desktops(width, client, db_session, ten
         runner.stop()
 
     if writing:
-        _write_width(width, found, details)
+        _write_part(width, part, found, details)
         return
     assert not errors, "Script errors:\n" + "\n".join(errors)
     baseline = json.loads(BASELINE.read_text()) if BASELINE.exists() else {}
