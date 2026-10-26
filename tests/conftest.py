@@ -66,6 +66,38 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.browser)
 
 
+# How much longer a browser test takes than an ordinary one, for balancing shards.
+_BROWSER_WEIGHT = 25
+
+
+@pytest.hookimpl(tryfirst=True)  # before pytest-xdist's, which reports the worker's tests to the controller
+def pytest_collection_finish(session):
+    """Runs one shard of the suite when OPENCLEAR_TEST_SHARD is "k/n" (plans/TEST_SPEED_PLAN.md
+    TS-D3): CI runs the shards side by side. Each test file goes whole to one shard (its module
+    fixtures stay together), largest first to the lightest shard, weighing a browser test as
+    _BROWSER_WEIGHT ordinary ones. Every shard computes the same split from the same collection,
+    after -m has deselected what it will (in pytest_collection_modifyitems, which comes first), so
+    together they run each test exactly once."""
+    shard = os.environ.get("OPENCLEAR_TEST_SHARD")
+    if not shard:
+        return
+    k, n = (int(part) for part in shard.split("/"))
+    if not 1 <= k <= n:
+        raise pytest.UsageError(f"OPENCLEAR_TEST_SHARD={shard!r}: expected k/n with 1 <= k <= n")
+    weights: dict[str, int] = {}
+    for item in session.items:
+        weights[item.nodeid.split("::")[0]] = weights.get(item.nodeid.split("::")[0], 0) + (
+            _BROWSER_WEIGHT if item.get_closest_marker("browser") else 1)
+    loads, owner = [0] * n, {}
+    for path in sorted(weights, key=lambda p: (-weights[p], p)):
+        lightest = loads.index(min(loads))
+        owner[path], loads[lightest] = lightest + 1, loads[lightest] + weights[path]
+    kept = [item for item in session.items if owner[item.nodeid.split("::")[0]] == k]
+    dropped = [item for item in session.items if owner[item.nodeid.split("::")[0]] != k]
+    session.config.hook.pytest_deselected(items=dropped)
+    session.items[:] = kept
+
+
 @pytest.fixture(autouse=True)
 def isolated_filesystem_settings(tmp_path, monkeypatch):
     """Every test gets its own throwaway directory for anything the app writes to disk

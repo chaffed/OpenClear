@@ -37,8 +37,8 @@ drew it:
 | Stage | What | Status |
 |---|---|---|
 | TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | Done (#47) |
-| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | In review |
-| TS3 | Shard the Postgres job and `run_tests.sh postgres`; trim its system packages | |
+| TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
+| TS3 | Shard every CI suite (both Python versions and Postgres) in three | In review |
 | TS4 | Short timeouts; measure and record | |
 
 ## Progress log
@@ -65,3 +65,15 @@ drew it:
   and screenshots unchanged, and the axe baseline's problems unchanged. The longest browser test
   fell from 26 s to 14 s; locally the suite's total is unchanged (136 s), since all eight workers
   are already busy. CI times to follow from the PR.
+- 2026-10-26: TS2 in CI: the 3.13 job's tests took 9 min 1 s (8 min 47 s before), so no gain: a
+  4-core runner queues the smaller pieces too. **Finding:** CI is slow because each runner is
+  small, not because of any test (the 3.11 job runs no browser test and still takes ~6 min). So
+  TS3 shards every suite, not only Postgres.
+- 2026-10-26: TS3. `OPENCLEAR_TEST_SHARD=k/n` runs one shard: `tests/conftest.py` gives each test
+  file whole to a shard, largest first to the lightest, a browser test weighing 25. Locally the
+  three shards run 794, 701 and 750 tests (37–59 s each), together exactly the full suite. CI runs
+  each suite in three shards side by side; the checks the ruleset requires (`test (3.11)`,
+  `test (3.13)`, `test-postgres`) are now summary jobs that pass only when all their shards did,
+  so the ruleset is unchanged. Not done: TS-D4's trim (the shards still need Tesseract and the PDF
+  libraries, for OCR and PDF tests), and sharding `run_tests.sh postgres` (its workers create test
+  databases by name, so local shards side by side would collide).
