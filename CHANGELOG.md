@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fixed: rate limiting with Redis fails open at once when Redis is down.** redis-py retries a
+  failed connection three times with up to 10 seconds of back-off by default, so while the
+  configured Redis was unreachable every request waited seconds before being allowed. The limiter
+  now makes one quick try.
+
 ## 1.30.1 — 2026-10-23
 
 - **Fixed: a customer's last service day is a day at the bank.** The earliest day the customer

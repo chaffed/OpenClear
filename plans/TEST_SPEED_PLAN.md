@@ -49,8 +49,8 @@ drew it:
 | TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | Done (#47) |
 | TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
 | TS3 | Shard every CI suite (both Python versions and Postgres) in three | Done (#52) |
-| TS4 | Short timeouts; measure and record | |
-| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | TS5a done (#54); TS5b in review |
+| TS4 | Short timeouts; measure and record | In review |
+| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | Done (#54, #55) |
 
 ## Progress log
 
@@ -103,3 +103,11 @@ drew it:
   no critical finding (two highs in the 3.11 base image's own setuptools and wheel, which the hashed
   lock replaces in each job). TS5b: every test job runs in the image by digest; no `apt-get` or
   `setup-python` left in `tests.yml`; Postgres is reached as `postgres`, not `localhost`.
+- 2026-10-27: TS5b in CI (#55): **5.2 min**, against ~10½ when this plan began; every shard 3.5–5.1
+  min, and the suites' counts unchanged (3.13: 2241, 3.11: 2196, Postgres: 2245). On `main` after
+  the merge one OCR test timed out (`Tesseract process timeout`): Tesseract starts an OpenMP thread
+  per core for every image, and with xdist's workers each doing OCR the threads crowd each other
+  out; `tests.yml` now sets `OMP_THREAD_LIMIT=1`. TS4: the Redis limiter test took 11 s because
+  redis-py 8 retries a failed connection three times with up to 10 s back-off; **that also held
+  every request for seconds in production while Redis was down** (a fail-open limiter), so the
+  limiter now makes one try (`Retry(NoBackoff(), 0)`), and the test checks it's quick.

@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+env:
+  # Tesseract runs OpenMP threads, one per core, for every image. With pytest-xdist's workers each
+  # running OCR at once, the threads crowd each other out and a small image can take over the
+  # 30-second OCR timeout (on main at 9ecc86e). One thread each; the workers are the parallelism.
+  OMP_THREAD_LIMIT: "1"
+
 jobs:
   # Each suite runs in three shards side by side (OPENCLEAR_TEST_SHARD; tests/conftest.py splits by
   # file). The jobs the ruleset requires, test (3.11), test (3.13) and test-postgres, are at the end:
