@@ -1,0 +1,117 @@
+# The image CI's tests run in (ci/Dockerfile; plans/TEST_SPEED_PLAN.md TS-D8), one per Python version
+# CI tests: built, given an SBOM, scanned, and published to ghcr.io/chaffed/openclear-ci. On a pull
+# request it's only built, to check the Dockerfile. Once tests.yml runs in the image, each published
+# build opens a pull request moving tests.yml's pinned digests to it, so the change is tested first.
+name: CI image
+
+on:
+  push:
+    branches: [main]
+    paths: [ci/**, .github/workflows/ci-image.yml]
+  pull_request:
+    branches: [main]
+    paths: [ci/**, .github/workflows/ci-image.yml]
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/chaffed/openclear-ci
+  SYFT_IMAGE: anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
+  GRYPE_IMAGE: anchore/grype:v0.121.0@sha256:621d56d1d68106b787022c81546f7e0a36202a25d1239f0c20195fab8c16f7ea
+
+jobs:
+  build:
+    name: build (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.11"
+            base: python:3.11-slim-bookworm@sha256:f06d01d4ba3f8ad5af45a3ec87df19c1d317d8e8961edc0fabda61811af6f7cf
+          - python-version: "3.13"
+            base: python:3.13-slim-bookworm@sha256:fa16c23a012723c24eef39cc755a27babbba16b711e5d1e6cf16225ad21637cd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Build
+        run: |
+          playwright=$(grep -oP '^playwright==\K[0-9.]+' requirements/dev.txt)
+          docker build --build-arg PYTHON_IMAGE="${{ matrix.base }}" --build-arg PLAYWRIGHT_VERSION="$playwright" \
+            -t "$IMAGE:py${{ matrix.python-version }}" ci/
+
+      - name: SBOM
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
+            "$IMAGE:py${{ matrix.python-version }}" -o cyclonedx-json > "openclear-ci-py${{ matrix.python-version }}.cdx.json"
+
+      # The image only runs CI's tests, never in production; it fails on a critical vulnerability with
+      # a fix, which a rebuild picks up.
+      - name: Scan
+        run: |
+          docker run --rm -v "$PWD:/w" "$GRYPE_IMAGE" "sbom:/w/openclear-ci-py${{ matrix.python-version }}.cdx.json" \
+            --only-fixed --fail-on critical
+
+      - name: Keep the SBOM with the run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: sbom-py${{ matrix.python-version }}
+          path: openclear-ci-py${{ matrix.python-version }}.cdx.json
+
+      - name: Publish
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:py${{ matrix.python-version }}"
+          docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:py${{ matrix.python-version }}" \
+            | tee "digest-py${{ matrix.python-version }}.txt"
+
+      - name: Keep the digest for the pull request
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: digest-py${{ matrix.python-version }}
+          path: digest-py${{ matrix.python-version }}.txt
+
+  # Moves tests.yml to the images just published, as a pull request, so they're tested before use.
+  # Does nothing until tests.yml names the image (the first switch is its own pull request).
+  pin:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Pin tests.yml to the new digests
+        run: |
+          for version in 3.11 3.13; do
+            digest=$(cat "digest-py$version.txt")
+            sed -i -E "s#ghcr.io/chaffed/openclear-ci@sha256:[0-9a-f]+(  \# py$version)#$digest\1#" .github/workflows/tests.yml
+          done
+          rm -f digest-*.txt
+          git diff --stat
+
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          branch: ci-image-refresh
+          title: "Move CI to the rebuilt test image"
+          commit-message: "Pin tests.yml to the rebuilt CI image"
+          body: |
+            `.github/workflows/ci-image.yml` rebuilt `ghcr.io/chaffed/openclear-ci` (each build's SBOM is
+            with its run, and it passed the scan). This moves `tests.yml` to the new digests; CI runs
+            in them here before they're used on `main`.

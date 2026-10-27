@@ -27,13 +27,16 @@ drew it:
   in a conftest hook: no new dependency. `scripts/run_tests.sh postgres` takes the same option.
 - **TS-D4. Only the system packages the tests need** in the Postgres job.
 - **TS-D5. Short timeouts in tests** that wait on something absent (the Redis limiter test).
-- **TS-D8. A prebuilt CI image, so CI never runs `apt`** (the product owner, 2026-10-26). An image
-  with Tesseract, WeasyPrint's libraries, the Postgres client and Chromium's system libraries,
-  built from a Dockerfile in the repo, published to GitHub's container registry and pinned by
-  digest in `tests.yml`. It's rebuilt weekly and when its Dockerfile changes; each build gets an
-  SBOM and a vulnerability scan, like the release image. The browser tests use the Google Chrome
-  already on GitHub's runners (Playwright's `chrome` channel), chosen in `tests/conftest.py` for CI
-  only; locally they keep Playwright's own Chromium.
+- **TS-D8. A prebuilt CI image, so CI never runs `apt`** (the product owner, 2026-10-26).
+  `ci/Dockerfile`: one image per Python version CI tests, on the official slim Python images pinned
+  by digest, with Tesseract, WeasyPrint's libraries, git, Node 22 (the TypeScript SDK's tests need
+  22.18+) and Playwright's headless Chromium with its system libraries, at the locked Playwright
+  version. `.github/workflows/ci-image.yml` builds it when `ci/` changes and weekly, gives it an SBOM
+  (Syft) and a scan (Grype; fails on a critical vulnerability with a fix), publishes it to
+  `ghcr.io/chaffed/openclear-ci`, and opens a pull request moving `tests.yml` to the new digests.
+  `tests.yml` runs its jobs in the image; when the lock moves to a newer Playwright, a job downloads
+  the matching Chromium (seconds, no `apt`) until the next build. (Not the runner's Google Chrome,
+  as first planned: a job inside a container can't see it.)
 - **TS-D6. Not now:** larger paid runners; skipping suites for docs-only changes (the required
   checks must still report, which needs care).
 - **TS-D7. Measure.** Each stage records CI's wall time before and after in the log below. Aim:
@@ -47,7 +50,7 @@ drew it:
 | TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
 | TS3 | Shard every CI suite (both Python versions and Postgres) in three | Done (#52) |
 | TS4 | Short timeouts; measure and record | |
-| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and weekly build with SBOM and scan; `tests.yml` runs in it; Chrome for the browser tests | |
+| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | TS5a in review |
 
 ## Progress log
 
@@ -90,3 +93,8 @@ drew it:
   2.2–2.9 min in three, and the Chromium install (`--with-deps`, which also runs `apt`) 0.3 min in
   most and 6.2 min in one: a slow Ubuntu mirror, random per runner, and nine jobs make one slow job
   likelier. Typical runs should take about 5 min; TS5 removes `apt` from CI to end the variance.
+- 2026-10-26: TS5a. `ci/Dockerfile` and `.github/workflows/ci-image.yml`. The image is 1.41 GB
+  with only the headless Chromium (2.03 GB with the full browser). The whole SQLite suite run inside
+  it passes as CI's 3.13 job does (2241 passed, 58 skipped), and no skip is for Node, Chromium,
+  Tesseract or PDFs. Two pull requests, since `tests.yml` can't name an image before it exists:
+  TS5a builds and publishes it, TS5b moves `tests.yml` into it.
