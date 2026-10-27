@@ -50,7 +50,7 @@ drew it:
 | TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
 | TS3 | Shard every CI suite (both Python versions and Postgres) in three | Done (#52) |
 | TS4 | Short timeouts; measure and record | |
-| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | TS5a in review |
+| TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | TS5a done (#54); TS5b in review |
 
 ## Progress log
 
@@ -98,3 +98,8 @@ drew it:
   it passes as CI's 3.13 job does (2241 passed, 58 skipped), and no skip is for Node, Chromium,
   Tesseract or PDFs. Two pull requests, since `tests.yml` can't name an image before it exists:
   TS5a builds and publishes it, TS5b moves `tests.yml` into it.
+- 2026-10-27: TS5a merged (#54) and published: `ghcr.io/chaffed/openclear-ci`, public (anonymous
+  pulls work), py3.11 `sha256:2bae1102…`, py3.13 `sha256:921ef808…`; each build ~40 s, scanned with
+  no critical finding (two highs in the 3.11 base image's own setuptools and wheel, which the hashed
+  lock replaces in each job). TS5b: every test job runs in the image by digest; no `apt-get` or
+  `setup-python` left in `tests.yml`; Postgres is reached as `postgres`, not `localhost`.
