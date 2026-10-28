@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
 {% block title %}{{ "Edit Customer" if customer else "New Customer" }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this form{% endblock %}
 {% block help_body %}
@@ -41,6 +42,8 @@
 
     <h2>Notes</h2>
     <label>Notes (optional) <textarea name="notes">{{ customer.notes if customer else '' }}</textarea></label>
+
+    {{ cf.inputs(custom_fields, custom_values, form) }}
 
     <button type="submit">{{ icon("save" if customer else "add") }}{{ "Save" if customer else "Create" }}</button>
   </form>

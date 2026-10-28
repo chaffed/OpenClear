@@ -279,4 +279,12 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "accounts' items are refused; deletion waits 90 days and a legal hold; it follows the schema's foreign keys from "
            "that one customer, within its bank, and keeps the bank's action log; a signed certificate.",
            "OC-SI-13; services/customer_offboarding_service.py; plans/CUSTOMER_OFFBOARDING_PLAN.md", "Mitigated"),
+    Threat("OC-T27", "I", "Customer ↔ bank", "A bank's internal custom field (an officer code) reaches a customer's people, or the "
+           "service provider's reference on a bank reaches the bank; or a field's value lands in a core file or a spreadsheet "
+           "as a formula.",
+           "A customer's session reads values through one function that joins its own records and keeps only fields marked "
+           "shown to the customer, under row-level security and per-account access; the provider's values are in tables with "
+           "no tenant policy, read only by the provider's code and shown to a bank only when marked; values reach a decision "
+           "destination only when it names them; every CSV cell is formula-escaped.",
+           "services/custom_field_service.py; db/account_scope.py; plans/CUSTOM_FIELDS_PLAN.md CF-D3, CF-D7, CF-D13", "Mitigated"),
 )

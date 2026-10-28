@@ -123,6 +123,7 @@ NIST_TITLES = {
     "SI-7(6)": "Cryptographic Protection",
     "SI-10": "Information Input Validation",
     "SI-12": "Information Management and Retention",
+    "PT-2": "Authority to Process Personally Identifiable Information",
     "PS-3": "Personnel Screening",
     "SR-6": "Supplier Assessments and Reviews",
 }
@@ -335,6 +336,13 @@ CUECS: tuple[Cuec, ...] = (
          "OpenClear ends the customer's sign-in and refuses its accounts' items after the last service day, and deletes its "
          "data 90 days later with a signed certificate, unless it's on legal hold.",
          "attested", None, "Per event", "Customers → a customer's Offboarding; Customers → Deleted customers", related=("AC-2",)),
+    Cuec("B-SI-12-03", "bank", "SI-12", "Keep custom fields to what positive pay needs",
+         "Define custom fields on customers and accounts only for what the service needs (identifiers, codes), never a "
+         "taxpayer id, a password or personal data with no use here; mark a field shown to the customer only when the "
+         "customer should see it; and review the fields yearly.",
+         "OpenClear limits fields to 25 per kind, records every definition and value change with before and after, shows a "
+         "customer only fields marked for it, and says what not to store on the page where fields are defined.",
+         "attested", None, "Yearly", "Settings → Custom fields; the action log", related=("PT-2", "AC-3")),
     Cuec("B-RA-3-04", "bank", "RA-3", "Screen for sanctions where the money moves",
          "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT "
          "parties for OFAC sanctions in the core, teller and ACH systems. A pay decision in OpenClear isn't an OFAC clearance.",

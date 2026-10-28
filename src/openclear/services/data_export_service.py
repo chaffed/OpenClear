@@ -124,6 +124,34 @@ def _teller_verification_query(session: Session, tenant_id: uuid.UUID, customer_
     return query
 
 
+def _custom_field_value_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None):
+    """A bank's custom-field values; for a customer's own export, those on its records for fields
+    shown to the customer (plans/CUSTOM_FIELDS_PLAN.md CF-D3)."""
+    from sqlalchemy import or_, select
+
+    from openclear.domain.account import Account
+    from openclear.domain.custom_field import CustomField, CustomFieldValue
+
+    query = select(CustomFieldValue).where(CustomFieldValue.tenant_id == tenant_id).order_by(CustomFieldValue.updated_at)
+    if customer_id is not None:
+        shown = select(CustomField.id).where(CustomField.tenant_id == tenant_id, CustomField.shown_to_customer.is_(True))
+        own_accounts = select(Account.id).where(Account.tenant_id == tenant_id, Account.customer_id == customer_id)
+        query = query.where(CustomFieldValue.field_id.in_(shown),
+                            or_(CustomFieldValue.customer_id == customer_id, CustomFieldValue.account_id.in_(own_accounts)))
+    return query
+
+
+def _custom_field_query(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None):
+    from sqlalchemy import select
+
+    from openclear.domain.custom_field import CustomField
+
+    query = select(CustomField).where(CustomField.tenant_id == tenant_id).order_by(CustomField.owner, CustomField.position)
+    if customer_id is not None:
+        query = query.where(CustomField.shown_to_customer.is_(True))
+    return query
+
+
 def _users_dicts(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None) -> list[dict]:
     """Custom composition, not _row_to_dict: pulls in the user's email and the
     membership's resolved security group NAME (never the whole security_group table for
@@ -169,6 +197,8 @@ _SCOPED_EXPORTERS: list[tuple[str, Any]] = [
     ("decisions", lambda s, t, c: _stream(s, _decision_query(s, t, c))),
     ("check_images", lambda s, t, c: _stream(s, _check_image_query(s, t, c))),
     ("teller_verifications", lambda s, t, c: _stream(s, _teller_verification_query(s, t, c))),
+    ("custom_fields", lambda s, t, c: _stream(s, _custom_field_query(s, t, c))),
+    ("custom_field_values", lambda s, t, c: _stream(s, _custom_field_value_query(s, t, c))),
     ("users", _users_dicts),
     ("sso_connections", lambda s, t, c: [_row_to_dict(r) for r in SsoConnectionRepository(s, t).list(customer_id=c)]),
     ("sso_group_mappings", _sso_group_mapping_dicts),

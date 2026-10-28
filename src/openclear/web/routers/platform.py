@@ -371,6 +371,125 @@ def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get
     return see_other("/ui/platform/host-attestations", flash=f"{attestation.cuec_id} accepted and signed.")
 
 
+def _platform_fields_page(request: Request, db: Session, user: User, *, editing=None, error: str | None = None, status_code: int = 200) -> HTMLResponse:
+    from openclear.services import change_request_service, custom_field_service
+
+    fields = custom_field_service.list_platform_fields(db, include_archived=True)
+    banks = operator_service.banks(db, include_sandboxes=True)
+    waiting = [c for c in change_request_service.pending(db, None) if c.kind.startswith("platform.custom_field.")]
+    return render_template(request, "platform/custom_fields.html", user=user, fields=fields, banks=banks, editing=editing, error=error,
+                           values=custom_field_service.platform_values_for(db, [b.tenant.id for b in banks]),
+                           types=list(custom_field_service.TYPES), max_fields=custom_field_service.MAX_FIELDS, waiting=waiting,
+                           status_code=status_code)
+
+
+@router.get("/custom-fields")
+def platform_custom_fields(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """The provider's own fields on banks (plans/CUSTOM_FIELDS_PLAN.md CF3): an ERP id, a contract
+    reference. Defining one takes two operators; a bank's values are data, set by one."""
+    return _platform_fields_page(request, db, user)
+
+
+@router.get("/custom-fields/{field_id}")
+def edit_platform_custom_field(request: Request, field_id: uuid.UUID, db: Session = Depends(get_db),
+                               user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    from openclear.domain.custom_field import PlatformCustomField
+
+    editing = db.get(PlatformCustomField, field_id)
+    if editing is None:
+        return see_other("/ui/platform/custom-fields")
+    return _platform_fields_page(request, db, user, editing=editing)
+
+
+@router.post("/custom-fields")
+async def save_platform_custom_field(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                                     _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    from openclear.domain.custom_field import PlatformCustomField
+    from openclear.services import change_request_service
+
+    form = await request.form()
+    field_id = str(form.get("field_id") or "")
+    payload = {
+        "field_id": field_id or None, "key": str(form.get("key") or "").strip(), "label": str(form.get("label") or "").strip(),
+        "field_type": str(form.get("field_type") or ""),
+        "max_length": int(form.get("max_length")) if str(form.get("max_length") or "").isdigit() else None,
+        "options": [o.strip() for o in str(form.get("options") or "").splitlines() if o.strip()],
+        "required": bool(form.get("required")), "unique": bool(form.get("unique")), "help_text": str(form.get("help_text") or "").strip(),
+        "shown_to_bank": bool(form.get("shown_to_bank")),
+    }
+    if field_id:
+        existing = db.get(PlatformCustomField, uuid.UUID(field_id)) if _is_uuid(field_id) else None
+        if existing is None:
+            return see_other("/ui/platform/custom-fields")
+        payload["key"] = existing.key
+    try:
+        change_request_service.request_or_apply(db, "platform.custom_field.save", payload, tenant_id=None, user_id=user.id)
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return _platform_fields_page(request, db, user, error=str(exc), status_code=422)
+    db.commit()
+    return see_other("/ui/platform/changes", flash="Another operator makes it by approving it under Changes.")
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False
+
+
+@router.post("/custom-fields/{field_id}/archive")
+def archive_platform_custom_field(request: Request, field_id: uuid.UUID, archived: str = Form("1"), db: Session = Depends(get_db),
+                                  user: User = Depends(platform_session.require_operator), _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    from openclear.services import change_request_service
+
+    try:
+        change_request_service.request_or_apply(db, "platform.custom_field.archive", {"field_id": str(field_id), "archived": archived == "1"},
+                                                tenant_id=None, user_id=user.id)
+    except (change_request_service.ChangeRequestError, ValueError) as exc:
+        db.rollback()
+        return _platform_fields_page(request, db, user, error=str(exc), status_code=422)
+    db.commit()
+    return see_other("/ui/platform/changes", flash="Another operator makes it by approving it under Changes.")
+
+
+@router.get("/banks/{tenant_id}/fields")
+def bank_fields_form(request: Request, tenant_id: uuid.UUID, db: Session = Depends(get_db),
+                     user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """A bank's values of the provider's fields: data, so one operator sets them (CF-D10)."""
+    from openclear.services import custom_field_service
+
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return see_other("/ui/platform")
+    return render_template(request, "platform/bank_fields.html", user=user, bank=bank, error=None, form=None,
+                           custom_fields=custom_field_service.list_platform_fields(db),
+                           custom_values=custom_field_service.platform_values_for(db, [bank.id], include_archived=False)[bank.id])
+
+
+@router.post("/banks/{tenant_id}/fields")
+async def save_bank_fields(request: Request, tenant_id: uuid.UUID, db: Session = Depends(get_db),
+                           user: User = Depends(platform_session.require_operator), _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    from openclear.services import custom_field_service
+
+    bank = operator_service.tenant_by_id(db, tenant_id)
+    if bank is None:
+        return see_other("/ui/platform")
+    form = await request.form()
+    fields = custom_field_service.list_platform_fields(db)
+    values = {f.key: str(form.get(f"cf_{f.key}") or "") for f in fields}
+    try:
+        custom_field_service.set_platform_values(db, bank.id, values, user_id=user.id)
+    except custom_field_service.CustomFieldError as exc:
+        db.rollback()
+        return render_template(request, "platform/bank_fields.html", user=user, bank=bank, error=str(exc), form=dict(form),
+                               custom_fields=fields, custom_values=custom_field_service.platform_values_for(db, [bank.id], include_archived=False)[bank.id],
+                               status_code=422)
+    db.commit()
+    return see_other(f"/ui/platform/banks/{bank.id}/fields", flash="Saved.")
+
+
 @router.get("/incidents")
 def incidents(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     """Incident and maintenance notices to banks (services/incident_service.py; REGULATORY_PLAN.md RG3)."""

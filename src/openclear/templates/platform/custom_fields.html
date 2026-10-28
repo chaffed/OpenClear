@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Custom fields on banks — OpenClear platform{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card">
+  <h1>Your fields on banks</h1>
+  <p>Your own references for each bank: an ERP id, a contract number. A bank sees a field only if it's marked
+    <em>shown to the bank</em>, read-only, in its Settings. Defining or changing a field takes two operators; a bank's
+    values are set by one, from its row on the Platform page. At most {{ max_fields }} fields.</p>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% for c in waiting %}<p class="flash flash-warn">Waiting for a second operator: {{ c.summary }}. It's under <a href="/ui/platform/changes">Changes</a>.</p>{% endfor %}
+  {% if fields %}
+  <table>
+    <thead><tr><th>Field</th><th>Key</th><th>Type</th><th>Rules</th>{% for b in banks %}<th>{{ b.tenant.name }}</th>{% endfor %}<th></th></tr></thead>
+    <tbody>
+      {% for f in fields %}
+      <tr{% if f.archived_at %} class="text-muted"{% endif %}>
+        <td>{{ f.label }}{% if f.archived_at %} <span class="badge">archived</span>{% endif %}</td>
+        <td><code>{{ f.key }}</code></td>
+        <td>{{ f.field_type }}{% if f.field_type == "choice" %}: {{ f.options | rejectattr("retired") | map(attribute="value") | join(", ") }}{% endif %}</td>
+        <td>{{ ["required" if f.required, "unique" if f.unique, "shown to the bank" if f.shown_to_bank] | select | join(", ") or "—" }}</td>
+        {% for b in banks %}<td>{{ values.get(b.tenant.id, {}).get(f.key) or "—" }}</td>{% endfor %}
+        <td class="cell-actions">
+          {% if not f.archived_at %}<a href="/ui/platform/custom-fields/{{ f.id }}">Edit</a>{% endif %}
+          <form method="post" action="/ui/platform/custom-fields/{{ f.id }}/archive" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="archived" value="{{ '0' if f.archived_at else '1' }}">
+            <button type="submit" class="link-button">{{ "Restore" if f.archived_at else "Archive" }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint">None yet.</p>
+  {% endif %}
+</div>
+<div class="card card-narrow">
+  <h2>{{ "Change " ~ editing.label if editing else "Add a field" }}</h2>
+  <form method="post" action="/ui/platform/custom-fields">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if editing %}<input type="hidden" name="field_id" value="{{ editing.id }}">{% endif %}
+    <label>Key <input type="text" name="key" value="{{ editing.key if editing else '' }}" pattern="[a-z][a-z0-9_]{0,39}" maxlength="40" required{% if editing %} readonly{% endif %}>
+      <span class="hint">A lowercase letter, then lowercase letters, digits and underscores. Never changes.</span></label>
+    <label>Label <input type="text" name="label" value="{{ editing.label if editing else '' }}" maxlength="255" required></label>
+    <label>Type
+      <select name="field_type">{% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+      {% if editing %}<span class="hint">Fixed once the field has values.</span>{% endif %}
+    </label>
+    <label>Maximum length (text) <input type="number" name="max_length" min="1" max="255" value="{{ editing.max_length or '' if editing else '' }}"></label>
+    <label>Options (choice), one per line <textarea name="options" rows="3">{{ (editing.options or []) | rejectattr("retired") | map(attribute="value") | join("\n") if editing else "" }}</textarea></label>
+    <label>Help text (optional) <input type="text" name="help_text" value="{{ editing.help_text or '' if editing else '' }}" maxlength="500"></label>
+    <label><input type="checkbox" name="required" value="1"{% if editing and editing.required %} checked{% endif %}> Required in the form</label>
+    <label><input type="checkbox" name="unique" value="1"{% if editing and editing.unique %} checked{% endif %}> Unique across banks (text)</label>
+    <label><input type="checkbox" name="shown_to_bank" value="1"{% if editing and editing.shown_to_bank %} checked{% endif %}> Shown to the bank (read-only)</label>
+    <div class="form-actions">
+      <button type="submit">{{ icon("send") }}Ask for approval</button>
+      {% if editing %}<a href="/ui/platform/custom-fields" class="button secondary">Cancel</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

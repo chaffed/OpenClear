@@ -54,6 +54,7 @@ class Evidence:
     paid_item_id: uuid.UUID | None = None
     deadline: datetime | None = None
     deadline_outcome: str | None = None  # what happens at the deadline, in words
+    custom_fields: list[tuple[str, str]] = field(default_factory=list)  # (label, value) of the account's and customer's
 
 
 _DEADLINE_OUTCOMES = {
@@ -70,9 +71,27 @@ def _account_and_customer(session: Session, item: ExceptionItem, scope: uuid.UUI
     account = AccountRepository(session, item.tenant_id, scope).get(account_id)
     if account is not None:
         evidence.account_label = f"{account.account_number} ({account.name})"
+        evidence.custom_fields += _custom_facts(session, item.tenant_id, "account", account.id, scope)
     if item.customer_id is not None:
         customer = session.get(Customer, item.customer_id)
         evidence.customer_name = customer.name if customer is not None and customer.tenant_id == item.tenant_id else None
+        if evidence.customer_name:
+            evidence.custom_fields += _custom_facts(session, item.tenant_id, "customer", customer.id, scope)
+
+
+def _custom_facts(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uuid.UUID, scope: uuid.UUID | None) -> list[tuple[str, str]]:
+    """The record's custom fields for the person deciding (plans/CUSTOM_FIELDS_PLAN.md CF-D6); a
+    customer's person sees only what's shown to the customer."""
+    from openclear.services import custom_field_service
+
+    values = custom_field_service.values_of(session, tenant_id, owner, record_id, customer_id=scope, include_archived=False)
+    facts = []
+    for definition in custom_field_service.list_fields(session, tenant_id, owner):
+        value = values.get(definition.key)
+        if value is None or (scope is not None and not definition.shown_to_customer):
+            continue
+        facts.append((definition.label, {"true": "Yes", "false": "No"}[value] if definition.field_type == "boolean" else value))
+    return facts
 
 
 def _deadline(session: Session, item: ExceptionItem, evidence: Evidence) -> None:

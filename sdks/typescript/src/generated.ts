@@ -25,6 +25,7 @@ export interface AccountRead {
   account_number: string;
   ach_debit_block_mode: AchDebitBlockMode;
   check_review_mode: CheckReviewMode;
+  custom_fields?: Record<string, string | null>;
   customer_id: string | null;
   external_account_id: string | null;
   id: string;
@@ -35,6 +36,7 @@ export interface AccountRead {
 export interface AccountUpsert {
   ach_debit_block_mode?: AchDebitBlockMode | null;
   check_review_mode?: CheckReviewMode | null;
+  custom_fields?: Record<string, string | null> | null;
   customer_number?: string | null;
   external_account_id?: string | null;
   name: string;
@@ -355,8 +357,24 @@ export interface CuecInventory {
   version: string;
 }
 
+export interface CustomFieldRead {
+  archived: boolean;
+  field_type: string;
+  id: string;
+  key: string;
+  label: string;
+  max_length?: number | null;
+  options?: Array<string>;
+  owner: string;
+  required: boolean;
+  shown_to_customer: boolean;
+  unique: boolean;
+  updated_at?: string | null;
+}
+
 export interface CustomerRead {
   city: string | null;
+  custom_fields?: Record<string, string | null>;
   customer_number: string;
   email: string | null;
   external_customer_id: string | null;
@@ -407,6 +425,7 @@ export interface CustomerUpsert {
   address_line1?: string | null;
   address_line2?: string | null;
   city?: string | null;
+  custom_fields?: Record<string, string | null> | null;
   email?: string | null;
   external_customer_id?: string | null;
   is_active?: boolean;
@@ -1900,6 +1919,27 @@ export class ControlsApi {
   }
 }
 
+/** `custom-fields` endpoints. */
+export class CustomFieldsApi {
+  private readonly c: Transport;
+
+  constructor(transport: Transport) {
+    this.c = transport;
+  }
+
+  /**
+   * List Custom Fields.
+   *
+   * GET /api/v1/custom-fields
+   *
+   * Every custom field on customers and on accounts, archived ones included. A customer-scoped
+   * caller sees only the fields shown to the customer.
+   */
+  listCustomFields(): Promise<Array<CustomFieldRead>> {
+    return this.c.call<Array<CustomFieldRead>>("GET", `/api/v1/custom-fields`, {  });
+  }
+}
+
 /** `customers` endpoints. */
 export class CustomersApi {
   private readonly c: Transport;
@@ -2935,6 +2975,7 @@ export const AREAS = {
   compliance: ComplianceApi,
   conformance: ConformanceApi,
   controls: ControlsApi,
+  customFields: CustomFieldsApi,
   customers: CustomersApi,
   dataExports: DataExportsApi,
   decisionBatches: DecisionBatchesApi,

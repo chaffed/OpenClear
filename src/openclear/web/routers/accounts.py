@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,8 @@ from openclear.domain.account import Account, CheckReviewMode
 from openclear.domain.bulk_upload_file import BulkUploadKind
 from openclear.repositories.account_repo import AccountRepository
 from openclear.services import account_service, audit_log_service, customer_service
+from openclear.services import custom_field_service as custom_fields
+from openclear.services.custom_field_service import CustomFieldError
 from openclear.web.bulk_import import start_import
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.pagination import paginate
@@ -25,21 +28,40 @@ router = APIRouter(prefix="/ui/accounts", tags=["web-accounts"])
 
 @router.get("")
 def list_accounts(
-    request: Request, page: int = 1, db: Session = Depends(get_db),
+    request: Request, page: int = 1, field: str = "", value: str = "", missing: str = "", db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("account:read")),
 ) -> HTMLResponse:
+    """With `field` and `value`, the accounts whose custom field has exactly that value; with
+    `missing=1`, those lacking a required one (plans/CUSTOM_FIELDS_PLAN.md CF-D5, CF-D6)."""
+    from openclear.domain.custom_field import CustomField, CustomFieldValue
+
+    fields = custom_fields.list_fields(db, ctx.tenant_id, "account")
+    if ctx.customer_id is not None:
+        fields = [f for f in fields if f.shown_to_customer]  # a customer's people see what's shown to them
+    where = []
+    chosen = next((f for f in fields if f.key == field), None) if field else None
+    if chosen and value.strip():
+        where.append(Account.id.in_(select(CustomFieldValue.account_id).where(
+            CustomFieldValue.field_id == chosen.id, CustomFieldValue.text_value == value.strip())))
+    if missing == "1" and ctx.customer_id is None:
+        where.append(Account.id.in_(custom_fields.missing_required(db, ctx.tenant_id, "account")))
+    repo = AccountRepository(db, ctx.tenant_id, ctx.customer_id)
     page_obj = paginate(
         page=page,
-        count_fn=lambda: AccountRepository(db, ctx.tenant_id, ctx.customer_id).count(),
-        list_fn=lambda **kw: account_service.list_accounts(
-            db, ctx.tenant_id, customer_id=ctx.customer_id, order_by=Account.account_number, **kw
-        ),
+        count_fn=lambda: len(repo.list(where=where)) if where else repo.count(),
+        list_fn=lambda **kw: repo.list(where=where, order_by=Account.account_number, **kw),
     )
     # A customer-scoped user's own scope is implicit — no picker needed, and they must
     # never be offered other customers (or "unassigned") to file a new account under.
     customers = customer_service.list_customers(db, ctx.tenant_id) if ctx.customer_id is None else []
     customer_names = {c.id: c.name for c in customers}
-    return render_template(request, "accounts/list.html", ctx=ctx, page_obj=page_obj, customer_names=customer_names)
+    return render_template(request, "accounts/list.html", ctx=ctx, page_obj=page_obj, customer_names=customer_names,
+                           custom_fields=fields, list_fields=[f for f in fields if f.show_in_list],
+                           custom_columns=[{"key": f"cf:{f.key}", "label": f.label} for f in fields if f.show_in_list],
+                           custom_values=custom_fields.values_for(db, ctx.tenant_id, "account", [a.id for a in page_obj.items],
+                                                                  customer_id=ctx.customer_id),
+                           filter_field=field, filter_value=value, missing=missing == "1",
+                           any_required=ctx.customer_id is None and any(f.required for f in fields))
 
 
 @router.get("/new")
@@ -56,14 +78,21 @@ def _render_account_form(
     request: Request, db: Session, ctx: TenantContext, *, error: str | None = None, form: dict | None = None
 ) -> HTMLResponse:
     customers = customer_service.list_customers(db, ctx.tenant_id) if ctx.customer_id is None else []
+    # A customer's people create accounts too, but never write custom fields (CF-D3).
+    fields = custom_fields.list_fields(db, ctx.tenant_id, "account") if ctx.customer_id is None else []
     return render_template(
         request, "accounts/form.html", ctx=ctx, customers=customers, error=error, form=form or {},
-        status_code=400 if error else 200,
+        custom_fields=fields, custom_values={}, status_code=400 if error else 200,
     )
 
 
+async def _custom_values(request: Request, db: Session, ctx: TenantContext) -> dict[str, str]:
+    form = await request.form()
+    return {f.key: str(form.get(f"cf_{f.key}") or "") for f in custom_fields.list_fields(db, ctx.tenant_id, "account")}
+
+
 @router.post("")
-def create_account(
+async def create_account(
     request: Request,
     account_number: str = Form(...),
     name: str = Form(...),
@@ -75,7 +104,8 @@ def create_account(
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
     form = {"account_number": account_number, "name": name, "external_account_id": external_account_id, "customer_id": customer_id,
-            "return": checklist_return(return_to) or ""}
+            "return": checklist_return(return_to) or "", **{k: v for k, v in (await request.form()).items() if k.startswith("cf_")}}
+    values = await _custom_values(request, db, ctx) if ctx.customer_id is None else {}
     if ctx.customer_id is not None:
         resolved_customer_id = ctx.customer_id
     elif customer_id:
@@ -103,6 +133,11 @@ def create_account(
             request, db, ctx, form=form,
             error="An account with that account number or external account ID already exists.",
         )
+    try:
+        custom_fields.set_values(db, ctx.tenant_id, "account", account.id, values, user_id=ctx.user_id, require=ctx.customer_id is None)
+    except CustomFieldError as exc:
+        db.rollback()
+        return _render_account_form(request, db, ctx, form=form, error=str(exc))
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -148,6 +183,41 @@ def _bank_account(db: Session, ctx: TenantContext, account_id: uuid.UUID) -> Acc
     if account is None or account.tenant_id != ctx.tenant_id or ctx.customer_id is not None:
         raise WebNotFound()
     return account
+
+
+@router.get("/{account_id}/fields")
+def account_fields_form(request: Request, account_id: uuid.UUID, db: Session = Depends(get_db),
+                        ctx: TenantContext = Depends(require_web_permission("account:write"))) -> HTMLResponse:
+    """An account's custom fields, for the bank's staff (plans/CUSTOM_FIELDS_PLAN.md CF2)."""
+    account = _bank_account(db, ctx, account_id)
+    return _render_fields_form(request, db, ctx, account)
+
+
+def _render_fields_form(request: Request, db: Session, ctx: TenantContext, account: Account, *, error: str | None = None,
+                        form: dict | None = None) -> HTMLResponse:
+    customer = customer_service.get_customer(db, ctx.tenant_id, account.customer_id) if account.customer_id else None
+    return render_template(request, "accounts/fields.html", ctx=ctx, account=account, customer=customer, error=error, form=form,
+                           custom_fields=custom_fields.list_fields(db, ctx.tenant_id, "account"),
+                           custom_values=custom_fields.values_of(db, ctx.tenant_id, "account", account.id, include_archived=False),
+                           archived_values={f.key: v for f, v in ((f, custom_fields.values_of(db, ctx.tenant_id, "account", account.id).get(f.key))
+                                                                  for f in custom_fields.list_fields(db, ctx.tenant_id, "account", include_archived=True)
+                                                                  if f.archived_at) if v is not None},
+                           status_code=422 if error else 200)
+
+
+@router.post("/{account_id}/fields")
+async def save_account_fields(request: Request, account_id: uuid.UUID, db: Session = Depends(get_db),
+                              ctx: TenantContext = Depends(require_web_permission("account:write")),
+                              _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    account = _bank_account(db, ctx, account_id)
+    values = await _custom_values(request, db, ctx)
+    try:
+        custom_fields.set_values(db, ctx.tenant_id, "account", account.id, values, user_id=ctx.user_id, require=True)
+    except CustomFieldError as exc:
+        db.rollback()
+        return _render_fields_form(request, db, ctx, account, error=str(exc), form=dict(await request.form()))
+    db.commit()
+    return see_other(f"/ui/accounts/{account.id}/fields", flash="Saved.")
 
 
 @router.get("/{account_id}/check-review")

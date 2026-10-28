@@ -9,7 +9,8 @@ using var oc = new OpenClearClient(new OpenClearOptions {
     BaseUrl = "https://openclear.yourbank.example", ClientId = "occ_...", ClientSecret = "...",
 });
 
-await oc.Accounts.UpsertAccountAsync("12345678", new AccountUpsert { Name = "Operating", CustomerNumber = "CIF-1001" });
+await oc.Accounts.UpsertAccountAsync("12345678", new AccountUpsert { Name = "Operating", CustomerNumber = "CIF-1001",
+    CustomFields = new Dictionary<string, string?> { ["aggregation_id"] = "G-42" } });
 
 await foreach (var item in oc.IssuedItems.IterIssuedItemsAsync(statusFilter: "issued")) { /* ... */ }
 
@@ -54,3 +55,7 @@ var evt = Webhooks.Verify(secret, headers, rawBody);
 ```sh
 docker run --rm -v "$PWD":/sdk -w /sdk/tests/OpenClear.Tests mcr.microsoft.com/dotnet/sdk:8.0 dotnet test
 ```
+
+### Custom fields
+
+A bank's own fields on customers and accounts come and go as `custom_fields`, a map from the field's key to a **string**: an ISO date (`2026-10-01`), decimal text (`12.5`), `true`/`false`, or a choice's option value. `GET /api/v1/custom-fields` gives each field's type; convert on your side. In a `PUT`, keys you leave out keep their values, and `null` clears one; a required field is required in people's forms only, so a sync written before the field existed keeps working.

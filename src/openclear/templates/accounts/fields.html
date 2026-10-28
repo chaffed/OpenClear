@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
+{% block title %}Custom fields: {{ account.account_number }} — {{ ctx.tenant_name }}{% endblock %}
+{% block content %}
+<p class="back-link"><a href="{{ '/ui/customers/' ~ customer.id if customer else '/ui/accounts' }}">{{ "Back to " ~ customer.name if customer else "Back to accounts" }}</a></p>
+<div class="card card-narrow">
+  <h1>{{ account.account_number }} <span class="text-muted">{{ account.name }}</span></h1>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% if custom_fields %}
+  <form method="post" action="/ui/accounts/{{ account.id }}/fields">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% call cf.inputs(custom_fields, custom_values, form) %}Custom fields{% endcall %}
+    <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+  </form>
+  {% else %}
+  <p>No custom fields are defined on accounts. An administrator adds them under Settings → Custom fields.</p>
+  {% endif %}
+  {% if archived_values %}
+  <h2>Archived fields</h2>
+  <table class="key-values"><tbody>
+    {% for key, value in archived_values.items() %}<tr><th>{{ key }}</th><td>{{ value }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</div>
+{% endblock %}

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Custom fields** (`plans/CUSTOM_FIELDS_PLAN.md`). A bank defines its own fields on customers and
+  accounts under Settings → Custom fields (text, whole number, decimal, date, yes/no or a choice;
+  required in forms, unique, shown to the customer, shown in the list): an account officer code, an
+  identifier the core aggregates by. Defining one is a sensitive change. Values are on the customer
+  and account forms and pages, in the lists (up to three per list), in the hub's search, on the
+  exception page, in the API as `custom_fields` (strings by key; `GET /api/v1/custom-fields` gives
+  the types; keys left out of a `PUT` are left alone, so an existing sync keeps working), in the
+  data export, and as `cf_<key>` columns of the account bulk upload. A customer's own people see
+  only fields marked shown to the customer, and never edit them. The service provider defines its
+  own fields on banks (an ERP id) under Platform → Custom fields, two operators each; a bank sees
+  one only if it's marked shown to the bank. New security event `custom_field.changed`.
+
 - **Fixed: rate limiting with Redis fails open at once when Redis is down.** redis-py retries a
   failed connection three times with up to 10 seconds of back-off by default, so while the
   configured Redis was unreachable every request waited seconds before being allowed. The limiter

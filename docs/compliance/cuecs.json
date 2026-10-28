@@ -965,6 +965,36 @@
       "withdrawn": false
     },
     {
+      "id": "B-SI-12-03",
+      "party": "bank",
+      "nist": "SI-12",
+      "nist_title": "Information Management and Retention",
+      "oscal_id": "si-12",
+      "related": [
+        "PT-2",
+        "AC-3"
+      ],
+      "title": "Keep custom fields to what positive pay needs",
+      "statement": "Define custom fields on customers and accounts only for what the service needs (identifiers, codes), never a taxpayer id, a password or personal data with no use here; mark a field shown to the customer only when the customer should see it; and review the fields yearly.",
+      "complements": "OpenClear limits fields to 25 per kind, records every definition and value change with before and after, shows a customer only fields marked for it, and says what not to store on the page where fields are defined.",
+      "evidence": "attested",
+      "check": null,
+      "check_status": null,
+      "frequency": "Yearly",
+      "csf": [
+        {
+          "id": "ID.AM-07",
+          "title": "Inventories of data and corresponding metadata for designated data types are maintained"
+        },
+        {
+          "id": "ID.AM-08",
+          "title": "Systems, hardware, software, services, and data are managed throughout their life cycles"
+        }
+      ],
+      "where": "Settings \u2192 Custom fields; the action log",
+      "withdrawn": false
+    },
+    {
       "id": "B-RA-3-04",
       "party": "bank",
       "nist": "RA-3",

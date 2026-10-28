@@ -59,8 +59,8 @@ NIST's mapping links no subcategory to `MP-6`, `AU-10`, `MA-4`, `SC-18`, `SC-23`
 | **ID.AM-03** Representations of the organization's authorized network communication and internal and external network data flows are maintained | OC-AC-03, OC-AC-09, OC-SI-06, OC-SI-08 | B-CA-3-03, B-CA-3-04, B-CA-3-01, B-CA-3-02 |
 | **ID.AM-04** Inventories of services provided by suppliers are maintained | — | B-SA-9-02, B-SA-9-03, B-SA-9-01 |
 | **ID.AM-05** Assets are prioritized based on classification, criticality, resources, and impact on the mission | — | B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05 |
-| **ID.AM-07** Inventories of data and corresponding metadata for designated data types are maintained | OC-SI-12, OC-SI-13 | B-SI-12-02, B-SI-12-01 |
-| **ID.AM-08** Systems, hardware, software, services, and data are managed throughout their life cycles | OC-SI-12, OC-SI-13 | B-SI-12-02, B-SI-12-01, B-SA-4-01 |
+| **ID.AM-07** Inventories of data and corresponding metadata for designated data types are maintained | OC-SI-12, OC-SI-13 | B-SI-12-02, B-SI-12-03, B-SI-12-01 |
+| **ID.AM-08** Systems, hardware, software, services, and data are managed throughout their life cycles | OC-SI-12, OC-SI-13 | B-SI-12-02, B-SI-12-03, B-SI-12-01, B-SA-4-01 |
 | **ID.RA-01** Vulnerabilities in assets are identified, validated, and recorded | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CA-01, OC-CA-02, OC-CA-03 | B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, C-SI-4-02, C-SI-4-01, H-RA-5-01, H-SI-4-01, H-CA-8-01 |
 | **ID.RA-02** Cyber threat intelligence is received from information sharing forums and sources | — | — |
 | **ID.RA-03** Internal and external threats to the organization are identified and recorded | — | B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05 |

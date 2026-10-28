@@ -33,7 +33,8 @@ Each API area is an attribute of the client, with one method per endpoint. The m
 
 ```python
 oc.customers.upsert_customer("CIF-1001", {"name": "Acme Corp"})
-oc.accounts.upsert_account("12345678", {"name": "Operating", "customer_number": "CIF-1001"})
+oc.accounts.upsert_account("12345678", {"name": "Operating", "customer_number": "CIF-1001",
+                                        "custom_fields": {"aggregation_id": "G-42"}})
 item = oc.issued_items.create_issued_item({
     "account_id": account_id, "check_number": "1001", "amount": "250.00",
     "payee_name": "Jane Doe", "issue_date": "2026-10-01",
@@ -64,6 +65,10 @@ for item in oc.issued_items.iter_issued_items(status_filter="issued"):
 | `RateLimitError` | 429 (`.retry_after`) |
 | `ServerError` | 5xx |
 | `APIConnectionError` | no response |
+
+### Custom fields
+
+A bank's own fields on customers and accounts come and go as `custom_fields`, a map from the field's key to a **string**: an ISO date (`2026-10-01`), decimal text (`12.5`), `true`/`false`, or a choice's option value. `GET /api/v1/custom-fields` gives each field's type; convert on your side. In a `PUT`, keys you leave out keep their values, and `null` clears one; a required field is required in people's forms only, so a sync written before the field existed keeps working.
 
 ## Sending many items
 

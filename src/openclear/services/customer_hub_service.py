@@ -58,8 +58,14 @@ def rows(session: Session, tenant_id: uuid.UUID, *, q: str = "", quiet_days: int
     end_of_today = datetime.combine(now.date(), time.max, tzinfo=timezone.utc)
     stmt = select(Customer).where(Customer.tenant_id == tenant_id)
     if q.strip():
+        from openclear.domain.custom_field import CustomField, CustomFieldValue
+
         like = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Customer.name.ilike(like), Customer.customer_number.ilike(like)))
+        # A custom text field's value too (plans/CUSTOM_FIELDS_PLAN.md CF-D6): the one indexed column.
+        by_field = select(CustomFieldValue.customer_id).join(CustomField, CustomField.id == CustomFieldValue.field_id).where(
+            CustomFieldValue.tenant_id == tenant_id, CustomField.owner == "customer", CustomField.archived_at.is_(None),
+            CustomFieldValue.text_value.ilike(like))
+        stmt = stmt.where(or_(Customer.name.ilike(like), Customer.customer_number.ilike(like), Customer.id.in_(by_field)))
     customers = list(session.execute(stmt).scalars())
     if not customers:
         return []

@@ -70,6 +70,22 @@
           "check_review_mode": {
             "$ref": "#/components/schemas/CheckReviewMode"
           },
+          "custom_fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "default": {},
+            "description": "The bank's custom fields by key, as strings; a customer-scoped caller gets only those shown to the customer",
+            "title": "Custom Fields",
+            "type": "object"
+          },
           "customer_id": {
             "anyOf": [
               {
@@ -149,6 +165,28 @@
               }
             ],
             "description": "positive, or reverse positive pay: the customer reviews every check and unreturned ones are paid at the cut-off. Bank staff with admin:manage only; turning reverse on may wait for a second admin (202)."
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The bank's custom fields by key, as strings (GET /custom-fields gives each one's type); null clears one. Keys left out keep their values; left out entirely, nothing changes. Bank-level callers only.",
+            "title": "Custom Fields"
           },
           "customer_number": {
             "anyOf": [
@@ -2520,6 +2558,97 @@
         "title": "CuecInventory",
         "type": "object"
       },
+      "CustomFieldRead": {
+        "properties": {
+          "archived": {
+            "description": "Archived: still read, never written",
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "field_type": {
+            "description": "text, integer, decimal, date, boolean or choice. Values are strings: an ISO date, decimal text, true/false, a choice's option value",
+            "title": "Field Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "description": "The key under custom_fields in the API, and the cf_<key> column in files",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Length"
+          },
+          "options": {
+            "default": [],
+            "description": "A choice field's options, those not retired",
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "owner": {
+            "description": "What the field is on: customer or account",
+            "title": "Owner",
+            "type": "string"
+          },
+          "required": {
+            "description": "Required in people's forms only; a PUT that leaves the key out leaves the value as it is",
+            "title": "Required",
+            "type": "boolean"
+          },
+          "shown_to_customer": {
+            "title": "Shown To Customer",
+            "type": "boolean"
+          },
+          "unique": {
+            "title": "Unique",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "owner",
+          "key",
+          "label",
+          "field_type",
+          "required",
+          "unique",
+          "shown_to_customer",
+          "archived"
+        ],
+        "title": "CustomFieldRead",
+        "type": "object"
+      },
       "CustomerRead": {
         "properties": {
           "city": {
@@ -2532,6 +2661,22 @@
               }
             ],
             "title": "City"
+          },
+          "custom_fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "default": {},
+            "description": "The bank's custom fields by key, as strings",
+            "title": "Custom Fields",
+            "type": "object"
           },
           "customer_number": {
             "title": "Customer Number",
@@ -2886,6 +3031,28 @@
               }
             ],
             "title": "City"
+          },
+          "custom_fields": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The bank's custom fields by key, as strings (GET /custom-fields gives each one's type); null clears one. Keys left out keep their values; left out entirely, nothing changes.",
+            "title": "Custom Fields"
           },
           "email": {
             "anyOf": [
@@ -11008,6 +11175,37 @@
         "summary": "Control Status",
         "tags": [
           "controls"
+        ]
+      }
+    },
+    "/api/v1/custom-fields": {
+      "get": {
+        "description": "Every custom field on customers and on accounts, archived ones included. A customer-scoped\ncaller sees only the fields shown to the customer.",
+        "operationId": "list_custom_fields_api_v1_custom_fields_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomFieldRead"
+                  },
+                  "title": "Response List Custom Fields Api V1 Custom Fields Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Custom Fields",
+        "tags": [
+          "custom-fields"
         ]
       }
     },

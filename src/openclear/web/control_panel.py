@@ -146,6 +146,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("custom-fields", "Organization", "Custom fields", "list_alt", "/ui/settings/custom-fields",
+             "Your own fields on customers and accounts: an officer code, an id for the core.", _custom_fields_state(db, ctx.tenant_id),
+             keywords="custom fields officer code identifier erp core attribute"),
         Tile("incident-contacts", "Security & access", "Incident contacts", "notifications_active", "/ui/settings/incident-contacts",
              "Who hears of an incident at OpenClear's host, and your CEO and CIO as the fallback.",
              _incident_state(db, ctx.tenant_id, tenant), tone="warn" if not tenant.incident_contacts_confirmed_at else "",
@@ -452,7 +455,23 @@ def plugin_tiles(ctx: TenantContext) -> list[Tile]:
 
 
 def tiles_for(db: Session, ctx: TenantContext) -> list[Tile]:
-    return (customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx)) + plugin_tiles(ctx)
+    return (customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx) + provider_field_tiles(db, ctx)) + plugin_tiles(ctx)
+
+
+def provider_field_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
+    """What the service provider shows the bank of its own fields on it (CUSTOM_FIELDS_PLAN.md CF-D2),
+    read-only; no tile while it shows nothing."""
+    from openclear.services import custom_field_service
+
+    if "tenant:manage" not in ctx.permissions:
+        return []
+    values = custom_field_service.platform_values_for(db, [ctx.tenant_id], shown_to_bank_only=True)[ctx.tenant_id]
+    shown = [v for v in values.values() if v is not None]
+    if not shown:
+        return []
+    return [Tile("provider-fields", "Organization", "From your service provider", "badge", "/ui/settings/provider-fields",
+                 "Your service provider's own references for your bank, read-only.", _plural(len(shown), "field"), modal=True,
+                 keywords="provider erp reference contract id")]
 
 
 def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
@@ -461,6 +480,15 @@ def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
 
 def tile_for(db: Session, ctx: TenantContext, key: str) -> Tile | None:
     return next((t for t in tiles_for(db, ctx) if t.key == key), None)
+
+
+def _custom_fields_state(db, tenant_id) -> str:
+    from openclear.services import custom_field_service
+
+    counts = {owner: len(custom_field_service.list_fields(db, tenant_id, owner)) for owner in ("customer", "account")}
+    if not any(counts.values()):
+        return "None yet"
+    return ", ".join(f"{n} on {owner}s" for owner, n in counts.items() if n)
 
 
 def _incident_state(db, tenant_id, tenant) -> str:

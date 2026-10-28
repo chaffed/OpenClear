@@ -385,7 +385,8 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
         "people_deleted": people_deleted,
         "people_kept_because_they_belong_elsewhere_or_are_named_in_records": len(kept) + still_referenced,
         "kept": "The bank's name and slug, inactive, so the slug is never reused; this certificate; the service provider's "
-                "own action log and incident notices.",
+                "own action log and incident notices; the provider's own custom-field values for the bank (its references, "
+                "such as an ERP id).",
         "backups": BACKUPS_NOTE,
     }
     signed = evidence_service.sign(bundle)

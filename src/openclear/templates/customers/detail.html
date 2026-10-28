@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
 {% block title %}{{ customer.name }} — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this page{% endblock %}
 {% block help_body %}
@@ -36,6 +37,7 @@
       </td></tr>
       {% endif %}
       {% if customer.notes %}<tr><th>Notes</th><td>{{ customer.notes }}</td></tr>{% endif %}
+      {{ cf.rows(custom_fields, custom_values) }}
     </tbody>
   </table>
 </div>
@@ -92,13 +94,14 @@
     {"key": "name", "label": "Name"},
     {"key": "checks", "label": "Checks"},
     {"key": "mode", "label": "ACH debit mode"},
-  ] %}
+  ] + ([{"key": "fields", "label": "Fields"}] if account_has_fields and can(ctx, "account:write") else []) %}
   {% call(a, col, part="cell") rt.responsive_table(columns, accounts, attrs="data-sortable", id="account") -%}
     {%- if col.key == "number" %}{{ a.account_number }}
     {%- elif col.key == "name" %}{{ a.name }}
     {%- elif col.key == "checks" %}{% set label = "Reverse positive pay" if a.check_review_mode.value == "reverse" else "Positive pay" %}
       {%- if can(ctx, "admin:manage") %}<a href="/ui/accounts/{{ a.id }}/check-review">{{ label }}</a>{% else %}{{ label }}{% endif %}
     {%- elif col.key == "mode" %}<span class="badge">{{ a.ach_debit_block_mode | status_label }}</span>
+    {%- elif col.key == "fields" %}<a href="/ui/accounts/{{ a.id }}/fields">Custom fields</a>
     {%- endif %}
   {%- endcall %}
   {% else %}

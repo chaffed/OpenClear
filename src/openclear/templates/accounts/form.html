@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
 {% block title %}New account — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About this form{% endblock %}
 {% block help_body %}
@@ -27,6 +28,7 @@
       </select>
     </label>
     {% endif %}
+    {{ cf.inputs(custom_fields, custom_values, form) }}
     <button type="submit">{{ icon("add") }}Create</button>
   </form>
 </div>

@@ -1,0 +1,9 @@
+<p class="hint">Your service provider's own references for your bank, which it has chosen to show you. They're read-only here;
+  ask your provider about them.</p>
+{% if provider_fields %}
+<table class="key-values"><tbody>
+  {% for label, value in provider_fields %}<tr><th>{{ label }}</th><td>{{ value }}</td></tr>{% endfor %}
+</tbody></table>
+{% else %}
+<p class="hint">Nothing shown.</p>
+{% endif %}
