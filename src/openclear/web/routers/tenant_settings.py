@@ -64,6 +64,7 @@ SECTIONS = {
     "wsud-form": "Unauthorized debit statement",
     "incident-contacts": "Incident contacts",
     "custom-fields": "Custom fields",
+    "provider-fields": "From your service provider",
 }
 
 # Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
@@ -190,6 +191,12 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         return {"contacts": [c for c in rows if c.kind == "contact"], "ceo": next((c for c in rows if c.kind == "ceo"), None),
                 "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
                 "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS}
+    if key == "provider-fields":
+        from openclear.services import custom_field_service
+
+        values = custom_field_service.platform_values_for(db, [ctx.tenant_id], shown_to_bank_only=True)[ctx.tenant_id]
+        return {"provider_fields": [(f.label, values.get(f.key)) for f in custom_field_service.list_platform_fields(db)
+                                    if f.shown_to_bank and values.get(f.key) is not None]}
     if key == "custom-fields":
         from openclear.services import custom_field_service
 

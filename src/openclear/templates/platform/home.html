@@ -47,6 +47,7 @@
     <a href="/ui/platform/banks/new" class="button">{{ icon("add") }}Set up a bank</a>
     <a href="/ui/platform/host-attestations" class="button secondary">{{ icon("fact_check") }}Host attestations</a>
     <a href="/ui/platform/incidents" class="button secondary">{{ icon("notifications_active") }}Incidents</a>
+    <a href="/ui/platform/custom-fields" class="button secondary">{{ icon("list_alt") }}Custom fields</a>
     <a href="/ui/platform/changes" class="button secondary">{{ icon("fact_check") }}Changes</a>
   </div>
   <p class="hint">{% if sandboxes %}Including sandboxes. <a href="/ui/platform">Hide them</a>.{% else %}Sandboxes hidden. <a href="/ui/platform?sandboxes=true">Show them</a>.{% endif %}
@@ -61,7 +62,8 @@
         <td>{{ b.tenant.name }}<br><span class="hint">{{ b.tenant.slug }}{% if not b.tenant.is_active %} · inactive{% endif %}{% if b.tenant.is_sandbox %} · sandbox{% endif %}</span>
           {% if b.tenant.data_deleted_at %} · <span class="tone-danger">data deleted</span>{% elif b.tenant.offboarding_started_at %} · <span class="tone-warn">offboarding</span>{% endif %}{% if b.tenant.legal_hold_reason %} · legal hold{% endif %}
           {% if user.platform_role == "operator" %}<br><a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/reset-admin-key">Admin lost their key?</a>
-          · <a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/offboarding">Offboarding</a>{% endif %}</td>
+          · <a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/offboarding">Offboarding</a>
+          · <a class="hint" href="/ui/platform/banks/{{ b.tenant.id }}/fields">Fields</a>{% endif %}</td>
         <td>{{ b.customers }}</td>
         <td>{{ b.open_exceptions }}</td>
         <td>{% if b.overdue %}<span class="badge badge-danger">{{ b.overdue }}</span>{% else %}0{% endif %}</td>

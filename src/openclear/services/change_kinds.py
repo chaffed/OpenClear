@@ -1282,10 +1282,11 @@ def _field_input(payload: dict):
 
 
 def _custom_field_current(session, tenant_id, customer_id, payload) -> dict:
-    if payload.get("field_id"):
-        definition = _custom_field(lambda s: s.get_field(session, tenant_id, uuid.UUID(payload["field_id"])))
-        return {"definition": _definition_dict(definition)}
-    return {"definition": None}
+    definition = _custom_field(lambda s: s.get_field(session, tenant_id, uuid.UUID(payload["field_id"]))) if payload.get("field_id") else None
+    if payload.get("owner") not in ("customer", "account"):
+        raise ChangeError("A field is on customers or on accounts.")
+    _custom_field(lambda s: s.check_definition(session, _field_input(payload), existing=definition))  # refused now, not at approval
+    return {"definition": _definition_dict(definition) if definition else None}
 
 
 def _custom_field_apply(session, tenant_id, customer_id, payload, user_id) -> str:
@@ -1325,6 +1326,79 @@ register(Kind(
     apply=_custom_field_archive_apply, setting=lambda payload: f"custom_field_archive:{payload['field_id']}",
     describe=lambda before, after: ("Archive" if after["archived"] else "Restore") + " a custom field",
     action=lambda payload: "custom_field.archived" if payload.get("archived") else "custom_field.restored",
+))
+
+
+# The service provider's custom fields on banks (CF-D1, CF-D11): always two operators.
+
+
+def _platform_definition_dict(definition) -> dict:
+    return {"key": definition.key, "label": definition.label, "field_type": definition.field_type, "max_length": definition.max_length,
+            "options": [o["value"] for o in (definition.options or []) if not o.get("retired")], "required": definition.required,
+            "unique": definition.unique, "help_text": definition.help_text, "shown_to_bank": definition.shown_to_bank}
+
+
+def _platform_field_input(payload: dict):
+    from openclear.services.custom_field_service import FieldInput
+
+    return FieldInput(key=payload["key"], label=payload["label"], field_type=payload["field_type"], max_length=payload.get("max_length"),
+                      options=payload.get("options"), required=bool(payload.get("required")), unique=bool(payload.get("unique")),
+                      help_text=payload.get("help_text"), shown_to_bank=bool(payload.get("shown_to_bank")))
+
+
+def _platform_field_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.custom_field import PlatformCustomField
+
+    definition = None
+    if payload.get("field_id"):
+        definition = session.get(PlatformCustomField, uuid.UUID(payload["field_id"]))
+        if definition is None:
+            raise ChangeError("No such field.")
+    _custom_field(lambda s: s.check_definition(session, _platform_field_input(payload), existing=definition))  # refused now, not at approval
+    return {"definition": _platform_definition_dict(definition) if definition else None}
+
+
+def _platform_field_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    data = _platform_field_input(payload)
+    if payload.get("field_id"):
+        definition = _custom_field(lambda s: s.update_platform_field(session, uuid.UUID(payload["field_id"]), data, user_id=user_id))
+        return f"The provider's field {definition.key} on banks changed"
+    definition = _custom_field(lambda s: s.create_platform_field(session, data, user_id=user_id))
+    return f"The provider's field {definition.key} ({definition.field_type}) added on banks"
+
+
+register(Kind(
+    "platform.custom_field.save", "The provider's custom fields", "protection", _OPERATOR, _platform_field_current,
+    lambda payload: {"definition": {k: payload.get(k) for k in ("key", "label", "field_type", "max_length", "options", "required",
+                                                                  "unique", "help_text", "shown_to_bank")}},
+    loosens=lambda before, after: True, apply=_platform_field_apply, scope="provider",
+    setting=lambda payload: f"platform_custom_field:{payload['key']}",
+    describe=lambda before, after: ("Change" if before["definition"] else "Add") + f" the provider's field {after['definition']['key']}",
+    action="platform.custom_field.saved",
+))
+
+
+def _platform_field_archive_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.domain.custom_field import PlatformCustomField
+
+    definition = session.get(PlatformCustomField, uuid.UUID(payload["field_id"]))
+    if definition is None:
+        raise ChangeError("No such field.")
+    return {"archived": definition.archived_at is not None}
+
+
+def _platform_field_archive_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    definition = _custom_field(lambda s: s.archive_platform_field(session, uuid.UUID(payload["field_id"]), archived=bool(payload["archived"])))
+    return f"The provider's field {definition.key} {'archived' if payload['archived'] else 'restored'}"
+
+
+register(Kind(
+    "platform.custom_field.archive", "The provider's custom fields", "protection", _OPERATOR, _platform_field_archive_current,
+    lambda payload: {"archived": bool(payload["archived"])},
+    loosens=lambda before, after: True, apply=_platform_field_archive_apply, scope="provider",
+    setting=lambda payload: f"platform_custom_field_archive:{payload['field_id']}",
+    describe=lambda before, after: ("Archive" if after["archived"] else "Restore") + " a provider's field",
+    action=lambda payload: "platform.custom_field.archived" if payload.get("archived") else "platform.custom_field.restored",
 ))
 
 

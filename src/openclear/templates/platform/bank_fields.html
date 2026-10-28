@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
+{% block title %}{{ bank.name }}: your fields — OpenClear platform{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card card-narrow">
+  <h1>{{ bank.name }} <span class="text-muted">{{ bank.slug }}</span></h1>
+  {% if error %}<p class="flash flash-error" role="alert">{{ error }}</p>{% endif %}
+  {% if custom_fields %}
+  <form method="post" action="/ui/platform/banks/{{ bank.id }}/fields">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% call cf.inputs(custom_fields, custom_values, form) %}Your fields on this bank{% endcall %}
+    <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+  </form>
+  {% else %}
+  <p>No fields are defined on banks yet. Define them under <a href="/ui/platform/custom-fields">Custom fields</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

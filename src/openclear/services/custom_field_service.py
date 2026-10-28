@@ -236,6 +236,15 @@ def _apply_unique(session: Session, definition, value_model, scope_column) -> No
     session.flush()
 
 
+def check_definition(session: Session, data: FieldInput, *, existing=None) -> dict:
+    """Checks a definition's input without saving it: a change that waits for a second person is
+    refused now, not at approval. `existing` is the bank's or the provider's definition being changed."""
+    if existing is None:
+        return _clean_definition(data)
+    value_model = CustomFieldValue if isinstance(existing, CustomField) else PlatformCustomFieldValue
+    return _clean_definition(data, existing=existing, values_exist=_values_exist(session, value_model, existing.id))
+
+
 def list_fields(session: Session, tenant_id: uuid.UUID, owner: str, *, include_archived: bool = False) -> list[CustomField]:
     stmt = select(CustomField).where(CustomField.tenant_id == tenant_id, CustomField.owner == owner)
     if not include_archived:

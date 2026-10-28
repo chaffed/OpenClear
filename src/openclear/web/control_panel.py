@@ -455,7 +455,23 @@ def plugin_tiles(ctx: TenantContext) -> list[Tile]:
 
 
 def tiles_for(db: Session, ctx: TenantContext) -> list[Tile]:
-    return (customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx)) + plugin_tiles(ctx)
+    return (customer_tiles(db, ctx) if ctx.customer_id is not None else bank_tiles(db, ctx) + provider_field_tiles(db, ctx)) + plugin_tiles(ctx)
+
+
+def provider_field_tiles(db: Session, ctx: TenantContext) -> list[Tile]:
+    """What the service provider shows the bank of its own fields on it (CUSTOM_FIELDS_PLAN.md CF-D2),
+    read-only; no tile while it shows nothing."""
+    from openclear.services import custom_field_service
+
+    if "tenant:manage" not in ctx.permissions:
+        return []
+    values = custom_field_service.platform_values_for(db, [ctx.tenant_id], shown_to_bank_only=True)[ctx.tenant_id]
+    shown = [v for v in values.values() if v is not None]
+    if not shown:
+        return []
+    return [Tile("provider-fields", "Organization", "From your service provider", "badge", "/ui/settings/provider-fields",
+                 "Your service provider's own references for your bank, read-only.", _plural(len(shown), "field"), modal=True,
+                 keywords="provider erp reference contract id")]
 
 
 def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:

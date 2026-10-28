@@ -126,7 +126,7 @@ everything else, and a custom field is never an import key.
 |---|---|---|
 | CF1 | Model, migration (RLS on the bank tables), the service: definitions, keys, validation by type, values, uniqueness, limits, archiving, retiring options; the customer-scoped read | Done |
 | CF2 | The bank's Settings → Custom fields (two-person where the bank asks); customer and account forms, detail pages, *show in list*, search and the one filter, the missing-required filter and control check; the exception page | Done |
-| CF3 | The provider's bank fields: Platform → Custom fields, each bank's page; *shown to the bank* in its Settings; survival at offboarding, in the certificate | |
+| CF3 | The provider's bank fields: Platform → Custom fields, each bank's page; *shown to the bank* in its Settings; survival at offboarding, in the certificate | Done |
 | CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | |
 | CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | |
 | CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the webhook endpoint's keys, the feed's parameter; the CSV escaping everywhere | |
@@ -162,3 +162,9 @@ Release after CF4 (the fields, the pages, the API and exports), then CF5–CF7 i
   account, the list's columns and its filter by one field; the exception page's facts. The control
   check for missing required values waits for CF7, where its control and CUEC are defined (every
   live check must test a control).
+- 2026-10-28: CF3 built: Platform → Custom fields (`platform.custom_field.save` and
+  `platform.custom_field.archive`, always two operators), each bank's values page (one operator:
+  values are data), the bank's read-only *From your service provider* section (a tile only while
+  something is shown), and the certificate's "kept" sentence. **Finding:** a definition change
+  that waited for approval wasn't checked until it was applied, so a bad key could sit under
+  Changes and fail there; both kinds now check the input before queuing it.
