@@ -59,6 +59,29 @@ default decision, so it's never paid by silence.</p>
 </ol>
 <p>Checks only for now. To review every ACH debit on an account, give it no ACH authorizations.</p>
 
+<h2 id="custom-fields">Custom fields</h2>
+<p>Your own fields on customers and accounts, to tie them to your other systems: an account officer code on a
+  customer, an identifier the core aggregates by on an account. Define them under <strong>Settings → Custom
+  fields</strong> (a sensitive change, so a second administrator approves it if your bank asks for that):</p>
+<ul>
+  <li><strong>Key:</strong> the field's name in the API (<code>custom_fields.key</code>) and in files (<code>cf_key</code>).
+    It never changes; the label can.</li>
+  <li><strong>Type:</strong> text (with a maximum length), whole number, decimal, date, yes/no, or a choice from a list.
+    The type is fixed once the field has values; a choice option you take out is retired, kept on records.</li>
+  <li><strong>Required</strong> applies to people's forms only. A sync from the core, or a file, that doesn't mention the
+    field leaves it alone, so adding a required field can't break an integration. The lists' <em>Missing a required
+    field</em> filter shows what's still empty.</li>
+  <li><strong>Unique</strong> (text only): no two customers or accounts share a value.</li>
+  <li><strong>Shown to the customer:</strong> a customer's own people see it, read-only, on their accounts. Off by default.</li>
+  <li><strong>In the list:</strong> a column in the customer or account list; at most three.</li>
+</ul>
+<p>Values are set on the customer form, on an account's <em>Custom fields</em> page, by the API (<code>custom_fields</code>
+  on <code>PUT /api/v1/accounts/{number}</code> and customers; values are strings, and
+  <code>GET /api/v1/custom-fields</code> gives each field's type) and by <code>cf_key</code> columns in the account
+  bulk upload. Every change is in the action log with the value before and after. Don't store taxpayer ids,
+  passwords or personal data that has no use in positive pay. Your service provider may show you its own
+  references for your bank under <strong>Settings → From your service provider</strong>, read-only.</p>
+
 <h2 id="offboarding">When a customer leaves or stops positive pay</h2>
 <p>OpenClear isn't the bank's system of record (the core is), so a customer's data is deleted 90 days after its
   last service day. On the customer's page, under <strong>Offboarding</strong>:</p>
