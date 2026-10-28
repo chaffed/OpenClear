@@ -132,7 +132,7 @@ everything else, and a custom field is never an import key.
 | CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the webhook endpoint's keys, the feed's parameter; the CSV escaping everywhere | |
 | CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | |
 
-Release after CF4 (the fields, the pages, the API and exports), then CF5–CF7 in the next.
+One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first, unreleased.
 
 ## Progress log
 
