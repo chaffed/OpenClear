@@ -1253,6 +1253,81 @@ register(Kind(
 ))
 
 
+# Custom fields (plans/CUSTOM_FIELDS_PLAN.md CF-D11): a definition is a sensitive change; its values are data.
+
+
+def _custom_field(call):
+    from openclear.services import custom_field_service
+
+    try:
+        return call(custom_field_service)
+    except custom_field_service.CustomFieldError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+def _definition_dict(definition) -> dict:
+    return {"key": definition.key, "label": definition.label, "field_type": definition.field_type, "max_length": definition.max_length,
+            "options": [o["value"] for o in (definition.options or []) if not o.get("retired")], "required": definition.required,
+            "unique": definition.unique, "help_text": definition.help_text, "shown_to_customer": definition.shown_to_customer,
+            "show_in_list": definition.show_in_list}
+
+
+def _field_input(payload: dict):
+    from openclear.services.custom_field_service import FieldInput
+
+    return FieldInput(key=payload["key"], label=payload["label"], field_type=payload["field_type"], max_length=payload.get("max_length"),
+                      options=payload.get("options"), required=bool(payload.get("required")), unique=bool(payload.get("unique")),
+                      help_text=payload.get("help_text"), shown_to_customer=bool(payload.get("shown_to_customer")),
+                      show_in_list=bool(payload.get("show_in_list")))
+
+
+def _custom_field_current(session, tenant_id, customer_id, payload) -> dict:
+    if payload.get("field_id"):
+        definition = _custom_field(lambda s: s.get_field(session, tenant_id, uuid.UUID(payload["field_id"])))
+        return {"definition": _definition_dict(definition)}
+    return {"definition": None}
+
+
+def _custom_field_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    data = _field_input(payload)
+    if payload.get("field_id"):
+        definition = _custom_field(lambda s: s.update_field(session, tenant_id, uuid.UUID(payload["field_id"]), data, user_id=user_id))
+        return f"Custom field {definition.key} on {definition.owner}s changed"
+    definition = _custom_field(lambda s: s.create_field(session, tenant_id, payload["owner"], data, user_id=user_id))
+    return f"Custom field {definition.key} ({definition.field_type}) added on {definition.owner}s"
+
+
+register(Kind(
+    "custom_field.save", "Custom fields", "sensitive", "tenant:manage", _custom_field_current,
+    lambda payload: {"definition": {k: payload.get(k) for k in ("key", "label", "field_type", "max_length", "options", "required",
+                                                                  "unique", "help_text", "shown_to_customer", "show_in_list")}},
+    loosens=lambda before, after: True,  # what's collected, and who sees it, changes either way
+    apply=_custom_field_apply, setting=lambda payload: f"custom_field:{payload['owner']}:{payload['key']}",
+    describe=lambda before, after: ("Change" if before["definition"] else "Add") + f" the custom field {after['definition']['key']}",
+    action="custom_field.saved",
+))
+
+
+def _custom_field_archive_current(session, tenant_id, customer_id, payload) -> dict:
+    definition = _custom_field(lambda s: s.get_field(session, tenant_id, uuid.UUID(payload["field_id"])))
+    return {"archived": definition.archived_at is not None}
+
+
+def _custom_field_archive_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    definition = _custom_field(lambda s: s.archive_field(session, tenant_id, uuid.UUID(payload["field_id"]), archived=bool(payload["archived"])))
+    return f"Custom field {definition.key} on {definition.owner}s {'archived' if payload['archived'] else 'restored'}"
+
+
+register(Kind(
+    "custom_field.archive", "Custom fields", "sensitive", "tenant:manage", _custom_field_archive_current,
+    lambda payload: {"archived": bool(payload["archived"])},
+    loosens=lambda before, after: True,
+    apply=_custom_field_archive_apply, setting=lambda payload: f"custom_field_archive:{payload['field_id']}",
+    describe=lambda before, after: ("Archive" if after["archived"] else "Restore") + " a custom field",
+    action=lambda payload: "custom_field.archived" if payload.get("archived") else "custom_field.restored",
+))
+
+
 # Offboarding a customer (plans/CUSTOMER_OFFBOARDING_PLAN.md): its last service day, and its legal hold.
 
 

@@ -146,6 +146,9 @@ def _tenant_tiles(db, ctx, tenant, settings) -> list[Tile]:
         Tile("support-access", "Security & access", "Support access", "vpn_key", "/ui/settings/support-access",
              "Let a named support person in, for a reason and a set time.", _support_state(db, ctx.tenant_id),
              keywords="support help vendor access grant impersonate"),
+        Tile("custom-fields", "Organization", "Custom fields", "list_alt", "/ui/settings/custom-fields",
+             "Your own fields on customers and accounts: an officer code, an id for the core.", _custom_fields_state(db, ctx.tenant_id),
+             keywords="custom fields officer code identifier erp core attribute"),
         Tile("incident-contacts", "Security & access", "Incident contacts", "notifications_active", "/ui/settings/incident-contacts",
              "Who hears of an incident at OpenClear's host, and your CEO and CIO as the fallback.",
              _incident_state(db, ctx.tenant_id, tenant), tone="warn" if not tenant.incident_contacts_confirmed_at else "",
@@ -461,6 +464,15 @@ def grouped(tiles: list[Tile]) -> list[tuple[str, list[Tile]]]:
 
 def tile_for(db: Session, ctx: TenantContext, key: str) -> Tile | None:
     return next((t for t in tiles_for(db, ctx) if t.key == key), None)
+
+
+def _custom_fields_state(db, tenant_id) -> str:
+    from openclear.services import custom_field_service
+
+    counts = {owner: len(custom_field_service.list_fields(db, tenant_id, owner)) for owner in ("customer", "account")}
+    if not any(counts.values()):
+        return "None yet"
+    return ", ".join(f"{n} on {owner}s" for owner, n in counts.items() if n)
 
 
 def _incident_state(db, tenant_id, tenant) -> str:

@@ -33,7 +33,7 @@ from openclear.services.tenant_service import (
     update_tenant_contact_info,
 )
 from openclear.web import control_panel
-from openclear.web.deps import WebForbidden, get_web_context, render_template, require_web_permission
+from openclear.web.deps import WebNotFound, WebForbidden, get_web_context, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
 
@@ -63,6 +63,7 @@ SECTIONS = {
     "auto-import": "Auto-import",
     "wsud-form": "Unauthorized debit statement",
     "incident-contacts": "Incident contacts",
+    "custom-fields": "Custom fields",
 }
 
 # Each section's changes that can wait for a second person (DUAL_CONTROL_PLAN.md), shown on its form while one does.
@@ -70,6 +71,7 @@ SECTION_KINDS = {
     "password-policy": ("password_policy",), "security-keys": ("security_keys",), "access-rules": ("access_rules",), "dual-control": ("dual_control", "approval_switches"),
     "customer-approval": ("customer_approval",), "embedding": ("embedding",), "decision-files": ("decision_files",),
     "security-events": ("security_event_forwarding",), "cutoff": ("decision_cutoff",),
+    "custom-fields": ("custom_field.save", "custom_field.archive"),
 }
 
 
@@ -188,6 +190,13 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         return {"contacts": [c for c in rows if c.kind == "contact"], "ceo": next((c for c in rows if c.kind == "ceo"), None),
                 "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
                 "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS}
+    if key == "custom-fields":
+        from openclear.services import custom_field_service
+
+        return {"fields": {owner: custom_field_service.list_fields(db, ctx.tenant_id, owner, include_archived=True)
+                           for owner in ("customer", "account")},
+                "types": list(custom_field_service.TYPES), "max_fields": custom_field_service.MAX_FIELDS,
+                "max_in_list": custom_field_service.MAX_IN_LIST, "editing": None}
     if key == "wsud-form":
         from openclear.services import bank_form_service
 
@@ -724,6 +733,53 @@ def update_messages(
         _record(db, ctx, "tenant.update_messages", "Updated login/banner messages")
     db.commit()
     return _saved(request, key="messages")
+
+
+@router.get("/custom-fields/{field_id}")
+def edit_custom_field(request: Request, field_id: uuid.UUID, db: Session = Depends(get_db),
+                      ctx: TenantContext = Depends(require_web_permission("tenant:manage"))) -> HTMLResponse:
+    """The definitions page with one field in the form (plans/CUSTOM_FIELDS_PLAN.md CF2)."""
+    from openclear.services import custom_field_service
+
+    try:
+        editing = custom_field_service.get_field(db, ctx.tenant_id, field_id)
+    except custom_field_service.CustomFieldError:
+        raise WebNotFound() from None
+    return render_section(request, db, ctx, "custom-fields", editing=editing)
+
+
+@router.post("/custom-fields")
+async def save_custom_field(request: Request, db: Session = Depends(get_db),
+                            ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+                            _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """Adds or changes a field: a sensitive change, so it waits for a second administrator when
+    the bank asks for that (CF-D11)."""
+    form = await request.form()
+    field_id = str(form.get("field_id") or "")
+    payload = {
+        "owner": str(form.get("owner") or ""), "field_id": field_id or None, "key": str(form.get("key") or "").strip(),
+        "label": str(form.get("label") or "").strip(), "field_type": str(form.get("field_type") or ""),
+        "max_length": int(form.get("max_length")) if str(form.get("max_length") or "").isdigit() else None,
+        "options": [o.strip() for o in str(form.get("options") or "").splitlines() if o.strip()],
+        "required": bool(form.get("required")), "unique": bool(form.get("unique")), "help_text": str(form.get("help_text") or "").strip(),
+        "shown_to_customer": bool(form.get("shown_to_customer")), "show_in_list": bool(form.get("show_in_list")),
+    }
+    if field_id:
+        from openclear.services import custom_field_service
+
+        try:
+            existing = custom_field_service.get_field(db, ctx.tenant_id, uuid.UUID(field_id))
+        except (custom_field_service.CustomFieldError, ValueError):
+            raise WebNotFound() from None
+        payload["owner"], payload["key"] = existing.owner, existing.key  # neither changes
+    return _change(request, db, ctx, "custom_field.save", payload, key="custom-fields")
+
+
+@router.post("/custom-fields/{field_id}/archive")
+def archive_custom_field(request: Request, field_id: uuid.UUID, archived: str = Form("1"), db: Session = Depends(get_db),
+                         ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
+                         _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    return _change(request, db, ctx, "custom_field.archive", {"field_id": str(field_id), "archived": archived == "1"}, key="custom-fields")
 
 
 @router.post("/incident-contacts")

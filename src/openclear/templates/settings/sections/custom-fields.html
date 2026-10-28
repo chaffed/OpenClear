@@ -1,0 +1,77 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">Your own fields on customers and accounts, to tie them to your other systems: an account officer
+  code, an identifier the core aggregates by. Each field is required in people's forms only: a write from the API or
+  a file that doesn't mention it leaves it alone. Don't store taxpayer ids, passwords or personal data that has no use
+  here. At most {{ max_fields }} fields on each; {{ max_in_list }} of them can show in the list.</p>
+{% for owner in ("customer", "account") %}
+<h3>On {{ owner }}s</h3>
+{% set live = fields[owner] | rejectattr("archived_at") | list %}
+{% set archived = fields[owner] | selectattr("archived_at") | list %}
+{% if live or archived %}
+<table>
+  <thead><tr><th>Field</th><th>Key</th><th>Type</th><th>Rules</th><th></th></tr></thead>
+  <tbody>
+    {% for f in live + archived %}
+    <tr{% if f.archived_at %} class="text-muted"{% endif %}>
+      <td>{{ f.label }}{% if f.archived_at %} <span class="badge">archived</span>{% endif %}</td>
+      <td><code>{{ f.key }}</code></td>
+      <td>{{ f.field_type }}{% if f.field_type == "text" and f.max_length %} ({{ f.max_length }}){% endif %}
+        {%- if f.field_type == "choice" %}: {{ f.options | rejectattr("retired") | map(attribute="value") | join(", ") }}{% endif %}</td>
+      <td>{{ ["required" if f.required, "unique" if f.unique, "shown to the customer" if f.shown_to_customer, "in the list" if f.show_in_list] | select | join(", ") or "—" }}</td>
+      <td class="cell-actions">
+        {% if not f.archived_at %}<a href="/ui/settings/custom-fields/{{ f.id }}">Edit</a>{% endif %}
+        <form method="post" action="/ui/settings/custom-fields/{{ f.id }}/archive" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="archived" value="{{ '0' if f.archived_at else '1' }}">
+          <button type="submit" class="link-button">{{ "Restore" if f.archived_at else "Archive" }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">None yet.</p>
+{% endif %}
+{% endfor %}
+
+<h3>{{ "Change " ~ editing.label if editing else "Add a field" }}</h3>
+<form method="post" action="/ui/settings/custom-fields" id="custom-field-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if editing %}<input type="hidden" name="field_id" value="{{ editing.id }}">{% endif %}
+  <div class="inline-fields">
+    <label>On
+      <select name="owner"{% if editing %} disabled{% endif %}>
+        <option value="customer"{% if editing and editing.owner == "customer" %} selected{% endif %}>customers</option>
+        <option value="account"{% if editing and editing.owner == "account" %} selected{% endif %}>accounts</option>
+      </select>
+    </label>
+    <label>Key <input type="text" name="key" value="{{ editing.key if editing else '' }}" pattern="[a-z][a-z0-9_]{0,39}" maxlength="40" required
+      {% if editing %}readonly{% endif %} class="field-m"><span class="hint">In the API and files: <code>custom_fields.key</code>, <code>cf_key</code>. Never changes.</span></label>
+    <label>Label <input type="text" name="label" value="{{ editing.label if editing else '' }}" maxlength="255" required class="field-l"></label>
+  </div>
+  <div class="inline-fields">
+    <label>Type
+      <select name="field_type"{% if editing %} data-fixed{% endif %}>
+        {% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+      </select>
+      {% if editing %}<span class="hint">Fixed once the field has values.</span>{% endif %}
+    </label>
+    <label>Maximum length (text) <input type="number" name="max_length" min="1" max="255" value="{{ editing.max_length or '' if editing else '' }}" class="field-s"></label>
+  </div>
+  <label>Options (choice), one per line
+    <textarea name="options" rows="3">{{ (editing.options or []) | rejectattr("retired") | map(attribute="value") | join("\n") if editing else "" }}</textarea>
+    {% if editing and editing.field_type == "choice" %}<span class="hint">An option in use that you take out is retired: kept on records, not offered.</span>{% endif %}
+  </label>
+  <label>Help text (optional) <input type="text" name="help_text" value="{{ editing.help_text or '' if editing else '' }}" maxlength="500"></label>
+  <div class="inline-fields">
+    <label><input type="checkbox" name="required" value="1"{% if editing and editing.required %} checked{% endif %}> Required in forms</label>
+    <label><input type="checkbox" name="unique" value="1"{% if editing and editing.unique %} checked{% endif %}> Unique (text)</label>
+    <label><input type="checkbox" name="shown_to_customer" value="1"{% if editing and editing.shown_to_customer %} checked{% endif %}> Shown to the customer (read-only)</label>
+    <label><input type="checkbox" name="show_in_list" value="1"{% if editing and editing.show_in_list %} checked{% endif %}> In the list</label>
+  </div>
+  <div class="form-actions">
+    <button type="submit">{{ icon("save" if editing else "add") }}{{ "Save" if editing else "Add" }}</button>
+    {% if editing %}<a href="/ui/settings/custom-fields" class="button secondary">Cancel</a>{% endif %}
+  </div>
+</form>

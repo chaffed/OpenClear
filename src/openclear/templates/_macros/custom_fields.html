@@ -1,0 +1,45 @@
+{# Custom fields (plans/CUSTOM_FIELDS_PLAN.md): the inputs for a form, the rows for a detail page,
+   and a list cell. `fields` are the active definitions (services/custom_field_service.list_fields),
+   `values` a record's values by key, as strings. #}
+{% macro inputs(fields, values, form=None) -%}
+{% if fields %}
+<h2>{{ caller() if caller else "Custom fields" }}</h2>
+{% for f in fields %}{% set current = (form.get("cf_" ~ f.key) if form and ("cf_" ~ f.key) in form else values.get(f.key)) or "" %}
+<label>{{ f.label }}{% if not f.required %} (optional){% endif %}
+  {%- if f.field_type == "choice" %}
+  <select name="cf_{{ f.key }}"{% if f.required %} required{% endif %}>
+    <option value="">—</option>
+    {% for o in f.options or [] if not o.retired or o.value == current %}
+    <option value="{{ o.value }}"{% if o.value == current %} selected{% endif %}>{{ o.value }}{% if o.retired %} (retired){% endif %}</option>
+    {% endfor %}
+  </select>
+  {%- elif f.field_type == "boolean" %}
+  <select name="cf_{{ f.key }}"{% if f.required %} required{% endif %}>
+    <option value="">—</option>
+    <option value="true"{% if current == "true" %} selected{% endif %}>Yes</option>
+    <option value="false"{% if current == "false" %} selected{% endif %}>No</option>
+  </select>
+  {%- elif f.field_type == "date" %}
+  <input type="date" name="cf_{{ f.key }}" value="{{ current }}"{% if f.required %} required{% endif %}>
+  {%- elif f.field_type == "integer" %}
+  <input type="text" inputmode="numeric" name="cf_{{ f.key }}" value="{{ current }}" pattern="[+-]?[0-9]{1,18}"{% if f.required %} required{% endif %}>
+  {%- elif f.field_type == "decimal" %}
+  <input type="text" inputmode="decimal" name="cf_{{ f.key }}" value="{{ current }}"{% if f.required %} required{% endif %}>
+  {%- else %}
+  <input type="text" name="cf_{{ f.key }}" value="{{ current }}" maxlength="{{ f.max_length or 255 }}"{% if f.required %} required{% endif %}>
+  {%- endif %}
+  {%- if f.help_text %}<span class="hint">{{ f.help_text }}</span>{% endif %}
+</label>
+{% endfor %}
+{% endif %}
+{%- endmacro %}
+
+{% macro rows(fields, values) -%}
+{% for f in fields if values.get(f.key) is not none %}
+<tr><th>{{ f.label }}</th><td>{{ cell(f, values.get(f.key)) }}</td></tr>
+{% endfor %}
+{%- endmacro %}
+
+{% macro cell(f, value) -%}
+{%- if value is none %}—{% elif f.field_type == "boolean" %}{{ "Yes" if value == "true" else "No" }}{% else %}{{ value }}{% endif -%}
+{%- endmacro %}

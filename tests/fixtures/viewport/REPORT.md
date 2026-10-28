@@ -66,6 +66,7 @@ Each cell: sideways scroll (↔), small touch targets (kinds), Pay/Return below 
 | setting_customer_approval | ✓ | ✓ | ✓ | ✓ |
 | customer_user_approvals | ✓ | ✓ | ✓ | ✓ |
 | settings_dialog | ✓ | ✓ | ✓ | ✓ |
+| settings_custom_fields | ✓ | ✓ | ✓ | ✓ |
 | people | ✓ | ✓ | ✓ | ✓ |
 | person | ✓ | ✓ | ✓ | ✓ |
 | people_invite | ✓ | ✓ | ✓ | ✓ |

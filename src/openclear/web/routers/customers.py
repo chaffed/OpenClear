@@ -11,6 +11,8 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.tenant import Tenant
 from openclear.services import account_service, audit_log_service, auto_disposition_service, customer_service, sso_service
+from openclear.services import custom_field_service as custom_fields
+from openclear.services.custom_field_service import CustomFieldError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.form_errors import friendly_error
 from openclear.web.redirects import see_other
@@ -69,11 +71,20 @@ def list_customers(
 
     quiet_days = int(quiet) if quiet.isdigit() else None
     rows = customer_hub_service.rows(db, ctx.tenant_id, q=q, quiet_days=quiet_days)
+    missing = request.query_params.get("missing") == "1"
+    if missing:  # records with no value for a required custom field (plans/CUSTOM_FIELDS_PLAN.md CF-D5)
+        lacking = set(custom_fields.missing_required(db, ctx.tenant_id, "customer"))
+        rows = [r for r in rows if r.customer.id in lacking]
     pages = max(1, -(-len(rows) // HUB_PAGE_SIZE))
     page = min(max(1, page), pages)
-    return render_template(request, "customers/list.html", ctx=ctx, rows=rows[(page - 1) * HUB_PAGE_SIZE: page * HUB_PAGE_SIZE],
+    shown = rows[(page - 1) * HUB_PAGE_SIZE: page * HUB_PAGE_SIZE]
+    list_fields = [f for f in custom_fields.list_fields(db, ctx.tenant_id, "customer") if f.show_in_list]
+    return render_template(request, "customers/list.html", ctx=ctx, rows=shown,
                            total=len(rows), page=page, pages=pages, q=q, quiet=quiet_days, quiet_choices=QUIET_CHOICES,
-                           now=datetime.now(timezone.utc))
+                           now=datetime.now(timezone.utc), missing=missing, list_fields=list_fields,
+                           custom_columns=[{"key": f"cf:{f.key}", "label": f.label, "th": 'scope="col"'} for f in list_fields],
+                           custom_values=custom_fields.values_for(db, ctx.tenant_id, "customer", [r.customer.id for r in shown]),
+                           any_required=any(f.required for f in custom_fields.list_fields(db, ctx.tenant_id, "customer")))
 
 
 @router.post("/{customer_id}/remind")
@@ -99,15 +110,26 @@ def remind_customer(
     return see_other(f"/ui/customers/{customer_id}", flash=message)
 
 
+def _form_kwargs(db: Session, ctx: TenantContext, customer, form=None) -> dict:
+    """The customer form's custom fields: the active definitions and the record's values."""
+    values = custom_fields.values_of(db, ctx.tenant_id, "customer", customer.id, include_archived=False) if customer else {}
+    return {"custom_fields": custom_fields.list_fields(db, ctx.tenant_id, "customer"), "custom_values": values, "form": form}
+
+
+async def _custom_values(request: Request, db: Session, ctx: TenantContext) -> dict[str, str]:
+    form = await request.form()
+    return {f.key: str(form.get(f"cf_{f.key}") or "") for f in custom_fields.list_fields(db, ctx.tenant_id, "customer")}
+
+
 @router.get("/new")
 def new_customer_form(
-    request: Request, ctx: TenantContext = Depends(require_web_permission("customer:manage"))
+    request: Request, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("customer:manage"))
 ) -> HTMLResponse:
-    return render_template(request, "customers/form.html", ctx=ctx, customer=None)
+    return render_template(request, "customers/form.html", ctx=ctx, customer=None, **_form_kwargs(db, ctx, None))
 
 
 @router.post("")
-def create_customer(
+async def create_customer(
     request: Request,
     customer_number: str = Form(...),
     name: str = Form(...),
@@ -131,12 +153,19 @@ def create_customer(
         customer_number, name, external_customer_id, tax_id, primary_contact_name, email, phone, website,
         address_line1, address_line2, city, state, postal_code, notes,
     )
+    values = await _custom_values(request, db, ctx)
     try:
         customer = customer_service.create_customer(db, ctx.tenant_id, data)
+        custom_fields.set_values(db, ctx.tenant_id, "customer", customer.id, values, user_id=ctx.user_id, require=True)
+    except CustomFieldError as exc:
+        db.rollback()
+        return render_template(request, "customers/form.html", ctx=ctx, customer=None, error=str(exc), status_code=422,
+                               **_form_kwargs(db, ctx, None, form=dict(await request.form())))
     except Exception as exc:  # noqa: BLE001 — surface a DB constraint violation (e.g. duplicate customer number) to the form
         db.rollback()
         return render_template(
-            request, "customers/form.html", ctx=ctx, customer=None, error=friendly_error(exc, action="Could not create customer", duplicate="A customer with that customer number already exists."), status_code=422
+            request, "customers/form.html", ctx=ctx, customer=None, error=friendly_error(exc, action="Could not create customer", duplicate="A customer with that customer number already exists."), status_code=422,
+            **_form_kwargs(db, ctx, None, form=dict(await request.form())),
         )
 
     audit_log_service.record_action(
@@ -226,6 +255,9 @@ def customer_detail(
         customer_cutoffs=cutoff_service.customer_cutoffs(db, ctx.tenant_id, customer.id), networks=registered_codes(),
         offered_group_count=len(customer_people_service.offered_groups(db, ctx.tenant_id)),
         **_offboarding_context(db, customer, tenant),
+        custom_fields=custom_fields.list_fields(db, ctx.tenant_id, "customer", include_archived=True),
+        custom_values=custom_fields.values_of(db, ctx.tenant_id, "customer", customer.id),
+        account_has_fields=bool(custom_fields.list_fields(db, ctx.tenant_id, "account")),
     )
 
 
@@ -417,11 +449,11 @@ def edit_customer_form(
     customer = customer_service.get_customer(db, ctx.tenant_id, customer_id)
     if customer is None:
         raise WebNotFound()
-    return render_template(request, "customers/form.html", ctx=ctx, customer=customer)
+    return render_template(request, "customers/form.html", ctx=ctx, customer=customer, **_form_kwargs(db, ctx, customer))
 
 
 @router.post("/{customer_id}")
-def update_customer(
+async def update_customer(
     request: Request,
     customer_id: uuid.UUID,
     customer_number: str = Form(...),
@@ -450,12 +482,21 @@ def update_customer(
     if existing is None:
         raise WebNotFound()
 
+    values = await _custom_values(request, db, ctx)
     try:
         customer = customer_service.update_customer(db, ctx.tenant_id, customer_id, data)
+        custom_fields.set_values(db, ctx.tenant_id, "customer", customer_id, values, user_id=ctx.user_id, require=True)
+    except CustomFieldError as exc:
+        db.rollback()
+        existing = customer_service.get_customer(db, ctx.tenant_id, customer_id)
+        return render_template(request, "customers/form.html", ctx=ctx, customer=existing, error=str(exc), status_code=422,
+                               **_form_kwargs(db, ctx, existing, form=dict(await request.form())))
     except Exception as exc:  # noqa: BLE001 — surface a DB constraint violation (e.g. duplicate customer number) to the form
         db.rollback()
+        existing = customer_service.get_customer(db, ctx.tenant_id, customer_id)
         return render_template(
-            request, "customers/form.html", ctx=ctx, customer=existing, error=friendly_error(exc, action="Could not update customer", duplicate="Another customer already has that customer number."), status_code=422
+            request, "customers/form.html", ctx=ctx, customer=existing, error=friendly_error(exc, action="Could not update customer", duplicate="Another customer already has that customer number."), status_code=422,
+            **_form_kwargs(db, ctx, existing, form=dict(await request.form())),
         )
 
     audit_log_service.record_action(

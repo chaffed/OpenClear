@@ -266,6 +266,7 @@
       {% else %}<span class="text-muted">Not scored yet (not enough decision history)</span>{% endif %}</div>
     {% if evidence and evidence.account_label %}<div><span class="fact-label">Account</span> {{ evidence.account_label }}</div>{% endif %}
     {% if evidence and evidence.customer_name %}<div><span class="fact-label">Customer</span> {{ evidence.customer_name }}</div>{% endif %}
+    {% for label, value in (evidence.custom_fields if evidence else []) %}<div><span class="fact-label">{{ label }}</span> {{ value }}</div>{% endfor %}
   </div>
   {% if evidence and evidence.paid_item_id and can(ctx, "paid_item:read") %}<p class="link-line"><a href="/ui/paid-items/{{ evidence.paid_item_id }}">View the paid item</a></p>{% endif %}
   {% if item.network_code == "ach" and can(ctx, "ach_authorization:write") %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros/responsive_table.html" as rt %}
 {% from "_macros/icon.html" import icon %}
+{% import "_macros/custom_fields.html" as cf %}
 {% block title %}Customers — {{ ctx.tenant_name }}{% endblock %}
 {% block help_title %}About customers{% endblock %}
 {% block help_body %}
@@ -22,7 +23,8 @@
   <p class="hint"><a href="/ui/customers/deleted">Deleted customers</a>: their deletion certificates.</p>
   <form method="get" action="/ui/customers" class="list-search" role="search">
     <div class="list-search-main">
-      <label>Find <input type="search" name="q" value="{{ q }}" placeholder="Name or number"></label>
+      <label>Find <input type="search" name="q" value="{{ q }}" placeholder="Name, number or a custom field"></label>
+      {% if any_required %}<label><input type="checkbox" name="missing" value="1"{% if missing %} checked{% endif %}> Missing a required field</label>{% endif %}
       <label>No issue file in
         <select name="quiet">
           <option value="">—</option>
@@ -44,6 +46,7 @@
     {"key": "default", "label": "At the deadline", "th": 'scope="col"'},
     {"key": "status", "label": "Status", "role": "status", "th": 'scope="col"'},
   ] %}
+  {% set columns = columns + custom_columns %}
   {% call(r, col, part="cell") rt.responsive_table(columns, rows) -%}
     {%- if col.key == "customer" %}<a href="/ui/customers/{{ r.customer.id }}">{{ r.customer.name }}</a><br><span class="hint">{{ r.customer.customer_number }}</span>
     {%- elif col.key == "open" %}{% if r.open_count %}<a href="/ui/exceptions?customer={{ r.customer.id }}">{{ r.open_count }}</a>{% else %}0{% endif %}
@@ -53,6 +56,7 @@
     {%- elif col.key == "cutoff" %}{% for network, value in (r.cutoffs or {}).items() | sort %}{{ {"check": "Checks", "ach": "ACH"}.get(network, network) }} {{ value }}{% if network in r.negotiated %} <span class="badge">agreed</span>{% endif %}{{ "<br>" | safe if not loop.last }}{% else %}—{% endfor %}
     {%- elif col.key == "default" %}{{ r.decision_default }}
     {%- elif col.key == "status" %}<span class="badge {{ 'badge-ok' if r.customer.is_active else '' }}">{{ 'active' if r.customer.is_active else 'inactive' }}</span>
+    {%- elif col.key.startswith("cf:") %}{% set f = (list_fields | selectattr("key", "equalto", col.key[3:]) | first) %}{{ cf.cell(f, custom_values.get(r.customer.id, {}).get(f.key)) }}
     {%- endif %}
   {%- endcall %}
   {% if pages > 1 %}

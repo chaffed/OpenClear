@@ -134,6 +134,7 @@ PAGES = [
     ("setting_customer_approval", "/ui/settings/customer-approval", "bank"),
     ("customer_user_approvals", "/ui/approvals/customer-users", "bank"),
     ("settings_dialog", "/ui/settings#timeouts", "bank"),
+    ("settings_custom_fields", "/ui/settings/custom-fields", "bank"),
     ("people", "/ui/people", "customer"),
     ("person", "{person}", "customer"),
     ("people_invite", "/ui/people/invite", "customer"),

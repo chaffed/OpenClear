@@ -144,6 +144,9 @@ CATALOG: dict[str, EventType] = {
     "bank.legal_hold.changed": EventType("data", "high"),
     # A customer's positive pay ended and its data deleted 90 days later (plans/CUSTOMER_OFFBOARDING_PLAN.md).
     "customer.offboarding": EventType("data", "high"),
+    # A bank's custom field defined, changed, archived or restored (plans/CUSTOM_FIELDS_PLAN.md CF-D11): what's collected
+    # on customers and accounts, and who sees it, changes.
+    "custom_field.changed": EventType("configuration", "medium"),
     # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
     "decision.after_return_deadline": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
@@ -217,6 +220,9 @@ AUDIT_EVENTS: dict[str, str] = {
     "customer.offboard.delete": "customer.offboarding",
     "customer.legal_hold.on": "customer.offboarding",
     "customer.legal_hold.off": "customer.offboarding",
+    "custom_field.saved": "custom_field.changed",
+    "custom_field.archived": "custom_field.changed",
+    "custom_field.restored": "custom_field.changed",
     "teller.verify": "teller.verify",
     "teller.verify.declined": "teller.verify.declined",
     "teller.cashed": "teller.cashed",
