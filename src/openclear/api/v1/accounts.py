@@ -20,6 +20,7 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.account import Account, AchDebitBlockMode, CheckReviewMode
 from openclear.repositories.account_repo import AccountRepository
 from openclear.services import account_service, audit_log_service, customer_service
+from openclear.services import custom_field_service as custom_fields
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -32,6 +33,9 @@ class AccountUpsert(BaseModel):
     check_review_mode: CheckReviewMode | None = Field(
         None, description="positive, or reverse positive pay: the customer reviews every check and unreturned ones are paid at "
                           "the cut-off. Bank staff with admin:manage only; turning reverse on may wait for a second admin (202).")
+    custom_fields: dict[str, str | None] | None = Field(
+        None, description="The bank's custom fields by key, as strings (GET /custom-fields gives each one's type); null clears one. "
+                          "Keys left out keep their values; left out entirely, nothing changes. Bank-level callers only.")
 
 
 class AccountRead(BaseModel):
@@ -45,6 +49,13 @@ class AccountRead(BaseModel):
     check_review_mode: CheckReviewMode
     external_account_id: str | None
     updated_at: datetime | None = None
+    custom_fields: dict[str, str | None] = Field({}, description="The bank's custom fields by key, as strings; a customer-scoped "
+                                                                  "caller gets only those shown to the customer")
+
+
+def _with_fields(db: Session, ctx: TenantContext, rows) -> list[AccountRead]:
+    values = custom_fields.values_for(db, ctx.tenant_id, "account", [a.id for a in rows], customer_id=ctx.customer_id)
+    return [AccountRead.model_validate(a).model_copy(update={"custom_fields": values.get(a.id, {})}) for a in rows]
 
 
 @router.get("", response_model=list[AccountRead])
@@ -57,7 +68,7 @@ def list_accounts(
     extra, order = changed_since(Account, updated_since, (Account.account_number, Account.id))
     rows = repo.list(order_by=order, limit=page.limit, offset=page.offset, **extra)
     set_page_headers(request, response, page, repo.count(**extra), since=updated_since, rows=rows)
-    return [AccountRead.model_validate(a) for a in rows]
+    return _with_fields(db, ctx, rows)
 
 
 @router.put("/{account_number}", response_model=AccountRead, responses={201: {"model": AccountRead}, 202: {
@@ -72,6 +83,8 @@ def upsert_account(
     admin, the rest is saved and this answers `202` with `{"status": "pending", "change_request_id"}`."""
     if payload.check_review_mode is not None and (ctx.customer_id is not None or "admin:manage" not in ctx.permissions):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the bank's administrators set an account's check review")
+    if payload.custom_fields and ctx.customer_id is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the bank sets an account's custom fields")
     customer_id = None
     if payload.customer_number:
         customer = customer_service.get_customer_by_number(db, ctx.tenant_id, payload.customer_number)
@@ -104,6 +117,12 @@ def upsert_account(
         summary=f"{'Created' if code == 201 else 'Synced'} account {account_number} ({payload.name})",
         resource_type="account", resource_id=account.id,
     )
+    if payload.custom_fields:
+        try:
+            custom_fields.set_values(db, ctx.tenant_id, "account", account.id, payload.custom_fields, user_id=ctx.user_id, channel="api")
+        except custom_fields.CustomFieldError as exc:
+            db.rollback()
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     if payload.check_review_mode is not None:
         from openclear.services import change_request_service
 
@@ -123,4 +142,4 @@ def upsert_account(
             audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action="account.check_review_mode",
                                             summary=outcome.summary, resource_type="account", resource_id=account.id)
     db.commit()
-    return JSONResponse(AccountRead.model_validate(account).model_dump(mode="json"), status_code=code)
+    return JSONResponse(_with_fields(db, ctx, [account])[0].model_dump(mode="json"), status_code=code)

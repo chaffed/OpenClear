@@ -35,6 +35,7 @@ public sealed record AccountRead
     [JsonPropertyName("account_number")] public string AccountNumber { get; init; } = default!;
     [JsonPropertyName("ach_debit_block_mode")] public string AchDebitBlockMode { get; init; } = default!;
     [JsonPropertyName("check_review_mode")] public string CheckReviewMode { get; init; } = default!;
+    [JsonPropertyName("custom_fields")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyDictionary<string, JsonElement>? CustomFields { get; init; }
     [JsonPropertyName("customer_id")] public string CustomerId { get; init; } = default!;
     [JsonPropertyName("external_account_id")] public string ExternalAccountId { get; init; } = default!;
     [JsonPropertyName("id")] public string Id { get; init; } = default!;
@@ -46,6 +47,7 @@ public sealed record AccountUpsert
 {
     [JsonPropertyName("ach_debit_block_mode")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AchDebitBlockMode { get; init; }
     [JsonPropertyName("check_review_mode")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CheckReviewMode { get; init; }
+    [JsonPropertyName("custom_fields")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyDictionary<string, JsonElement>? CustomFields { get; init; }
     [JsonPropertyName("customer_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerNumber { get; init; }
     [JsonPropertyName("external_account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ExternalAccountId { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = default!;
@@ -377,9 +379,26 @@ public sealed record CuecInventory
     [JsonPropertyName("version")] public string Version { get; init; } = default!;
 }
 
+public sealed record CustomFieldRead
+{
+    [JsonPropertyName("archived")] public bool Archived { get; init; } = default!;
+    [JsonPropertyName("field_type")] public string FieldType { get; init; } = default!;
+    [JsonPropertyName("id")] public string Id { get; init; } = default!;
+    [JsonPropertyName("key")] public string Key { get; init; } = default!;
+    [JsonPropertyName("label")] public string Label { get; init; } = default!;
+    [JsonPropertyName("max_length")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? MaxLength { get; init; }
+    [JsonPropertyName("options")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<string>? Options { get; init; }
+    [JsonPropertyName("owner")] public string Owner { get; init; } = default!;
+    [JsonPropertyName("required")] public bool Required { get; init; } = default!;
+    [JsonPropertyName("shown_to_customer")] public bool ShownToCustomer { get; init; } = default!;
+    [JsonPropertyName("unique")] public bool Unique { get; init; } = default!;
+    [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
+}
+
 public sealed record CustomerRead
 {
     [JsonPropertyName("city")] public string City { get; init; } = default!;
+    [JsonPropertyName("custom_fields")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyDictionary<string, JsonElement>? CustomFields { get; init; }
     [JsonPropertyName("customer_number")] public string CustomerNumber { get; init; } = default!;
     [JsonPropertyName("email")] public string Email { get; init; } = default!;
     [JsonPropertyName("external_customer_id")] public string ExternalCustomerId { get; init; } = default!;
@@ -434,6 +453,7 @@ public sealed record CustomerUpsert
     [JsonPropertyName("address_line1")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AddressLine1 { get; init; }
     [JsonPropertyName("address_line2")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AddressLine2 { get; init; }
     [JsonPropertyName("city")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? City { get; init; }
+    [JsonPropertyName("custom_fields")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyDictionary<string, JsonElement>? CustomFields { get; init; }
     [JsonPropertyName("email")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Email { get; init; }
     [JsonPropertyName("external_customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ExternalCustomerId { get; init; }
     [JsonPropertyName("is_active")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? IsActive { get; init; }
@@ -1888,6 +1908,26 @@ public sealed partial class ControlsApi
 }
 
 /// <summary>
+/// custom-fields endpoints.
+/// </summary>
+public sealed partial class CustomFieldsApi
+{
+    private readonly ITransport _c;
+    public CustomFieldsApi(ITransport transport) => _c = transport;
+
+    /// <summary>
+    /// List Custom Fields.
+    ///
+    /// GET /api/v1/custom-fields
+    ///
+    /// Every custom field on customers and on accounts, archived ones included. A customer-scoped
+    /// caller sees only the fields shown to the customer.
+    /// </summary>
+    public Task<IReadOnlyList<CustomFieldRead>> ListCustomFieldsAsync(CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<CustomFieldRead>>("GET", "/api/v1/custom-fields", cancellationToken: cancellationToken);
+}
+
+/// <summary>
 /// customers endpoints.
 /// </summary>
 public sealed partial class CustomersApi
@@ -2838,6 +2878,7 @@ public partial class OpenClearClient
     public ComplianceApi Compliance { get; private set; } = default!;
     public ConformanceApi Conformance { get; private set; } = default!;
     public ControlsApi Controls { get; private set; } = default!;
+    public CustomFieldsApi CustomFields { get; private set; } = default!;
     public CustomersApi Customers { get; private set; } = default!;
     public DataExportsApi DataExports { get; private set; } = default!;
     public DecisionBatchesApi DecisionBatches { get; private set; } = default!;
@@ -2875,6 +2916,7 @@ public partial class OpenClearClient
         Compliance = new ComplianceApi(this);
         Conformance = new ConformanceApi(this);
         Controls = new ControlsApi(this);
+        CustomFields = new CustomFieldsApi(this);
         Customers = new CustomersApi(this);
         DataExports = new DataExportsApi(this);
         DecisionBatches = new DecisionBatchesApi(this);

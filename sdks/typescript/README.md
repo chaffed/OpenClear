@@ -33,7 +33,7 @@ Each API area is a property of the client, with one method per endpoint. The met
 
 ```ts
 await oc.customers.upsertCustomer("CIF-1001", { name: "Acme Corp" });
-await oc.accounts.upsertAccount("12345678", { name: "Operating", customer_number: "CIF-1001" });
+await oc.accounts.upsertAccount("12345678", { name: "Operating", customer_number: "CIF-1001", custom_fields: { aggregation_id: "G-42" } });
 const item = await oc.issuedItems.createIssuedItem({
   account_id: accountId, check_number: "1001", amount: "250.00", payee_name: "Jane Doe", issue_date: "2026-10-01",
 });
@@ -62,6 +62,10 @@ for await (const item of oc.issuedItems.iterIssuedItems({ status_filter: "issued
 | `RateLimitError` | 429 (`.retryAfter`) |
 | `ServerError` | 5xx |
 | `APIConnectionError` | no response |
+
+### Custom fields
+
+A bank's own fields on customers and accounts come and go as `custom_fields`, a map from the field's key to a **string**: an ISO date (`2026-10-01`), decimal text (`12.5`), `true`/`false`, or a choice's option value. `GET /api/v1/custom-fields` gives each field's type; convert on your side. In a `PUT`, keys you leave out keep their values, and `null` clears one; a required field is required in people's forms only, so a sync written before the field existed keeps working.
 
 ## Sending many items
 

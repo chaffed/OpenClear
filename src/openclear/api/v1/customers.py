@@ -39,6 +39,9 @@ class CustomerUpsert(BaseModel):
     state: str | None = Field(None, max_length=50)
     postal_code: str | None = Field(None, max_length=20)
     notes: str | None = Field(None, max_length=1000)
+    custom_fields: dict[str, str | None] | None = Field(
+        None, description="The bank's custom fields by key, as strings (GET /custom-fields gives each one's type); null clears one. "
+                          "Keys left out keep their values; left out entirely, nothing changes.")
 
 
 class CustomerRead(BaseModel):
@@ -61,6 +64,14 @@ class CustomerRead(BaseModel):
     self_manages_users: bool = False
     self_manages_sso: bool = False
     self_manages_api_clients: bool = False
+    custom_fields: dict[str, str | None] = Field({}, description="The bank's custom fields by key, as strings")
+
+
+def _with_fields(db: Session, ctx: TenantContext, rows) -> list[CustomerRead]:
+    from openclear.services import custom_field_service
+
+    values = custom_field_service.values_for(db, ctx.tenant_id, "customer", [c.id for c in rows])
+    return [CustomerRead.model_validate(c).model_copy(update={"custom_fields": values.get(c.id, {})}) for c in rows]
 
 
 class SelfService(BaseModel):
@@ -84,14 +95,14 @@ def list_customers(
     extra, order = changed_since(Customer, updated_since, (Customer.created_at, Customer.id))
     rows = repo.list(**filters, **extra, order_by=order, limit=page.limit, offset=page.offset)
     set_page_headers(request, response, page, repo.count(**filters, **extra), since=updated_since, rows=rows)
-    return [CustomerRead.model_validate(c) for c in rows]
+    return _with_fields(db, ctx, rows)
 
 
 @router.put("/{customer_number}", response_model=CustomerRead, responses={201: {"model": CustomerRead}})
 def upsert_customer(customer_number: str, payload: CustomerUpsert, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage)):
     """Creates the customer with this number, or updates it to match. `200` when it existed,
     `201` when it was created. Fields left out are cleared, as with any `PUT`."""
-    data = customer_service.CustomerInput(customer_number=customer_number, **payload.model_dump(exclude={"is_active"}))
+    data = customer_service.CustomerInput(customer_number=customer_number, **payload.model_dump(exclude={"is_active", "custom_fields"}))
     existing = customer_service.get_customer_by_number(db, ctx.tenant_id, customer_number)
     if existing is None:
         customer = customer_service.create_customer(db, ctx.tenant_id, data)
@@ -105,8 +116,18 @@ def upsert_customer(customer_number: str, payload: CustomerUpsert, db: Session =
         summary=f"{'Created' if code == 201 else 'Synced'} customer {customer_number} ({payload.name})",
         resource_type="customer", resource_id=customer.id,
     )
+    if payload.custom_fields:
+        from fastapi import HTTPException
+
+        from openclear.services import custom_field_service
+
+        try:
+            custom_field_service.set_values(db, ctx.tenant_id, "customer", customer.id, payload.custom_fields, user_id=ctx.user_id, channel="api")
+        except custom_field_service.CustomFieldError as exc:
+            db.rollback()
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     db.commit()
-    return JSONResponse(CustomerRead.model_validate(customer).model_dump(mode="json"), status_code=code)
+    return JSONResponse(_with_fields(db, ctx, [customer])[0].model_dump(mode="json"), status_code=code)
 
 
 def _self_service(db: Session, ctx: TenantContext, customer: Customer) -> SelfService:

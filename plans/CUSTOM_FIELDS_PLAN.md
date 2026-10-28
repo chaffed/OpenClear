@@ -127,7 +127,7 @@ everything else, and a custom field is never an import key.
 | CF1 | Model, migration (RLS on the bank tables), the service: definitions, keys, validation by type, values, uniqueness, limits, archiving, retiring options; the customer-scoped read | Done |
 | CF2 | The bank's Settings → Custom fields (two-person where the bank asks); customer and account forms, detail pages, *show in list*, search and the one filter, the missing-required filter and control check; the exception page | Done |
 | CF3 | The provider's bank fields: Platform → Custom fields, each bank's page; *shown to the bank* in its Settings; survival at offboarding, in the certificate | Done |
-| CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | |
+| CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | Done |
 | CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | |
 | CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the webhook endpoint's keys, the feed's parameter; the CSV escaping everywhere | |
 | CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | |
@@ -168,3 +168,9 @@ Release after CF4 (the fields, the pages, the API and exports), then CF5–CF7 i
   something is shown), and the certificate's "kept" sentence. **Finding:** a definition change
   that waited for approval wasn't checked until it was applied, so a bad key could sit under
   Changes and fail there; both kinds now check the input before queuing it.
+- 2026-10-28: CF4 built: `custom_fields` on the account and customer read models and upserts (keys
+  left out untouched, `null` clears, a customer-scoped caller is refused), `GET /api/v1/custom-fields`,
+  OpenAPI and the three SDKs regenerated with a *Custom fields* note in each README, the data
+  export's `custom_fields.json` and `custom_field_values.json` (a customer's export: only fields
+  shown to it), and `cf_<key>` columns on the account bulk upload. There's no CSV export of
+  accounts or customers to extend: the JSON API and the data export are the exports.

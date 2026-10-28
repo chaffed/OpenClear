@@ -43,6 +43,7 @@ class AccountRead(TypedDict):
     account_number: str
     ach_debit_block_mode: AchDebitBlockMode
     check_review_mode: CheckReviewMode
+    custom_fields: NotRequired[dict[str, str | None]]
     customer_id: str | None
     external_account_id: str | None
     id: str
@@ -53,6 +54,7 @@ class AccountRead(TypedDict):
 class AccountUpsert(TypedDict):
     ach_debit_block_mode: NotRequired[AchDebitBlockMode | None]
     check_review_mode: NotRequired[CheckReviewMode | None]
+    custom_fields: NotRequired[dict[str, str | None] | None]
     customer_number: NotRequired[str | None]
     external_account_id: NotRequired[str | None]
     name: str
@@ -380,8 +382,24 @@ class CuecInventory(TypedDict):
     version: str
 
 
+class CustomFieldRead(TypedDict):
+    archived: bool
+    field_type: str
+    id: str
+    key: str
+    label: str
+    max_length: NotRequired[int | None]
+    options: NotRequired[list[str]]
+    owner: str
+    required: bool
+    shown_to_customer: bool
+    unique: bool
+    updated_at: NotRequired[str | None]
+
+
 class CustomerRead(TypedDict):
     city: str | None
+    custom_fields: NotRequired[dict[str, str | None]]
     customer_number: str
     email: str | None
     external_customer_id: str | None
@@ -432,6 +450,7 @@ class CustomerUpsert(TypedDict):
     address_line1: NotRequired[str | None]
     address_line2: NotRequired[str | None]
     city: NotRequired[str | None]
+    custom_fields: NotRequired[dict[str, str | None] | None]
     email: NotRequired[str | None]
     external_customer_id: NotRequired[str | None]
     is_active: NotRequired[bool]
@@ -1773,6 +1792,23 @@ class ControlsApi:
         return self._c.call("GET", "/api/v1/controls/status")
 
 
+class CustomFieldsApi:
+    """`custom-fields` endpoints."""
+
+    def __init__(self, transport: "Transport") -> None:
+        self._c = transport
+
+    def list_custom_fields(self) -> list[CustomFieldRead]:
+        """List Custom Fields.
+
+        GET /api/v1/custom-fields
+
+        Every custom field on customers and on accounts, archived ones included. A customer-scoped
+        caller sees only the fields shown to the customer.
+        """
+        return self._c.call("GET", "/api/v1/custom-fields")
+
+
 class CustomersApi:
     """`customers` endpoints."""
 
@@ -2612,6 +2648,7 @@ AREAS = {
     "compliance": ComplianceApi,
     "conformance": ConformanceApi,
     "controls": ControlsApi,
+    "custom_fields": CustomFieldsApi,
     "customers": CustomersApi,
     "data_exports": DataExportsApi,
     "decision_batches": DecisionBatchesApi,

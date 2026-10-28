@@ -179,8 +179,22 @@ def _account_input_from_row(
 def create_account_from_row(
     session: Session, tenant_id: uuid.UUID, row: dict[str, Any], *, scoped_customer_id: uuid.UUID | None = None
 ) -> uuid.UUID:
-    """One delimited/Excel row. The caller owns the transaction."""
-    return create_account(session, tenant_id, _account_input_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id)).id
+    """One delimited/Excel row. The caller owns the transaction. A `cf_<key>` column sets that
+    custom field (plans/CUSTOM_FIELDS_PLAN.md CF-D6), by the bank's staff only; a blank cell leaves
+    it empty."""
+    from openclear.services import custom_field_service
+
+    account = create_account(session, tenant_id, _account_input_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id))
+    values = {str(k)[3:].strip(): (str(v).strip() if v is not None else None) for k, v in row.items() if str(k).lower().startswith("cf_")}
+    values = {k: v for k, v in values.items() if v}
+    if values:
+        if scoped_customer_id is not None:
+            raise RowFieldError("Only the bank's staff set custom fields; leave the cf_ columns out.")
+        try:
+            custom_field_service.set_values(session, tenant_id, "account", account.id, values, user_id=None, channel="web")
+        except custom_field_service.CustomFieldError as exc:
+            raise RowFieldError(str(exc)) from None
+    return account.id
 
 
 def create_accounts_from_rows(
