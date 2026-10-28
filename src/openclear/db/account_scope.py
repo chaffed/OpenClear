@@ -9,7 +9,8 @@ request's session, from the membership, by auth/deps.py::decode_and_build_contex
 on every ORM query on that session, the hand-written ones included, sees only those accounts
 and what's on them: accounts, issued items, stop payments, paid items, ACH rules and
 transactions, the exceptions raised on paid items and ACH transactions, their decisions and
-check images. Bulk uploads and data exports, which can span accounts, are theirs alone. A row
+check images, and custom-field values on accounts. Bulk uploads and data exports, which can span
+accounts, are theirs alone. A row
 outside the scope isn't found, so it can't be read, changed or used as the parent of a new one.
 
 Background work done for such a person (their bulk upload's import, their data export) binds
@@ -71,6 +72,7 @@ def _criteria(ids: tuple[uuid.UUID, ...], user_id: uuid.UUID | None) -> list:
     from openclear.domain.ach_transaction import AchTransaction
     from openclear.domain.bulk_upload_file import BulkUploadFile
     from openclear.domain.check_image import CheckImage
+    from openclear.domain.custom_field import CustomFieldValue
     from openclear.domain.data_export_job import DataExportJob
     from openclear.domain.decision import Decision
     from openclear.domain.exception_item import ExceptionItem
@@ -94,6 +96,9 @@ def _criteria(ids: tuple[uuid.UUID, ...], user_id: uuid.UUID | None) -> list:
         )).scalar_subquery()), include_aliases=True))
     options.append(with_loader_criteria(CheckImage, lambda cls: cls.paid_item_id.in_(
         select(PaidItem.id).where(PaidItem.account_id.in_(allowed)).scalar_subquery()), include_aliases=True))
+    # A custom field's value on an account goes with the account; one on a customer isn't an account's.
+    options.append(with_loader_criteria(CustomFieldValue, lambda cls: or_(cls.account_id.is_(None), cls.account_id.in_(allowed)),
+                                        include_aliases=True))
     options.append(with_loader_criteria(BulkUploadFile, lambda cls: cls.uploaded_by_user_id == user_id, include_aliases=True))
     options.append(with_loader_criteria(DataExportJob, lambda cls: cls.requested_by_user_id == user_id, include_aliases=True))
     return options

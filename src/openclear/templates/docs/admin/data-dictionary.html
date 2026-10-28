@@ -1664,6 +1664,61 @@ then it shows to the bank's administrators on every page. Row-level security by 
 </tbody>
 </table>
 
+<h3>custom_field</h3>
+<p>A bank's own field on its customers or its accounts (plans/CUSTOM_FIELDS_PLAN.md;
+services/custom_field_service.py): an officer code, an aggregation id. Row-level security by bank.
+At most 25 per owner.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>owner</td><td>String(10)</td><td>no</td><td></td><td>customer or account.</td></tr>
+<tr><td>key</td><td>String(40)</td><td>no</td><td>unique with tenant_id, owner</td><td>The field's identity everywhere (custom_fields.key in the API, cf_key in files): a lowercase letter, then letters, digits and underscores. Never changes.</td></tr>
+<tr><td>label</td><td>String(255)</td><td>no</td><td></td><td>What people see.</td></tr>
+<tr><td>field_type</td><td>String(10)</td><td>no</td><td></td><td>text, integer, decimal, date, boolean or choice. Fixed once the field has values.</td></tr>
+<tr><td>max_length</td><td>Integer</td><td>yes</td><td></td><td>Text: at most 255; can grow, not shrink, while there are values.</td></tr>
+<tr><td>options</td><td>JSON</td><td>yes</td><td></td><td>Choice: [{"value", "retired"}, …]. A retired option stays on records and isn't offered or accepted anew.</td></tr>
+<tr><td>required</td><td>Boolean</td><td>no</td><td></td><td>Required in people's forms only; a write from the API or a file that doesn't mention the field leaves it alone.</td></tr>
+<tr><td>unique</td><td>Boolean</td><td>no</td><td></td><td>Text only; enforced through custom_field_value.unique_text.</td></tr>
+<tr><td>shown_to_customer</td><td>Boolean</td><td>no</td><td></td><td>A customer's own people see it, read-only, on its accounts.</td></tr>
+<tr><td>show_in_list</td><td>Boolean</td><td>no</td><td></td><td>A column in the customer or account list; at most three.</td></tr>
+<tr><td>help_text / position</td><td>String(500) / Integer</td><td>yes / no</td><td></td><td></td></tr>
+<tr><td>archived_at</td><td>Timestamp</td><td>yes</td><td></td><td>Archived: hidden from forms, still read, never written.</td></tr>
+<tr><td>created_by_user_id / created_at / updated_at</td><td>UUID / Timestamp</td><td>yes / no / no</td><td>FK → user.id</td><td></td></tr>
+</tbody>
+</table>
+
+<h3>custom_field_value</h3>
+<p>One customer's or account's value for one of its bank's fields, in the column for the field's
+type. Row-level security by bank. Real foreign keys, so a customer's values go with it when it's
+deleted.</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>tenant_id</td><td>UUID</td><td>no</td><td>FK → tenant.id</td><td></td></tr>
+<tr><td>field_id</td><td>UUID</td><td>no</td><td>FK → custom_field.id</td><td></td></tr>
+<tr><td>customer_id / account_id</td><td>UUID</td><td>yes</td><td>FK → customer.id / account.id; each unique with field_id</td><td>One of them: the record the value is on.</td></tr>
+<tr><td>text_value</td><td>String(255)</td><td>yes</td><td></td><td>Text, and a choice's option value; indexed with field_id for search.</td></tr>
+<tr><td>integer_value / decimal_value / date_value / boolean_value</td><td>BigInteger / Numeric(18, 6) / Date / Boolean</td><td>yes</td><td></td><td>The value, in the one column for its type.</td></tr>
+<tr><td>unique_text</td><td>String(255)</td><td>yes</td><td>unique with field_id</td><td>text_value again while the field is unique, else null: how the database keeps unique values unique.</td></tr>
+<tr><td>updated_by_user_id / updated_at</td><td>UUID / Timestamp</td><td>yes / no</td><td>FK → user.id</td><td></td></tr>
+</tbody>
+</table>
+
+<h3>platform_custom_field</h3>
+<p>The service provider's field on banks (an ERP id, a contract reference). The same columns as
+custom_field without tenant_id, owner, shown_to_customer and show_in_list; <code>shown_to_bank</code>
+(Boolean) lets the bank see it, read-only, in its Settings. No row-level security: it belongs to
+the installation.</p>
+
+<h3>platform_custom_field_value</h3>
+<p>One bank's value for one of the provider's fields: the same value columns as
+custom_field_value, keyed <code>bank_id</code> (FK → tenant.id, unique with field_id) rather than
+tenant_id, so a bank's session has no row-level policy that could show it a hidden value, and the
+demo reset and bank offboarding don't wipe it: the provider's values survive a bank's offboarding.</p>
+
 <h3>customer_deletion</h3>
 <p>The bank's record of deleting a customer's data after its last service day, with the signed
 certificate (services/customer_offboarding_service.py). Row-level security by bank.</p>
