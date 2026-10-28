@@ -132,9 +132,14 @@ class RedisRateLimiter:
 
 @lru_cache(maxsize=2)
 def _redis_limiter(url: str) -> RedisRateLimiter:
+    """One try, half a second: a limiter that can't reach Redis allows the request, so retrying only
+    delays it. (redis-py 8 retries three times with up to 10 s of back-off by default, which held
+    every request for seconds while Redis was down.)"""
     import redis
+    from redis.backoff import NoBackoff
+    from redis.retry import Retry
 
-    return RedisRateLimiter(redis.Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5))
+    return RedisRateLimiter(redis.Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5, retry=Retry(NoBackoff(), 0)))
 
 
 def allow(key: str, bucket: str, *, limit: int, window_seconds: float) -> bool:

@@ -111,10 +111,18 @@ def test_redis_limiter_counts_across_instances():
 
 
 def test_redis_limiter_fails_open_when_redis_is_down(caplog):
-    redis = pytest.importorskip("redis")
-    down = _limiter_on(redis.Redis(host="127.0.0.1", port=1, socket_connect_timeout=0.2, socket_timeout=0.2))
+    """And fails open at once: the app's limiter makes one try, with no retries and back-off
+    (redis-py's default held each request for seconds)."""
+    import time
+
+    pytest.importorskip("redis")
+    rate_limit._redis_limiter.cache_clear()
+    down = rate_limit._redis_limiter("redis://127.0.0.1:1/0")
+    started = time.monotonic()
     assert all(down.allow("1.2.3.4", "global", limit=1, window_seconds=60) for _ in range(3))
+    assert time.monotonic() - started < 3  # three requests, each one quick failed try
     assert "can't be reached" in caplog.text
+    rate_limit._redis_limiter.cache_clear()
 
 
 def test_the_app_uses_the_configured_backend(client, monkeypatch):
