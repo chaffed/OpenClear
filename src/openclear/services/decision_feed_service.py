@@ -63,9 +63,12 @@ def latest_sequence(session: Session, tenant_id: uuid.UUID) -> int:
 
 
 def read_feed(
-    session: Session, tenant_id: uuid.UUID, *, after: int = 0, limit: int = 500, customer_id: uuid.UUID | None = None
+    session: Session, tenant_id: uuid.UUID, *, after: int = 0, limit: int = 500, customer_id: uuid.UUID | None = None,
+    custom_fields: list[str] | None = None,
 ) -> list[dict]:
-    """Decisions with feed_sequence > `after`, in order, at most `limit`."""
+    """Decisions with feed_sequence > `after`, in order, at most `limit`. With `custom_fields`
+    (keys from custom_field_service.output_keys), each decision has a `custom_fields` object with
+    those values of its account and customer, and nothing else (CF-D7)."""
     query = (
         select(Decision, ExceptionItem)
         .join(ExceptionItem, ExceptionItem.id == Decision.exception_item_id)
@@ -90,6 +93,12 @@ def read_feed(
     users = {u.id: u for u in session.execute(select(User).where(User.id.in_(user_ids))).scalars()} if user_ids else {}
 
     from openclear.services.decision_service import after_return_deadline  # here: decision_service imports this module
+
+    if custom_fields:
+        from openclear.services import custom_field_service
+
+        field_values = custom_field_service.output_values(session, tenant_id, custom_fields,
+                                                          {a.id: a.customer_id for a in accounts.values()}, customer_id=customer_id)
 
     feed = []
     for decision, exception in rows:
@@ -121,6 +130,8 @@ def read_feed(
                 trace_number=item.trace_number, amount=str(item.amount), effective_date=item.effective_date.isoformat(),
                 originator_id=item.originator_id, originator_name=item.originator_name, sec_code=item.sec_code,
             )
+        if custom_fields:
+            entry["custom_fields"] = field_values.get(account.id) if account else dict.fromkeys(custom_fields)
         feed.append(entry)
     return feed
 
@@ -132,17 +143,26 @@ CSV_COLUMNS = (
 )
 
 
-def to_csv(feed: list[dict]) -> str:
+def to_csv(feed: list[dict], custom_fields: list[str] | tuple = ()) -> str:
+    """The OpenClear CSV layout: its columns, then a cf_<key> column for each custom field asked
+    for, in that order (CF-D7)."""
     out = io.StringIO()
-    writer = csv.DictWriter(out, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+    writer = csv.DictWriter(out, fieldnames=[*CSV_COLUMNS, *(f"cf_{k}" for k in custom_fields)], extrasaction="ignore")
     writer.writeheader()
     for entry in feed:
-        writer.writerow({k: _csv_safe(v) for k, v in entry.items()})
+        values = entry.get("custom_fields") or {}
+        writer.writerow({**{k: _csv_safe(v) for k, v in entry.items()}, **{f"cf_{k}": _csv_safe(values.get(k)) for k in custom_fields}})
     return out.getvalue()
 
 
+def custom_fields_setting(settings: dict | None) -> list[str]:
+    """The keys a decision layout's settings ask for (its `custom_fields` setting), as saved."""
+    return [k.strip() for k in str((settings or {}).get("custom_fields") or "").split(",") if k.strip()]
+
+
 def _csv_safe(value):
-    # Originator names come from ACH files; don't let a spreadsheet run one.
+    # Originator names come from ACH files, custom-field values from people (CF-D13); don't let a
+    # spreadsheet run one.
     if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
         return "'" + value
     return value

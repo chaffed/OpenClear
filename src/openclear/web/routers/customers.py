@@ -78,13 +78,14 @@ def list_customers(
     pages = max(1, -(-len(rows) // HUB_PAGE_SIZE))
     page = min(max(1, page), pages)
     shown = rows[(page - 1) * HUB_PAGE_SIZE: page * HUB_PAGE_SIZE]
-    list_fields = [f for f in custom_fields.list_fields(db, ctx.tenant_id, "customer") if f.show_in_list]
-    return render_template(request, "customers/list.html", ctx=ctx, rows=shown,
+    fields = custom_fields.list_fields(db, ctx.tenant_id, "customer")
+    list_fields = [f for f in fields if f.show_in_list]
+    return render_template(request, "customers/list.html", ctx=ctx, rows=shown, custom_fields=fields,
                            total=len(rows), page=page, pages=pages, q=q, quiet=quiet_days, quiet_choices=QUIET_CHOICES,
                            now=datetime.now(timezone.utc), missing=missing, list_fields=list_fields,
                            custom_columns=[{"key": f"cf:{f.key}", "label": f.label, "th": 'scope="col"'} for f in list_fields],
                            custom_values=custom_fields.values_for(db, ctx.tenant_id, "customer", [r.customer.id for r in shown]),
-                           any_required=any(f.required for f in custom_fields.list_fields(db, ctx.tenant_id, "customer")))
+                           any_required=any(f.required for f in fields))
 
 
 @router.post("/{customer_id}/remind")

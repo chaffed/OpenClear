@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -358,16 +358,54 @@ def values_for(session: Session, tenant_id: uuid.UUID, owner: str, record_ids, *
     return result
 
 
+# --- Values that travel with decisions (CF-D7) -----------------------------------------------------
+
+CUSTOMER_PREFIX = "customer."
+
+
+def output_keys(session: Session, tenant_id: uuid.UUID, text: str | None) -> list[str]:
+    """The fields a destination asks for, in its order (CF-D7): comma-separated, an account's field
+    by its key and its customer's as customer.<key>. Raises CustomFieldError naming any that don't
+    exist."""
+    keys = list(dict.fromkeys(k.strip() for k in (text or "").split(",") if k.strip()))
+    if not keys:
+        return []
+    known = {f.key for f in list_fields(session, tenant_id, CustomFieldOwner.ACCOUNT, include_archived=True)}
+    known |= {CUSTOMER_PREFIX + f.key for f in list_fields(session, tenant_id, CustomFieldOwner.CUSTOMER, include_archived=True)}
+    unknown = [k for k in keys if k not in known]
+    if unknown:
+        raise CustomFieldError(f"No such field: {', '.join(unknown)}. Name an account's field by its key and a customer's as "
+                               f"{CUSTOMER_PREFIX}<key>.")
+    return keys
+
+
+def output_values(session: Session, tenant_id: uuid.UUID, keys: list[str], accounts: dict[uuid.UUID, uuid.UUID | None], *,
+                  customer_id: uuid.UUID | None = None) -> dict[uuid.UUID, dict[str, str | None]]:
+    """For each account (id to its customer's id), the asked-for values by key, every key present
+    (None when empty). A customer-scoped reader gets only fields shown to the customer."""
+    account_keys = [k for k in keys if not k.startswith(CUSTOMER_PREFIX)]
+    customer_ids = {c for c in accounts.values() if c is not None}
+    by_account = values_for(session, tenant_id, CustomFieldOwner.ACCOUNT, accounts, customer_id=customer_id) if account_keys else {}
+    by_customer = (values_for(session, tenant_id, CustomFieldOwner.CUSTOMER, customer_ids, customer_id=customer_id)
+                   if len(account_keys) < len(keys) else {})
+    out = {}
+    for account_id, owner_id in accounts.items():
+        mine, theirs = by_account.get(account_id, {}), by_customer.get(owner_id, {})
+        out[account_id] = {k: theirs.get(k.removeprefix(CUSTOMER_PREFIX)) if k.startswith(CUSTOMER_PREFIX) else mine.get(k) for k in keys}
+    return out
+
+
 def values_of(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uuid.UUID, **kw) -> dict[str, str | None]:
     return values_for(session, tenant_id, owner, [record_id], **kw).get(record_id, {})
 
 
 def set_values(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uuid.UUID, values: dict[str, str | None], *,
-               user_id: uuid.UUID | None, channel: str = "web", require: bool = False) -> Changes:
+               user_id: uuid.UUID | None, channel: str = "web", require: bool = False, audit: bool = True) -> Changes:
     """Sets the values named in `values` (a key to a string, or None to clear) and leaves every
     other field as it is (CF-D5). With `require` (a person's form), every required active field
     must end up with a value. Audited as custom_field.values.changed with before and after
-    (CF-D10). Commits nothing."""
+    (CF-D10), unless `audit` is off (a file or batch, audited once for all its rows). All or
+    nothing, in a savepoint, so a bulk import's other rows stand. Commits nothing."""
     from openclear.services import audit_log_service
 
     record = _record(session, tenant_id, owner, record_id)
@@ -381,46 +419,129 @@ def set_values(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uu
     existing = {row.field_id: row for row in session.execute(select(CustomFieldValue).where(
         CustomFieldValue.tenant_id == tenant_id, _record_column(owner) == record_id)).scalars()}
     changes = Changes()
-    for key, text in values.items():
-        definition = fields[key]
-        row = existing.get(definition.id)
-        before = format_value(definition, row)
-        # A retired option already on the record stays if it's sent back unchanged.
-        if definition.field_type == CustomFieldType.CHOICE and text is not None and text.strip() == before:
-            continue
-        parsed = parse(definition, text)
-        after = None if parsed is None else format_value(definition, _preview(definition, parsed))
-        if before == after:
-            continue
-        if row is None:
-            row = CustomFieldValue(tenant_id=tenant_id, field_id=definition.id,
-                                   customer_id=record_id if owner == CustomFieldOwner.CUSTOMER else None,
-                                   account_id=record_id if owner == CustomFieldOwner.ACCOUNT else None)
-            session.add(row)
-            existing[definition.id] = row
-        _store(definition, row, parsed)
-        row.updated_by_user_id = user_id
-        changes.changes.append(ValueChange(key, before, after))
-    if require:
-        missing = [f.label for f in fields.values() if f.required and f.archived_at is None
-                   and format_value(f, existing.get(f.id)) is None]
-        if missing:
-            raise CustomFieldError(f"Required: {', '.join(missing)}.")
-    if not changes:
-        return changes
+    savepoint = session.begin_nested()
     try:
+        for key, text in values.items():
+            definition = fields[key]
+            row = existing.get(definition.id)
+            before = format_value(definition, row)
+            # A retired option already on the record stays if it's sent back unchanged.
+            if definition.field_type == CustomFieldType.CHOICE and text is not None and text.strip() == before:
+                continue
+            parsed = parse(definition, text)
+            after = None if parsed is None else format_value(definition, _preview(definition, parsed))
+            if before == after:
+                continue
+            if row is None:
+                row = CustomFieldValue(tenant_id=tenant_id, field_id=definition.id,
+                                       customer_id=record_id if owner == CustomFieldOwner.CUSTOMER else None,
+                                       account_id=record_id if owner == CustomFieldOwner.ACCOUNT else None)
+                session.add(row)
+                existing[definition.id] = row
+            _store(definition, row, parsed)
+            row.updated_by_user_id = user_id
+            changes.changes.append(ValueChange(key, before, after))
+        if require:
+            missing = [f.label for f in fields.values() if f.required and f.archived_at is None
+                       and format_value(f, existing.get(f.id)) is None]
+            if missing:
+                raise CustomFieldError(f"Required: {', '.join(missing)}.")
         session.flush()
     except IntegrityError as exc:
-        session.rollback()
+        savepoint.rollback()
         clashing = [c for c in changes.changes if fields[c.key].unique]
         raise CustomFieldError(f"{', '.join(fields[c.key].label for c in clashing) or 'A unique value'} is already on another "
                                f"{owner}; each must be different.") from exc
-    audit_log_service.record_action(
-        session, tenant_id, actor_user_id=user_id, channel=channel, action="custom_field.values.changed",
-        summary=f"Custom fields changed on {owner} {getattr(record, 'customer_number', None) or getattr(record, 'account_number', '')}: "
-                + ", ".join(c.key for c in changes.changes), resource_type=owner, resource_id=record_id,
-        metadata=changes.as_metadata())
+    except Exception:
+        savepoint.rollback()
+        raise
+    savepoint.commit()
+    if changes and audit:
+        audit_log_service.record_action(
+            session, tenant_id, actor_user_id=user_id, channel=channel, action="custom_field.values.changed",
+            summary=f"Custom fields changed on {owner} {_record_label(record)}: " + ", ".join(c.key for c in changes.changes),
+            resource_type=owner, resource_id=record_id, metadata=changes.as_metadata())
     return changes
+
+
+def _record_label(record) -> str:
+    return getattr(record, "customer_number", None) or getattr(record, "account_number", "") or ""
+
+
+def cell_text(cell: Any) -> str:
+    """A file's cell as text: "" for an empty one, which the tabular reader gives as None or as
+    pandas' float NaN."""
+    if cell is None or (isinstance(cell, float) and cell != cell):
+        return ""
+    return str(cell).strip()
+
+
+@dataclass
+class RowUpdate:
+    """One record's custom fields updated from a file's row or a batch call's item."""
+    record_id: uuid.UUID
+    label: str
+    changes: Changes
+
+
+# The columns that name the record in an update file or batch item, tried in order (CF-D10).
+RECORD_KEYS = {CustomFieldOwner.ACCOUNT: ("account_number", "external_account_id"),
+               CustomFieldOwner.CUSTOMER: ("customer_number", "external_customer_id")}
+
+
+def _find_for_update(session: Session, tenant_id: uuid.UUID, owner: str, row: dict):
+    """The existing record a row names; never creates one. A customer whose service has ended
+    is refused, as its accounts are."""
+    from openclear.bulk_import.fields import RowFieldError
+    from openclear.repositories.customer_repo import CustomerRepository
+    from openclear.services import account_service
+
+    number_key, external_key = RECORD_KEYS[CustomFieldOwner(owner)]
+    number, external = cell_text(row.get(number_key)), cell_text(row.get(external_key))
+    if not number and not external:
+        raise RowFieldError(f"Give the {number_key.replace('_', ' ')} or the {external_key.replace('_', ' ')}.", number_key)
+    if owner == CustomFieldOwner.ACCOUNT:
+        account = account_service.get_account_by_number(session, tenant_id, number or external)
+        if account is None:
+            raise RowFieldError(f"No account {number or external}.", number_key if number else external_key)
+        return account
+    repo = CustomerRepository(session, tenant_id)
+    matches = repo.list(customer_number=number) if number else repo.list(external_customer_id=external)
+    if not matches:
+        raise RowFieldError(f"No customer {number or external}.", number_key if number else external_key)
+    customer = matches[0]
+    if customer.service_ended_at is not None:
+        raise RowFieldError(f"Positive pay ended for {customer.name} on {customer.service_ended_at:%Y-%m-%d}; its fields aren't "
+                            "updated.", number_key if number else external_key)
+    return customer
+
+
+def update_from_row(session: Session, tenant_id: uuid.UUID, owner: str, row: dict, *, user_id: uuid.UUID | None,
+                    blank_clears: bool = False) -> RowUpdate:
+    """One row of an update file (its `cf_<key>` columns) or one batch item (its `custom_fields`
+    map): sets those values on the existing record it names (CF-D10). In a file a blank cell
+    leaves the value alone, unless `blank_clears`; in a batch item a key left out is left alone
+    and null clears. Not audited here: the file or batch is, once."""
+    from openclear.bulk_import.fields import RowFieldError
+
+    record = _find_for_update(session, tenant_id, owner, row)
+    if isinstance(row.get("custom_fields"), dict):
+        values = {str(k): (None if v is None else str(v)) for k, v in row["custom_fields"].items()}
+    else:
+        values = {}
+        for column, cell in row.items():
+            if not str(column).lower().startswith("cf_"):
+                continue
+            text = cell_text(cell)
+            if text or blank_clears:
+                values[str(column)[3:].strip()] = text or None
+    if not values:
+        raise RowFieldError("Nothing to update: no custom-field values in this row.")
+    try:
+        changes = set_values(session, tenant_id, owner, record.id, values, user_id=user_id, audit=False)
+    except CustomFieldError as exc:
+        raise RowFieldError(str(exc)) from None
+    return RowUpdate(record.id, _record_label(record), changes)
 
 
 class _preview:
@@ -430,16 +551,28 @@ class _preview:
         _store(definition, self, value)
 
 
-def missing_required(session: Session, tenant_id: uuid.UUID, owner: str) -> list[uuid.UUID]:
-    """The records with no value for a required, active field (for the lists' filter and the
-    control check, CF-D5)."""
+def missing_required_condition(session: Session, tenant_id: uuid.UUID, owner: str):
+    """A SQL condition on the customer or account table: it has no value for some required, active
+    field (CF-D5). None when no field is required. Worked out in the database, so a bank with
+    20,000 accounts doesn't read every value to find the few without one."""
     fields = [f for f in list_fields(session, tenant_id, owner) if f.required]
     if not fields:
+        return None
+    model = Customer if owner == CustomFieldOwner.CUSTOMER else Account
+    present = or_(*(getattr(CustomFieldValue, c).is_not(None)
+                    for c in ("text_value", "integer_value", "decimal_value", "date_value", "boolean_value")))
+    return or_(*(model.id.not_in(select(_record_column(owner)).where(
+        CustomFieldValue.tenant_id == tenant_id, CustomFieldValue.field_id == f.id, present)) for f in fields))
+
+
+def missing_required(session: Session, tenant_id: uuid.UUID, owner: str) -> list[uuid.UUID]:
+    """The records with no value for a required, active field (for the customer hub's filter and
+    the control check, CF-D5)."""
+    condition = missing_required_condition(session, tenant_id, owner)
+    if condition is None:
         return []
     model = Customer if owner == CustomFieldOwner.CUSTOMER else Account
-    ids = list(session.execute(select(model.id).where(model.tenant_id == tenant_id)).scalars())
-    have = values_for(session, tenant_id, owner, ids, include_archived=False)
-    return [i for i in ids if any(have[i].get(f.key) is None for f in fields)]
+    return list(session.execute(select(model.id).where(model.tenant_id == tenant_id, condition)).scalars())
 
 
 # --- The provider's fields on banks -------------------------------------------------------------

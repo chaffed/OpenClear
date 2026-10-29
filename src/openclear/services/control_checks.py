@@ -441,6 +441,26 @@ def incident_contacts(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("incident_contacts", title, PASS, f"{_plural(len(named), 'incident contact')}, confirmed {confirmed:%Y-%m-%d}.", evidence)
 
 
+def custom_fields(session: Session, tenant_id: uuid.UUID) -> Control:
+    """Required custom fields are filled in (plans/CUSTOM_FIELDS_PLAN.md CF-D5). Required holds in
+    people's forms only, so a record made by a file, the API or the core's sync can lack one; the
+    lists' "Missing a required field" filter shows which."""
+    from openclear.services import custom_field_service
+
+    title = "Required custom fields filled in"
+    required = {owner: [f.key for f in custom_field_service.list_fields(session, tenant_id, owner) if f.required]
+                for owner in ("customer", "account")}
+    missing = {owner: len(custom_field_service.missing_required(session, tenant_id, owner)) for owner in required}
+    evidence = {"required_fields": required, "customers_missing": missing["customer"], "accounts_missing": missing["account"]}
+    if not any(required.values()):
+        return Control("custom_fields", title, PASS, "No custom field is required.", evidence)
+    if any(missing.values()):
+        lacking = " and ".join(_plural(n, owner) for owner, n in missing.items() if n)
+        return Control("custom_fields", title, WARN, f"{lacking} lack a required custom field (the customer or account list's "
+                       "\"Missing a required field\").", evidence)
+    return Control("custom_fields", title, PASS, "Every customer and account has its required custom fields.", evidence)
+
+
 def return_deadline(session: Session, tenant_id: uuid.UUID) -> Control:
     """Checks decided within their midnight deadline (UCC 4-302; REGULATORY_PLAN.md RG1): FAIL when
     one in the last 30 days was sent after it; WARN when a customer's cut-off is later than the

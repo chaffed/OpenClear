@@ -18,7 +18,10 @@
 <div class="card">
   <div class="toolbar">
     <h1>Customers</h1>
-    <a href="/ui/customers/new" class="button">{{ icon("add") }}New customer</a>
+    <div class="actions">
+      <a href="/ui/customers/new" class="button">{{ icon("add") }}New customer</a>
+      {% if custom_fields and can(ctx, "custom_field:write") %}<a href="/ui/custom-fields/customers/upload" class="button secondary not-phone">{{ icon("upload_file") }}Update custom fields</a>{% endif %}
+    </div>
   </div>
   <p class="hint"><a href="/ui/customers/deleted">Deleted customers</a>: their deletion certificates.</p>
   <form method="get" action="/ui/customers" class="list-search" role="search">

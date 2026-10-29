@@ -21,6 +21,12 @@ export interface AccountAccessUpdate {
   all_accounts: boolean;
 }
 
+export interface AccountFieldValues {
+  account_number?: string | null;
+  custom_fields: Record<string, string | null>;
+  external_account_id?: string | null;
+}
+
 export interface AccountRead {
   account_number: string;
   ach_debit_block_mode: AchDebitBlockMode;
@@ -243,7 +249,7 @@ export interface BulkUploadAccepted {
   upload_id: string;
 }
 
-export type BulkUploadKind = "issued_items" | "ach_transactions" | "users" | "accounts" | "check_images" | "paid_items";
+export type BulkUploadKind = "issued_items" | "ach_transactions" | "users" | "accounts" | "check_images" | "paid_items" | "account_fields" | "customer_fields";
 
 export interface BulkUploadRead {
   completed_at: string | null;
@@ -370,6 +376,12 @@ export interface CustomFieldRead {
   shown_to_customer: boolean;
   unique: boolean;
   updated_at?: string | null;
+}
+
+export interface CustomerFieldValues {
+  custom_fields: Record<string, string | null>;
+  customer_number?: string | null;
+  external_customer_id?: string | null;
 }
 
 export interface CustomerRead {
@@ -610,6 +622,23 @@ export interface FeeOverrideOutput {
   fee_item_id: string;
   unit_price?: string | null;
   waived?: boolean;
+}
+
+export interface FieldUpdateResponse {
+  changed: number;
+  failed: number;
+  results: Array<FieldUpdateResult>;
+  total: number;
+  unchanged: number;
+  upload_id: string;
+}
+
+export interface FieldUpdateResult {
+  changes?: ValuesBeforeAfter | null;
+  error?: string | null;
+  index: number;
+  record?: string | null;
+  success: boolean;
 }
 
 export interface ImportFormatRead {
@@ -940,6 +969,11 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type?: string;
+}
+
+export interface ValuesBeforeAfter {
+  after: Record<string, string | null>;
+  before: Record<string, string | null>;
 }
 
 export interface Verification {
@@ -1928,6 +1962,19 @@ export class CustomFieldsApi {
   }
 
   /**
+   * Update Account Fields.
+   *
+   * POST /api/v1/accounts/custom-fields
+   *
+   * Sets custom-field values on up to 1,000 existing accounts, each on its own: one that fails
+   * doesn't stop the rest. It never creates an account. The batch is kept as a bulk upload, with
+   * each record's values before and after, and audited once.
+   */
+  updateAccountFields(body: Array<AccountFieldValues>): Promise<FieldUpdateResponse> {
+    return this.c.call<FieldUpdateResponse>("POST", `/api/v1/accounts/custom-fields`, { json: body });
+  }
+
+  /**
    * List Custom Fields.
    *
    * GET /api/v1/custom-fields
@@ -1937,6 +1984,17 @@ export class CustomFieldsApi {
    */
   listCustomFields(): Promise<Array<CustomFieldRead>> {
     return this.c.call<Array<CustomFieldRead>>("GET", `/api/v1/custom-fields`, {  });
+  }
+
+  /**
+   * Update Customer Fields.
+   *
+   * POST /api/v1/customers/custom-fields
+   *
+   * Sets custom-field values on up to 1,000 existing customers, as the accounts' call does.
+   */
+  updateCustomerFields(body: Array<CustomerFieldValues>): Promise<FieldUpdateResponse> {
+    return this.c.call<FieldUpdateResponse>("POST", `/api/v1/customers/custom-fields`, { json: body });
   }
 }
 
@@ -2146,9 +2204,10 @@ export class DecisionFeedApi {
    * Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
    * you processed and pass it as `after` next time. When a full page comes back, a
    * `Link: rel="next"` header points at the next one. With `customer_number`, only that
-   * customer's decisions; the sequence numbers are still the bank's, so expect gaps.
+   * customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+   * `custom_fields`, each decision has those custom-field values, and only those.
    */
-  decisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): Promise<Array<Record<string, unknown>>> {
+  decisionFeed(query: { after?: number; limit?: number; customer_number?: string | null; custom_fields?: string | null } = {}): Promise<Array<Record<string, unknown>>> {
     return this.c.call<Array<Record<string, unknown>>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2157,7 +2216,7 @@ export class DecisionFeedApi {
    *
    * GET /api/v1/decisions
    */
-  iterDecisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): AsyncIterable<Record<string, unknown>> {
+  iterDecisionFeed(query: { after?: number; limit?: number; customer_number?: string | null; custom_fields?: string | null } = {}): AsyncIterable<Record<string, unknown>> {
     return this.c.paginate<Record<string, unknown>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2189,9 +2248,10 @@ export class DecisionFeedApi {
    *
    * GET /api/v1/decisions/feed.csv
    *
-   * The same decisions as a CSV file, for a core that takes files.
+   * The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+   * cf_<key> column for each, at the end in that order.
    */
-  decisionFeedCsv(query: { after?: number; limit?: number } = {}): Promise<Uint8Array> {
+  decisionFeedCsv(query: { after?: number; limit?: number; custom_fields?: string | null } = {}): Promise<Uint8Array> {
     return this.c.call<Uint8Array>("GET", `/api/v1/decisions/feed.csv`, { query, raw: true });
   }
 

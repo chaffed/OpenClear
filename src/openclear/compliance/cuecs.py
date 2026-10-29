@@ -341,7 +341,8 @@ CUECS: tuple[Cuec, ...] = (
          "taxpayer id, a password or personal data with no use here; mark a field shown to the customer only when the "
          "customer should see it; and review the fields yearly.",
          "OpenClear limits fields to 25 per kind, records every definition and value change with before and after, shows a "
-         "customer only fields marked for it, and says what not to store on the page where fields are defined.",
+         "customer only fields marked for it, says what not to store on the page where fields are defined, and warns while a "
+         "required field is empty.",
          "attested", None, "Yearly", "Settings → Custom fields; the action log", related=("PT-2", "AC-3")),
     Cuec("B-RA-3-04", "bank", "RA-3", "Screen for sanctions where the money moves",
          "Screen accountholders, people cashing checks, payees where the bank's risk assessment calls for it, and inbound IAT "

@@ -23,7 +23,7 @@ from openclear.api.v1.users import router as users_router
 from openclear.api.v1.oauth import router as oauth_router
 from openclear.api.v1.customers import router as customers_router
 from openclear.api.v1.accounts import router as accounts_router
-from openclear.api.v1.custom_fields import router as custom_fields_router
+from openclear.api.v1.custom_fields import batch_router as custom_field_batch_router, router as custom_fields_router
 from openclear.api.v1.decision_feed import router as decision_feed_router
 from openclear.api.v1.embed import router as embed_router
 from openclear.api.v1.conformance import router as conformance_router
@@ -59,6 +59,7 @@ api_router.include_router(platform_metrics_router)
 api_router.include_router(admin_router)
 api_router.include_router(users_router)
 api_router.include_router(oauth_router)
+api_router.include_router(custom_field_batch_router)  # before /{customer_number} and /{account_number}
 api_router.include_router(customers_router)
 api_router.include_router(accounts_router)
 api_router.include_router(custom_fields_router)

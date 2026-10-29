@@ -53,8 +53,11 @@ everything else, and a custom field is never an import key.
   own row, a feed consumer in its request (`?custom_fields=aggregation_id,…`). There's no
   per-field switch: one place to look and to audit, and a destination's output changes only when
   someone edits that destination. In the OpenClear CSV layout they go at the end in the order
-  named; the NACHA layout has nowhere for them and ignores the setting; in JSON and the webhook
-  they're under one `custom_fields` object.
+  named; the NACHA layout has nowhere for them and ignores the setting; in JSON they're under one
+  `custom_fields` object. An account's field is named by its key, its customer's as
+  `customer.<key>`. *Amended 2026-10-28:* webhooks stay thin (ids only, as
+  `services/webhook_service.py` promises, so a misconfigured endpoint can't leak data); a
+  receiver reads the values from the feed with `?custom_fields=`.
 - **CF-D8. Values are strings in the API,** in and out, formatted by type (an ISO date, decimal
   text, `true`/`false`); `GET /api/v1/custom-fields` gives each field's type, and the API docs and
   the SDK READMEs say consumers convert on their side. So `custom_fields` is a map from key to
@@ -128,9 +131,9 @@ everything else, and a custom field is never an import key.
 | CF2 | The bank's Settings → Custom fields (two-person where the bank asks); customer and account forms, detail pages, *show in list*, search and the one filter, the missing-required filter and control check; the exception page | Done |
 | CF3 | The provider's bank fields: Platform → Custom fields, each bank's page; *shown to the bank* in its Settings; survival at offboarding, in the certificate | Done |
 | CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | Done |
-| CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | |
-| CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the webhook endpoint's keys, the feed's parameter; the CSV escaping everywhere | |
-| CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | |
+| CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | Done |
+| CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the feed's parameter (webhooks stay thin; see CF-D7); the CSV escaping everywhere | Done |
+| CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | Done |
 
 One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first, unreleased.
 
@@ -174,3 +177,20 @@ One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first,
   export's `custom_fields.json` and `custom_field_values.json` (a customer's export: only fields
   shown to it), and `cf_<key>` columns on the account bulk upload. There's no CSV export of
   accounts or customers to extend: the JSON API and the data export are the exports.
+- 2026-10-28: CF5 built. Update files (web, `fields/accounts/` and `fields/customers/` drop folders,
+  bank-wide only) and `POST /api/v1/{accounts,customers}/custom-fields` (at most 1,000, kept as a
+  bulk upload and imported in the request) share one import path with `ImportSpec.updates`: nothing
+  tracked for back-out, no per-row fixes, one audit entry per file. `set_values` now works in a
+  savepoint, so one row's unique clash no longer rolls back the rest of an import. A blank cell
+  in a file (pandas' NaN) was stored as "nan" by the CF4 account upload; fixed.
+- 2026-10-28: CF6 built. `?custom_fields=` on `GET /api/v1/decisions` and `feed.csv`; the OpenClear
+  CSV layout's "Custom fields to add" setting (checked on save, a sensitive change like the rest
+  of Decision files) for the outbox and `GET /api/v1/decisions/file`. A customer-scoped reader
+  gets only fields shown to the customer. The webhook endpoint keys were dropped: webhook
+  payloads are ids only by design (CF-D7 amended), so no `webhook_endpoint` column.
+- 2026-10-28: CF7 built. Control check `custom_fields` (nightly; warns while a record lacks a
+  required value) under new control OC-SI-14, linked to CUEC B-SI-12-03; threat OC-T28 (bulk
+  rewrites). Scale test `tests/test_scale/test_custom_fields.py`, opt-in with
+  `OPENCLEAR_SCALE_TESTS=1`: 20,000 accounts x 25 fields seeds in 7 s; the list 0.14 s, a value
+  filter 0.01 s, the missing-required filter 0.04 s (5.6 s before it moved into SQL), the API
+  list of 500 0.28 s, a 1,000-row update file 0.8 s, the data export 12 s (SQLite, M-series Mac).

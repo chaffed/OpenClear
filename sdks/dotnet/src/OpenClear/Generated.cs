@@ -30,6 +30,13 @@ public sealed record AccountAccessUpdate
     [JsonPropertyName("all_accounts")] public bool AllAccounts { get; init; } = default!;
 }
 
+public sealed record AccountFieldValues
+{
+    [JsonPropertyName("account_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? AccountNumber { get; init; }
+    [JsonPropertyName("custom_fields")] public IReadOnlyDictionary<string, JsonElement> CustomFields { get; init; } = default!;
+    [JsonPropertyName("external_account_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ExternalAccountId { get; init; }
+}
+
 public sealed record AccountRead
 {
     [JsonPropertyName("account_number")] public string AccountNumber { get; init; } = default!;
@@ -395,6 +402,13 @@ public sealed record CustomFieldRead
     [JsonPropertyName("updated_at")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UpdatedAt { get; init; }
 }
 
+public sealed record CustomerFieldValues
+{
+    [JsonPropertyName("custom_fields")] public IReadOnlyDictionary<string, JsonElement> CustomFields { get; init; } = default!;
+    [JsonPropertyName("customer_number")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? CustomerNumber { get; init; }
+    [JsonPropertyName("external_customer_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ExternalCustomerId { get; init; }
+}
+
 public sealed record CustomerRead
 {
     [JsonPropertyName("city")] public string City { get; init; } = default!;
@@ -651,6 +665,25 @@ public sealed record FeeOverrideOutput
     [JsonPropertyName("fee_item_id")] public string FeeItemId { get; init; } = default!;
     [JsonPropertyName("unit_price")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? UnitPrice { get; init; }
     [JsonPropertyName("waived")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Waived { get; init; }
+}
+
+public sealed record FieldUpdateResponse
+{
+    [JsonPropertyName("changed")] public long Changed { get; init; } = default!;
+    [JsonPropertyName("failed")] public long Failed { get; init; } = default!;
+    [JsonPropertyName("results")] public IReadOnlyList<FieldUpdateResult> Results { get; init; } = default!;
+    [JsonPropertyName("total")] public long Total { get; init; } = default!;
+    [JsonPropertyName("unchanged")] public long Unchanged { get; init; } = default!;
+    [JsonPropertyName("upload_id")] public string UploadId { get; init; } = default!;
+}
+
+public sealed record FieldUpdateResult
+{
+    [JsonPropertyName("changes")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public ValuesBeforeAfter? Changes { get; init; }
+    [JsonPropertyName("error")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Error { get; init; }
+    [JsonPropertyName("index")] public long Index { get; init; } = default!;
+    [JsonPropertyName("record")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Record { get; init; }
+    [JsonPropertyName("success")] public bool Success { get; init; } = default!;
 }
 
 public sealed record ImportFormatRead
@@ -1009,6 +1042,12 @@ public sealed record TokenResponse
     [JsonPropertyName("access_token")] public string AccessToken { get; init; } = default!;
     [JsonPropertyName("refresh_token")] public string RefreshToken { get; init; } = default!;
     [JsonPropertyName("token_type")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? TokenType { get; init; }
+}
+
+public sealed record ValuesBeforeAfter
+{
+    [JsonPropertyName("after")] public IReadOnlyDictionary<string, JsonElement> After { get; init; } = default!;
+    [JsonPropertyName("before")] public IReadOnlyDictionary<string, JsonElement> Before { get; init; } = default!;
 }
 
 public sealed record Verification
@@ -1916,6 +1955,18 @@ public sealed partial class CustomFieldsApi
     public CustomFieldsApi(ITransport transport) => _c = transport;
 
     /// <summary>
+    /// Update Account Fields.
+    ///
+    /// POST /api/v1/accounts/custom-fields
+    ///
+    /// Sets custom-field values on up to 1,000 existing accounts, each on its own: one that fails
+    /// doesn't stop the rest. It never creates an account. The batch is kept as a bulk upload, with
+    /// each record's values before and after, and audited once.
+    /// </summary>
+    public Task<FieldUpdateResponse> UpdateAccountFieldsAsync(IReadOnlyList<AccountFieldValues> body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<FieldUpdateResponse>("POST", "/api/v1/accounts/custom-fields", json: body, cancellationToken: cancellationToken);
+
+    /// <summary>
     /// List Custom Fields.
     ///
     /// GET /api/v1/custom-fields
@@ -1925,6 +1976,16 @@ public sealed partial class CustomFieldsApi
     /// </summary>
     public Task<IReadOnlyList<CustomFieldRead>> ListCustomFieldsAsync(CancellationToken cancellationToken = default) =>
         _c.CallAsync<IReadOnlyList<CustomFieldRead>>("GET", "/api/v1/custom-fields", cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Update Customer Fields.
+    ///
+    /// POST /api/v1/customers/custom-fields
+    ///
+    /// Sets custom-field values on up to 1,000 existing customers, as the accounts' call does.
+    /// </summary>
+    public Task<FieldUpdateResponse> UpdateCustomerFieldsAsync(IReadOnlyList<CustomerFieldValues> body, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<FieldUpdateResponse>("POST", "/api/v1/customers/custom-fields", json: body, cancellationToken: cancellationToken);
 }
 
 /// <summary>
@@ -2116,17 +2177,18 @@ public sealed partial class DecisionFeedApi
     /// Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
     /// you processed and pass it as `after` next time. When a full page comes back, a
     /// `Link: rel="next"` header points at the next one. With `customer_number`, only that
-    /// customer's decisions; the sequence numbers are still the bank's, so expect gaps.
+    /// customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+    /// `custom_fields`, each decision has those custom-field values, and only those.
     /// </summary>
-    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of DecisionFeedAsync, following each page's Link: rel="next".
     /// GET /api/v1/decisions
     /// </summary>
-    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Acknowledge.
@@ -2154,10 +2216,11 @@ public sealed partial class DecisionFeedApi
     ///
     /// GET /api/v1/decisions/feed.csv
     ///
-    /// The same decisions as a CSV file, for a core that takes files.
+    /// The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+    /// cf_&lt;key&gt; column for each, at the end in that order.
     /// </summary>
-    public Task<byte[]> DecisionFeedCsvAsync(long? after = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.CallRawAsync("GET", "/api/v1/decisions/feed.csv", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public Task<byte[]> DecisionFeedCsvAsync(long? after = null, long? limit = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/decisions/feed.csv", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Decision File.

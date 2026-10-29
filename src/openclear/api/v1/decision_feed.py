@@ -24,6 +24,21 @@ class Acknowledgement(BaseModel):
     through_sequence: int = Field(..., ge=0)
 
 
+CUSTOM_FIELDS = Query(
+    None, description="Custom fields to add to each decision, comma-separated, under `custom_fields` (values are strings; "
+                      "GET /api/v1/custom-fields gives their types): an account's field by its key, a customer's as customer.<key>",
+)
+
+
+def _custom_fields(db: Session, ctx: TenantContext, text: str | None) -> list[str]:
+    from openclear.services import custom_field_service
+
+    try:
+        return custom_field_service.output_keys(db, ctx.tenant_id, text)
+    except custom_field_service.CustomFieldError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+
+
 @router.get("")
 def decision_feed(
     request: Request,
@@ -31,15 +46,18 @@ def decision_feed(
     after: int = Query(0, ge=0, description="Return decisions after this sequence number"),
     limit: int = Query(500, ge=1, le=1000),
     customer_number: str | None = customer_filter.CUSTOMER_NUMBER,
+    custom_fields: str | None = CUSTOM_FIELDS,
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(_read),
 ) -> list[dict]:
     """Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
     you processed and pass it as `after` next time. When a full page comes back, a
     `Link: rel="next"` header points at the next one. With `customer_number`, only that
-    customer's decisions; the sequence numbers are still the bank's, so expect gaps."""
+    customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+    `custom_fields`, each decision has those custom-field values, and only those."""
     feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit,
-                                           customer_id=customer_filter.resolve(db, ctx, customer_number))
+                                           customer_id=customer_filter.resolve(db, ctx, customer_number),
+                                           custom_fields=_custom_fields(db, ctx, custom_fields))
     response.headers["X-Latest-Sequence"] = str(decision_feed_service.latest_sequence(db, ctx.tenant_id))
     if len(feed) == limit:
         response.headers["Link"] = f'<{request.url.include_query_params(after=feed[-1]["sequence"], limit=limit)}>; rel="next"'
@@ -48,14 +66,16 @@ def decision_feed(
 
 @router.get("/feed.csv", **CSV_FILE)
 def decision_feed_csv(
-    after: int = Query(0, ge=0), limit: int = Query(1000, ge=1, le=10000),
+    after: int = Query(0, ge=0), limit: int = Query(1000, ge=1, le=10000), custom_fields: str | None = CUSTOM_FIELDS,
     db: Session = Depends(get_db), ctx: TenantContext = Depends(_read),
 ) -> Response:
-    """The same decisions as a CSV file, for a core that takes files."""
-    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id)
+    """The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+    cf_<key> column for each, at the end in that order."""
+    keys = _custom_fields(db, ctx, custom_fields)
+    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id, custom_fields=keys)
     last = feed[-1]["sequence"] if feed else after
     return Response(
-        decision_feed_service.to_csv(feed), media_type="text/csv",
+        decision_feed_service.to_csv(feed, keys), media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="decisions-{after + 1}-{last}.csv"'},
     )
 
@@ -75,10 +95,12 @@ def decision_file(
     from openclear.networks.ach.returns_file import ReturnsFileError
     from openclear.services import decision_outbox_service
 
-    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id)
+    settings = decision_outbox_service.layout_settings(db, ctx.tenant_id, layout)
+    feed = decision_feed_service.read_feed(db, ctx.tenant_id, after=after, limit=limit, customer_id=ctx.customer_id,
+                                           custom_fields=decision_outbox_service.feed_custom_fields(db, ctx.tenant_id, settings))
     last = feed[-1]["sequence"] if feed else after
     try:
-        content = chosen.write(feed, decision_outbox_service.layout_settings(db, ctx.tenant_id, layout))
+        content = chosen.write(feed, settings)
     except ReturnsFileError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
     return Response(

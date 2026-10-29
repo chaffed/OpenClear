@@ -112,3 +112,14 @@ def test_the_account_bulk_upload_takes_cf_columns(db_session, tenant_factory):
     assert cf.values_of(db_session, tenant.id, "account", a.id) == {"agg_id": "G-8", "opened": "2026-01-01"}
     assert account_service.get_account_by_number(db_session, tenant.id, "8002") is None  # the whole row failed
     assert json.dumps(results[0].created_id, default=str)
+
+
+def test_a_blank_cf_cell_in_an_uploaded_file_leaves_the_field_empty(db_session, tenant_factory):
+    from openclear.bulk_import.tabular import parse_tabular_file
+
+    tenant, _account, _users = tenant_factory.make(slug="cfa-blank")
+    _define(db_session, tenant, "account", "agg_id")
+    rows = parse_tabular_file("a.csv", b"account_number,name,cf_agg_id\n8101,A,\n")  # pandas reads the blank cell as NaN
+    assert account_service.create_accounts_from_rows(db_session, tenant.id, rows)[0].success
+    a = account_service.get_account_by_number(db_session, tenant.id, "8101")
+    assert cf.values_of(db_session, tenant.id, "account", a.id) == {}  # nothing stored, not the text "nan"

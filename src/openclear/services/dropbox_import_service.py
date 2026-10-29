@@ -18,6 +18,8 @@ content:
         checks/layout/<layout name>/inbox/    # paid items read by that posted-check layout (lowercase, dashes)
         checks/x937/inbox/
         checks/zip/inbox/
+        fields/accounts/inbox/                # custom-field values on existing accounts (bank-wide only)
+        fields/customers/inbox/               # and on existing customers; a blank cell leaves a value alone
         <customer_number>/                    # optional — same kind/format subtree, customer-scoped
           issued_items/inbox/
           ...
@@ -70,8 +72,14 @@ _CHECKS_TABULAR = "checks/tabular"
 _CHECKS_X937 = "checks/x937"
 _CHECKS_ZIP = "checks/zip"
 
+_FIELDS_ACCOUNTS = "fields/accounts"
+_FIELDS_CUSTOMERS = "fields/customers"
+
 _ALL_KIND_SUBPATHS = (_ISSUED_ITEMS, _ACH_TABULAR, _ACH_NACHA, _CHECKS_TABULAR, _CHECKS_X937, _CHECKS_ZIP)
-_TOP_LEVEL_KIND_DIRS = frozenset(p.split("/")[0] for p in _ALL_KIND_SUBPATHS)
+# Custom-field updates (plans/CUSTOM_FIELDS_PLAN.md CF-D10) are the bank's alone: never read from a
+# customer's folder.
+_BANK_ONLY_SUBPATHS = (_FIELDS_ACCOUNTS, _FIELDS_CUSTOMERS)
+_TOP_LEVEL_KIND_DIRS = frozenset(p.split("/")[0] for p in (*_ALL_KIND_SUBPATHS, *_BANK_ONLY_SUBPATHS))
 
 # tenant.slug and customer.customer_number both become raw filesystem path segments
 # below (root / tenant.slug, root / customer.customer_number) -- neither is otherwise
@@ -117,6 +125,10 @@ def _bulk_upload_kind_for(kind_subpath: str) -> BulkUploadKind:
         return BulkUploadKind.ISSUED_ITEMS
     if kind_subpath in (_ACH_TABULAR, _ACH_NACHA):
         return BulkUploadKind.ACH_TRANSACTIONS
+    if kind_subpath == _FIELDS_ACCOUNTS:
+        return BulkUploadKind.ACCOUNT_FIELDS
+    if kind_subpath == _FIELDS_CUSTOMERS:
+        return BulkUploadKind.CUSTOMER_FIELDS
     if kind_subpath == _CHECKS_TABULAR or kind_subpath.startswith(_CHECKS_LAYOUT + "/"):
         return BulkUploadKind.PAID_ITEMS
     return BulkUploadKind.CHECK_IMAGES  # checks/x937, checks/zip
@@ -130,6 +142,8 @@ _FORMAT_BY_SUBPATH = {
     _CHECKS_TABULAR: "tabular",
     _CHECKS_X937: "x937",
     _CHECKS_ZIP: "zip",
+    _FIELDS_ACCOUNTS: "tabular",
+    _FIELDS_CUSTOMERS: "tabular",
 }
 
 
@@ -249,6 +263,7 @@ def _scan_root(
     results: list[ImportedFileResult] = []
     inboxes = [(kind_subpath, None) for kind_subpath in _ALL_KIND_SUBPATHS]
     if customer_id is None:
+        inboxes += [(kind_subpath, None) for kind_subpath in _BANK_ONLY_SUBPATHS]
         inboxes += _layout_inboxes(session, tenant)
     for kind_subpath, layout in inboxes:
         inbox_dir = root / kind_subpath / "inbox"
