@@ -37,12 +37,12 @@ packages in the image and the two vendored JavaScript files. What's missing:
 
 ## Stages
 
-| Stage | What |
-|---|---|
-| TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test |
-| TP2 | The License page's link; the notices file in the image |
-| TP3 | The image SBOM in the release workflow |
-| TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG |
+| Stage | What | Status |
+|---|---|---|
+| TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test | Done |
+| TP2 | The License page's link; the notices file in the image | |
+| TP3 | The image SBOM in the release workflow | |
+| TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG | |
 
 ## Progress log
 
@@ -51,3 +51,16 @@ packages in the image and the two vendored JavaScript files. What's missing:
   Zensical, by the same team, as its successor. The docs site (`scripts/build_docs_site.py`) moves
   to Zensical before then; until then the build sets `NO_MKDOCS_2_WARNING=1`, and its test fails
   only on MkDocs' own warning lines, not on a banner that mentions the word.
+- 2026-10-29: TP1 built. `requirements/vendored-js.json` became `requirements/vendored.json`: the
+  vendored files (now with the icon sprite, versioned by the day it was fetched), the image's
+  system packages (the test checks the Dockerfile's final stage names exactly these), the .NET
+  SDK's NuGet licenses, and license texts for wheels that leave theirs out (dnspython 2.9.0).
+  `scripts/third_party.py` writes `docs/compliance/third-party.md` and `THIRD_PARTY_NOTICES.md`
+  (104 Python packages in the image, 3 vendored files, 7 system entries, the SDKs, 80 for
+  development only). It reads licenses from installed packages and refuses to run unless the
+  image's packages are installed at their locked versions, so it runs in `python:3.13-slim` with
+  both locks (its docstring has the command). The tests check names and versions against the
+  locks anywhere, and the exact output where the locks are installed.
+  **Follow-up for TP3:** a lock bump (Dependabot, the weekly refresh) now fails the staleness test
+  until the files are regenerated; the lock-refresh workflow should regenerate them in the same
+  container.

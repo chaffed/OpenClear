@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 """A CycloneDX SBOM for a release (OWASP_PLAN.md OW-D11): every Python package the image
-installs (requirements/runtime.txt, with hashes) plus the JavaScript vendored into
-static/js/vendor (requirements/vendored-js.json).
+installs (requirements/runtime.txt, with hashes) plus the JavaScript and icons vendored under
+static/ (requirements/vendored.json).
 
     python scripts/sbom.py -o openclear-<version>.cdx.json
 """
@@ -32,13 +32,13 @@ def build() -> dict:
         "type": "application", "bom-ref": f"pkg:pypi/openclear@{version}", "name": "openclear", "version": version,
         "purl": f"pkg:pypi/openclear@{version}", "licenses": [{"license": {"id": "AGPL-3.0-or-later"}}],
     }
-    vendored = json.loads((ROOT / "requirements" / "vendored-js.json").read_text(encoding="utf-8"))["components"]
+    vendored = json.loads((ROOT / "requirements" / "vendored.json").read_text(encoding="utf-8"))["components"]
     bom.setdefault("components", []).extend(
         {
             "type": "library", "bom-ref": c["purl"], "name": c["name"], "version": c["version"], "purl": c["purl"],
             "licenses": [{"license": {"id": c["license"]}}],
             "hashes": [{"alg": "SHA-256", "content": c["sha256"]}],
-            "properties": [{"name": "openclear:vendored-file", "value": f"src/openclear/static/js/vendor/{c['file']}"}],
+            "properties": [{"name": "openclear:vendored-file", "value": f"src/openclear/static/{c['file']}"}],
         }
         for c in vendored
     )
