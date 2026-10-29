@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.32.0 — 2026-10-29
 
 - **Replace a SAML connection's signing key** (issue #21). A connection made before 1.22.1 has an
   RSA-2048 key; its page now says so and offers **Replace the signing key**: a new RSA-3072
@@ -8,6 +8,8 @@
   key, and once the identity provider has the new certificate an admin finishes and the old one
   is dropped. Starting and finishing are sensitive changes (dual control where the bank or the
   customer asks for it) and raise the `sso_connection.changed` security event.
+- **The developer docs site on GitHub Pages** is kept out of search results and points readers to
+  [openclear.org](https://openclear.org/), which publishes the same documents.
 
 ## 1.31.0 — 2026-10-29
 
