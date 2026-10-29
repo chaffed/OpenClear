@@ -358,6 +358,43 @@ def values_for(session: Session, tenant_id: uuid.UUID, owner: str, record_ids, *
     return result
 
 
+# --- Values that travel with decisions (CF-D7) -----------------------------------------------------
+
+CUSTOMER_PREFIX = "customer."
+
+
+def output_keys(session: Session, tenant_id: uuid.UUID, text: str | None) -> list[str]:
+    """The fields a destination asks for, in its order (CF-D7): comma-separated, an account's field
+    by its key and its customer's as customer.<key>. Raises CustomFieldError naming any that don't
+    exist."""
+    keys = list(dict.fromkeys(k.strip() for k in (text or "").split(",") if k.strip()))
+    if not keys:
+        return []
+    known = {f.key for f in list_fields(session, tenant_id, CustomFieldOwner.ACCOUNT, include_archived=True)}
+    known |= {CUSTOMER_PREFIX + f.key for f in list_fields(session, tenant_id, CustomFieldOwner.CUSTOMER, include_archived=True)}
+    unknown = [k for k in keys if k not in known]
+    if unknown:
+        raise CustomFieldError(f"No such field: {', '.join(unknown)}. Name an account's field by its key and a customer's as "
+                               f"{CUSTOMER_PREFIX}<key>.")
+    return keys
+
+
+def output_values(session: Session, tenant_id: uuid.UUID, keys: list[str], accounts: dict[uuid.UUID, uuid.UUID | None], *,
+                  customer_id: uuid.UUID | None = None) -> dict[uuid.UUID, dict[str, str | None]]:
+    """For each account (id to its customer's id), the asked-for values by key, every key present
+    (None when empty). A customer-scoped reader gets only fields shown to the customer."""
+    account_keys = [k for k in keys if not k.startswith(CUSTOMER_PREFIX)]
+    customer_ids = {c for c in accounts.values() if c is not None}
+    by_account = values_for(session, tenant_id, CustomFieldOwner.ACCOUNT, accounts, customer_id=customer_id) if account_keys else {}
+    by_customer = (values_for(session, tenant_id, CustomFieldOwner.CUSTOMER, customer_ids, customer_id=customer_id)
+                   if len(account_keys) < len(keys) else {})
+    out = {}
+    for account_id, owner_id in accounts.items():
+        mine, theirs = by_account.get(account_id, {}), by_customer.get(owner_id, {})
+        out[account_id] = {k: theirs.get(k.removeprefix(CUSTOMER_PREFIX)) if k.startswith(CUSTOMER_PREFIX) else mine.get(k) for k in keys}
+    return out
+
+
 def values_of(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uuid.UUID, **kw) -> dict[str, str | None]:
     return values_for(session, tenant_id, owner, [record_id], **kw).get(record_id, {})
 

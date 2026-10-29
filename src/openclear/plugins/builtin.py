@@ -89,8 +89,15 @@ class _Builtin:
         from openclear.plugins.api import ConfigField, DecisionLayout
         from openclear.services.decision_feed_service import to_csv
 
+        from openclear.services.decision_feed_service import custom_fields_setting
+
         registry.add_decision_layout(
-            "openclear_csv", DecisionLayout("OpenClear CSV", "text/csv", "csv", lambda feed, settings: to_csv(feed).encode()),
+            "openclear_csv", DecisionLayout(
+                "OpenClear CSV", "text/csv", "csv", lambda feed, settings: to_csv(feed, custom_fields_setting(settings)).encode(),
+                # Custom fields at the end, in this order (plans/CUSTOM_FIELDS_PLAN.md CF-D7).
+                config_fields=(ConfigField("custom_fields", "Custom fields to add (keys, comma-separated; a customer's as "
+                                           "customer.key)", required=False),),
+            ),
         )
         registry.add_decision_layout(
             "nacha_returns", DecisionLayout(

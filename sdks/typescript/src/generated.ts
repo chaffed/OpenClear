@@ -2204,9 +2204,10 @@ export class DecisionFeedApi {
    * Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
    * you processed and pass it as `after` next time. When a full page comes back, a
    * `Link: rel="next"` header points at the next one. With `customer_number`, only that
-   * customer's decisions; the sequence numbers are still the bank's, so expect gaps.
+   * customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+   * `custom_fields`, each decision has those custom-field values, and only those.
    */
-  decisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): Promise<Array<Record<string, unknown>>> {
+  decisionFeed(query: { after?: number; limit?: number; customer_number?: string | null; custom_fields?: string | null } = {}): Promise<Array<Record<string, unknown>>> {
     return this.c.call<Array<Record<string, unknown>>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2215,7 +2216,7 @@ export class DecisionFeedApi {
    *
    * GET /api/v1/decisions
    */
-  iterDecisionFeed(query: { after?: number; limit?: number; customer_number?: string | null } = {}): AsyncIterable<Record<string, unknown>> {
+  iterDecisionFeed(query: { after?: number; limit?: number; customer_number?: string | null; custom_fields?: string | null } = {}): AsyncIterable<Record<string, unknown>> {
     return this.c.paginate<Record<string, unknown>>("GET", `/api/v1/decisions`, { query });
   }
 
@@ -2247,9 +2248,10 @@ export class DecisionFeedApi {
    *
    * GET /api/v1/decisions/feed.csv
    *
-   * The same decisions as a CSV file, for a core that takes files.
+   * The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+   * cf_<key> column for each, at the end in that order.
    */
-  decisionFeedCsv(query: { after?: number; limit?: number } = {}): Promise<Uint8Array> {
+  decisionFeedCsv(query: { after?: number; limit?: number; custom_fields?: string | null } = {}): Promise<Uint8Array> {
     return this.c.call<Uint8Array>("GET", `/api/v1/decisions/feed.csv`, { query, raw: true });
   }
 

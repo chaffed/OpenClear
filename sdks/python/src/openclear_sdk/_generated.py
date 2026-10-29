@@ -2023,7 +2023,7 @@ class DecisionFeedApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
-    def decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None) -> list[dict[str, Any]]:
+    def decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None, custom_fields: str | None = None) -> list[dict[str, Any]]:
         """Decision Feed.
 
         GET /api/v1/decisions
@@ -2031,16 +2031,17 @@ class DecisionFeedApi:
         Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
         you processed and pass it as `after` next time. When a full page comes back, a
         `Link: rel="next"` header points at the next one. With `customer_number`, only that
-        customer's decisions; the sequence numbers are still the bank's, so expect gaps.
+        customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+        `custom_fields`, each decision has those custom-field values, and only those.
         """
-        return self._c.call("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number})
+        return self._c.call("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number, "custom_fields": custom_fields})
 
-    def iter_decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None) -> Iterator[dict[str, Any]]:
+    def iter_decision_feed(self, *, after: int | None = None, limit: int | None = None, customer_number: str | None = None, custom_fields: str | None = None) -> Iterator[dict[str, Any]]:
         """Every row of decision_feed, following each page's `Link: rel="next"`.
 
         GET /api/v1/decisions
         """
-        return self._c.paginate("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number})
+        return self._c.paginate("GET", "/api/v1/decisions", query={"after": after, "limit": limit, "customer_number": customer_number, "custom_fields": custom_fields})
 
     def acknowledge(self, body: Acknowledgement) -> dict[str, Any]:
         """Acknowledge.
@@ -2061,14 +2062,15 @@ class DecisionFeedApi:
         """
         return self._c.call("GET", "/api/v1/decisions/consumers")
 
-    def decision_feed_csv(self, *, after: int | None = None, limit: int | None = None) -> bytes:
+    def decision_feed_csv(self, *, after: int | None = None, limit: int | None = None, custom_fields: str | None = None) -> bytes:
         """Decision Feed Csv.
 
         GET /api/v1/decisions/feed.csv
 
-        The same decisions as a CSV file, for a core that takes files.
+        The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+        cf_<key> column for each, at the end in that order.
         """
-        return self._c.call("GET", "/api/v1/decisions/feed.csv", query={"after": after, "limit": limit}, raw=True)
+        return self._c.call("GET", "/api/v1/decisions/feed.csv", query={"after": after, "limit": limit, "custom_fields": custom_fields}, raw=True)
 
     def decision_file(self, *, layout: str | None = None, after: int | None = None, limit: int | None = None) -> bytes:
         """Decision File.

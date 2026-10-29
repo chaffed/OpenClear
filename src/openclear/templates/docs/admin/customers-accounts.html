@@ -81,6 +81,12 @@ default decision, so it's never paid by silence.</p>
   bulk upload. Every change is in the action log with the value before and after. Don't store taxpayer ids,
   passwords or personal data that has no use in positive pay. Your service provider may show you its own
   references for your bank under <strong>Settings → From your service provider</strong>, read-only.</p>
+<h3 id="custom-field-decisions">With decisions</h3>
+<p>If your core needs a field with each decision (an aggregation id, say), name it where the decisions go: in
+  <strong>Settings → Decision files</strong>, <em>Custom fields to add</em> for the OpenClear CSV layout (they become
+  <code>cf_</code> columns at the end, in your order), or <code>?custom_fields=</code> on the decision feed. An account's field
+  is named by its key and its customer's as <code>customer.key</code>: <code>agg_id, customer.officer_code</code>. Nothing is
+  sent unless a destination names it. The NACHA return file has no place for them, and webhooks carry ids only.</p>
 <h3 id="custom-field-updates">Updating many at once</h3>
 <p>To keep values like officer codes current from the core or an HR system, send an update file: a column
   <code>account_number</code> (or <code>external_account_id</code>; for customers, <code>customer_number</code> or

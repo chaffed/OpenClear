@@ -2177,17 +2177,18 @@ public sealed partial class DecisionFeedApi
     /// Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence
     /// you processed and pass it as `after` next time. When a full page comes back, a
     /// `Link: rel="next"` header points at the next one. With `customer_number`, only that
-    /// customer's decisions; the sequence numbers are still the bank's, so expect gaps.
+    /// customer's decisions; the sequence numbers are still the bank's, so expect gaps. With
+    /// `custom_fields`, each decision has those custom-field values, and only those.
     /// </summary>
-    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
-        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>> DecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.CallAsync<IReadOnlyList<IReadOnlyDictionary<string, JsonElement>>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Every row of DecisionFeedAsync, following each page's Link: rel="next".
     /// GET /api/v1/decisions
     /// </summary>
-    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, CancellationToken cancellationToken = default) =>
-        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber }, cancellationToken: cancellationToken);
+    public IAsyncEnumerable<IReadOnlyDictionary<string, JsonElement>> IterDecisionFeedAsync(long? after = null, long? limit = null, string? customerNumber = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.PaginateAsync<IReadOnlyDictionary<string, JsonElement>>("GET", "/api/v1/decisions", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["customer_number"] = customerNumber, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Acknowledge.
@@ -2215,10 +2216,11 @@ public sealed partial class DecisionFeedApi
     ///
     /// GET /api/v1/decisions/feed.csv
     ///
-    /// The same decisions as a CSV file, for a core that takes files.
+    /// The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a
+    /// cf_&lt;key&gt; column for each, at the end in that order.
     /// </summary>
-    public Task<byte[]> DecisionFeedCsvAsync(long? after = null, long? limit = null, CancellationToken cancellationToken = default) =>
-        _c.CallRawAsync("GET", "/api/v1/decisions/feed.csv", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit }, cancellationToken: cancellationToken);
+    public Task<byte[]> DecisionFeedCsvAsync(long? after = null, long? limit = null, string? customFields = null, CancellationToken cancellationToken = default) =>
+        _c.CallRawAsync("GET", "/api/v1/decisions/feed.csv", query: new Dictionary<string, object?> { ["after"] = after, ["limit"] = limit, ["custom_fields"] = customFields }, cancellationToken: cancellationToken);
 
     /// <summary>
     /// Decision File.

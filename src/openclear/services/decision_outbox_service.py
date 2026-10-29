@@ -52,6 +52,18 @@ def layout_settings(session: Session, tenant_id: uuid.UUID, layout: str) -> dict
     return dict(((outbox.layout_settings or {}) if outbox else {}).get(layout) or {})
 
 
+def feed_custom_fields(session: Session, tenant_id: uuid.UUID, settings: dict) -> list[str]:
+    """The custom fields a layout's settings ask for, leaving out any since archived away entirely
+    (a field is archived, not deleted, so normally every key still reads)."""
+    from openclear.services import custom_field_service, decision_feed_service
+
+    keys = decision_feed_service.custom_fields_setting(settings)
+    try:
+        return custom_field_service.output_keys(session, tenant_id, ",".join(keys))
+    except custom_field_service.CustomFieldError:
+        return []
+
+
 def save(
     session: Session, tenant_id: uuid.UUID, *, enabled: bool, layout: str, interval_minutes: int, settings: dict[str, str],
 ) -> DecisionOutbox:
@@ -69,6 +81,13 @@ def save(
         if field.required and enabled and not value:
             raise OutboxError(f"{field.label} is required for this layout.")
         values[field.name] = value
+    if values.get("custom_fields"):
+        from openclear.services import custom_field_service
+
+        try:
+            values["custom_fields"] = ", ".join(custom_field_service.output_keys(session, tenant_id, values["custom_fields"]))
+        except custom_field_service.CustomFieldError as exc:
+            raise OutboxError(str(exc)) from None
     outbox = get_outbox(session, tenant_id)
     outbox.enabled, outbox.layout, outbox.interval_minutes = enabled, layout, interval_minutes
     outbox.layout_settings = {**(outbox.layout_settings or {}), layout: values}
@@ -114,12 +133,14 @@ def run(session: Session, tenant_id: uuid.UUID, *, layout: str | None = None) ->
         raise OutboxError(str(exc)) from None
     outbox.last_run_at = datetime.now(timezone.utc)
     after = _last_sequence(session, tenant_id)
-    feed = decision_feed_service.read_feed(session, tenant_id, after=after, limit=MAX_BATCH)
+    settings = layout_settings(session, tenant_id, layout)
+    feed = decision_feed_service.read_feed(session, tenant_id, after=after, limit=MAX_BATCH,
+                                           custom_fields=feed_custom_fields(session, tenant_id, settings))
     if not feed:
         session.flush()
         return None
     try:
-        content = chosen.write(feed, layout_settings(session, tenant_id, layout))
+        content = chosen.write(feed, settings)
     except ReturnsFileError as exc:
         raise OutboxError(str(exc)) from None
     first, last = feed[0]["sequence"], feed[-1]["sequence"]

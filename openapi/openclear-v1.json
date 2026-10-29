@@ -12309,7 +12309,7 @@
     },
     "/api/v1/decisions": {
       "get": {
-        "description": "Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence\nyou processed and pass it as `after` next time. When a full page comes back, a\n`Link: rel=\"next\"` header points at the next one. With `customer_number`, only that\ncustomer's decisions; the sequence numbers are still the bank's, so expect gaps.",
+        "description": "Decisions with `sequence` greater than `after`, oldest first. Keep the last sequence\nyou processed and pass it as `after` next time. When a full page comes back, a\n`Link: rel=\"next\"` header points at the next one. With `customer_number`, only that\ncustomer's decisions; the sequence numbers are still the bank's, so expect gaps. With\n`custom_fields`, each decision has those custom-field values, and only those.",
         "operationId": "decision_feed_api_v1_decisions_get",
         "parameters": [
           {
@@ -12354,6 +12354,24 @@
               ],
               "description": "Only this customer's items (by the bank's customer number)",
               "title": "Customer Number"
+            }
+          },
+          {
+            "description": "Custom fields to add to each decision, comma-separated, under `custom_fields` (values are strings; GET /api/v1/custom-fields gives their types): an account's field by its key, a customer's as customer.<key>",
+            "in": "query",
+            "name": "custom_fields",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom fields to add to each decision, comma-separated, under `custom_fields` (values are strings; GET /api/v1/custom-fields gives their types): an account's field by its key, a customer's as customer.<key>",
+              "title": "Custom Fields"
             }
           }
         ],
@@ -12478,7 +12496,7 @@
     },
     "/api/v1/decisions/feed.csv": {
       "get": {
-        "description": "The same decisions as a CSV file, for a core that takes files.",
+        "description": "The same decisions as a CSV file, for a core that takes files. With `custom_fields`, a\ncf_<key> column for each, at the end in that order.",
         "operationId": "decision_feed_csv_api_v1_decisions_feed_csv_get",
         "parameters": [
           {
@@ -12502,6 +12520,24 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Custom fields to add to each decision, comma-separated, under `custom_fields` (values are strings; GET /api/v1/custom-fields gives their types): an account's field by its key, a customer's as customer.<key>",
+            "in": "query",
+            "name": "custom_fields",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Custom fields to add to each decision, comma-separated, under `custom_fields` (values are strings; GET /api/v1/custom-fields gives their types): an account's field by its key, a customer's as customer.<key>",
+              "title": "Custom Fields"
             }
           }
         ],

@@ -22,6 +22,11 @@
   upload's page and in its results CSV, and the file or call is one action-log entry. New
   permission `custom_field:write` (existing Admin groups get it; never in a customer's session),
   so an automation's API client can set field values and nothing else.
+- **Custom fields with decisions.** `GET /api/v1/decisions?custom_fields=agg_id,customer.tier`
+  (and `feed.csv`) adds those values to each decision, in the order asked; the OpenClear CSV
+  decision file adds them as `cf_` columns at the end, set under Settings → Decision files. An
+  account's field is named by its key, its customer's as `customer.<key>`. Webhooks still carry
+  ids only.
 - **Fixed: a blank `cf_` cell in the account bulk upload** was stored as the text "nan".
 
 - **Fixed: rate limiting with Redis fails open at once when Redis is down.** redis-py retries a
