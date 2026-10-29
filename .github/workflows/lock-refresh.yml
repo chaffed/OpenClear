@@ -22,6 +22,8 @@ jobs:
       - run: pip install --require-hashes -r requirements/dev.txt
       - run: scripts/lock.sh --upgrade
       - run: python scripts/audit_dependencies.py
+      # The third-party inventory follows the locks (plans/THIRD_PARTY_PLAN.md TP3); its test fails otherwise.
+      - run: scripts/third_party.sh
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           branch: lock-refresh
@@ -29,4 +31,5 @@ jobs:
           commit-message: "Refresh the hashed dependency locks"
           body: |
             `scripts/lock.sh --upgrade`, and `scripts/audit_dependencies.py` passes on the result.
+            The third-party inventory and notices are regenerated to match (`scripts/third_party.sh`).
             Run the local suites before merging (CLAUDE.md).

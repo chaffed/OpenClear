@@ -41,7 +41,7 @@ packages in the image and the two vendored JavaScript files. What's missing:
 |---|---|---|
 | TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test | Done |
 | TP2 | The License page's link; the notices file in the image | Done |
-| TP3 | The image SBOM in the release workflow | |
+| TP3 | The image SBOM in the release workflow | Done |
 | TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG | |
 
 ## Progress log
@@ -67,3 +67,15 @@ packages in the image and the two vendored JavaScript files. What's missing:
 - 2026-10-29: TP2 built. The License page links to `/ui/license/third-party`, which shows
   `THIRD_PARTY_NOTICES.md` (public, like the License page; a missing file points to the source
   instead of failing), and the image copies the notices beside `LICENSE`.
+- 2026-10-29: The ZAP baseline flagged "delete from the Original Code" (MPL 1.1, on the notices
+  page) as SQL disclosure. `zap-rules.tsv` waivers may now name the URLs they cover; this one
+  covers only `/ui/license/third-party`.
+- 2026-10-29: TP3 built. The release workflow's `image-sbom` job builds the image from the tag and
+  attaches `openclear-<version>-image.cdx.json` from Syft (the CI image's pin): packages only, no
+  per-file entries (282 components, about 780 KB, against 3,816 with them). Tried locally on
+  the image: 161 Debian packages, Tesseract and WeasyPrint's libraries among them, and the 107
+  Python packages. `scripts/third_party.sh` runs the generator in the image's base with both
+  locks; the weekly lock refresh runs it, and CLAUDE.md says to run it after any lock change.
+  Dependabot's PRs still need it run by hand: giving a workflow write access on them isn't worth it.
+  The image is now 2.4 GB (it was 450 MB at 1.12), mostly the scientific and cloud packages; worth
+  a look separately.
