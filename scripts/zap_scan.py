@@ -69,18 +69,28 @@ def zap(args: argparse.Namespace, script: str, report: str, extra: list[str], he
     subprocess.run(command, check=False, env=env, stdout=None if args.verbose else subprocess.DEVNULL)
 
 
-def waived() -> dict[tuple[str, str], str]:
-    """zap-rules.tsv: rule id, the alert's name (or * for any from that rule), why it's accepted."""
+def waived() -> dict[tuple[str, str], tuple[str, str | None]]:
+    """zap-rules.tsv: rule id, the alert's name (or * for any from that rule), why it's accepted,
+    and optionally a regular expression for the only URLs it's accepted on."""
     out = {}
     for row in csv.reader((line for line in RULES.read_text().splitlines() if line.strip() and not line.startswith("#")), delimiter="\t"):
         if len(row) < 3 or not row[2].strip():
             sys.exit(f"zap-rules.tsv: {row[0]} needs a rule id, an alert name (or *) and a reason")
-        out[(row[0].strip(), row[1].strip())] = row[2].strip()
+        out[(row[0].strip(), row[1].strip())] = (row[2].strip(), (row[3].strip() or None) if len(row) > 3 else None)
     return out
 
 
-def _waiver(accepted: dict, rule: str, name: str) -> str | None:
-    return accepted.get((rule, name)) or accepted.get((rule, "*"))
+def _waiver(accepted: dict, alert: dict) -> str | None:
+    """Why the alert is accepted, or None. A waiver limited to some URLs covers the alert only if
+    every place ZAP found it is one of them."""
+    rule, name = str(alert.get("pluginid")), alert.get("name")
+    found = accepted.get((rule, name)) or accepted.get((rule, "*"))
+    if found is None:
+        return None
+    reason, urls = found
+    if urls and not all(re.search(urls, i.get("uri", "")) for i in alert.get("instances", [])):
+        return None
+    return reason
 
 
 def alerts(report: Path) -> list[dict]:
@@ -138,7 +148,7 @@ def main() -> int:
         print(f"\n{report}")
         for alert in sorted(alerts(WORK / report), key=lambda a: -int(a.get("riskcode", 0))):
             risk, rule = int(alert.get("riskcode", 0)), str(alert.get("pluginid"))
-            reason = _waiver(accepted, rule, alert.get("name"))
+            reason = _waiver(accepted, alert)
             note = f"  waived: {reason}" if reason else ""
             name = "(not shown: see the report in .zap/)" if risk >= 3 and args.active and os.environ.get("CI") else alert.get("name")
             print(f"  {RISKS.get(risk, risk):13} {rule:>6}  {name} ({len(alert.get('instances', []))}){note}")
