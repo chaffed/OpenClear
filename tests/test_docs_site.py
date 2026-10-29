@@ -29,3 +29,15 @@ def test_the_docs_site_builds_with_every_page(tmp_path, capfd):
     for _src, dest, _title in build_docs_site.PAGES:
         page = tmp_path / "site" / (dest[:-3] + "/index.html" if not dest.endswith("index.md") else dest[:-3] + ".html")
         assert page.exists(), dest
+
+
+def test_every_page_is_kept_out_of_search_and_points_to_openclear_org(tmp_path):
+    assert build_docs_site.build(out=tmp_path / "site") == 0
+    pages = list((tmp_path / "site").rglob("*.html"))
+    assert pages
+    for page in pages:
+        if page.name == "404.html":
+            continue
+        html = page.read_text()
+        assert '<meta name="robots" content="noindex">' in html, page
+        assert 'href="https://openclear.org/"' in html, page
