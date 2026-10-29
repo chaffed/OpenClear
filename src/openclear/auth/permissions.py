@@ -15,6 +15,9 @@ write, across both channels."""
 PERMISSION_CATALOG: dict[str, str] = {
     "account:read": "View accounts",
     "account:write": "Create accounts",
+    # Custom-field values only, by file, drop folder or API (plans/CUSTOM_FIELDS_PLAN.md CF-D10), so
+    # an automation's API client can keep officer codes current and change nothing else.
+    "custom_field:write": "Set custom-field values on accounts and customers, by file or API",
     "issued_item:read": "View issued items",
     "issued_item:write": "Create/void issued items",
     "stop_payment:read": "View stop payments",
@@ -82,6 +85,7 @@ CUSTOMER_SCOPE_MASKED_PERMISSIONS: frozenset[str] = frozenset(
     {
         "user:manage", "security_group:manage", "tenant:manage", "customer:manage", "admin:manage", "audit_log:read",
         "ach_return_reason:manage", "billing:manage", "api_client:manage", "check:verify",
+        "custom_field:write",
     }
 )
 

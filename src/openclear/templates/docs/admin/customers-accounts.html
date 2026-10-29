@@ -81,6 +81,24 @@ default decision, so it's never paid by silence.</p>
   bulk upload. Every change is in the action log with the value before and after. Don't store taxpayer ids,
   passwords or personal data that has no use in positive pay. Your service provider may show you its own
   references for your bank under <strong>Settings → From your service provider</strong>, read-only.</p>
+<h3 id="custom-field-updates">Updating many at once</h3>
+<p>To keep values like officer codes current from the core or an HR system, send an update file: a column
+  <code>account_number</code> (or <code>external_account_id</code>; for customers, <code>customer_number</code> or
+  <code>external_customer_id</code>) and a <code>cf_key</code> column for each field you're changing. Upload it from
+  <strong>Update custom fields</strong> on the account or customer list (which also gives you a header row), drop it in the
+  <code>fields/accounts/inbox/</code> or <code>fields/customers/inbox/</code> folder for an unattended import, or send up to
+  1,000 records a call to <code>POST /api/v1/accounts/custom-fields</code> or <code>/customers/custom-fields</code>.</p>
+<ul>
+  <li>It updates customers and accounts that exist; a number it doesn't know fails that row and nothing is created.
+    A customer whose positive pay has ended isn't updated.</li>
+  <li>A blank cell leaves the value as it is, unless you tick <em>Blank cells clear values</em> when uploading. In the API, a
+    key you leave out is left alone and <code>null</code> clears it. The drop folder never clears.</li>
+  <li>Each value is checked against its field before the row is saved, and a row that fails doesn't stop the rest.</li>
+  <li>The upload's page lists every value that changed, before and after, and its results CSV has every row. The upload is one
+    entry in the action log. An update can't be backed out: the "before" values are there to put back.</li>
+  <li>The <code>custom_field:write</code> permission allows this and nothing else, for an integration's API client. Your Admin
+    group has it; a customer's people never do.</li>
+</ul>
 
 <h2 id="offboarding">When a customer leaves or stops positive pay</h2>
 <p>OpenClear isn't the bank's system of record (the core is), so a customer's data is deleted 90 days after its

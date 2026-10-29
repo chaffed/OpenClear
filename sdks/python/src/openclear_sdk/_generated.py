@@ -39,6 +39,12 @@ false for just `account_ids` (at least one, all the customer's)."""
     all_accounts: bool
 
 
+class AccountFieldValues(TypedDict):
+    account_number: NotRequired[str | None]
+    custom_fields: dict[str, str | None]
+    external_account_id: NotRequired[str | None]
+
+
 class AccountRead(TypedDict):
     account_number: str
     ach_debit_block_mode: AchDebitBlockMode
@@ -266,7 +272,7 @@ class BulkUploadAccepted(TypedDict):
     upload_id: str
 
 
-BulkUploadKind = Literal["issued_items", "ach_transactions", "users", "accounts", "check_images", "paid_items"]
+BulkUploadKind = Literal["issued_items", "ach_transactions", "users", "accounts", "check_images", "paid_items", "account_fields", "customer_fields"]
 
 
 class BulkUploadRead(TypedDict):
@@ -395,6 +401,12 @@ class CustomFieldRead(TypedDict):
     shown_to_customer: bool
     unique: bool
     updated_at: NotRequired[str | None]
+
+
+class CustomerFieldValues(TypedDict):
+    custom_fields: dict[str, str | None]
+    customer_number: NotRequired[str | None]
+    external_customer_id: NotRequired[str | None]
 
 
 class CustomerRead(TypedDict):
@@ -638,6 +650,23 @@ class FeeOverrideOutput(TypedDict):
     fee_item_id: str
     unit_price: NotRequired[str | None]
     waived: NotRequired[bool]
+
+
+class FieldUpdateResponse(TypedDict):
+    changed: int
+    failed: int
+    results: list[FieldUpdateResult]
+    total: int
+    unchanged: int
+    upload_id: str
+
+
+class FieldUpdateResult(TypedDict):
+    changes: NotRequired[ValuesBeforeAfter | None]
+    error: NotRequired[str | None]
+    index: int
+    record: NotRequired[str | None]
+    success: bool
 
 
 class ImportFormatRead(TypedDict):
@@ -986,6 +1015,11 @@ class TokenResponse(TypedDict):
     access_token: str
     refresh_token: str
     token_type: NotRequired[str]
+
+
+class ValuesBeforeAfter(TypedDict):
+    after: dict[str, str | None]
+    before: dict[str, str | None]
 
 
 class Verification(TypedDict):
@@ -1798,6 +1832,17 @@ class CustomFieldsApi:
     def __init__(self, transport: "Transport") -> None:
         self._c = transport
 
+    def update_account_fields(self, body: list[AccountFieldValues]) -> FieldUpdateResponse:
+        """Update Account Fields.
+
+        POST /api/v1/accounts/custom-fields
+
+        Sets custom-field values on up to 1,000 existing accounts, each on its own: one that fails
+        doesn't stop the rest. It never creates an account. The batch is kept as a bulk upload, with
+        each record's values before and after, and audited once.
+        """
+        return self._c.call("POST", "/api/v1/accounts/custom-fields", json=body)
+
     def list_custom_fields(self) -> list[CustomFieldRead]:
         """List Custom Fields.
 
@@ -1807,6 +1852,15 @@ class CustomFieldsApi:
         caller sees only the fields shown to the customer.
         """
         return self._c.call("GET", "/api/v1/custom-fields")
+
+    def update_customer_fields(self, body: list[CustomerFieldValues]) -> FieldUpdateResponse:
+        """Update Customer Fields.
+
+        POST /api/v1/customers/custom-fields
+
+        Sets custom-field values on up to 1,000 existing customers, as the accounts' call does.
+        """
+        return self._c.call("POST", "/api/v1/customers/custom-fields", json=body)
 
 
 class CustomersApi:

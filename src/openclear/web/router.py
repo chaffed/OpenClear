@@ -36,6 +36,7 @@ from openclear.web.routers.audit_log import router as audit_log_router
 from openclear.web.routers.auth import router as auth_router
 from openclear.web.routers.branding import router as branding_router
 from openclear.web.routers.bulk_uploads import router as bulk_uploads_router
+from openclear.web.routers.custom_field_uploads import router as custom_field_uploads_router
 from openclear.web.routers.check_images import router as check_images_router
 from openclear.web.routers.customer_banner import router as customer_banner_router
 from openclear.web.routers.password_reset import router as password_reset_router
@@ -102,6 +103,7 @@ web_router.include_router(admin_router)
 web_router.include_router(users_router)
 web_router.include_router(security_groups_router)
 web_router.include_router(bulk_uploads_router)
+web_router.include_router(custom_field_uploads_router)
 web_router.include_router(audit_log_router)
 web_router.include_router(sso_settings_router)
 web_router.include_router(access_reviews_router)

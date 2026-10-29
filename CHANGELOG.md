@@ -13,6 +13,16 @@
   only fields marked shown to the customer, and never edit them. The service provider defines its
   own fields on banks (an ERP id) under Platform → Custom fields, two operators each; a bank sees
   one only if it's marked shown to the bank. New security event `custom_field.changed`.
+- **Custom-field values on many records at once.** An update file of `cf_<key>` columns, keyed by
+  account or customer number (or the external id), from **Update custom fields** on the account
+  and customer lists or the drop folders `fields/accounts/` and `fields/customers/`; or
+  `POST /api/v1/accounts/custom-fields` and `/customers/custom-fields`, up to 1,000 records a
+  call. They update existing records only, never create one; a blank cell leaves a value alone
+  unless the upload says blank cells clear. Each row's values before and after are on the
+  upload's page and in its results CSV, and the file or call is one action-log entry. New
+  permission `custom_field:write` (existing Admin groups get it; never in a customer's session),
+  so an automation's API client can set field values and nothing else.
+- **Fixed: a blank `cf_` cell in the account bulk upload** was stored as the text "nan".
 
 - **Fixed: rate limiting with Redis fails open at once when Redis is down.** redis-py retries a
   failed connection three times with up to 10 seconds of back-off by default, so while the

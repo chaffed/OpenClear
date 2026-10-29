@@ -54,6 +54,7 @@ PAGES = [
     ("action_log", "/ui/audit-log", True),
     ("not_found", "/ui/no-such-page", True),
     ("settings_custom_fields", "/ui/settings/custom-fields", True),
+    ("custom_field_upload", "/ui/custom-fields/accounts/upload", True),
     ("docs_end_user", "/ui/docs/end-user", True),
     ("docs_admin", "/ui/docs/admin", True),
     ("docs_data_dictionary", "/ui/docs/admin/data-dictionary", True),

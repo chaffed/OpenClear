@@ -128,7 +128,7 @@ everything else, and a custom field is never an import key.
 | CF2 | The bank's Settings → Custom fields (two-person where the bank asks); customer and account forms, detail pages, *show in list*, search and the one filter, the missing-required filter and control check; the exception page | Done |
 | CF3 | The provider's bank fields: Platform → Custom fields, each bank's page; *shown to the bank* in its Settings; survival at offboarding, in the certificate | Done |
 | CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | Done |
-| CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | |
+| CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | Done |
 | CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the webhook endpoint's keys, the feed's parameter; the CSV escaping everywhere | |
 | CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | |
 
@@ -174,3 +174,9 @@ One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first,
   export's `custom_fields.json` and `custom_field_values.json` (a customer's export: only fields
   shown to it), and `cf_<key>` columns on the account bulk upload. There's no CSV export of
   accounts or customers to extend: the JSON API and the data export are the exports.
+- 2026-10-28: CF5 built. Update files (web, `fields/accounts/` and `fields/customers/` drop folders,
+  bank-wide only) and `POST /api/v1/{accounts,customers}/custom-fields` (at most 1,000, kept as a
+  bulk upload and imported in the request) share one import path with `ImportSpec.updates`: nothing
+  tracked for back-out, no per-row fixes, one audit entry per file. `set_values` now works in a
+  savepoint, so one row's unique clash no longer rolls back the rest of an import. A blank cell
+  in a file (pandas' NaN) was stored as "nan" by the CF4 account upload; fixed.

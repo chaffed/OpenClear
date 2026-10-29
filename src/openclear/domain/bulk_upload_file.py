@@ -22,6 +22,10 @@ class BulkUploadKind(str, enum.Enum):
     # distinct from CHECK_IMAGES, which always implies one. See
     # networks/check/bulk_import.py::ingest_paid_item_tabular_rows.
     PAID_ITEMS = "paid_items"
+    # Custom-field values on existing records (plans/CUSTOM_FIELDS_PLAN.md CF-D10): these update,
+    # never create, so nothing they touch is backed out.
+    ACCOUNT_FIELDS = "account_fields"
+    CUSTOMER_FIELDS = "customer_fields"
 
 
 class BulkUploadSource(str, enum.Enum):
@@ -147,6 +151,9 @@ class BulkUploadRowResult(Base):
     # The field a failed row's error is about ("amount"), so the fix form can show it beside
     # that field (bulk_import/fields.RowFieldError.field). Null when it's about the row.
     error_field: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # A custom-field update's values before and after ({"before": {key: value}, "after": {...}}),
+    # for the rows it changed (CF-D10). Null for every other kind of upload.
+    changes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class BulkUploadCorrection(Base):

@@ -185,7 +185,7 @@ def create_account_from_row(
     from openclear.services import custom_field_service
 
     account = create_account(session, tenant_id, _account_input_from_row(session, tenant_id, row, scoped_customer_id=scoped_customer_id))
-    values = {str(k)[3:].strip(): (str(v).strip() if v is not None else None) for k, v in row.items() if str(k).lower().startswith("cf_")}
+    values = {str(k)[3:].strip(): custom_field_service.cell_text(v) for k, v in row.items() if str(k).lower().startswith("cf_")}
     values = {k: v for k, v in values.items() if v}
     if values:
         if scoped_customer_id is not None:

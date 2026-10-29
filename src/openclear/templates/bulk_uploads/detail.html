@@ -38,7 +38,8 @@
   {% set to_fix = record.failed_count - (fixed_rows | length) %}
   <p class="upload-outcome" role="status">
     <span class="badge {{ 'badge-ok' if to_fix <= 0 else 'badge-warn' }}">{{ added }} of {{ added + record.failed_count }} succeeded</span>
-    {{ "{:,}".format(added) }} {{ nouns[0] if added == 1 else nouns[1] }} added.
+    {% if updates %}{{ "{:,}".format(changed_count) }} {{ nouns[0] if changed_count == 1 else nouns[1] }} changed; {{ "{:,}".format(added - changed_count) }} already had these values.
+    {% else %}{{ "{:,}".format(added) }} {{ nouns[0] if added == 1 else nouns[1] }} added.{% endif %}
     {% if to_fix > 0 %}<strong>{{ "{:,}".format(to_fix) }} {{ "row needs" if to_fix == 1 else "rows need" }} fixing.</strong>
     {% elif record.failed_count %}Every failed row has been fixed.{% endif %}
     {% if skipped_rows %}{{ "{:,}".format(skipped_rows) }} {{ "line wasn't a check" if skipped_rows == 1 else "lines weren't checks" }} to present (another transaction code, or a reversal) and {{ "was" if skipped_rows == 1 else "were" }} left out.{% endif %}
@@ -87,6 +88,19 @@
   </table>
   {% endif %}
 
+  {% if changed_rows %}
+  <h2>What changed</h2>
+  <table>
+    <thead><tr><th>Row</th><th>Field</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      {% for r in changed_rows %}{% for key, after in (r.changes or {}).get("after", {}).items() %}
+      <tr><td>{{ r.row_label }}</td><td>{{ key }}</td><td>{{ r.changes.before.get(key) or "—" }}</td><td>{{ after or "—" }}</td></tr>
+      {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+  {% if changed_rows | length >= 500 %}<p class="text-muted">Showing the first 500 rows that changed. The CSV has every row.</p>{% endif %}
+  {% endif %}
+
   {% if tracked_records %}
   <h2>What this upload added</h2>
   <table data-sortable>
@@ -131,6 +145,8 @@
 
   {% if record.backed_out_at %}
   <p><span class="badge">Backed out on {{ record.backed_out_at.strftime("%Y-%m-%d %H:%M") }}</span></p>
+  {% elif updates %}
+  <p class="text-muted">An update can't be backed out. Every value's before is listed here and in the row results CSV.</p>
   {% elif record.succeeded_count %}
     {% set can_back_out = (record.kind.value == "issued_items" and can(ctx, "issued_item:write"))
        or (record.kind.value == "ach_transactions" and can(ctx, "ach_transaction:write"))

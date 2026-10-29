@@ -58,6 +58,53 @@
         "title": "AccountAccessUpdate",
         "type": "object"
       },
+      "AccountFieldValues": {
+        "properties": {
+          "account_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The account to update (or give external_account_id)",
+            "title": "Account Number"
+          },
+          "custom_fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Key to value, as strings; null clears; a key left out is left as it is",
+            "title": "Custom Fields",
+            "type": "object"
+          },
+          "external_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Account Id"
+          }
+        },
+        "required": [
+          "custom_fields"
+        ],
+        "title": "AccountFieldValues",
+        "type": "object"
+      },
       "AccountRead": {
         "properties": {
           "account_number": {
@@ -1796,7 +1843,9 @@
           "users",
           "accounts",
           "check_images",
-          "paid_items"
+          "paid_items",
+          "account_fields",
+          "customer_fields"
         ],
         "title": "BulkUploadKind",
         "type": "string"
@@ -2647,6 +2696,53 @@
           "archived"
         ],
         "title": "CustomFieldRead",
+        "type": "object"
+      },
+      "CustomerFieldValues": {
+        "properties": {
+          "custom_fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Key to value, as strings; null clears; a key left out is left as it is",
+            "title": "Custom Fields",
+            "type": "object"
+          },
+          "customer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The customer to update (or give external_customer_id)",
+            "title": "Customer Number"
+          },
+          "external_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Customer Id"
+          }
+        },
+        "required": [
+          "custom_fields"
+        ],
+        "title": "CustomerFieldValues",
         "type": "object"
       },
       "CustomerRead": {
@@ -4424,6 +4520,101 @@
           "fee_item_id"
         ],
         "title": "FeeOverride",
+        "type": "object"
+      },
+      "FieldUpdateResponse": {
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/FieldUpdateResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unchanged": {
+            "title": "Unchanged",
+            "type": "integer"
+          },
+          "upload_id": {
+            "description": "The batch, kept as a bulk upload: GET /api/v1/bulk-uploads/{id}",
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "total",
+          "changed",
+          "unchanged",
+          "failed",
+          "results"
+        ],
+        "title": "FieldUpdateResponse",
+        "type": "object"
+      },
+      "FieldUpdateResult": {
+        "properties": {
+          "changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValuesBeforeAfter"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The values that changed, before and after; none if nothing did"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The account or customer number updated",
+            "title": "Record"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "index",
+          "success"
+        ],
+        "title": "FieldUpdateResult",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -6388,6 +6579,44 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "ValuesBeforeAfter": {
+        "properties": {
+          "after": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "After",
+            "type": "object"
+          },
+          "before": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Before",
+            "type": "object"
+          }
+        },
+        "required": [
+          "before",
+          "after"
+        ],
+        "title": "ValuesBeforeAfter",
+        "type": "object"
+      },
       "Verification": {
         "properties": {
           "expires_at": {
@@ -6731,6 +6960,57 @@
         "summary": "List Accounts",
         "tags": [
           "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/custom-fields": {
+      "post": {
+        "description": "Sets custom-field values on up to 1,000 existing accounts, each on its own: one that fails\ndoesn't stop the rest. It never creates an account. The batch is kept as a bulk upload, with\neach record's values before and after, and audited once.",
+        "operationId": "update_account_fields_api_v1_accounts_custom_fields_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/AccountFieldValues"
+                },
+                "title": "Items",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Account Fields",
+        "tags": [
+          "custom-fields"
         ]
       }
     },
@@ -11330,6 +11610,57 @@
         "summary": "List Customers",
         "tags": [
           "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/custom-fields": {
+      "post": {
+        "description": "Sets custom-field values on up to 1,000 existing customers, as the accounts' call does.",
+        "operationId": "update_customer_fields_api_v1_customers_custom_fields_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/CustomerFieldValues"
+                },
+                "title": "Items",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Customer Fields",
+        "tags": [
+          "custom-fields"
         ]
       }
     },

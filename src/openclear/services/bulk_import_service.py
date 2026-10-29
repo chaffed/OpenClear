@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from openclear.bulk_import.nacha import NachaParseError, parse_nacha_file
@@ -68,6 +68,8 @@ PERMISSION_BY_KIND = {
     BulkUploadKind.ACCOUNTS: "account:write",
     BulkUploadKind.CHECK_IMAGES: "check_image:write",
     BulkUploadKind.PAID_ITEMS: "paid_item:write",
+    BulkUploadKind.ACCOUNT_FIELDS: "custom_field:write",
+    BulkUploadKind.CUSTOMER_FIELDS: "custom_field:write",
 }
 
 
@@ -122,6 +124,10 @@ class ImportSpec:
     creates_check_image: bool = False
     # `load` also takes the upload's options (a layout's settings, for "layout").
     load_takes_options: bool = False
+    # It updates records that exist (custom-field values, CF-D10): `ingest` returns a
+    # custom_field_service.RowUpdate, nothing is tracked for backing out, and the file is
+    # audited once when it's done instead of once per row.
+    updates: bool = False
 
 
 # --- Loading a stored file ----------------------------------------------------------------
@@ -372,6 +378,43 @@ def _account_tabular(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uui
     return account_service.create_account_from_row(ctx.session, ctx.tenant_id, row.data, scoped_customer_id=ctx.scoped_customer_id)
 
 
+def _field_loader(owner: str) -> Callable[[str, str], LoadedFile]:
+    """An update file of custom-field values (plans/CUSTOM_FIELDS_PLAN.md CF-D10): refused whole
+    if it doesn't name its records or has no cf_ column."""
+    from openclear.services.custom_field_service import RECORD_KEYS
+
+    keys = RECORD_KEYS[owner]
+
+    def load(path: str, filename: str) -> LoadedFile:
+        loaded = _load_tabular(path, filename)
+        columns = set(loaded.rows[0].data)
+        if not columns & set(keys):
+            raise BulkFileRejected(f"Name each record with a {keys[0]} or {keys[1]} column.")
+        if not any(str(c).startswith("cf_") for c in columns):
+            raise BulkFileRejected("No custom-field columns: name each one cf_ and the field's key, such as cf_officer_code.")
+        return loaded
+
+    return load
+
+
+def _field_updater(owner: str) -> Callable[[RowContext, SourceRow, LoadedFile], Any]:
+    def ingest(ctx: RowContext, row: SourceRow, loaded: LoadedFile):
+        from openclear.bulk_import.fields import RowFieldError
+        from openclear.services import custom_field_service
+
+        if ctx.scoped_customer_id is not None:
+            raise RowFieldError("Only the bank's staff set custom fields.")
+        if not isinstance(row.data, dict):
+            raise RowFieldError("Expected an object with the record's number and its custom_fields.")
+        return custom_field_service.update_from_row(ctx.session, ctx.tenant_id, owner, row.data, user_id=ctx.actor_user_id,
+                                                    blank_clears=bool(ctx.options.get("blank_clears")))
+
+    return ingest
+
+
+_ACCOUNT_FIELDS = dict(resource_type="account", audit_action="custom_field.values.imported", audit_noun="Account fields", updates=True)
+_CUSTOMER_FIELDS = dict(resource_type="customer", audit_action="custom_field.values.imported", audit_noun="Customer fields", updates=True)
+
 _PAID = dict(resource_type="paid_item", audit_action="paid_item.create", audit_noun="Paid item")
 _ISSUED = dict(resource_type="issued_item", audit_action="issued_item.create", audit_noun="Issued item")
 _ACH = dict(resource_type="ach_transaction", audit_action="ach_transaction.create", audit_noun="ACH transaction")
@@ -394,6 +437,10 @@ BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
     (BulkUploadKind.ACCOUNTS, "tabular"): ImportSpec(
         _load_tabular, _account_tabular, resource_type="account", audit_action="account.create", audit_noun="Account"
     ),
+    (BulkUploadKind.ACCOUNT_FIELDS, "tabular"): ImportSpec(_field_loader("account"), _field_updater("account"), **_ACCOUNT_FIELDS),
+    (BulkUploadKind.ACCOUNT_FIELDS, "json"): ImportSpec(_load_json, _field_updater("account"), **_ACCOUNT_FIELDS),
+    (BulkUploadKind.CUSTOMER_FIELDS, "tabular"): ImportSpec(_field_loader("customer"), _field_updater("customer"), **_CUSTOMER_FIELDS),
+    (BulkUploadKind.CUSTOMER_FIELDS, "json"): ImportSpec(_load_json, _field_updater("customer"), **_CUSTOMER_FIELDS),
 }
 
 
@@ -449,11 +496,14 @@ def receive_upload(
     stream=None,
     data: bytes | None = None,
     options: dict | None = None,
+    run_now: bool = False,
 ) -> BulkUploadFile:
     """Stores and signs the file, then either rejects it (status REJECTED, with `error`)
     or queues its import (status QUEUED). Commits either way, so a rejected file is still
     kept as evidence of what was sent. Call workers.jobs.jobs_queued afterwards. Raises
-    ValueError (nothing stored) for a format that doesn't exist or isn't on for the bank."""
+    ValueError (nothing stored) for a format that doesn't exist or isn't on for the bank.
+    `run_now` imports it here instead, on the caller's session and its access (a batch
+    API call small enough to answer at once)."""
     from openclear.services import plugin_service
     from openclear.workers.jobs import enqueue
 
@@ -481,6 +531,10 @@ def receive_upload(
         session.commit()
         return record
     record.status = BulkUploadStatus.QUEUED
+    if run_now:
+        session.commit()
+        _import(session, record)
+        return record
     enqueue(session, IMPORT_JOB_KIND, tenant_id=tenant_id, payload={"upload_id": str(record.id)}, dedupe_key=f"bulk-upload:{record.id}")
     session.commit()
     return record
@@ -574,6 +628,8 @@ def _import(session: Session, record: BulkUploadFile) -> None:
             session.commit()
         _reconcile(session, record, rows)
 
+    if spec.updates:
+        _audit_update(session, record, spec)
     _send_summary(session, record)
     record.status, record.completed_at = BulkUploadStatus.COMPLETED, datetime.now(timezone.utc)
     webhook_service.emit(session, record.tenant_id, "bulk_upload.completed", {
@@ -582,6 +638,28 @@ def _import(session: Session, record: BulkUploadFile) -> None:
     session.commit()
     if queued_ocr:
         jobs_queued(session.get_bind())
+
+
+def _audit_update(session: Session, record: BulkUploadFile, spec: ImportSpec) -> None:
+    """One action-log entry for a whole update file or batch, with its counts (CF-D10); each
+    row's values before and after are in its row result."""
+    changed = changed_count(session, record)
+    succeeded, failed = record.succeeded_count or 0, record.failed_count or 0
+    audit_log_service.record_action(
+        session, record.tenant_id, actor_user_id=record.uploaded_by_user_id, channel=_channel(record) or "system",
+        action=spec.audit_action,
+        summary=f"{spec.audit_noun} updated from {record.original_filename}: {changed} changed, {succeeded - changed} "
+                f"unchanged, {failed} failed"[:500],
+        resource_type="bulk_upload_file", resource_id=record.id,
+        metadata={"kind": record.kind.value, "changed": changed, "unchanged": succeeded - changed, "failed": failed},
+    )
+
+
+def changed_count(session: Session, record: BulkUploadFile) -> int:
+    """An update file's rows that changed at least one value."""
+    return session.execute(select(func.count()).select_from(BulkUploadRowResult).where(
+        BulkUploadRowResult.tenant_id == record.tenant_id, BulkUploadRowResult.bulk_upload_file_id == record.id,
+        BulkUploadRowResult.success.is_(True), BulkUploadRowResult.note.is_(None))).scalar_one()
 
 
 def _channel(record: BulkUploadFile) -> str | None:
@@ -600,7 +678,22 @@ def _record_chunk(session: Session, record: BulkUploadFile, spec: ImportSpec, ou
     created_ids = []
     audit_actions = []
     queued_ocr = False
+    updated = 0
     for row_index, row, created_id, error, error_field in outcomes:
+        if spec.updates:  # created_id is a RowUpdate: nothing created, nothing to back out
+            result = BulkUploadRowResult(
+                tenant_id=record.tenant_id, bulk_upload_file_id=record.id, row_index=row_index, row_label=row.label[:200],
+                success=error is None, error=error, error_field=(error_field or None) and error_field[:60],
+            )
+            if created_id is not None:
+                result.row_label = f"{row.label}: {created_id.label}"[:200]
+                if created_id.changes:
+                    result.changes = created_id.changes.as_metadata()
+                else:
+                    result.note = "Unchanged"
+                updated += 1
+            session.add(result)
+            continue
         session.add(BulkUploadRowResult(
             tenant_id=record.tenant_id, bulk_upload_file_id=record.id, row_index=row_index, row_label=row.label[:200],
             success=created_id is not None, created_id=created_id, error=error, error_field=(error_field or None) and error_field[:60],
@@ -630,7 +723,7 @@ def _record_chunk(session: Session, record: BulkUploadFile, spec: ImportSpec, ou
     # Last, so the bank's audit lock is held only until this chunk commits.
     audit_log_service.record_actions(session, record.tenant_id, audit_actions)
 
-    succeeded = len(created_ids)
+    succeeded = len(created_ids) + updated
     record.succeeded_count = (record.succeeded_count or 0) + succeeded
     record.failed_count = (record.failed_count or 0) + len(outcomes) - succeeded
     if created_ids and spec.resource_type in ("paid_item", "ach_transaction"):
@@ -665,13 +758,17 @@ def _send_summary(session: Session, record: BulkUploadFile) -> None:
 
 
 def row_results(
-    session: Session, upload: BulkUploadFile, *, failures_only: bool = False, limit: int | None = None, offset: int = 0
+    session: Session, upload: BulkUploadFile, *, failures_only: bool = False, changed_only: bool = False, limit: int | None = None,
+    offset: int = 0
 ) -> list[BulkUploadRowResult]:
+    """`changed_only`: an update file's rows that changed a value (not failed, not "Unchanged")."""
     query = select(BulkUploadRowResult).where(
         BulkUploadRowResult.tenant_id == upload.tenant_id, BulkUploadRowResult.bulk_upload_file_id == upload.id
     )
     if failures_only:
         query = query.where(BulkUploadRowResult.success.is_(False))
+    if changed_only:
+        query = query.where(BulkUploadRowResult.success.is_(True), BulkUploadRowResult.note.is_(None))
     query = query.order_by(BulkUploadRowResult.row_index).offset(offset)
     if limit is not None:
         query = query.limit(limit)
@@ -694,6 +791,19 @@ def check_job(session: Session, upload: BulkUploadFile) -> BulkUploadFile:
         upload.error = upload.error or "The import stopped and wasn't retried; see the platform's failed jobs."
         session.commit()
     return upload
+
+
+def updates(upload: BulkUploadFile) -> bool:
+    """An upload that updates existing records (custom-field values) rather than adding them."""
+    return _spec(upload).updates
+
+
+def describe_changes(changes: dict | None) -> str:
+    """A row's values before and after, on one line: "officer_code: JS → MK; tier: (blank) → Gold"."""
+    if not changes:
+        return ""
+    before, after = changes.get("before") or {}, changes.get("after") or {}
+    return "; ".join(f"{key}: {before.get(key) or '(blank)'} → {after.get(key) or '(blank)'}" for key in after)
 
 
 def is_finished(upload: BulkUploadFile) -> bool:
@@ -719,7 +829,8 @@ class FailedRow:
 
 def correctable(record: BulkUploadFile) -> bool:
     return (record.status == BulkUploadStatus.COMPLETED and record.backed_out_at is None and bool(record.failed_count)
-            and (record.options or {}).get("format", "tabular") in CORRECTABLE_FORMATS and record.kind != BulkUploadKind.USERS)
+            and (record.options or {}).get("format", "tabular") in CORRECTABLE_FORMATS and record.kind != BulkUploadKind.USERS
+            and not _spec(record).updates)
 
 
 def _as_text(value: Any) -> str:

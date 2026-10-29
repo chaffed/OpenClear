@@ -34,7 +34,11 @@ _NOUNS = {
     BulkUploadKind.ACCOUNTS: ("account", "accounts"),
     BulkUploadKind.CHECK_IMAGES: ("check image", "check images"),
     BulkUploadKind.PAID_ITEMS: ("paid check", "paid checks"),
+    BulkUploadKind.ACCOUNT_FIELDS: ("account", "accounts"),
+    BulkUploadKind.CUSTOMER_FIELDS: ("customer", "customers"),
 }
+
+_CHANGES_SHOWN = 500
 
 
 def _record_details(db: Session, ctx: TenantContext, tracked: list) -> dict:
@@ -61,6 +65,8 @@ _BACK_BY_KIND = {
     BulkUploadKind.ACCOUNTS: ("/ui/accounts", "Back to accounts"),
     BulkUploadKind.CHECK_IMAGES: ("/ui/check-images", "Back to check images"),
     BulkUploadKind.PAID_ITEMS: ("/ui/paid-items", "Back to paid items"),
+    BulkUploadKind.ACCOUNT_FIELDS: ("/ui/accounts", "Back to accounts"),
+    BulkUploadKind.CUSTOMER_FIELDS: ("/ui/customers", "Back to customers"),
 }
 
 _FAILURES_SHOWN = 500
@@ -144,6 +150,8 @@ def bulk_upload_detail(
     corrections = bulk_import_service.corrections(db, record) if finished else []
     fixed_rows = {c.row_index for c in corrections if c.success}
     options = record.options or {}
+    updates = bulk_import_service.updates(record)
+    changed_rows = bulk_import_service.row_results(db, record, changed_only=True, limit=_CHANGES_SHOWN) if updates and finished else []
     # A file in someone's own columns fails on every row (or is rejected): offer to describe
     # it with a layout, starting from this very file.
     layout_kind = {BulkUploadKind.ISSUED_ITEMS: "issued_items", BulkUploadKind.PAID_ITEMS: "paid_items"}.get(record.kind)
@@ -156,7 +164,9 @@ def bulk_upload_detail(
         finished=finished, failures=failures, has_row_results=has_row_results, back_url=back_url, back_label=back_label,
         corrections=[c for c in corrections if c.success], fixed_rows=fixed_rows, correctable=bulk_import_service.correctable(record),
         layout_name=(options.get("layout") or {}).get("name"), offer_layout=offer_layout, layout_kind=layout_kind,
-        skipped_rows=options.get("skipped_rows", 0),
+        skipped_rows=options.get("skipped_rows", 0), updates=updates, changed_rows=changed_rows,
+        changed_count=bulk_import_service.changed_count(db, record) if updates and finished else 0,
+        describe_changes=bulk_import_service.describe_changes,
         nouns=_NOUNS.get(record.kind, ("row", "rows")), record_details=_record_details(db, ctx, tracked_records),
     )
 
@@ -204,9 +214,15 @@ def bulk_upload_results_csv(
     record = _get_authorized_record(db, ctx, upload_id)
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(["row", "succeeded", "created_id", "error"])
-    for r in bulk_import_service.row_results(db, record):
-        writer.writerow([r.row_label, "yes" if r.success else "no", r.created_id or "", _csv_safe(r.error or "")])
+    if bulk_import_service.updates(record):  # each row's values before and after (CF-D10)
+        writer.writerow(["row", "succeeded", "changes", "error"])
+        for r in bulk_import_service.row_results(db, record):
+            writer.writerow([_csv_safe(r.row_label), "yes" if r.success else "no",
+                             _csv_safe(bulk_import_service.describe_changes(r.changes) or r.note or ""), _csv_safe(r.error or "")])
+    else:
+        writer.writerow(["row", "succeeded", "created_id", "error"])
+        for r in bulk_import_service.row_results(db, record):
+            writer.writerow([r.row_label, "yes" if r.success else "no", r.created_id or "", _csv_safe(r.error or "")])
     return Response(
         out.getvalue(), media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="upload-{upload_id}-results.csv"'},

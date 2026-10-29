@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Update custom fields on {{ plural }} — {{ ctx.tenant_name }}{% endblock %}
+{% block help_title %}About custom-field updates{% endblock %}
+{% block help_body %}
+<p>The file updates {{ plural }} that already exist; it never creates one. Each row is checked
+  against its fields before any of its values are saved, and one bad row fails on its own.</p>
+<p>To send these files automatically, put them in the drop folder <code>fields/{{ owner }}/inbox/</code>,
+  or use <code>POST /api/v1/{{ owner }}/custom-fields</code>.</p>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Update custom fields on {{ plural }}</h1>
+  {% if not fields %}
+  <p>There are no custom fields on {{ plural }} yet. An administrator adds them in
+    <a href="/ui/settings/custom-fields">Settings → Custom fields</a>.</p>
+  {% else %}
+  <p>Upload a delimited file (CSV, TSV, pipe- or semicolon-separated) or an Excel (.xlsx) file whose
+    first row names the columns:</p>
+  <table class="column-guide">
+    <thead><tr><th>Column</th><th>What it holds</th></tr></thead>
+    <tbody>
+      <tr><td>{{ record_keys[0] }}</td><td>Which record to update ({{ record_keys[1] }} works instead)</td></tr>
+      {% for f in fields %}
+      <tr><td>cf_{{ f.key }}</td><td>{{ f.label }} ({{ f.field_type }}{% if f.unique %}, unique{% endif %})</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="hint">Leave out the columns you aren't changing. <a href="/ui/custom-fields/{{ owner }}/template.csv">Download a header row</a>.</p>
+  {% if error %}<p class="flash flash-error">{{ error }}</p>{% endif %}
+  {% if upload_record %}
+  <p>The file you just submitted was still saved and signed for audit purposes:
+    <a href="/ui/bulk-uploads/{{ upload_record.id }}">{{ upload_record.original_filename }}</a>
+  </p>
+  {% endif %}
+  <form method="post" action="/ui/custom-fields/{{ owner }}/upload" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>File <input type="file" name="upload_file" accept=".csv,.txt,.tsv,.xlsx,.xls" required data-dropzone></label>
+    <label class="checkbox"><input type="checkbox" name="blank_clears" value="true"> Blank cells clear values
+      <span class="hint">Otherwise a blank cell leaves the value as it is.</span></label>
+    <button type="submit">{{ icon("upload") }}Upload</button>
+  </form>
+  {% endif %}
+  <p><a href="{{ back_url }}">Back to {{ plural }}</a></p>
+</div>
+{% endblock %}

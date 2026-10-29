@@ -26,7 +26,10 @@
     <div class="actions">
       <a href="/ui/accounts/new" class="button">{{ icon("add") }}New account</a>
       <a href="/ui/accounts/bulk" class="button secondary not-phone">{{ icon("upload_file") }}Bulk upload</a>
+      {% if custom_fields and can(ctx, "custom_field:write") %}<a href="/ui/custom-fields/accounts/upload" class="button secondary not-phone">{{ icon("upload_file") }}Update custom fields</a>{% endif %}
     </div>
+    {% elif custom_fields and can(ctx, "custom_field:write") %}
+    <div class="actions"><a href="/ui/custom-fields/accounts/upload" class="button secondary not-phone">{{ icon("upload_file") }}Update custom fields</a></div>
     {% endif %}
   </div>
   {% if custom_fields %}

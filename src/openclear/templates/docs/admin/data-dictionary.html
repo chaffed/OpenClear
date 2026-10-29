@@ -1229,6 +1229,7 @@ erDiagram
 <tr><td>created_id</td><td>UUID</td><td>yes</td><td></td><td>What the row created (an issued item, a paid item, ...).</td></tr>
 <tr><td>error / note</td><td>Text</td><td>yes</td><td></td><td>Why the row failed.</td></tr>
 <tr><td>error_field</td><td>String(60)</td><td>yes</td><td></td><td>The field a failed row's error is about (e.g. amount), so the fix form shows it beside that field.</td></tr>
+<tr><td>changes</td><td>JSON</td><td>yes</td><td></td><td>A custom-field update's values before and after for this row (<code>{"before": {key: value}, "after": {...}}</code>); empty when nothing changed and for every other kind of upload.</td></tr>
 </tbody>
 </table>
 
