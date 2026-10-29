@@ -273,6 +273,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "and its accounts' items are refused; 90 days later, unless on legal hold, every row and file about the customer is "
       "deleted, the bank's action log is kept, and the bank keeps a signed certificate.",
       ("SI-12", "MP-6", "AC-2"), "corrective", "built_in", (), ("B-SI-12-02",), "Customers → a customer's Offboarding"),
+    C("OC-SI-14", "Custom fields checked and complete",
+      "Each custom-field value is checked against its field's type, length, choices and uniqueness wherever it's written (forms, "
+      "files, the API), a value is never shared with a customer unless its field is marked so, and OpenClear warns while a "
+      "customer or account lacks a value for a required field.",
+      ("SI-10", "SI-12"), "detective", "configurable", ("custom_fields",), ("B-SI-12-03",), "Settings → Custom fields; the lists' filter"),
     C("OC-CM-01", "Production settings enforced",
       "In production OpenClear refuses to start with the checked-in keys and secrets, placeholder legal text or incomplete "
       "storage settings, and the Controls page reports the settings in force. A change to the installation's security-relevant "

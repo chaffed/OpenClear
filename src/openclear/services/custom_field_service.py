@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -551,16 +551,28 @@ class _preview:
         _store(definition, self, value)
 
 
-def missing_required(session: Session, tenant_id: uuid.UUID, owner: str) -> list[uuid.UUID]:
-    """The records with no value for a required, active field (for the lists' filter and the
-    control check, CF-D5)."""
+def missing_required_condition(session: Session, tenant_id: uuid.UUID, owner: str):
+    """A SQL condition on the customer or account table: it has no value for some required, active
+    field (CF-D5). None when no field is required. Worked out in the database, so a bank with
+    20,000 accounts doesn't read every value to find the few without one."""
     fields = [f for f in list_fields(session, tenant_id, owner) if f.required]
     if not fields:
+        return None
+    model = Customer if owner == CustomFieldOwner.CUSTOMER else Account
+    present = or_(*(getattr(CustomFieldValue, c).is_not(None)
+                    for c in ("text_value", "integer_value", "decimal_value", "date_value", "boolean_value")))
+    return or_(*(model.id.not_in(select(_record_column(owner)).where(
+        CustomFieldValue.tenant_id == tenant_id, CustomFieldValue.field_id == f.id, present)) for f in fields))
+
+
+def missing_required(session: Session, tenant_id: uuid.UUID, owner: str) -> list[uuid.UUID]:
+    """The records with no value for a required, active field (for the customer hub's filter and
+    the control check, CF-D5)."""
+    condition = missing_required_condition(session, tenant_id, owner)
+    if condition is None:
         return []
     model = Customer if owner == CustomFieldOwner.CUSTOMER else Account
-    ids = list(session.execute(select(model.id).where(model.tenant_id == tenant_id)).scalars())
-    have = values_for(session, tenant_id, owner, ids, include_archived=False)
-    return [i for i in ids if any(have[i].get(f.key) is None for f in fields)]
+    return list(session.execute(select(model.id).where(model.tenant_id == tenant_id, condition)).scalars())
 
 
 # --- The provider's fields on banks -------------------------------------------------------------

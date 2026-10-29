@@ -44,11 +44,13 @@ def list_accounts(
         where.append(Account.id.in_(select(CustomFieldValue.account_id).where(
             CustomFieldValue.field_id == chosen.id, CustomFieldValue.text_value == value.strip())))
     if missing == "1" and ctx.customer_id is None:
-        where.append(Account.id.in_(custom_fields.missing_required(db, ctx.tenant_id, "account")))
+        condition = custom_fields.missing_required_condition(db, ctx.tenant_id, "account")
+        if condition is not None:
+            where.append(condition)
     repo = AccountRepository(db, ctx.tenant_id, ctx.customer_id)
     page_obj = paginate(
         page=page,
-        count_fn=lambda: len(repo.list(where=where)) if where else repo.count(),
+        count_fn=lambda: repo.count(where=where),
         list_fn=lambda **kw: repo.list(where=where, order_by=Account.account_number, **kw),
     )
     # A customer-scoped user's own scope is implicit — no picker needed, and they must

@@ -27,6 +27,9 @@
   decision file adds them as `cf_` columns at the end, set under Settings → Decision files. An
   account's field is named by its key, its customer's as `customer.<key>`. Webhooks still carry
   ids only.
+- **A control check for required custom fields** (`custom_fields`, nightly): it warns while a
+  customer or account lacks a value for a required field, which a file or the API can leave
+  empty. New control OC-SI-14.
 - **Fixed: a blank `cf_` cell in the account bulk upload** was stored as the text "nan".
 
 - **Fixed: rate limiting with Redis fails open at once when Redis is down.** redis-py retries a

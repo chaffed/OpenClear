@@ -287,4 +287,12 @@ OPENCLEAR_THREATS: tuple[Threat, ...] = (
            "no tenant policy, read only by the provider's code and shown to a bank only when marked; values reach a decision "
            "destination only when it names them; every CSV cell is formula-escaped.",
            "services/custom_field_service.py; db/account_scope.py; plans/CUSTOM_FIELDS_PLAN.md CF-D3, CF-D7, CF-D13", "Mitigated"),
+    Threat("OC-T28", "T", "Bank's network", "An automation's credential, or a file dropped in the bank's folder, rewrites custom-field "
+           "values across many records (an aggregation id the core groups by, an officer code), and nobody can tell what they were.",
+           "Setting values in bulk needs custom_field:write, its own permission, never in a customer's session; an update never "
+           "creates a record and refuses a customer whose service has ended; every file and batch call is stored, signed and "
+           "malware-checked like any bulk upload, each row keeps its values before and after, and the upload is one action-log "
+           "entry; the drop folder for fields is the bank's own, never a customer's.",
+           "services/bulk_import_service.py (updates); services/dropbox_import_service.py; api/v1/custom_fields.py; "
+           "plans/CUSTOM_FIELDS_PLAN.md CF-D10", "Mitigated"),
 )

@@ -236,3 +236,21 @@ def test_the_batch_api_is_refused_without_the_permission(client, db_session, ten
     for email in (users["viewer"].email, person.email):  # no permission; a customer's admin, whose session masks it
         headers = login_headers(client, tenant.slug, email)
         assert client.post("/api/v1/accounts/custom-fields", headers=headers, json=body).status_code == 403
+
+
+def test_the_control_check_warns_while_a_required_field_is_empty(db_session, tenant_factory):
+    from openclear.services import control_checks
+
+    tenant, _house, _users = tenant_factory.make(slug="cfb-check")
+    assert control_checks.custom_fields(db_session, tenant.id).status == "PASS"  # nothing required
+    _define(db_session, tenant, "account", "officer_code", required=True)
+    accounts = _accounts(db_session, tenant, "7301", "7302")
+    cf.set_values(db_session, tenant.id, "account", accounts["7301"].id, {"officer_code": "JS"}, user_id=None)
+    cf.set_values(db_session, tenant.id, "account", accounts["7302"].id, {"officer_code": "MK"}, user_id=None)
+    cf.set_values(db_session, tenant.id, "account", accounts["7302"].id, {"officer_code": None}, user_id=None)  # cleared: a row, no value
+    db_session.commit()
+    check = control_checks.custom_fields(db_session, tenant.id)
+    house_and_cleared = 2  # the tenant's own house account has none either
+    assert check.status == "WARN" and check.evidence["accounts_missing"] == house_and_cleared
+    assert set(cf.missing_required(db_session, tenant.id, "account")) >= {accounts["7302"].id}
+    assert accounts["7301"].id not in cf.missing_required(db_session, tenant.id, "account")

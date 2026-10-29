@@ -133,7 +133,7 @@ everything else, and a custom field is never an import key.
 | CF4 | API: `custom_fields` on customers and accounts, `GET /api/v1/custom-fields`; OpenAPI, the SDKs and their READMEs; the CSV and JSON exports and the data export; the account bulk upload's columns | Done |
 | CF5 | Bulk updates (CF-D10): the update file, the drop-box `fields/` folder, the batch API, `custom_field:write`, before and after in row results | Done |
 | CF6 | Decisions (CF-D7): the OpenClear CSV layout's setting, the feed's parameter (webhooks stay thin; see CF-D7); the CSV escaping everywhere | Done |
-| CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | |
+| CF7 | Docs: admin guide, data dictionary, threat model, CUEC, CHANGELOG; the scale test | Done |
 
 One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first, unreleased.
 
@@ -188,3 +188,9 @@ One release once CF5–CF7 are done (decided 2026-10-28): CF1–CF4 merge first,
   of Decision files) for the outbox and `GET /api/v1/decisions/file`. A customer-scoped reader
   gets only fields shown to the customer. The webhook endpoint keys were dropped: webhook
   payloads are ids only by design (CF-D7 amended), so no `webhook_endpoint` column.
+- 2026-10-28: CF7 built. Control check `custom_fields` (nightly; warns while a record lacks a
+  required value) under new control OC-SI-14, linked to CUEC B-SI-12-03; threat OC-T28 (bulk
+  rewrites). Scale test `tests/test_scale/test_custom_fields.py`, opt-in with
+  `OPENCLEAR_SCALE_TESTS=1`: 20,000 accounts x 25 fields seeds in 7 s; the list 0.14 s, a value
+  filter 0.01 s, the missing-required filter 0.04 s (5.6 s before it moved into SQL), the API
+  list of 500 0.28 s, a 1,000-row update file 0.8 s, the data export 12 s (SQLite, M-series Mac).
