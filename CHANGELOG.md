@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.31.0 — 2026-10-29
 
 - **Custom fields** (`plans/CUSTOM_FIELDS_PLAN.md`). A bank defines its own fields on customers and
   accounts under Settings → Custom fields (text, whole number, decimal, date, yes/no or a choice;
