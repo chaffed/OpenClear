@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Replace a SAML connection's signing key** (issue #21). A connection made before 1.22.1 has an
+  RSA-2048 key; its page now says so and offers **Replace the signing key**: a new RSA-3072
+  certificate is published in the metadata beside the old one, sign-in carries on with the old
+  key, and once the identity provider has the new certificate an admin finishes and the old one
+  is dropped. Starting and finishing are sensitive changes (dual control where the bank or the
+  customer asks for it) and raise the `sso_connection.changed` security event.
+
 ## 1.31.0 — 2026-10-29
 
 - **Custom fields** (`plans/CUSTOM_FIELDS_PLAN.md`). A bank defines its own fields on customers and

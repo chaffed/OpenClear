@@ -203,7 +203,7 @@ V11.1.3,Met,docs/security/cryptography.md,
 V11.1.4,Met,docs/security/cryptography.md,
 V11.2.1,Met,src/openclear/auth/crypto.py,
 V11.2.2,Met,src/openclear/auth/crypto.py,
-V11.2.3,Partly,src/openclear/auth/saml_service.py,SAML connections made before 1.22.1 keep RSA-2048 keys until replaced (issue #21).
+V11.2.3,Partly,src/openclear/auth/saml_service.py,"SAML connections made before 1.22.1 keep RSA-2048 keys until the bank or customer replaces them on the connection's page, which flags them and swaps without an outage (issue #21)."
 V11.2.4,Met,src/openclear/auth/crypto.py,
 V11.2.5,Met,src/openclear/auth/crypto.py,
 V11.3.1,Met,src/openclear/auth/crypto.py,

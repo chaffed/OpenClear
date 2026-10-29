@@ -348,6 +348,33 @@ def update_bank_connection(
     return see_other(f"/ui/admin/sso/{connection_id}/edit", flash="Saved.")
 
 
+_REKEY_DONE = {"start": "A new signing key is in the metadata beside the current one.",
+               "finish": "The connection now signs with its new key.", "cancel": "The new signing key is withdrawn."}
+
+
+@router.post("/ui/admin/sso/{connection_id}/signing-key")
+def rekey_bank_connection(
+    connection_id: uuid.UUID, step: str = Form(...), db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """Replace a SAML connection's signing key in steps (issue #21), through dual control."""
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id is not None or step not in sso_service.REKEY_STEPS:
+        raise WebNotFound()
+    back = f"/ui/admin/sso/{connection_id}/edit"
+    outcome, error = _sso_change(db, ctx, "sso_connection.rekey", {"connection_id": str(connection_id), "step": step})
+    if error:
+        return see_other(back, error=error)
+    if not outcome.waiting:
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.rekey",
+                                        summary=outcome.summary[:500],
+                                        resource_type="sso_connection", resource_id=connection_id, metadata={"step": step})
+    db.commit()
+    return see_other(back, flash=waiting_message(outcome) if outcome.waiting else _REKEY_DONE[step])
+
+
 @router.post("/ui/admin/sso/{connection_id}/deactivate")
 def deactivate_bank_connection(
     connection_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
@@ -541,6 +568,29 @@ def update_customer_connection(
     )
     db.commit()
     return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="Saved.")
+
+
+@router.post("/ui/customers/{customer_id}/sso/{connection_id}/signing-key")
+def rekey_customer_connection(
+    customer_id: uuid.UUID, connection_id: uuid.UUID, step: str = Form(...), db: Session = Depends(get_db),
+    ctx: TenantContext = Depends(require_web_permission("customer:manage")), _csrf: None = Depends(verify_csrf),
+) -> RedirectResponse:
+    """A customer's connection, by the bank's staff: applied at once, as their other edits to it are."""
+    customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
+    connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
+    if connection is None or connection.customer_id != customer_id or step not in sso_service.REKEY_STEPS:
+        raise WebNotFound()
+    back = f"/ui/customers/{customer_id}/sso/{connection_id}/edit"
+    try:
+        done = sso_service.rekey(db, connection, step)
+    except ValueError as exc:
+        db.rollback()
+        return see_other(back, error=str(exc))
+    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.rekey",
+                                    summary=f"{done} (customer {customer.name})"[:500], resource_type="sso_connection",
+                                    resource_id=connection_id, metadata={"step": step})
+    db.commit()
+    return see_other(back, flash=_REKEY_DONE[step])
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/deactivate")

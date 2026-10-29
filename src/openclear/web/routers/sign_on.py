@@ -277,6 +277,28 @@ def remove_mapping(connection_id: uuid.UUID, mapping_id: uuid.UUID, db: Session 
     return see_other(f"{_BASE}/{connection_id}/edit", flash="Mapping removed.")
 
 
+@router.post("/{connection_id}/signing-key")
+def rekey_connection(connection_id: uuid.UUID, step: str = Form(...), db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
+                     _csrf: None = Depends(verify_csrf)) -> Response:
+    """Replace the connection's SAML signing key in steps (issue #21), through the customer's own
+    dual control when it asks for that."""
+    from openclear.services import sso_service
+    from openclear.web.routers.sso_settings import _REKEY_DONE
+    from openclear.web.routers.tenant_settings import waiting_message
+
+    connection = _connection(db, ctx, connection_id)
+    if step not in sso_service.REKEY_STEPS:
+        raise WebNotFound()
+    back = f"{_BASE}/{connection_id}/edit"
+    outcome, error = _change(db, ctx, "customer.sign_on.rekey", {"connection_id": str(connection.id), "step": step})
+    if error:
+        return see_other(back, error=error)
+    if not outcome.waiting:
+        _record(db, ctx, "customer_sign_on.rekey", outcome.summary[:500])
+    db.commit()
+    return see_other(back, flash=waiting_message(outcome) if outcome.waiting else _REKEY_DONE[step])
+
+
 @router.post("/{connection_id}/scim-token")
 def issue_scim_token(request: Request, connection_id: uuid.UUID, db: Session = Depends(get_db), ctx: TenantContext = Depends(_manage),
                      _csrf: None = Depends(verify_csrf)) -> HTMLResponse:

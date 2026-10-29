@@ -133,3 +133,78 @@ def test_a_customer_signs_in_through_its_own_keycloak_by_saml(client, db_session
     claims = decode_token(client.cookies.get("access_token"))
     assert claims["customer_id"] == str(s["customer"].id) and claims["cfd"] == 1
 
+
+
+def test_a_saml_connections_key_is_replaced_without_an_outage(client, db_session, tenant_factory, monkeypatch):
+    """Issue #21 against a real identity provider that checks our request signatures: sign-in
+    works before, while both certificates are published, and after the switch."""
+    from openclear.auth import saml_service
+    from openclear.domain.sso_connection import SsoProtocol
+    from openclear.services import sso_service
+
+    monkeypatch.setattr(get_settings(), "oidc_allow_private_hosts", True)
+    monkeypatch.setattr(get_settings(), "public_base_url", "https://openclear.bank.example")
+    s = _sign_on_setup(db_session, tenant_factory, "kc-rekey")
+    descriptor = httpx.get(f"{ISSUER}/protocol/saml/descriptor").text
+    certificate = re.search(r"<(?:ds:|dsig:)?X509Certificate>([^<]+)<", descriptor).group(1).strip()
+    connection = customer_sign_on_service.create(db_session, s["tenant"].id, s["customer"].id, SsoConnectionInput(
+        provider=SsoProvider.KEYCLOAK, protocol=SsoProtocol.SAML, display_name="Acme Keycloak SAML", issuer=ISSUER,
+        client_id=None, client_secret=None, groups_claim_name="groups", auto_provision=True,
+        saml_sso_url=f"{ISSUER}/protocol/saml", saml_idp_certificate=f"-----BEGIN CERTIFICATE-----\n{certificate}\n-----END CERTIFICATE-----"))
+    customer_sign_on_service.add_mapping(db_session, s["tenant"].id, s["customer"].id, connection.id, external_group="acme-staff",
+                                         security_group_id=s["clerk"].id)
+    domain = customer_sign_on_service.add_domain(db_session, s["tenant"].id, s["customer"].id, "acme.example.com")
+    domain.verified_at = datetime.now(timezone.utc)
+    db_session.commit()
+
+    urls = saml_service.sp_urls("https://openclear.bank.example", connection)
+    admin = _keycloak_admin()
+
+    def give_keycloak(cert_pem: str) -> None:
+        body = saml_service._pem_body(cert_pem)
+        found = admin.get("/clients", params={"clientId": urls["entity_id"]}).json()
+        attributes = {"saml.client.signature": "true", "saml.signing.certificate": body, "saml.server.signature": "true",
+                      "saml.assertion.signature": "true", "saml.authnstatement": "true", "saml_force_name_id_format": "true",
+                      "saml_name_id_format": "email", "saml.encrypt": "false", "saml_assertion_consumer_url_post": urls["acs"]}
+        client_json = {"clientId": urls["entity_id"], "protocol": "saml", "enabled": True, "redirectUris": ["*"], "attributes": attributes,
+                       "protocolMappers": [{"name": "groups", "protocol": "saml", "protocolMapper": "saml-group-membership-mapper",
+                                            "config": {"attribute.name": "groups", "full.path": "false", "single": "false"}}]}
+        if found:
+            assert admin.put(f"/clients/{found[0]['id']}", json={**found[0], "attributes": {**found[0]["attributes"], **attributes}}).status_code == 204
+        else:
+            assert admin.post("/clients", json=client_json).status_code == 201
+
+    def signs_in() -> bool:
+        client.cookies.clear()
+        start = client.get(f"/ui/login/sso/{connection.id}/start", params={"tenant_id": str(s["tenant"].id), "next": "/ui/"},
+                           follow_redirects=False)
+        browser = httpx.Client(follow_redirects=False, timeout=30)
+        page = browser.get(start.headers["location"])
+        form = re.search(r'<form[^>]+action="([^"]+)"', page.text)
+        if form is None:  # Keycloak refused our request (a signature it can't verify)
+            return False
+        cookies = "; ".join(f"{c.name}={c.value}" for c in browser.cookies.jar)
+        answer = browser.post(urljoin(start.headers["location"], html.unescape(form.group(1))), headers={"Cookie": cookies}, data={
+            "username": os.environ["OPENCLEAR_TEST_KEYCLOAK_EMAIL"], "password": os.environ["OPENCLEAR_TEST_KEYCLOAK_PASSWORD"],
+            "credentialId": ""})
+        fields = dict(re.findall(r'name="(SAMLResponse|RelayState)"\s+value="([^"]*)"', answer.text))
+        if "SAMLResponse" not in fields:
+            return False
+        posted = client.post(urlsplit(urls["acs"]).path, data={k: html.unescape(v) for k, v in fields.items()}, follow_redirects=False)
+        return posted.status_code == 303 and posted.headers["location"] == "/ui/"
+
+    old_cert = connection.saml_sp_certificate
+    give_keycloak(old_cert)
+    assert signs_in()
+
+    sso_service.rekey(db_session, connection, "start")  # both published; still signing with the old key
+    db_session.commit()
+    assert signs_in()
+
+    give_keycloak(connection.saml_sp_next_certificate)  # the provider takes the new certificate...
+    sso_service.rekey(db_session, connection, "finish")  # ...and OpenClear switches to it
+    db_session.commit()
+    assert connection.saml_sp_certificate != old_cert and signs_in()
+
+    give_keycloak(old_cert)  # and the old key is really gone: a provider still holding it refuses us
+    assert not signs_in()

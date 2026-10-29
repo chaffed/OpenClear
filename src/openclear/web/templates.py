@@ -446,3 +446,12 @@ from jinja2 import pass_context  # noqa: E402
 templates.env.globals["slot"] = pass_context(_slot)
 templates.env.globals["plugin_pages"] = pass_context(_plugin_pages)
 templates.env.globals["plugin_assets"] = pass_context(_plugin_assets)
+
+
+def _saml_key_bits(certificate_pem: str | None) -> int | None:
+    from openclear.auth.saml_service import key_bits
+
+    return key_bits(certificate_pem)
+
+
+templates.env.globals["saml_key_bits"] = _saml_key_bits  # a SAML connection's key size, to offer replacing it (issue #21)

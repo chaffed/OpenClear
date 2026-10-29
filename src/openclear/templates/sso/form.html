@@ -120,6 +120,40 @@
 </div>
 {% endif %}
 
+{% if connection and connection.protocol.value == "saml" and connection.saml_sp_certificate %}
+{% set bits = saml_key_bits(connection.saml_sp_certificate) %}
+<div class="card" id="signing-key">
+  <h2>Signing key</h2>
+  {% if connection.saml_sp_next_certificate %}
+  <p role="status"><span class="badge badge-warn">Replacing</span> Since
+    <time datetime="{{ connection.saml_sp_rekey_started_at | iso_utc }}" data-local-time>{{ connection.saml_sp_rekey_started_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
+    the metadata has carried a new RSA-{{ saml_key_bits(connection.saml_sp_next_certificate) }} certificate beside the current one, and sign-in
+    still uses the current key. Once your identity provider has the new certificate (most re-read the metadata URL; otherwise
+    upload it from the metadata), finish, and OpenClear signs with the new key and drops the old.</p>
+  <form method="post" action="{{ base }}/{{ connection.id }}/signing-key" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="finish">
+    <button type="submit">{{ icon("check") }}The identity provider has it: finish</button>
+  </form>
+  <form method="post" action="{{ base }}/{{ connection.id }}/signing-key" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="cancel">
+    <button type="submit" class="secondary">{{ icon("close") }}Withdraw the new key</button>
+  </form>
+  {% else %}
+  <p>OpenClear signs this connection's requests with an RSA-{{ bits or "?" }} key.
+    {% if bits and bits < 3072 %}<strong>That's below the 3,072 bits now recommended; replace it.</strong>{% endif %}
+    Replacing it publishes a new certificate beside the current one first, so nobody's sign-in breaks while your identity
+    provider picks it up.</p>
+  <form method="post" action="{{ base }}/{{ connection.id }}/signing-key" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="step" value="start">
+    <button type="submit"{% if not (bits and bits < 3072) %} class="secondary"{% endif %}>{{ icon("vpn_key") }}Replace the signing key</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if connection %}
 <div class="card">
   <h2>Directory provisioning (SCIM 2.0)</h2>

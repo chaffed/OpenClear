@@ -157,6 +157,57 @@ def get_connection(session: Session, tenant_id: uuid.UUID, connection_id: uuid.U
     return SsoConnectionRepository(session, tenant_id).get(connection_id)
 
 
+# --- Replacing a SAML connection's signing key (issue #21) -------------------------------------
+#
+# Without an outage: start publishes a new RSA-3072 certificate in the metadata beside the old one,
+# while requests are still signed with the old key; the bank gives the identity provider the new
+# certificate (most re-read the metadata); finish makes the new key the connection's own and drops
+# the old. Cancel drops the new one instead.
+
+REKEY_STEPS = ("start", "finish", "cancel")
+
+
+def rekey_state(connection: SsoConnection) -> str:
+    """"none" or "started"."""
+    return "started" if connection.saml_sp_next_certificate else "none"
+
+
+def rekey(session: Session, connection: SsoConnection, step: str) -> str:
+    """One step of replacing the key; raises ValueError for one that doesn't apply now. Returns
+    what was done, for the action log."""
+    from datetime import datetime, timezone
+
+    from openclear.auth.saml_service import generate_sp_keypair
+
+    if connection.protocol != SsoProtocol.SAML:
+        raise ValueError("Only a SAML connection has a signing key.")
+    started = rekey_state(connection) == "started"
+    if step == "start":
+        if started:
+            raise ValueError("A new signing key is already published; finish or cancel that first.")
+        connection.saml_sp_next_certificate, connection.saml_sp_next_private_key_encrypted = generate_sp_keypair(connection.id)
+        connection.saml_sp_rekey_started_at = datetime.now(timezone.utc)
+        done = f"Published a new signing key for {connection.display_name} beside the current one"
+    elif step == "finish":
+        if not started:
+            raise ValueError("No new signing key is waiting.")
+        connection.saml_sp_certificate = connection.saml_sp_next_certificate
+        connection.saml_sp_private_key_encrypted = connection.saml_sp_next_private_key_encrypted
+        connection.saml_sp_next_certificate = connection.saml_sp_next_private_key_encrypted = None
+        connection.saml_sp_rekey_started_at = None
+        done = f"{connection.display_name} now signs with its new key; the old one is gone"
+    elif step == "cancel":
+        if not started:
+            raise ValueError("No new signing key is waiting.")
+        connection.saml_sp_next_certificate = connection.saml_sp_next_private_key_encrypted = None
+        connection.saml_sp_rekey_started_at = None
+        done = f"Withdrew the new signing key for {connection.display_name}; it keeps its current one"
+    else:
+        raise ValueError(f"Unknown step {step!r}.")
+    session.flush()
+    return done
+
+
 def deactivate_connection(session: Session, tenant_id: uuid.UUID, connection_id: uuid.UUID) -> SsoConnection | None:
     connection = SsoConnectionRepository(session, tenant_id).get(connection_id)
     if connection is None:
