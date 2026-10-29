@@ -79,6 +79,19 @@ def generate_sp_keypair(connection_id: uuid.UUID) -> tuple[str, str]:
     return cert.public_bytes(serialization.Encoding.PEM).decode(), encrypt_secret(key_pem)
 
 
+def key_bits(certificate_pem: str | None) -> int | None:
+    """The RSA key size behind a certificate, to say on the connection's page whether it's below
+    3072 bits and worth replacing."""
+    from cryptography import x509
+
+    if not certificate_pem:
+        return None
+    try:
+        return x509.load_pem_x509_certificate(certificate_pem.encode()).public_key().key_size
+    except (ValueError, AttributeError):
+        return None
+
+
 def _pem_body(pem: str | None) -> str:
     """python3-saml wants the base64 body; accept a PEM or a bare body."""
     lines = [line.strip() for line in (pem or "").strip().splitlines()]
@@ -97,7 +110,9 @@ def sp_urls(base: str, connection: SsoConnection) -> dict[str, str]:
     return {"entity_id": f"{root}/metadata", "acs": f"{root}/acs", "slo": f"{root}/slo"}
 
 
-def _settings(connection: SsoConnection, base: str) -> dict:
+def _settings(connection: SsoConnection, base: str, *, next_key: bool = False) -> dict:
+    """python3-saml's settings. While the key is being replaced, the metadata publishes the next
+    certificate too (issue #21); `next_key` uses the next key, to read an answer encrypted to it."""
     urls = sp_urls(base, connection)
     idp: dict = {
         "entityId": connection.issuer,
@@ -116,6 +131,10 @@ def _settings(connection: SsoConnection, base: str) -> dict:
             "NameIDFormat": OneLogin_Saml2_Constants.NAMEID_UNSPECIFIED,
             "x509cert": _pem_body(connection.saml_sp_certificate),
             "privateKey": _pem_body(decrypt_secret(connection.saml_sp_private_key_encrypted)) if connection.saml_sp_private_key_encrypted else "",
+            **({"x509certNew": _pem_body(connection.saml_sp_next_certificate)} if connection.saml_sp_next_certificate else {}),
+            **({"x509cert": _pem_body(connection.saml_sp_next_certificate),
+                "privateKey": _pem_body(decrypt_secret(connection.saml_sp_next_private_key_encrypted))}
+               if next_key and connection.saml_sp_next_private_key_encrypted else {}),
         },
         "idp": idp,
         "security": {
@@ -183,18 +202,12 @@ def process_response(connection: SsoConnection, base: str, post_data: dict, *, r
     _check_ready(connection)
     if request_id is None and not connection.allow_idp_initiated:
         raise SamlError("Sign-in started at the identity provider isn't allowed for this connection.")
-    urls = sp_urls(base, connection)
-    auth = OneLogin_Saml2_Auth(
-        _request_data(base, urlsplit(urls["acs"]).path.removeprefix(urlsplit(base).path.rstrip("/")), post=post_data),
-        old_settings=_settings(connection, base),
-    )
-    try:
-        auth.process_response(request_id=request_id)
-    except Exception as exc:  # noqa: BLE001 -- malformed XML and the like
-        raise SamlError(f"Unreadable SAML response: {exc}") from None
-    errors = auth.get_errors()
-    if errors or not auth.is_authenticated():
-        raise SamlError(f"SAML response rejected: {errors} {auth.get_last_error_reason() or ''}".strip())
+    auth = _checked_response(connection, base, post_data, request_id=request_id)
+    if auth is None and connection.saml_sp_next_private_key_encrypted:
+        # While the key is being replaced, the identity provider may already encrypt to the next one.
+        auth = _checked_response(connection, base, post_data, request_id=request_id, next_key=True)
+    if auth is None:
+        auth = _checked_response(connection, base, post_data, request_id=request_id, raise_errors=True)
     in_response_to = auth.get_last_response_in_response_to()
     if request_id is not None and in_response_to != request_id:
         # python3-saml only compares InResponseTo when it's present; an unsolicited answer
@@ -223,6 +236,29 @@ def process_response(connection: SsoConnection, base: str, post_data: dict, *, r
         customer_number=(str(attributes[connection.customer_claim][0]).strip() or None)
         if connection.customer_claim and attributes.get(connection.customer_claim) else None,
     )
+
+
+def _checked_response(connection: SsoConnection, base: str, post_data: dict, *, request_id: str | None, next_key: bool = False,
+                      raise_errors: bool = False) -> OneLogin_Saml2_Auth | None:
+    """The answer checked with the current key (or the next one): the authenticated python3-saml
+    object, or None (or SamlError, with `raise_errors`) if it's refused."""
+    urls = sp_urls(base, connection)
+    auth = OneLogin_Saml2_Auth(
+        _request_data(base, urlsplit(urls["acs"]).path.removeprefix(urlsplit(base).path.rstrip("/")), post=post_data),
+        old_settings=_settings(connection, base, next_key=next_key),
+    )
+    try:
+        auth.process_response(request_id=request_id)
+    except Exception as exc:  # noqa: BLE001 -- malformed XML and the like
+        if raise_errors:
+            raise SamlError(f"Unreadable SAML response: {exc}") from None
+        return None
+    errors = auth.get_errors()
+    if errors or not auth.is_authenticated():
+        if raise_errors:
+            raise SamlError(f"SAML response rejected: {errors} {auth.get_last_error_reason() or ''}".strip())
+        return None
+    return auth
 
 
 def process_logout_request(connection: SsoConnection, base: str, get_data: dict) -> tuple[str, str | None]:

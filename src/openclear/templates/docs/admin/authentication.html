@@ -19,6 +19,11 @@ or <strong>SAML 2.0</strong> (ADFS, Shibboleth, and the same providers). Either 
 access through the connection's group mappings, re-checked at every sign-in. Each
 connection's page lists the URLs to give your identity provider. For SAML, that includes
 its metadata URL.</p>
+<p>A SAML connection signs its requests with its own key. One made before 1.22.1 has an RSA-2048 key, and its page
+says so: <strong>Replace the signing key</strong> publishes a new RSA-3072 certificate in the metadata beside the old one
+while sign-in carries on with the old key. Once your identity provider has the new certificate (most re-read the
+metadata URL), choose <strong>finish</strong> and OpenClear signs with the new key and drops the old. Starting and
+finishing are sensitive changes, so a second administrator approves them if your bank asks for that.</p>
 <ul>
   <li><strong>Directory provisioning (SCIM 2.0).</strong> Turn it on from the connection's page.
     It gives you a base URL and a token for your directory. The directory can then create,

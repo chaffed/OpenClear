@@ -75,6 +75,11 @@ class SsoConnection(Base):
     saml_email_attribute: Mapped[str | None] = mapped_column(String(200), nullable=True)
     saml_sp_certificate: Mapped[str | None] = mapped_column(Text, nullable=True)
     saml_sp_private_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Replacing that key (issue #21): the next certificate and key, published in the metadata beside
+    # the current one until an admin confirms the identity provider has it; then it becomes the key.
+    saml_sp_next_certificate: Mapped[str | None] = mapped_column(Text, nullable=True)
+    saml_sp_next_private_key_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    saml_sp_rekey_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Sign-in started at the identity provider (a tile in Okta or Azure): off unless the
     # bank turns it on, since there's no request of ours to match the answer to.
     allow_idp_initiated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

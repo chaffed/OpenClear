@@ -614,6 +614,37 @@ register(Kind(
     setting=lambda payload: f"sso:{payload['connection_id']}:active", action="sso_connection.update",
 ))
 
+def _rekey_current(session, tenant_id, customer_id, payload) -> dict:
+    from openclear.services import sso_service
+
+    return {"signing_key": sso_service.rekey_state(_connection(session, tenant_id, customer_id, payload))}
+
+
+def _rekey_apply(session, tenant_id, customer_id, payload, user_id) -> str:
+    from openclear.services import sso_service
+
+    try:
+        return sso_service.rekey(session, _connection(session, tenant_id, customer_id, payload), payload["step"])
+    except ValueError as exc:
+        raise ChangeError(str(exc)) from None
+
+
+_REKEY_SAYS = {"start": "Publish a new signing key beside the current one", "finish": "Sign with the new key and drop the old one",
+               "cancel": "Withdraw the new signing key"}
+
+
+def _rekey_kind(key: str, permission: str, action: str, scope: str = "bank") -> Kind:
+    """Replacing a SAML connection's signing key (issue #21). Starting and finishing wait for a
+    second person where the bank (or customer) asks for that; withdrawing the new key doesn't."""
+    return Kind(
+        key, "Single sign-on" if scope == "bank" else "Sign-on", "sensitive", permission, _rekey_current,
+        lambda payload: {"signing_key": "started" if payload["step"] == "start" else "none", "step": payload["step"]},
+        loosens=lambda before, after: after["step"] != "cancel",
+        apply=_rekey_apply, scope=scope, setting=lambda payload: f"sso:{payload['connection_id']}:signing_key",
+        describe=lambda before, after: _REKEY_SAYS[after["step"]], action=action,
+    )
+
+
 _SSO_FIELDS = ("provider", "issuer", "client_id", "groups_claim_name", "auto_provision", "protocol", "saml_sso_url", "saml_slo_url",
                "saml_idp_certificate", "saml_email_attribute", "allow_idp_initiated", "customer_claim", "require_mfa_claim",
                "mfa_values")
@@ -655,6 +686,9 @@ def _sso_apply(session, tenant_id, customer_id, payload, user_id) -> str:
     except (UnsafeUrlError, ValueError) as exc:
         raise ChangeError(str(exc)) from None
     return f"Updated sign-on connection {connection.display_name}"
+
+
+register(_rekey_kind("sso_connection.rekey", _BANK_ADMIN, "sso_connection.rekey"))
 
 
 register(Kind(
@@ -940,6 +974,9 @@ def _customer_connection_on(session, tenant_id, customer_id, payload, user_id) -
 
     connection = customer_sign_on_service.set_active(session, tenant_id, customer_id, uuid.UUID(payload["connection_id"]), True)
     return f"Sign-on connection {connection.display_name} on"
+
+
+register(_rekey_kind("customer.sign_on.rekey", "customer_sso:manage", "customer_sign_on.rekey", scope="customer"))
 
 
 register(Kind(

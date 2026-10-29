@@ -521,6 +521,8 @@ one customer.</p>
 <tr><td>saml_idp_certificate</td><td>Text</td><td>yes</td><td></td><td>SAML: the IdP's signing certificate (PEM).</td></tr>
 <tr><td>saml_email_attribute</td><td>String(200)</td><td>yes</td><td></td><td>SAML: the attribute carrying the email; null means the NameID.</td></tr>
 <tr><td>saml_sp_certificate / saml_sp_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: OpenClear's own key pair for this connection, generated when it's created; the key is encrypted.</td></tr>
+<tr><td>saml_sp_next_certificate / saml_sp_next_private_key_encrypted</td><td>Text</td><td>yes</td><td></td><td>SAML: the key pair replacing it, published in the metadata beside the current one until an admin finishes the change; the key is encrypted.</td></tr>
+<tr><td>saml_sp_rekey_started_at</td><td>DateTime</td><td>yes</td><td></td><td>When replacing the signing key started; empty when no replacement is under way.</td></tr>
 <tr><td>allow_idp_initiated</td><td>Boolean</td><td>no</td><td></td><td>Accept sign-in started at the identity provider (SAML). Off by default.</td></tr>
 <tr><td>require_mfa_claim</td><td>Boolean</td><td>no</td><td></td><td>Refuse a sign-in unless the provider reports MFA (OIDC <code>amr</code>/<code>acr</code>, SAML authentication context). Off by default.</td></tr>
 <tr><td>mfa_values</td><td>String(500)</td><td>yes</td><td></td><td>Extra acr / authentication-context values this provider uses for MFA, comma-separated.</td></tr>
