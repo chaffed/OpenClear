@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Third-party notices — OpenClear{% endblock %}
+
+{% block content %}
+<h1>Third-party notices</h1>
+<p>OpenClear includes components written by others, each under its own license. Their license texts and copyright
+  notices follow, as those licenses ask. What each component is and what it's for is listed in
+  <code>docs/compliance/third-party.md</code> in the <a href="{{ source_code_url() }}">source code</a>.</p>
+<p><a href="/ui/license">Back to OpenClear's license</a></p>
+<div class="card">
+{% if notices %}<pre class="license-text">{{ notices }}</pre>
+{% else %}<p>The notices are in <code>THIRD_PARTY_NOTICES.md</code> in the <a href="{{ source_code_url() }}">source code</a>.</p>{% endif %}
+</div>
+{% endblock %}

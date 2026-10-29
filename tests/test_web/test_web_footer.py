@@ -113,3 +113,23 @@ def test_the_license_line_has_the_notices_and_the_source(client, tenant_factory)
     assert "© 2026 Chaffed" in line and "no warranty" in line and 'href="/ui/license"' in line and "Source code" in line
     page = client.get("/ui/license").text
     assert "without any" in page and "warranty" in page and "github.com/chaffed/OpenClear" in page
+
+
+def test_the_third_party_notices_are_linked_and_served(client, monkeypatch, tmp_path):
+    """plans/THIRD_PARTY_PLAN.md TP2: the notices their licenses ask for travel with OpenClear."""
+    from openclear.web.routers import license as license_router
+
+    assert 'href="/ui/license/third-party"' in client.get("/ui/license").text
+    page = client.get("/ui/license/third-party")
+    assert page.status_code == 200 and "Third-party notices" in page.text and "Knut Sveidqvist" in page.text  # mermaid's
+    monkeypatch.setattr(license_router, "_NOTICES_PATH", tmp_path / "missing")
+    missing = client.get("/ui/license/third-party")
+    assert missing.status_code == 200 and "THIRD_PARTY_NOTICES.md" in missing.text
+
+
+def test_the_image_carries_the_notices_beside_the_license():
+    from pathlib import Path
+
+    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
+    final = dockerfile.rsplit("\nFROM ", 1)[-1]
+    assert "COPY LICENSE THIRD_PARTY_NOTICES.md ./" in final

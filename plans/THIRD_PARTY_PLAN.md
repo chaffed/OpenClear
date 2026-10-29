@@ -40,7 +40,7 @@ packages in the image and the two vendored JavaScript files. What's missing:
 | Stage | What | Status |
 |---|---|---|
 | TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test | Done |
-| TP2 | The License page's link; the notices file in the image | |
+| TP2 | The License page's link; the notices file in the image | Done |
 | TP3 | The image SBOM in the release workflow | |
 | TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG | |
 
@@ -64,3 +64,6 @@ packages in the image and the two vendored JavaScript files. What's missing:
   **Follow-up for TP3:** a lock bump (Dependabot, the weekly refresh) now fails the staleness test
   until the files are regenerated; the lock-refresh workflow should regenerate them in the same
   container.
+- 2026-10-29: TP2 built. The License page links to `/ui/license/third-party`, which shows
+  `THIRD_PARTY_NOTICES.md` (public, like the License page; a missing file points to the source
+  instead of failing), and the image copies the notices beside `LICENSE`.
