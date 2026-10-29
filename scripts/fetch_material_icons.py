@@ -12,7 +12,9 @@ templates/_macros/icon.html's `icon(name)` macro and a plain <use href="...#icon
 
 The committed sprite is a static asset, same posture as docs/screenshots/ (see
 scripts/generate_screenshots.py) -- this is a manual, occasional dev task, not something
-CI runs. Rerun it after adding a new icon name to ICONS below, then commit the result.
+CI runs. Rerun it after adding a new icon name to ICONS below, then commit the result, with
+the sprite's new sha256 and the day you fetched it as its version in requirements/vendored.json
+(the third-party inventory and the SBOM read them; tests/test_compliance/test_sbom.py checks them).
 
 Usage:
     python scripts/fetch_material_icons.py

@@ -1,4 +1,6 @@
 # ZAP alerts of medium risk or worse accepted for OpenClear (scripts/zap_scan.py; OWASP_PLAN.md OW-D8).
-# Tab-separated: ZAP's rule id, the alert's name (or * for any alert from that rule), and why it's
-# accepted. Anything of medium risk or worse not listed here fails the baseline scan.
+# Tab-separated: ZAP's rule id, the alert's name (or * for any alert from that rule), why it's
+# accepted, and optionally a regular expression for the only URLs it's accepted on (an alert found
+# anywhere else still fails). Anything of medium risk or worse not listed here fails the scan.
 10055	CSP: style-src unsafe-inline	Deliberate (web/security_headers.py): templates use small style attributes and the vendored Mermaid renderer injects styles at runtime; scripts stay nonce-only, so this allows CSS, not script injection.
+10099	Source Code Disclosure - SQL	The third-party notices are license texts, and the Mozilla Public License 1.1 says "delete from the Original Code": no SQL is disclosed. Accepted on that page only.	/ui/license/third-party$
