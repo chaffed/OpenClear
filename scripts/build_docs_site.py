@@ -96,6 +96,14 @@ NAV = """nav:
       - Plugin plan: reference/plugin-plan.md
 """
 
+# openclear.org/docs publishes the same documents for search; keeping this copy out of search
+# results stops the two competing, and the banner sends readers to the main site.
+OVERRIDES = """{% extends "base.html" %}
+{% block extrahead %}<meta name="robots" content="noindex">{% endblock %}
+{% block announce %}OpenClear's home page, guides and documentation are at
+<a href="https://openclear.org/">openclear.org</a>.{% endblock %}
+"""
+
 _LINK = re.compile(r"(\]\()([^)#\s]+)(#[^)\s]*)?(\))")
 
 
@@ -130,12 +138,15 @@ def build(serve: bool = False, out: Path = ROOT / "site") -> int:
         screenshots = ROOT / "docs" / "screenshots"
         if screenshots.exists():
             shutil.copytree(screenshots, docs / "docs" / "screenshots")
+        overrides = Path(tmp) / "overrides"
+        overrides.mkdir()
+        (overrides / "main.html").write_text(OVERRIDES)
         config = Path(tmp) / "mkdocs.yml"
         config.write_text(
             "site_name: OpenClear developer docs\n"
             "site_description: Positive pay and ACH exception decisions, open source\n"
             f"repo_url: https://github.com/chaffed/OpenClear\nedit_uri: ''\nsite_dir: {out}\n"
-            "theme:\n  name: material\n  features: [navigation.sections, navigation.top, search.suggest, content.code.copy]\n"
+            "theme:\n  name: material\n  custom_dir: overrides\n  features: [navigation.sections, navigation.top, search.suggest, content.code.copy]\n"
             "markdown_extensions: [tables, admonition, toc: {permalink: true}, pymdownx.highlight, pymdownx.superfences]\n"
             "validation:\n  links:\n    not_found: warn\n    anchors: ignore\n"
             + NAV
