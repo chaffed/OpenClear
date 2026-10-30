@@ -13,6 +13,7 @@ from sqlalchemy import select
 from openclear.domain.customer import Customer
 from openclear.domain.notification import Notification, NotificationType
 from openclear.services import stop_payment_service
+from tests.items import shows_number
 from tests.test_decisions.test_changeable import _item
 from tests.test_web.test_web_exceptions import _login
 
@@ -42,7 +43,7 @@ def test_stop_payments_filter_by_status_and_number(client, db_session, tenant_fa
     db_session.commit()
     _login(client, tenant.slug, users["admin"].email)
     one = client.get("/ui/stop-payments", params={"number": "4002"}).text
-    assert "4002" in one and "4001" not in one
+    assert shows_number(one, "4002") and not shows_number(one, "4001")
     none = client.get("/ui/stop-payments", params={"status": "expired"}).text
     assert "No stop payments match" in none
     assert ">Active<" in client.get("/ui/stop-payments").text  # in words, not "active"

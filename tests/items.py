@@ -4,6 +4,7 @@
 """Making customers, exceptions and decisions for tests that need them (moved here from the
 per-customer ML tests, which SIMPLIFY_PLAN.md SP2 removes)."""
 
+import re
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -96,3 +97,10 @@ def _seed_decisions(db_session, tenant, account, users, count: int, prefix: str)
         decision = db_session.query(Decision).filter(Decision.exception_item_id == exception.id).one()
         decision.decided_at = start + timedelta(seconds=i)
         db_session.commit()
+
+
+def shows_number(page: str, number: str) -> bool:
+    """Whether a page shows this account or check number as a number of its own. Every page's head
+    carries Unix timestamps (base.html's session-expiry meta tags), so a plain `"4001" in page`
+    is true whenever the clock's digits happen to contain it."""
+    return re.search(rf"(?<![0-9]){re.escape(number)}(?![0-9])", page) is not None

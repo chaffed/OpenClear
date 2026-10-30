@@ -77,3 +77,10 @@ each deletion and the setting (HK-D2, HK-D3). HK5 is a write-up only.
   `tests/test_custom_fields/test_web.py::test_accounts_carry_their_fields_and_the_list_filters_by_them`
   failed, and passed on its own and in four reruns of the related tests. The error text wasn't
   kept. Not chased further without it: the next failure's message says where to look.
+- 2026-10-30: The flake's cause, found when the Postgres suite failed the same way on
+  `test_review_interface.py::test_stop_payments_filter_by_status_and_number`: every page's head
+  carries Unix timestamps (the session-expiry meta tags in base.html), and both tests asserted a
+  short number ("4001"; the house account's "0001") appeared nowhere on the page. Whenever the
+  clock's digits contained it (`content="1794001071"`), the test failed. `tests/items.py` now has
+  `shows_number`, which matches a number only on its own, and both tests use it; no other test
+  asserts a bare number is absent from a page.

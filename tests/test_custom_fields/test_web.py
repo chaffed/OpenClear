@@ -16,7 +16,7 @@ from openclear.networks.check.ingestion import PaidItemSubmission, ingest_paid_i
 from openclear.services import change_request_service, custom_field_service as cf, security_group_service, user_service
 from openclear.services.custom_field_service import FieldInput
 from tests.conftest import TenantFactory
-from tests.items import _make_customer_with_account
+from tests.items import _make_customer_with_account, shows_number
 from tests.test_web.test_staff_and_operator import _login
 
 
@@ -142,7 +142,7 @@ def test_accounts_carry_their_fields_and_the_list_filters_by_them(client, db_ses
     listed = client.get("/ui/accounts").text
     assert "Agg id" in listed and "G-1" in listed and "G-7" in listed and "Custom fields</a>" in listed
     filtered = client.get("/ui/accounts?field=agg_id&value=G-7").text
-    assert "7001" in filtered and account.account_number not in filtered
+    assert shows_number(filtered, "7001") and not shows_number(filtered, account.account_number)
 
 
 def test_a_customers_person_sees_only_whats_shown_to_the_customer(client, db_session, tenant_factory):
