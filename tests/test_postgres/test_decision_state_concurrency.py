@@ -90,6 +90,7 @@ def test_a_recommendation_waits_for_a_decision_and_then_sees_it(engine, db_sessi
     assert stored.recommended_by_user_id is None
 
 
+@pytest.mark.asvs("2.3.4")
 def test_two_decisions_at_once_one_wins_and_the_other_is_told(engine, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="cc-dec-dec")
     item = _item(db_session, tenant, account, number="6102")

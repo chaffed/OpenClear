@@ -75,8 +75,8 @@ def render() -> str:
         "|---|---|",
     ]
     lines += [f"| {s} | {counts.get(s, 0)} |" for s in STATUSES]
-    lines += ["", "Requirements not fully met are planned for 1.24 and 1.25, or recorded with their reason ("
-              "[OWASP_PLAN.md](../../plans/OWASP_PLAN.md)).", ""]
+    lines += ["", "Requirements not fully met are recorded with their reason, here and in "
+              "[OWASP_PLAN.md](../../plans/OWASP_PLAN.md).", ""]
     chapter = None
     for r in in_scope:
         if r["chapter"] != chapter:

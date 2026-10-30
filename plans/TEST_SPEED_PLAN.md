@@ -49,7 +49,7 @@ drew it:
 | TS1 | The `browser` marker; browser tests in one CI job; `--dist worksteal` | Done (#47) |
 | TS2 | Split the viewport and accessibility checks by page group, keeping their baselines | Done (#48) |
 | TS3 | Shard every CI suite (both Python versions and Postgres) in three | Done (#52) |
-| TS4 | Short timeouts; measure and record | In review |
+| TS4 | Short timeouts; measure and record | Done (#56; closed 2026-10-30) |
 | TS5 | The prebuilt CI image (TS-D8): its Dockerfile and build with SBOM and scan (TS5a); `tests.yml` runs in it (TS5b) | Done (#54, #55) |
 
 ## Progress log
@@ -111,3 +111,11 @@ drew it:
   redis-py 8 retries a failed connection three times with up to 10 s back-off; **that also held
   every request for seconds in production while Redis was down** (a fail-open limiter), so the
   limiter now makes one try (`Retry(NoBackoff(), 0)`), and the test checks it's quick.
+- 2026-10-30: TS4 closed (plans/HOUSEKEEPING_PLAN.md HK3); its work was in #56 and never marked.
+  Measured on `main` at 38f1e87e: CI's Tests workflow takes 5 min 9 s wall, its slowest shards
+  just under 5 minutes (3.13 shard 1 and Postgres shard 1, 299 s each), so TS-D7's 4–5 minutes
+  holds. Locally (8 workers): SQLite about 1 min 50 s, Linux 3.11 2 min 24 s, Postgres 7 min 5 s.
+  The local Postgres aim of about 4 minutes isn't met: the suite has grown from 2,104 tests to
+  2,352 since the aim was set, and `scripts/run_tests.sh postgres` runs it unsharded on one
+  database. Sharding it locally as CI does is the next step if that becomes a bother; nothing
+  planned.

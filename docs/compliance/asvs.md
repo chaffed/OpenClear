@@ -11,13 +11,13 @@ OpenClear measured against the [OWASP Application Security Verification Standard
 
 | Status | Requirements |
 |---|---|
-| Met | 214 |
-| Partly | 8 |
+| Met | 215 |
+| Partly | 7 |
 | Not met | 5 |
 | Service provider's (CUEC) | 15 |
 | Not applicable | 41 |
 
-Requirements not fully met are planned for 1.24 and 1.25, or recorded with their reason ([OWASP_PLAN.md](../../plans/OWASP_PLAN.md)).
+Requirements not fully met are recorded with their reason, here and in [OWASP_PLAN.md](../../plans/OWASP_PLAN.md).
 
 
 ## V1 Encoding and Sanitization
@@ -65,7 +65,7 @@ Requirements not fully met are planned for 1.24 and 1.25, or recorded with their
 | **V2.3.1** Verify that the application will only process business logic flows for the same user in the expected sequential step order and without skipping steps. | 1 | Met | `src/openclear/services/change_request_service.py`, OC-AC-05, OC-AC-06 |  |
 | **V2.3.2** Verify that business logic limits are implemented per the application's documentation to avoid business logic flaws being exploited. | 2 | Met | `src/openclear/services/change_request_service.py`, OC-AC-05, OC-AC-06 |  |
 | **V2.3.3** Verify that transactions are being used at the business logic level such that either a business logic operation succeeds in its entirety or it is rolled back… | 2 | Met | `src/openclear/services/change_request_service.py`, OC-AC-05, OC-AC-06 |  |
-| **V2.3.4** Verify that business logic level locking mechanisms are used to ensure that limited quantity resources (such as theater seats or delivery slots) cannot be do… | 2 | Partly | `src/openclear/services/` | Locking when two people decide the same item at once is to be verified. |
+| **V2.3.4** Verify that business logic level locking mechanisms are used to ensure that limited quantity resources (such as theater seats or delivery slots) cannot be do… | 2 | Met | `src/openclear/repositories/exception_repo.py`, `src/openclear/services/decision_service.py`, `src/openclear/services/decision_outbox_service.py`, `test_two_decisions_at_once_one_wins_and_the_other_is_told`, `test_a_check_presented_twice_at_once_is_paid_once`, `test_two_outbox_runs_at_once_write_one_file` | A row lock per item for every decision change, a check paid once however many times it's presented, and one writer per bank for decision files (FULL_REVIEW_PLAN.md FR1-FR3), each proved by two sessions at once on Postgres. |
 | **V2.4.1** Verify that anti-automation controls are in place to protect against excessive calls to application functions that could lead to data exfiltration, garbage-d… | 2 | Met | `src/openclear/web/rate_limit.py` |  |
 
 ## V3 Web Frontend Security

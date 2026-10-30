@@ -11,6 +11,11 @@
   **Third-party notices** page linked from the License page. Each release now also carries an
   SBOM of the built image (`openclear-<version>-image.cdx.json`), with its base image and system
   packages, beside the SBOM of its Python packages.
+- **The image is 1.4 GB, down from 2.4 GB.** Its last step changed the owner of every file
+  under `/venv` and `/app`, which stored each of them twice; ownership is now set as the files
+  are copied in. Nothing else changes.
+- **ASVS 5.0:** 215 of 242 applicable requirements met (2.3.4, locking for limited resources, was
+  built in 1.27.0 and is now recorded, with its tests).
 
 ## 1.32.0 — 2026-10-29
 
