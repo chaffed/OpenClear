@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.33.0 — 2026-10-30
 
 - **Third-party components** (`plans/THIRD_PARTY_PLAN.md`). A page listing everything OpenClear
   is built from, with each component's version, license and purpose: the Python packages in the
