@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Chaffed
 """Security metrics for a release (OWASP_PLAN.md OW-D14): ASVS 5.0 coverage, the advisories it
-fixes, how old its dependencies are, and its SBOM. Run at release time:
+fixes, how old its dependencies are, and its SBOMs. Run at release time:
 
     python scripts/release_metrics.py 1.26.0            # rewrite docs/compliance/security-metrics.md
     python scripts/release_metrics.py 1.26.0 --notes    # also print the section for the release notes
@@ -86,7 +86,10 @@ def render(version: str, today: dt.date) -> tuple[str, str]:
          f"- **Dependencies:** {deps['count']} pinned at runtime; their releases' median age is {deps['median_days']} days; "
          f"{deps['over_a_year']} are over a year old; {deps['behind_latest']} have a newer release (Dependabot and the weekly "
          "lock refresh propose them; one with a known vulnerability fails the build)."),
-        f"- **SBOM:** [openclear-{version}.cdx.json]({sbom}) (CycloneDX).",
+        f"- **SBOMs** (CycloneDX): [openclear-{version}.cdx.json]({sbom}), the Python packages and vendored files; "
+        f"[openclear-{version}-image.cdx.json]({sbom.removesuffix('.cdx.json')}-image.cdx.json), the built image with its "
+        "system packages. Every component's license: [third-party components]"
+        "(https://github.com/chaffed/OpenClear/blob/main/docs/compliance/third-party.md).",
     ]
     notes = "### Security metrics\n\n" + "\n".join(lines) + "\n"
     page = "\n".join([

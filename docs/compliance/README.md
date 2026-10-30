@@ -19,7 +19,9 @@ for each point is.
 - [CFPB Section 1033](cfpb-1033.md): why positive pay isn't covered
 - [Third-party risk management (2023 interagency guidance)](tprm.md), with a due-diligence pack
 - [Security metrics](security-metrics.md): ASVS coverage, advisories fixed, dependency age and
-  the SBOM, for the latest release
+  the SBOMs, for the latest release
+- [Third-party components](third-party.md): everything OpenClear is built from, with its version,
+  license and purpose; the license texts are in `THIRD_PARTY_NOTICES.md`
 - [OpenClear's controls](controls.md): what OpenClear itself does, each control with its NIST
   SP 800-53 controls, its checks and the CUECs it relies on
 - [Complementary user entity controls](cuecs.md): what OpenClear relies on the bank, its

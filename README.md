@@ -1510,3 +1510,8 @@ the full text.
 on a sandbox installation) and the [integration checklist](docs/guides/certification.md).
 
 The client SDKs in [sdks/](sdks) are licensed **Apache-2.0** instead (each has its own `LICENSE`). A proprietary core or online banking platform can include them without any AGPL obligation.
+
+OpenClear includes components by others, each under its own license. [Third-party
+components](docs/compliance/third-party.md) lists each with its version, license and purpose, and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) carries their license texts and copyright
+notices; the running app shows them under License → Third-party notices.

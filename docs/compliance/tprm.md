@@ -34,7 +34,8 @@ verify it.
 | Releases and changes | Versioned releases with a changelog, database migrations that upgrade and downgrade, and an API that changes only additively. |
 | Testing before release | About 2,000 automated tests on SQLite, Postgres and Linux; CodeQL, Bandit, gitleaks, `pip-audit` and an OWASP ZAP baseline scan on every change; a weekly ZAP active scan. |
 | Security review | Measured against OWASP ASVS 5.0 ([crosswalk](asvs.md)); a [threat model](../security/threat-model.md); `SECURITY_REVIEW.md` and published advisories with their fixes. An independent penetration test is planned. |
-| Security metrics | [Each release's](security-metrics.md): ASVS coverage, advisories fixed, dependency age, and its SBOM (CycloneDX). |
+| Security metrics | [Each release's](security-metrics.md): ASVS coverage, advisories fixed, dependency age, and its two SBOMs (CycloneDX): the Python packages and vendored files, and the built image with its system packages. |
+| Third-party components | [Every component](third-party.md) with its version, license and purpose, generated from the same locks as the SBOMs; their license texts and copyright notices in [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md). |
 | Vulnerability reports | [SECURITY.md](../../SECURITY.md): private reporting, and fix time frames by severity. |
 
 ### Information security
