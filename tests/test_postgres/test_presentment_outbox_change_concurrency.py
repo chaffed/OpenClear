@@ -33,6 +33,7 @@ def _present(session, tenant, account, number="7001", amount="250.00"):
                                                                    presented_amount=Decimal(amount), presented_date=date(2026, 10, 20)))
 
 
+@pytest.mark.asvs("2.3.4")
 def test_a_check_presented_twice_at_once_is_paid_once(engine, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="cc-present")
     issued_item_service.create_issued_item(db_session, tenant.id, issued_item_service.IssuedItemInput(
@@ -61,6 +62,7 @@ def test_a_check_presented_twice_at_once_is_paid_once(engine, db_session, tenant
     assert issued.status == IssuedItemStatus.PAID
 
 
+@pytest.mark.asvs("2.3.4")
 def test_two_outbox_runs_at_once_write_one_file(engine, db_session, tenant_factory):
     tenant, account, users = tenant_factory.make(slug="cc-outbox")
     item = _item(db_session, tenant, account, number="7101", due_in=None)

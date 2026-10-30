@@ -157,3 +157,12 @@ def test_outside_services_and_standards(client, db_session, tenant_factory, monk
     assert control_checks.password_policy(db_session, tenant.id).status == "PASS"
     assert control_checks.key_age(db_session, tenant.id).status == "PASS"
     assert db_session.execute(select(AuditLogEntry).where(AuditLogEntry.action == "tenant.outside_service_reviewed")).scalar_one()
+
+
+def test_reviewing_a_service_that_isnt_used_says_so_plainly(client, db_session, tenant_factory):
+    """plans/HOUSEKEEPING_PLAN.md HK1: a fixed sentence, whatever the error inside."""
+    tenant, _account, users = tenant_factory.make(slug="outside-unknown")
+    _login(client, tenant, users["admin"].email)
+    answer = client.post("/ui/settings/outside-services", data={"csrf_token": client.cookies.get("csrf_token"), "service_key": "nope"},
+                         headers={"x-requested-with": "fetch"})
+    assert answer.json() == {"saved": True, "message": "That isn't a service OpenClear uses for you.", "key": "outside-services"}

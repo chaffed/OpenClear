@@ -132,4 +132,15 @@ def test_the_image_carries_the_notices_beside_the_license():
 
     dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
     final = dockerfile.rsplit("\nFROM ", 1)[-1]
-    assert "COPY LICENSE THIRD_PARTY_NOTICES.md ./" in final
+    assert "COPY --chown=openclear:openclear LICENSE THIRD_PARTY_NOTICES.md ./" in final
+
+
+def test_the_image_stores_each_file_once():
+    """plans/HOUSEKEEPING_PLAN.md HK5: a recursive chown in a layer of its own copies every file it
+    touches, which stored the venv twice (2.4 GB; 1.4 GB without). Ownership is set by COPY --chown."""
+    from pathlib import Path
+
+    final = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text().rsplit("\nFROM ", 1)[-1]
+    assert "chown -R" not in final
+    copies = [line for line in final.splitlines() if line.startswith("COPY ")]
+    assert copies and all(line.startswith("COPY --chown=openclear:openclear ") for line in copies)

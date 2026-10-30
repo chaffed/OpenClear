@@ -35,7 +35,7 @@ V2.2.3,Met,src/openclear/schemas/; src/openclear/bulk_import/,
 V2.3.1,Met,src/openclear/services/change_request_service.py; OC-AC-05; OC-AC-06,
 V2.3.2,Met,src/openclear/services/change_request_service.py; OC-AC-05; OC-AC-06,
 V2.3.3,Met,src/openclear/services/change_request_service.py; OC-AC-05; OC-AC-06,
-V2.3.4,Partly,src/openclear/services/,Locking when two people decide the same item at once is to be verified.
+V2.3.4,Met,src/openclear/repositories/exception_repo.py; src/openclear/services/decision_service.py; src/openclear/services/decision_outbox_service.py,"A row lock per item for every decision change, a check paid once however many times it's presented, and one writer per bank for decision files (FULL_REVIEW_PLAN.md FR1-FR3), each proved by two sessions at once on Postgres."
 V2.4.1,Met,src/openclear/web/rate_limit.py,
 V3.2.1,Met,src/openclear/web/security_headers.py,
 V3.2.2,Met,src/openclear/web/security_headers.py,

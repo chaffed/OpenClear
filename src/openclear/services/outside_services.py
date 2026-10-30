@@ -22,6 +22,10 @@ from openclear.config import get_settings
 REVIEW_EVERY_DAYS = 365
 
 
+class OutsideServiceError(ValueError):
+    """A review the bank can't record; the message is written for the person who tried."""
+
+
 @dataclass
 class OutsideService:
     key: str
@@ -74,7 +78,7 @@ def mark_reviewed(session: Session, tenant_id: uuid.UUID, key: str, *, by: str, 
 
     service = next((s for s in in_use(session, tenant_id) if s.key == key), None)
     if service is None:
-        raise ValueError("That isn't a service OpenClear uses for you.")
+        raise OutsideServiceError("That isn't a service OpenClear uses for you.")
     tenant = session.get(Tenant, tenant_id)
     reviews = dict(tenant.outside_service_reviews or {})
     reviews[key] = {"at": datetime.now(timezone.utc).isoformat(), "by": by, "note": (note or "").strip()[:500]}

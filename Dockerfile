@@ -57,14 +57,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN useradd --create-home --uid 1000 openclear
 WORKDIR /app
-COPY --from=builder /venv /venv
-COPY --from=builder /app/pyproject.toml /app/pyproject.toml
-COPY src/ src/
-COPY migrations/ migrations/
-COPY alembic.ini .
+COPY --chown=openclear:openclear --from=builder /venv /venv
+COPY --chown=openclear:openclear --from=builder /app/pyproject.toml /app/pyproject.toml
+COPY --chown=openclear:openclear src/ src/
+COPY --chown=openclear:openclear migrations/ migrations/
+COPY --chown=openclear:openclear alembic.ini .
 # The license page (web/routers/license.py) serves these: OpenClear's license, and the third-party
 # notices its components' licenses ask to travel with it (plans/THIRD_PARTY_PLAN.md TP-D3).
-COPY LICENSE THIRD_PARTY_NOTICES.md ./
+COPY --chown=openclear:openclear LICENSE THIRD_PARTY_NOTICES.md ./
 # dev_keys/ is already public (checked into this repo's git history) -- copying it in
 # doesn't newly expose anything, and it's what lets `docker compose up` (see
 # docker-compose.yml, a local Postgres-testing convenience, not this image's normal
@@ -73,12 +73,12 @@ COPY LICENSE THIRD_PARTY_NOTICES.md ./
 # OPENCLEAR_ENVIRONMENT=production is in effect (the default below) -- it compares the
 # *configured path string* against the checked-in default, independent of whether these
 # files happen to exist in the image.
-COPY dev_keys/ dev_keys/
+COPY --chown=openclear:openclear dev_keys/ dev_keys/
 # Screenshots the in-app End User/Admin Documentation pages embed and link to (see
 # main.py's /static/docs-screenshots mount and services/doc_pdf_service.py) -- without
 # these, those pages render with broken images, not a missing feature exactly, but a
 # visibly broken one.
-COPY docs/screenshots/ docs/screenshots/
+COPY --chown=openclear:openclear docs/screenshots/ docs/screenshots/
 
 ENV PATH="/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -99,7 +99,9 @@ ENV PATH="/venv/bin:$PATH" \
 # without the operator having actually supplied anything real. Those stay real secrets
 # supplied at deploy time (env vars, a mounted secrets volume) -- see README.md.
 
-RUN mkdir -p /data && chown -R openclear:openclear /data /app /venv
+# Ownership is set as each COPY lands (--chown): a recursive chown here would copy every file it
+# touched into a layer of its own, storing the venv twice (plans/HOUSEKEEPING_PLAN.md HK5).
+RUN mkdir -p /data && chown openclear:openclear /data /app
 VOLUME ["/data"]
 USER openclear
 

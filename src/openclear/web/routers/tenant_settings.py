@@ -527,9 +527,10 @@ def review_outside_service(
 
     try:
         service = outside_services.mark_reviewed(db, ctx.tenant_id, service_key, by=db.get(User, ctx.user_id).email, note=note)
-    except ValueError as exc:
+    except outside_services.OutsideServiceError:
+        # A fixed sentence, never an exception's text (CodeQL py/stack-trace-exposure, plans/HOUSEKEEPING_PLAN.md HK1).
         db.rollback()
-        return _saved(request, str(exc), key="outside-services")
+        return _saved(request, "That isn't a service OpenClear uses for you.", key="outside-services")
     _record(db, ctx, "tenant.outside_service_reviewed", f"Reviewed the outside service {service.label}" + (f": {note.strip()[:200]}" if note.strip() else ""))
     db.commit()
     return _saved(request, f"Recorded your review of {service.label}.", key="outside-services")
