@@ -42,7 +42,7 @@ packages in the image and the two vendored JavaScript files. What's missing:
 | TP1 | `vendored.json` with the icons; the generator for `third-party.md` and `THIRD_PARTY_NOTICES.md`; the staleness test | Done |
 | TP2 | The License page's link; the notices file in the image | Done |
 | TP3 | The image SBOM in the release workflow | Done |
-| TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG | |
+| TP4 | Docs: README, `tprm.md`, `security-metrics.md`, the compliance index, CHANGELOG | Done |
 
 ## Progress log
 
@@ -79,3 +79,11 @@ packages in the image and the two vendored JavaScript files. What's missing:
   Dependabot's PRs still need it run by hand: giving a workflow write access on them isn't worth it.
   The image is now 2.4 GB (it was 450 MB at 1.12), mostly the scientific and cloud packages; worth
   a look separately.
+- 2026-10-30: A Postgres shard on TP3's pull request failed twice on the S3 bulk-upload test. Not
+  TP3's: on Postgres the session's migration clears the cached settings, and in that shard the
+  S3 test became the first in its worker to need the database, so its fixture's storage setting
+  was lost. `tests/conftest.py` now migrates before any test's own fixtures run.
+- 2026-10-30: TP4 built. The README's License section, the TPRM due-diligence pack (a row for
+  the components, and both SBOMs under security metrics), the compliance index, the docs site
+  (the page joins Compliance), the CHANGELOG, and `scripts/release_metrics.py`, whose SBOM line
+  now links both SBOMs and the inventory from the next release on. The plan is complete.

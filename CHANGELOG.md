@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Third-party components** (`plans/THIRD_PARTY_PLAN.md`). A page listing everything OpenClear
+  is built from, with each component's version, license and purpose: the Python packages in the
+  image, the files vendored into the web pages (now including the icons), the image's system
+  packages, the SDKs' dependencies, and what's used only for development
+  ([docs/compliance/third-party.md](docs/compliance/third-party.md)). Their license texts and
+  copyright notices are in `THIRD_PARTY_NOTICES.md`, in the image beside `LICENSE` and on a new
+  **Third-party notices** page linked from the License page. Each release now also carries an
+  SBOM of the built image (`openclear-<version>-image.cdx.json`), with its base image and system
+  packages, beside the SBOM of its Python packages.
+
 ## 1.32.0 — 2026-10-29
 
 - **Replace a SAML connection's signing key** (issue #21). A connection made before 1.22.1 has an

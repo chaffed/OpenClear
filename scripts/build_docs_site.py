@@ -47,6 +47,7 @@ PAGES = [
     ("docs/compliance/sr-11-7.md", "compliance/sr-11-7.md", "Model risk (SR 11-7)"),
     ("docs/compliance/tprm.md", "compliance/tprm.md", "Third-party risk"),
     ("docs/compliance/security-metrics.md", "compliance/security-metrics.md", "Security metrics"),
+    ("docs/compliance/third-party.md", "compliance/third-party.md", "Third-party components"),
     ("docs/compliance/controls.md", "compliance/controls.md", "OpenClear's controls"),
     ("docs/compliance/cuecs.md", "compliance/cuecs.md", "User entity controls (CUECs)"),
     ("docs/compliance/csf.md", "compliance/csf.md", "NIST CSF 2.0"),
@@ -85,6 +86,7 @@ NAV = """nav:
       - Model risk (SR 11-7): compliance/sr-11-7.md
       - Third-party risk: compliance/tprm.md
       - Security metrics: compliance/security-metrics.md
+      - Third-party components: compliance/third-party.md
       - OpenClear's controls: compliance/controls.md
       - User entity controls (CUECs): compliance/cuecs.md
       - NIST CSF 2.0: compliance/csf.md
