@@ -6,6 +6,7 @@ vendored JavaScript and icons, and the vendored files are the ones the manifest 
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -34,3 +35,18 @@ def test_sbom_lists_every_locked_package_and_the_vendored_javascript():
     assert locked <= names
     assert {"mermaid", "svg-pan-zoom", "material symbols (outlined)"} <= names
     assert bom["metadata"]["component"]["name"] == "openclear"
+
+
+def test_the_release_attaches_the_image_sbom_with_the_ci_images_syft():
+    """plans/THIRD_PARTY_PLAN.md TP-D5: each release also carries openclear-<version>-image.cdx.json
+    from Syft, the same Syft (pinned by digest) that scans the CI image."""
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text()
+    ci_image = (ROOT / ".github" / "workflows" / "ci-image.yml").read_text()
+    pin = re.search(r"SYFT_IMAGE: (anchore/syft:\S+@sha256:[0-9a-f]{64})", release)
+    assert pin and pin.group(1) in ci_image
+    assert '-image.cdx.json"' in release and "gh release upload" in release.split("image-sbom:", 1)[1]
+
+
+def test_the_lock_refresh_regenerates_the_third_party_inventory():
+    refresh = (ROOT / ".github" / "workflows" / "lock-refresh.yml").read_text()
+    assert refresh.index("scripts/lock.sh --upgrade") < refresh.index("scripts/third_party.sh") < refresh.index("create-pull-request")

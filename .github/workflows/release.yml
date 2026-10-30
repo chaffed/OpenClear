@@ -1,4 +1,6 @@
-# Attaches the CycloneDX SBOM to each GitHub release (OWASP_PLAN.md OW-D11).
+# Attaches two CycloneDX SBOMs to each GitHub release: the Python packages and vendored files
+# (scripts/sbom.py; OWASP_PLAN.md OW-D11), and the built image, with its base and system packages
+# (Syft; plans/THIRD_PARTY_PLAN.md TP-D5).
 name: Release SBOM
 on:
   release:
@@ -9,6 +11,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The same Syft as the CI image's SBOM (ci-image.yml), pinned by digest.
+  SYFT_IMAGE: anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
 
 jobs:
   sbom:
@@ -25,4 +31,24 @@ jobs:
       - run: pip install --require-hashes -r requirements/dev.txt
       - run: python scripts/sbom.py -o "openclear-${TAG#v}.cdx.json"
       - run: gh release upload "$TAG" "openclear-${TAG#v}.cdx.json" --clobber
+        env: {GH_TOKEN: "${{ github.token }}"}
+
+  # The image as the Dockerfile builds it from this tag: the base image is pinned by digest; the
+  # system packages are Debian's on the day the release is built, which is why this SBOM is
+  # attached rather than written by hand.
+  image-sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # upload the release asset
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: {ref: "${{ env.TAG }}"}
+      - run: docker build -t "openclear:${TAG#v}" .
+      # Packages only: a component per file would triple its size and tell a reviewer nothing.
+      - run: |
+          docker run --rm -e SYFT_FILE_METADATA_SELECTION=none -v /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
+            "docker:openclear:${TAG#v}" -o cyclonedx-json > "openclear-${TAG#v}-image.cdx.json"
+      - run: gh release upload "$TAG" "openclear-${TAG#v}-image.cdx.json" --clobber
         env: {GH_TOKEN: "${{ github.token }}"}

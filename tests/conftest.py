@@ -216,6 +216,16 @@ def _postgres_engine():
     engine.dispose()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _postgres_engine_first(request):
+    """On Postgres, migrate before any test's own fixtures run. Migrating clears the cached
+    settings, so a fixture that changed a setting (the S3 tests' storage backend) and ran before
+    the first test that needed the database would find its change gone, depending only on which
+    tests a shard gave the worker."""
+    if TEST_DATABASE_URL:
+        request.getfixturevalue("_postgres_engine")
+
+
 @pytest.fixture
 def engine(request):
     if TEST_DATABASE_URL:

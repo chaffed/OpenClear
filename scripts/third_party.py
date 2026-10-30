@@ -9,10 +9,7 @@ Both come from the same sources as the release SBOM (scripts/sbom.py): the hashe
 manifests. Licenses and license files are read from the installed packages, so run it where the
 locks are installed exactly as the image installs them, on its base image:
 
-    docker run --rm -v "$PWD:/src" -w /src python:3.13-slim sh -c \\
-      "pip install -q --no-deps --require-hashes -r requirements/runtime.txt && \\
-       pip install -q --no-deps --require-hashes -r requirements/dev.txt && \\
-       python scripts/third_party.py"
+    scripts/third_party.sh
 
 It refuses to write anything if a package the image installs isn't installed at its locked
 version. tests/test_compliance/test_third_party.py fails when the committed files are stale."""

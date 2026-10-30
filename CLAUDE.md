@@ -50,7 +50,9 @@ AGPL-3.0: every source file starts with the SPDX and copyright header.
 - API changes: run `scripts/export_openapi.py` and `scripts/generate_sdks.py`, then
   `tests/test_openapi_contract.py`.
 - Dependencies install only from the hashed locks. After changing `pyproject.toml` dependencies,
-  run `scripts/lock.sh` and commit `requirements/*.txt` (CI fails on a stale lock). Waive a
+  run `scripts/lock.sh` and commit `requirements/*.txt` (CI fails on a stale lock). After any
+  lock change (Dependabot's too), run `scripts/third_party.sh` (Docker) and commit the third-party
+  page and notices it rewrites, or `tests/test_compliance/test_third_party.py` fails. Waive a
   vulnerability only in `.pip-audit-waivers.toml`, with a reason and an expiry.
 - A test that proves an ASVS 5.0 requirement gets `@pytest.mark.asvs("6.2.12")`. A requirement's
   status changes in `docs/security/asvs-status.csv`; then `python scripts/asvs_crosswalk.py`
