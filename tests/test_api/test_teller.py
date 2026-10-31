@@ -65,14 +65,16 @@ def test_every_answer_is_what_clearing_would_decide(client, db_session, bank):
         account_id=account.id, check_number="103", amount=None, effective_date=date.today() - timedelta(days=1), expiration_date=None,
         reason="Lost"), created_by_user_id=None)
     _issue(db_session, tenant, account, "104", issued_on=date.today() - timedelta(days=400))
+    for number in ("105", "106", "107"):
+        _issue(db_session, tenant, account, number)  # a match is good for one teller at a time, so each case has its own check
     db_session.commit()
 
     cases = [
         ("100", "250.00", {}, "match", []),
         ("101", "275.00", {}, "amount_differs", ["amount_differs"]),
-        ("100", "250.00", {"payee_name": "Somebody Else Entirely"}, "payee_differs", ["payee_differs"]),
-        ("100", "250.00", {"payee_name": "ACME SUPPLY"}, "match", []),  # read loosely, as clearing compares OCR's
-        ("100", "250.00", {"payee_name": None}, "payee_needed", ["payee_needed"]),  # the customer gave a payee: it must be checked
+        ("105", "250.00", {"payee_name": "Somebody Else Entirely"}, "payee_differs", ["payee_differs"]),
+        ("106", "250.00", {"payee_name": "ACME SUPPLY"}, "match", []),  # read loosely, as clearing compares OCR's
+        ("107", "250.00", {"payee_name": None}, "payee_needed", ["payee_needed"]),  # the customer gave a payee: it must be checked
         ("102", "250.00", {}, "voided", ["voided"]),
         ("103", "250.00", {}, "stopped", ["stopped"]),
         ("104", "250.00", {}, "stale", ["stale"]),
@@ -81,7 +83,8 @@ def test_every_answer_is_what_clearing_would_decide(client, db_session, bank):
     for number, amount, extra, result, problems in cases:
         answer = _verify(client, headers, account, number, amount, **extra)
         assert (number, answer["result"], answer["problems"]) == (number, result, problems)
-        assert (answer["issued"] is None) == (result in ("match", "not_issued"))  # what was issued, only to explain a decline
+        # What was issued, only to explain a decline, and never the payee a teller didn't send.
+        assert (answer["issued"] is None) == (result in ("match", "not_issued", "payee_needed"))
     unknown = client.post("/api/v1/checks/verify", headers=headers, json={"account_number": "NOPE-1", "check_number": "1", "amount": "1.00"})
     assert unknown.json()["result"] == "not_on_positive_pay"
 
@@ -168,16 +171,47 @@ def test_every_call_is_recorded_and_declines_reach_the_customer(client, db_sessi
     assert "1 check was refused at a branch in the last 7 days" in page and "Check 501 for 40.00" in page and "not issued" in page
 
 
-def test_many_not_issued_answers_look_like_probing(client, db_session, bank):
+@pytest.mark.parametrize("issued", [False, True])
+def test_many_declines_of_any_kind_look_like_probing(client, db_session, bank, issued):
+    """Trying check numbers, or trying amounts against issued checks: either reads the register
+    (REVIEW_1_33_PLAN.md T3), so either crosses the line."""
     from openclear.domain.security_event import SecurityEvent
     from openclear.services import teller_service
 
     tenant, account, _users, headers = bank
     for n in range(teller_service.PROBE_THRESHOLD):
+        if issued:
+            _issue(db_session, tenant, account, f"9{n:03d}")
         _verify(client, headers, account, f"9{n:03d}", "5.00", teller_id="T-404")
     events = db_session.execute(select(SecurityEvent).where(SecurityEvent.name == "teller.verify.probing",
                                                             SecurityEvent.tenant_id == tenant.id)).scalars().all()
     assert len(events) == 1 and events[0].severity == "high"
+
+
+def test_a_decline_says_nothing_the_teller_didnt_send(client, db_session, bank):
+    tenant, account, _users, headers = bank
+    _issue(db_session, tenant, account, "950")
+    needed = _verify(client, headers, account, "950", payee_name=None)
+    assert needed["result"] == "payee_needed" and needed["issued"] is None  # not the payee it's asking for (T2)
+    amount = _verify(client, headers, account, "950", "1.00")
+    assert amount["result"] == "amount_differs" and amount["issued"]["amount"] == "250.00" and amount["issued"]["payee_name"] is None
+    payee = _verify(client, headers, account, "950", payee_name="Somebody Else")
+    assert payee["result"] == "payee_differs" and payee["issued"]["payee_name"] == "Acme Supply Co"
+
+
+def test_a_check_in_another_tellers_hands_is_declined(client, db_session, bank):
+    tenant, account, _users, headers = bank
+    _issue(db_session, tenant, account, "960")
+    first = _verify(client, headers, account, "960", teller_id="T-1", branch="Main St")
+    second = _verify(client, headers, account, "960", teller_id="T-2", branch="Elm")
+    assert first["result"] == "match" and second["result"] == "being_cashed"  # two branches can't both pay out (T5)
+    verification = db_session.get(TellerVerification, uuid.UUID(first["verification_id"]))
+    verification.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)  # the first teller never cashed it
+    db_session.commit()
+    third = _verify(client, headers, account, "960", teller_id="T-2", branch="Elm")
+    assert third["result"] == "match"
+    assert _cash(client, headers, third).status_code == 201
+    assert _verify(client, headers, account, "960")["result"] == "already_paid"
 
 
 def test_verify_reads_the_issued_item_and_its_stops_once(client, db_session, bank, engine):
@@ -211,6 +245,9 @@ def test_a_customer_no_longer_enrolled_is_cashed_by_the_usual_procedure(client, 
     customer.is_active = False
     db_session.commit()
     assert _verify(client, headers, account, "700", "30.00")["result"] == "not_on_positive_pay"  # not enrolled: the usual procedure
+    customer.is_active, customer.service_ended_at = True, datetime.now(timezone.utc)  # offboarded (REVIEW_1_33_PLAN.md T4)
+    db_session.commit()
+    assert _verify(client, headers, account, "700", "30.00")["result"] == "not_on_positive_pay"
 
 
 def test_no_payee_is_needed_when_the_customer_gave_none(client, db_session, bank):

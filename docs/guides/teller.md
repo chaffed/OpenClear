@@ -29,11 +29,13 @@ teller platform ──POST /api/v1/checks/cashed──▶ OpenClear   { paid_ite
    | `stop_differs` | A stop is on file for this check number, but for another amount: the customer decides |
    | `already_paid` | Paid already: in clearing, or cashed at another branch |
    | `customer_review` | The account is on reverse positive pay: the customer reviews each check |
+   | `being_cashed` | Another teller verified this check in the last 15 minutes and hasn't recorded it cashed: follow the bank's procedure |
    | `payee_needed` | The customer gave a payee for this check: send the payee as written, and verify again |
    | `not_on_positive_pay` | The account isn't on positive pay: OpenClear doesn't know it, or its customer is no longer enrolled |
 
-   `problems` lists every problem found. `issued` (amount, payee, issue date) comes only with a
-   decline, to help the teller explain it.
+   `problems` lists every problem found. `issued` (amount and issue date; the payee only when
+   the one sent differs) comes only with a decline, to help the teller explain it, and never
+   when the only problem is a payee that wasn't sent.
 2. **Pay out only on `match`.** On an account enrolled in positive pay or reverse positive pay,
    anything else is declined: a check that isn't found is never cashed. `not_on_positive_pay` is
    the exception: the account isn't enrolled, so the teller cashes it by the bank's standard
@@ -67,4 +69,8 @@ teller platform ──POST /api/v1/checks/cashed──▶ OpenClear   { paid_ite
 - **Plugins.** The bank's matching-rule plugins run in clearing, on a presented check, not on a
   verification.
 - **Two branches at once.** Verify takes the same lock on the issued check that clearing takes,
-  so a check verified at one branch while it's being cashed at another can't both be paid.
+  so two verifications of one check take turns: the second is answered `being_cashed` while the
+  first is unexpired and not yet recorded cashed, and `already_paid` once it is. A check cashed
+  at a branch while its file presentment is in flight is paid once, whichever came first.
+- **Probing.** Ten declines of any kind within an hour to one teller, branch, client or person
+  raise a high security event (`teller.verify.probing`) for the bank's security team.

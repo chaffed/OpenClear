@@ -12,6 +12,14 @@
   listed, not any N. A teller platform that lost the answer to `POST /api/v1/checks/cashed` is
   told, on its retry, which paid item the first call recorded and when
   (`plans/REVIEW_1_33_PLAN.md` RV1).
+- **The teller answer gives nothing the caller didn't send.** A decline for a payee the teller
+  didn't send no longer carries the payee it's asking for, and `issued` names the payee only
+  when the one sent differs. A check another teller verified in the last 15 minutes and hasn't
+  recorded cashed is declined `being_cashed`, so two branches can't both pay it out. Ten declines
+  of any kind within an hour (not only "not issued": a wrong amount reveals the issued amount)
+  raise `teller.verify.probing`, counted by teller, branch, API client, and now by the person
+  when a person's token asks. A check on an account whose customer's service has ended answers
+  `not_on_positive_pay`, as the guide said, instead of failing (RV2).
 
 ## 1.33.0 — 2026-10-30
 

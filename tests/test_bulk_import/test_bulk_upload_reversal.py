@@ -336,10 +336,12 @@ def test_back_out_unmatched_paid_item_leaves_already_decided_exception_alone(db_
         customer_name=None,
     )
     result = decision_service.decide(
-        db_session, tenant.id, exception.id, ctx, outcome=DecisionOutcome.RETURN, reason_code="fraud", notes=None
+        db_session, tenant.id, exception.id, ctx, outcome=DecisionOutcome.PAY, reason_code="known payee", notes=None
     )
     assert result.error is None
     db_session.commit()
+    db_session.refresh(paid_item)
+    assert paid_item.settlement_status == PaidItemSettlementStatus.PAID  # final at once: no cut-off ahead (REVIEW_1_33_PLAN.md RV-D1)
 
     bulk_upload_reversal_service.track_created_record(
         db_session, tenant.id, upload.id, resource_type="paid_item", resource_id=paid_item.id, row_label="row 3"
@@ -350,12 +352,40 @@ def test_back_out_unmatched_paid_item_leaves_already_decided_exception_alone(db_
         db_session, tenant.id, upload.id, actor_user_id=users["admin"].id, channel="web"
     )
     assert results[0].success is True
-    assert "already been return" in results[0].note
+    assert "already been pay" in results[0].note
 
     db_session.refresh(exception)
     db_session.refresh(paid_item)
-    assert exception.status == ExceptionStatus.RETURN  # left alone, not overwritten
+    assert exception.status == ExceptionStatus.PAY  # left alone, not overwritten
     assert paid_item.settlement_status == PaidItemSettlementStatus.REVERSED
+
+
+def test_back_out_paid_item_already_returned_by_a_decision_is_refused(db_session, tenant_factory):
+    """The return went to the core when the decision became final; backing the file out can't take it back."""
+    tenant, account, users = tenant_factory.make(slug="reversal-paid-returned")
+    upload = _make_upload(db_session, tenant.id, users["admin"].id, kind=BulkUploadKind.PAID_ITEMS)
+    paid_item = ingest_paid_item(
+        db_session, tenant.id, PaidItemSubmission(account_id=account.id, check_number="9301", presented_amount=Decimal("55.00"),
+                                                  presented_date=date(2026, 10, 1)),
+    )
+    exception = ExceptionRepository(db_session, tenant.id).list(source_item_id=paid_item.id)[0]
+    db_session.commit()
+    from openclear.db.tenancy import TenantContext
+    from openclear.domain.decision import DecisionOutcome
+
+    ctx = TenantContext(tenant_id=tenant.id, user_id=users["approver"].id, security_group_id=uuid.uuid4(),
+                        permissions=frozenset({"exception:decide"}), tenant_slug=tenant.slug, tenant_name=tenant.name, accent_color=None,
+                        has_logo=False, has_favicon=False, customer_id=None, customer_name=None)
+    assert decision_service.decide(db_session, tenant.id, exception.id, ctx, outcome=DecisionOutcome.RETURN, reason_code="fraud",
+                                   notes=None).error is None
+    db_session.commit()
+    bulk_upload_reversal_service.track_created_record(db_session, tenant.id, upload.id, resource_type="paid_item",
+                                                      resource_id=paid_item.id, row_label="row 1")
+    db_session.commit()
+    results = bulk_upload_reversal_service.back_out_upload(db_session, tenant.id, upload.id, actor_user_id=users["admin"].id, channel="web")
+    assert results[0].success is False and "processed as a return" in results[0].error
+    db_session.refresh(paid_item)
+    assert paid_item.settlement_status == PaidItemSettlementStatus.RETURNED
 
 
 def test_back_out_already_reversed_paid_item_is_skipped(db_session, tenant_factory):

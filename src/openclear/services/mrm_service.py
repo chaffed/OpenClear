@@ -104,7 +104,7 @@ def _replay_check(session: Session, tenant_id: uuid.UUID, content: bytes) -> lis
         label = x937_item_label(item)
         account = None
         for number in (item.account_number, item.on_us.partition("/")[0].replace(" ", "")):
-            account = account_service.get_account_by_number(session, tenant_id, number) if number else None
+            account = account_service.find_account_by_number(session, tenant_id, number) if number else None  # history, not a file
             if account:
                 break
         if account is None or not item.check_number:

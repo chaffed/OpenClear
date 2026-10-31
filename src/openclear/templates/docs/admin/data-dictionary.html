@@ -751,6 +751,7 @@ erDiagram
 <tr><td>issued_item_id</td><td>UUID</td><td>yes</td><td>FK → issued_item.id</td><td>The issued check it was compared with.</td></tr>
 <tr><td>teller_id / branch</td><td>String(64)</td><td>yes</td><td></td><td>Who asked, as the teller platform identifies them.</td></tr>
 <tr><td>api_client_id</td><td>UUID</td><td>yes</td><td></td><td>The teller platform's API client.</td></tr>
+<tr><td>user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td>Whose token asked: the client's user, or a person given check:verify (1.34.0).</td></tr>
 <tr><td>created_at / expires_at</td><td>Timestamp</td><td>no</td><td></td><td>A match can be recorded cashed for 15 minutes.</td></tr>
 <tr><td>cashed_at</td><td>Timestamp</td><td>yes</td><td></td><td>When it was recorded cashed; set once.</td></tr>
 <tr><td>paid_item_id</td><td>UUID</td><td>yes</td><td>FK → paid_item.id</td><td>The paid item the cash-out presented (source teller).</td></tr>

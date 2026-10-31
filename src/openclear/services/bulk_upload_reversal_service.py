@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from openclear.bulk_import.results import BulkFileRowResult
@@ -154,6 +155,13 @@ def _back_out_paid_item(
             note = "its linked issued item's status had already changed since and was left as-is"
     elif paid_item.match_status == PaidItemMatchStatus.EXCEPTION:
         note = _withdraw_exception_if_open(session, tenant_id, paid_item.id, actor_user_id=actor_user_id, channel=channel)
+        if paid_item.settlement_status == PaidItemSettlementStatus.PAID:
+            # Paid by a decision (REVIEW_1_33_PLAN.md RV-D1): the issued check it paid is outstanding again, as on a match.
+            issued_id = session.execute(select(ExceptionItem.related_reference_id).where(
+                ExceptionItem.source_item_id == paid_item.id, ExceptionItem.network_code == "check")).scalar_one_or_none()
+            issued_item = IssuedItemRepository(session, tenant_id, scoped_customer_id).get(issued_id) if issued_id else None
+            if issued_item is not None and issued_item.status == IssuedItemStatus.PAID:
+                issued_item.status = IssuedItemStatus.OUTSTANDING
 
     paid_item.settlement_status = PaidItemSettlementStatus.REVERSED
     session.flush()

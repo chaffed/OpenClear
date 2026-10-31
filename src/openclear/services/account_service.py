@@ -69,6 +69,16 @@ def _refuse_ended(session: Session, account: Account | None) -> Account | None:
     return account
 
 
+def find_account_by_number(session: Session, tenant_id: uuid.UUID, account_number: str, *,
+                           customer_id: uuid.UUID | None = None) -> Account | None:
+    """get_account_by_number without the refusal of an ended customer's account: for a teller
+    asking about a check, or a replay over history, where the caller decides what ended service
+    means (REVIEW_1_33_PLAN.md T4)."""
+    repo = AccountRepository(session, tenant_id, customer_id)
+    matches = repo.list(account_number=account_number) or repo.list(external_account_id=account_number)
+    return matches[0] if matches else None
+
+
 def get_account_by_number(
     session: Session, tenant_id: uuid.UUID, account_number: str, *, customer_id: uuid.UUID | None = None
 ) -> Account | None:

@@ -265,3 +265,14 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   two more presentments; a return; a voided check paid), the pay-all and teller tests amended,
   and `tests/test_postgres/test_teller_concurrency.py` (a branch cash against a file presentment;
   one verification cashed twice at once; *Pay all* against the sweep).
+- 2026-10-31: RV2 built on `review-1-33`. `issued` is left out when the only problem is `payee_needed`
+  and carries the payee only for `payee_differs`; `being_cashed` (a match verified within 15
+  minutes and not yet cashed, seen because verifications take turns on the issued item's lock);
+  the probing counter counts every decline, by teller, branch, client, and by `user_id` (a new
+  column, migration `c9d5e3f7a2b4`) when there's no client; `ServiceEnded` is no longer raised at
+  the teller or in an MRM replay (`account_service.find_account_by_number`). Guide, OpenAPI and
+  SDKs updated. **Deviation:** no per-route `rate_limit()` on `/checks/verify`: the global limit
+  is already 120 a minute per address, and a stricter one keyed the same way would add nothing;
+  the counter that matters is the probing one. Also fixed while running the suite for RV1: backing
+  out a file whose check was paid by a decision restores the issued check, as a matched one does,
+  and a check already returned by a decision can't be backed out (it was always so for a return).

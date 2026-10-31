@@ -761,13 +761,13 @@ public sealed record InventoryCuec
 }
 
 /// <summary>
-/// What was issued, to explain a decline. Never sent for a match.
+/// What was issued, to explain a decline. Never sent for a match, nor when the only problem is the payee the teller didn't send; the payee comes only when the one sent differs.
 /// </summary>
 public sealed record IssuedDetails
 {
     [JsonPropertyName("amount")] public string Amount { get; init; } = default!;
     [JsonPropertyName("issue_date")] public string IssueDate { get; init; } = default!;
-    [JsonPropertyName("payee_name")] public string PayeeName { get; init; } = default!;
+    [JsonPropertyName("payee_name")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? PayeeName { get; init; }
 }
 
 public sealed record IssuedItemCreate

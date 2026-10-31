@@ -49,10 +49,13 @@ RESULTS: dict[T, str] = {
 # The issued check names a payee and the teller didn't say what's on the check: the payee must be
 # checked as written before cash is paid (the product owner, 2026-10-22).
 PAYEE_NEEDED = "payee_needed"
-# The order the first problem is chosen in: the clearing rules', then a missing payee.
-_ORDER = [*RESULTS.values(), PAYEE_NEEDED]
-# Not-issued answers from one teller, branch or client within an hour before it looks like
-# someone trying check numbers (TL-D6).
+# Another teller verified this check a moment ago and hasn't recorded it cashed yet: the second
+# is declined, so two branches can't both pay out (REVIEW_1_33_PLAN.md T5).
+BEING_CASHED = "being_cashed"
+# The order the first problem is chosen in: the clearing rules', then a check in another teller's hands, then a missing payee.
+_ORDER = [*RESULTS.values(), BEING_CASHED, PAYEE_NEEDED]
+# Declines to one teller, branch, client or person within an hour before it looks like someone
+# trying check numbers or amounts (TL-D6; REVIEW_1_33_PLAN.md T3).
 PROBE_THRESHOLD = 10
 
 
@@ -125,13 +128,24 @@ def _rules(session: Session, tenant_id: uuid.UUID, account: Account, request: Ve
 
 def _enrolled(session: Session, account: Account) -> bool:
     """On positive pay (or reverse): a bank's own account, or a customer's still enrolled. A
-    customer deactivated isn't, and its checks are cashed by the bank's usual procedure."""
+    customer deactivated, or whose service has ended, isn't, and its checks are cashed by the
+    bank's usual procedure."""
     from openclear.domain.customer import Customer
 
     if account.customer_id is None:
         return True
     customer = session.get(Customer, account.customer_id)
-    return customer is not None and customer.is_active
+    return customer is not None and customer.is_active and customer.service_ended_at is None
+
+
+def _in_another_tellers_hands(session: Session, tenant_id: uuid.UUID, account: Account, check_number: str) -> bool:
+    """A match for the same check, verified within the last 15 minutes and not yet recorded
+    cashed. Verifications of one check take turns on its issued item's lock, so the second sees
+    the first."""
+    return session.execute(select(TellerVerification.id).where(
+        TellerVerification.tenant_id == tenant_id, TellerVerification.account_id == account.id,
+        TellerVerification.check_number == check_number, TellerVerification.result == MATCH,
+        TellerVerification.cashed_at.is_(None), TellerVerification.expires_at > _now()).limit(1)).first() is not None
 
 
 def _names_a_payee(issued) -> bool:
@@ -148,12 +162,14 @@ def verify(session: Session, tenant_id: uuid.UUID, request: VerifyRequest, *, us
     account a check that isn't found is declined (`not_issued`, or `customer_review` on reverse
     positive pay), and when the issued check names a payee, the teller must send the payee as
     written on the check, or it's declined (`payee_needed`)."""
-    account = account_service.get_account_by_number(session, tenant_id, request.account_number)
+    account = account_service.find_account_by_number(session, tenant_id, request.account_number)
     if account is None or not _enrolled(session, account):
         result, problems, candidate = NOT_ON_POSITIVE_PAY, [NOT_ON_POSITIVE_PAY], None
     else:
         found, candidate = _rules(session, tenant_id, account, request)
         problems = [RESULTS[t] for t in found]
+        if not problems and _in_another_tellers_hands(session, tenant_id, account, request.check_number):
+            problems.append(BEING_CASHED)
         if candidate is not None and _names_a_payee(candidate) and not (request.payee_name or "").strip():
             problems.append(PAYEE_NEEDED)
         result = next((code for code in _ORDER if code in problems), MATCH)
@@ -163,7 +179,8 @@ def verify(session: Session, tenant_id: uuid.UUID, request: VerifyRequest, *, us
         routing_number=request.routing_number, account_number=request.account_number, check_number=request.check_number,
         amount=request.amount, payee_name=request.payee_name, result=result, problems=problems,
         issued_item_id=candidate.id if candidate is not None else None, teller_id=request.teller_id, branch=request.branch,
-        api_client_id=_client_id(session, user_id), created_at=now, expires_at=now + timedelta(minutes=VERIFICATION_MINUTES),
+        api_client_id=_client_id(session, user_id), user_id=user_id, created_at=now,
+        expires_at=now + timedelta(minutes=VERIFICATION_MINUTES),
     )
     session.add(verification)
     session.flush()
@@ -176,28 +193,30 @@ def verify(session: Session, tenant_id: uuid.UUID, request: VerifyRequest, *, us
         resource_type="teller_verification", resource_id=verification.id,
         metadata={"result": result, "problems": problems, "teller_id": request.teller_id, "branch": request.branch},
     )
-    if result in ("not_issued", NOT_ON_POSITIVE_PAY):
+    if result != MATCH:
         _watch_for_probing(session, tenant_id, verification)
     return verification
 
 
 def _watch_for_probing(session: Session, tenant_id: uuid.UUID, verification: TellerVerification) -> None:
-    """Many not-issued answers to one teller, branch or client within an hour looks like someone
-    trying check numbers (TL-D6): a high security event, at most one a minute for each, named
-    by the narrowest of them that crossed the line."""
-    for column, value in (("teller_id", verification.teller_id), ("branch", verification.branch),
-                          ("api_client_id", verification.api_client_id)):
+    """Many declines to one teller, branch, client or person within an hour looks like someone
+    trying check numbers or amounts (TL-D6): a high security event, at most one a minute for
+    each, named by the narrowest of them that crossed the line. Every decline counts: a wrong
+    amount answers with what was issued, so it reads the register as well as a miss does."""
+    keys = [("teller_id", verification.teller_id), ("branch", verification.branch), ("api_client_id", verification.api_client_id)]
+    if verification.api_client_id is None:
+        keys.append(("user_id", verification.user_id))  # a person's token, not a platform's
+    for column, value in keys:
         if value is None:
             continue
-        misses = session.execute(select(func.count()).select_from(TellerVerification).where(
+        declines = session.execute(select(func.count()).select_from(TellerVerification).where(
             TellerVerification.tenant_id == tenant_id, getattr(TellerVerification, column) == value,
-            TellerVerification.result.in_(["not_issued", NOT_ON_POSITIVE_PAY]),
-            TellerVerification.created_at >= _now() - timedelta(hours=1))).scalar_one()
-        if misses >= PROBE_THRESHOLD:
+            TellerVerification.result != MATCH, TellerVerification.created_at >= _now() - timedelta(hours=1))).scalar_one()
+        if declines >= PROBE_THRESHOLD:
             security_events.emit_sampled(
                 session, "teller.verify.probing", key=f"{tenant_id}:{column}:{value}", tenant_id=tenant_id, outcome="failure",
-                reason=f"{misses} checks not issued within an hour, by {column.replace('_', ' ')} {value}",
-                details={column: str(value), "not_issued_last_hour": misses})
+                reason=f"{declines} checks declined within an hour, by {column.replace('_', ' ')} {value}",
+                details={column: str(value), "declined_last_hour": declines})
             return  # one alert for the call, by the narrowest of who asked
 
 
