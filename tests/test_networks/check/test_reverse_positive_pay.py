@@ -5,6 +5,7 @@
 every presented check is an item for the customer to review, a real problem still shows as
 itself, positive pay accounts are unchanged, and turning reverse on is a protected change."""
 
+import re
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -217,10 +218,13 @@ def test_paying_every_check_to_review_at_once(client, db_session, tenant_factory
     page = client.get(f"/ui/exceptions?customer={customer.id}").text
     assert "3 checks to review" in page and "Pay all 3 to review" in page
 
-    changed = client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id), "expected": "2"},
+    shown = re.search(r'name="shown" value="([^"]*)"', page).group(1)  # the page says which checks it listed
+    assert set(shown.split(",")) == {str(i.id) for i in items}
+    stale = ",".join([str(i.id) for i in items[:2]] + [str(problem.id)])  # one decided, another arrived since the page was shown
+    changed = client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id), "shown": stale},
                           follow_redirects=False)
-    assert "changed" in changed.headers["location"].replace("+", " ")  # a count that no longer matches does nothing
-    paid = client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id), "expected": "3"},
+    assert "changed" in changed.headers["location"].replace("+", " ")  # a list that no longer matches does nothing
+    paid = client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id), "shown": shown},
                        follow_redirects=False)
     assert paid.status_code == 303 and "Paid 3 checks" in paid.headers["location"].replace("+", " ")
     db_session.expire_all()
@@ -236,7 +240,8 @@ def test_under_dual_control_paying_all_recommends_each(client, db_session, tenan
     db_session.get(Tenant, tenant.id).require_dual_control = True
     db_session.commit()
     csrf = _login(client, tenant.slug, users["preparer"].email)
-    client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id), "expected": "2"})
+    client.post("/ui/exceptions/review/pay-all", data={"csrf_token": csrf, "customer": str(customer.id),
+                                                        "shown": ",".join(str(i.id) for i in items)})
     db_session.expire_all()
     assert [i.status.value for i in items] == ["pending_approval"] * 2
 

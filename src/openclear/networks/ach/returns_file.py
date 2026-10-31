@@ -15,6 +15,8 @@ RDFI), its name, and the ACH operator's routing number and name (immediate desti
 
 from __future__ import annotations
 
+from openclear.errors import UserFacingError
+
 from collections import OrderedDict
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -27,7 +29,7 @@ SETTINGS_FIELDS = (
 )
 
 
-class ReturnsFileError(ValueError):
+class ReturnsFileError(UserFacingError):
     pass
 
 

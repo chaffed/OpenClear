@@ -88,7 +88,8 @@ def _waiver(accepted: dict, alert: dict) -> str | None:
     if found is None:
         return None
     reason, urls = found
-    if urls and not all(re.search(urls, i.get("uri", "")) for i in alert.get("instances", [])):
+    instances = alert.get("instances", [])
+    if urls and (not instances or not all(re.search(urls, i.get("uri", "")) for i in instances)):  # no instance: not shown to be on those URLs
         return None
     return reason
 

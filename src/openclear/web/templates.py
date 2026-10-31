@@ -398,6 +398,53 @@ def _iso_utc(value) -> str:
 templates.env.filters["iso_utc"] = _iso_utc
 
 
+def _bank_day(value, zone: str, last: bool = False) -> str:
+    """Exposed as `bank_day`: a moment as the date it was at the bank. With `last`, the day that
+    ended at that moment (a service that ended at midnight ended on the day before it)."""
+    if value is None:
+        return ""
+    from datetime import timedelta, timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    try:
+        local = value.astimezone(ZoneInfo(zone))
+    except (ZoneInfoNotFoundError, TypeError):
+        local = value.astimezone(timezone.utc)
+    return ((local - timedelta(seconds=1)) if last else local).date().isoformat()
+
+
+templates.env.filters["bank_day"] = _bank_day
+
+_CUSTOM_FIELD_TYPES = {"text": "Text", "integer": "Whole number", "decimal": "Decimal", "date": "Date", "boolean": "Yes/no",
+                       "choice": "Choice"}
+
+
+def _custom_field_type(value) -> str:
+    """Exposed as `custom_field_type`: a custom field's type in words (REVIEW_1_33_PLAN.md C10)."""
+    key = getattr(value, "value", value)
+    return _CUSTOM_FIELD_TYPES.get(str(key), str(key))
+
+
+templates.env.filters["custom_field_type"] = _custom_field_type
+
+# A teller verification's result, as a customer reads it on the exceptions page (REVIEW_1_33_PLAN.md T9).
+_TELLER_RESULTS = {
+    "not_issued": "not issued by you", "amount_differs": "issued for another amount", "payee_differs": "issued to another payee",
+    "voided": "voided by you", "stopped": "a stop payment is on it", "stop_differs": "a stop payment for another amount is on it",
+    "already_paid": "already paid", "stale": "older than the bank allows", "customer_review": "on reverse positive pay, for you to review",
+    "payee_needed": "the payee wasn't checked", "being_cashed": "being cashed at another branch", "not_on_positive_pay": "not on positive pay",
+}
+
+
+def _teller_result(value) -> str:
+    return _TELLER_RESULTS.get(str(value), str(value).replace("_", " "))
+
+
+templates.env.filters["teller_result"] = _teller_result
+
+
 # --- Plugin UI slots (plugins/ui_slots.py; MOBILE_PLAN.md R5) -------------------------------
 
 _slot_ids = itertools.count(1)  # unique ids for a slot's sheet on the page

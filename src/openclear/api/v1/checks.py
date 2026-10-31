@@ -24,7 +24,7 @@ from openclear.services import teller_service
 router = APIRouter(prefix="/checks", tags=["teller"])
 
 Result = Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs",
-                 "payee_differs", "stale", "customer_review", "payee_needed"]
+                 "payee_differs", "stale", "customer_review", "being_cashed", "payee_needed"]
 
 
 class VerifyCheck(BaseModel):
@@ -39,10 +39,11 @@ class VerifyCheck(BaseModel):
 
 
 class IssuedDetails(BaseModel):
-    """What was issued, to explain a decline. Never sent for a match."""
+    """What was issued, to explain a decline. Never sent for a match, nor when the only problem
+    is the payee the teller didn't send; the payee comes only when the one sent differs."""
 
     amount: Decimal
-    payee_name: str
+    payee_name: str | None = None
     issue_date: date
 
 
@@ -73,9 +74,12 @@ def verify_check(payload: VerifyCheck, db: Session = Depends(get_db),
     Pay out only on `match`. A match can be recorded cashed once, within 15 minutes."""
     verification = teller_service.verify(db, ctx.tenant_id, teller_service.VerifyRequest(**payload.model_dump()), user_id=ctx.user_id)
     issued = None
-    if verification.result != teller_service.MATCH and verification.issued_item_id is not None:
+    if (verification.result != teller_service.MATCH and verification.issued_item_id is not None
+            and verification.problems != [teller_service.PAYEE_NEEDED]):
+        # Nothing the teller didn't already have: the payee only when the one they sent differs (REVIEW_1_33_PLAN.md T2).
         item = db.get(IssuedItem, verification.issued_item_id)
-        issued = IssuedDetails(amount=item.amount, payee_name=item.payee_name, issue_date=item.issue_date)
+        payee = item.payee_name if "payee_differs" in verification.problems else None
+        issued = IssuedDetails(amount=item.amount, payee_name=payee, issue_date=item.issue_date)
     db.commit()
     return Verification(verification_id=verification.id, result=verification.result, problems=verification.problems,
                         expires_at=verification.expires_at, issued=issued)
@@ -83,7 +87,9 @@ def verify_check(payload: VerifyCheck, db: Session = Depends(get_db),
 
 @router.post("/cashed", response_model=CashedCheck, status_code=201,
              responses={404: {"description": "No such verification"},
-                        409: {"description": "Declined, already recorded, expired, or another amount"}})
+                        409: {"description": "Declined, expired, or another amount; or already recorded, in which case `detail` is an "
+                                             "object with `message`, `paid_item_id` and `cashed_at`, so a platform that lost the "
+                                             "first answer can reconcile"}})
 def record_cashed(payload: CashCheck, db: Session = Depends(get_db),
                   ctx: TenantContext = Depends(require_permission("check:verify"))) -> CashedCheck:
     """Records a verified check as cashed: it's presented as paid at once, so the same check
@@ -92,6 +98,8 @@ def record_cashed(payload: CashCheck, db: Session = Depends(get_db),
         cashed = teller_service.cash(db, ctx.tenant_id, payload.verification_id, payload.amount, user_id=ctx.user_id)
     except teller_service.TellerError as exc:
         db.rollback()
-        raise HTTPException(exc.status, str(exc)) from None
+        detail = {"message": str(exc), **{k: (str(v) if isinstance(v, uuid.UUID) else v.isoformat() if hasattr(v, "isoformat") else v)
+                                          for k, v in exc.details.items()}} if exc.details else str(exc)
+        raise HTTPException(exc.status, detail) from None
     db.commit()
     return CashedCheck(verification_id=cashed.verification.id, paid_item_id=cashed.paid_item.id, exception_types=cashed.exception_types)

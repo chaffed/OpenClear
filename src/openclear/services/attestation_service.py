@@ -32,6 +32,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.compliance import cuecs
 from openclear.domain.cuec_attestation import CuecAttestation, CuecMapping
 from openclear.domain.tenant import Tenant
@@ -42,7 +43,7 @@ MANUAL_RESULTS = ("operated", "operated_with_exceptions", "not_operated", "not_a
 COVERAGE_NEEDED = 0.95
 
 
-class AttestationError(ValueError):
+class AttestationError(UserFacingError):
     """The message is fit to show."""
 
 

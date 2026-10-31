@@ -13,6 +13,7 @@ from openclear.services import email_change_service
 from openclear.web.deps import render_template
 from openclear.web.rate_limit import rate_limit
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-email-change"])
 _limit = rate_limit("email_change", limit_setting="oauth_token_rate_limit_per_minute")
@@ -40,6 +41,6 @@ def confirm(request: Request, token: str, db: Session = Depends(get_db), _rl: No
         email_change_service.confirm(db, opened)
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return _page(request, opened, error=str(exc), status_code=422)
+        return _page(request, opened, error=shown(exc), status_code=422)
     db.commit()
     return _page(request, opened, done=True)

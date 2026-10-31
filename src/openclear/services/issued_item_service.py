@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.bulk_import.fields import RowFieldError, optional_str, parse_date, parse_decimal, require_str
 from openclear.bulk_import.results import BulkFileRowResult
 from openclear.domain.issued_item import IssuedItem, IssuedItemSource, IssuedItemStatus
@@ -95,7 +96,7 @@ def create_issued_items_bulk(
     return results
 
 
-class CantVoid(ValueError):
+class CantVoid(UserFacingError):
     """The message is fit to show."""
 
 

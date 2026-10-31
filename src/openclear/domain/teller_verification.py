@@ -35,6 +35,8 @@ class TellerVerification(Base):
     teller_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     branch: Mapped[str | None] = mapped_column(String(64), nullable=True)
     api_client_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    # The token's user: the platform's client user, or a person given check:verify (counted for probing by themselves).
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     cashed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

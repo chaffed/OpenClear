@@ -109,6 +109,18 @@ def test_blank_cells_clear_values_only_when_asked(client, db_session, tenant_fac
     assert cf.values_of(db_session, tenant.id, "account", accounts["7101"].id) == {"officer_code": None}
 
 
+def test_na_in_an_update_file_is_text_not_a_blank_cell(client, db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md C6: an officer code of "NA" is a value; pandas would have read it as nothing."""
+    tenant, _house, users = tenant_factory.make(slug="cfb-na")
+    _define(db_session, tenant, "account", "officer_code")
+    accounts = _accounts(db_session, tenant, "7201", "7202")
+    _login(client, tenant.slug, users["admin"].email)
+    assert "2 of 2 succeeded" in _upload(client, "accounts", b"account_number,cf_officer_code\n7201,NA\n7202,null\n").text
+    db_session.expire_all()
+    assert cf.values_of(db_session, tenant.id, "account", accounts["7201"].id) == {"officer_code": "NA"}
+    assert cf.values_of(db_session, tenant.id, "account", accounts["7202"].id) == {"officer_code": "null"}
+
+
 def test_a_file_that_doesnt_name_records_or_fields_is_refused_whole(client, db_session, tenant_factory):
     tenant, _house, users = tenant_factory.make(slug="cfb-refuse")
     _define(db_session, tenant, "account", "officer_code")
@@ -117,6 +129,14 @@ def test_a_file_that_doesnt_name_records_or_fields_is_refused_whole(client, db_s
     assert no_key.status_code == 422 and "account_number or external_account_id column" in no_key.text
     no_fields = _upload(client, "accounts", b"account_number,officer_code\n1,JS\n")
     assert no_fields.status_code == 422 and "No custom-field columns" in no_fields.text
+    # A mistyped header fails the file, not every row (REVIEW_1_33_PLAN.md C5); so does an archived field's.
+    typo = _upload(client, "accounts", b"account_number,cf_oficer_code\n1,JS\n")
+    assert typo.status_code == 422 and "No such field: cf_oficer_code" in typo.text
+    gone = _define(db_session, tenant, "account", "old_code")
+    cf.archive_field(db_session, tenant.id, gone.id)
+    db_session.commit()
+    archived = _upload(client, "accounts", b"account_number,cf_old_code\n1,JS\n")
+    assert archived.status_code == 422 and "Archived, so not written: cf_old_code" in archived.text
     assert client.get("/ui/custom-fields/branches/upload").status_code == 404
 
 

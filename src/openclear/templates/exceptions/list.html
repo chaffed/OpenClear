@@ -72,7 +72,7 @@
       {% for v in branch_declines %}
       <li>Check {{ v.check_number }} for {{ "{:,.2f}".format(v.amount) }} on account {{ v.account_number }}{% if v.branch %} at branch {{ v.branch }}{% endif %},
         <time datetime="{{ v.created_at | iso_utc }}" data-local-time>{{ v.created_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>:
-        {{ v.result | replace("_", " ") }}</li>
+        {{ v.result | teller_result }}</li>
       {% endfor %}
     </ul>
   </details>
@@ -88,7 +88,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="customer" value="{{ customer_filter }}">
       <input type="hidden" name="network_code" value="{{ network_filter or '' }}">
-      <input type="hidden" name="expected" value="{{ to_review }}">
+      <input type="hidden" name="shown" value="{{ review_ids|join(',') }}">
       <button type="submit" class="button-pay">{{ icon("check_circle") }}Pay all {{ to_review }} to review</button>
     </form>
     {% endif %}

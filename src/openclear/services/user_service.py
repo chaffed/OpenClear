@@ -9,6 +9,7 @@ from typing import Any, Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.password_policy import PasswordPolicy, context_words, effective_policy, strictest, validate_password
 from openclear.auth.security import hash_password, verify_password
 from openclear.bulk_import.fields import RowFieldError, optional_str, require_str
@@ -371,7 +372,7 @@ def admin_sign_out_everywhere(
     return user
 
 
-class PasswordChangeError(ValueError):
+class PasswordChangeError(UserFacingError):
     """A password change/reset was refused. The message is safe to show the user as-is
     (routers re-render the form with error=str(exc), this app's usual convention)."""
 

@@ -17,6 +17,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.form_errors import friendly_error
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/customers", tags=["web-customers"])
 
@@ -160,7 +161,7 @@ async def create_customer(
         custom_fields.set_values(db, ctx.tenant_id, "customer", customer.id, values, user_id=ctx.user_id, require=True)
     except CustomFieldError as exc:
         db.rollback()
-        return render_template(request, "customers/form.html", ctx=ctx, customer=None, error=str(exc), status_code=422,
+        return render_template(request, "customers/form.html", ctx=ctx, customer=None, error=shown(exc), status_code=422,
                                **_form_kwargs(db, ctx, None, form=dict(await request.form())))
     except Exception as exc:  # noqa: BLE001 — surface a DB constraint violation (e.g. duplicate customer number) to the form
         db.rollback()
@@ -197,7 +198,10 @@ def deleted_customers(request: Request, db: Session = Depends(get_db),
     (plans/CUSTOMER_OFFBOARDING_PLAN.md)."""
     from openclear.services import customer_offboarding_service
 
-    return render_template(request, "customers/deleted.html", ctx=ctx, deletions=customer_offboarding_service.deletions(db, ctx.tenant_id))
+    from openclear.services import cutoff_service
+
+    return render_template(request, "customers/deleted.html", ctx=ctx, deletions=customer_offboarding_service.deletions(db, ctx.tenant_id),
+                           bank_time_zone=cutoff_service.time_zone_for(db.get(Tenant, ctx.tenant_id)))
 
 
 @router.get("/deleted/{deletion_id}/certificate")
@@ -263,16 +267,10 @@ def customer_detail(
 
 
 def _offboarding_context(db: Session, customer, tenant) -> dict:
-    from datetime import timedelta
-    from zoneinfo import ZoneInfo
+    from openclear.services import customer_offboarding_service
 
-    from openclear.services import customer_offboarding_service, cutoff_service
-
-    last_day = None
-    if customer.service_ends_at is not None:
-        ends = customer.service_ends_at
-        ends = ends.replace(tzinfo=ZoneInfo("UTC")) if ends.tzinfo is None else ends
-        last_day = (ends.astimezone(ZoneInfo(cutoff_service.time_zone_for(tenant))) - timedelta(seconds=1)).date().isoformat()
+    last_day = customer_offboarding_service.last_service_day(db, customer)
+    last_day = last_day.isoformat() if last_day else None
     # The earliest last service day is today at the bank, not on the server.
     return {"offboarding_deletion_due": customer_offboarding_service.deletion_due(customer), "offboarding_last_day": last_day,
             "retention_days": customer_offboarding_service.retention_days(),
@@ -309,7 +307,7 @@ def offboarding(customer_id: uuid.UUID, step: str = Form(...), last_service_day:
         outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id, summary=summary)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}#offboarding", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}#offboarding", error=shown(exc))
     db.commit()
     if outcome.waiting:
         return see_other(f"/ui/customers/{customer_id}#offboarding", flash=waiting_message(outcome))
@@ -343,7 +341,7 @@ def set_self_service(
             tenant_id=ctx.tenant_id, user_id=ctx.user_id, summary=f"Let {customer.name} manage more of its own access")
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}", error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other(f"/ui/customers/{customer_id}", flash=waiting_message(outcome))
@@ -377,7 +375,7 @@ async def set_cutoff(request: Request, customer_id: uuid.UUID, db: Session = Dep
             summary=f"Change the cut-off agreed with {customer.name}")
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}", error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other(f"/ui/customers/{customer_id}", flash=waiting_message(outcome))
@@ -408,7 +406,7 @@ def invite_person(request: Request, customer_id: uuid.UUID, email: str = Form(""
             accept_base_url=get_settings().public_base_url or str(request.base_url))
     except customer_people_service.PeopleError as exc:
         db.rollback()
-        return see_other(back, error=str(exc))
+        return see_other(back, error=shown(exc))
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="customer_people.invite",
                                     summary=f"Invited {invitation.email} to {customer.name}, with no access yet",
                                     resource_type="customer", resource_id=customer.id)
@@ -490,7 +488,7 @@ async def update_customer(
     except CustomFieldError as exc:
         db.rollback()
         existing = customer_service.get_customer(db, ctx.tenant_id, customer_id)
-        return render_template(request, "customers/form.html", ctx=ctx, customer=existing, error=str(exc), status_code=422,
+        return render_template(request, "customers/form.html", ctx=ctx, customer=existing, error=shown(exc), status_code=422,
                                **_form_kwargs(db, ctx, existing, form=dict(await request.form())))
     except Exception as exc:  # noqa: BLE001 — surface a DB constraint violation (e.g. duplicate customer number) to the form
         db.rollback()

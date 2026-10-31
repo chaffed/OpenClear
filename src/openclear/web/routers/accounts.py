@@ -22,6 +22,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.pagination import paginate
 from openclear.web.redirects import checklist_return, see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/accounts", tags=["web-accounts"])
 
@@ -139,7 +140,7 @@ async def create_account(
         custom_fields.set_values(db, ctx.tenant_id, "account", account.id, values, user_id=ctx.user_id, require=ctx.customer_id is None)
     except CustomFieldError as exc:
         db.rollback()
-        return _render_account_form(request, db, ctx, form=form, error=str(exc))
+        return _render_account_form(request, db, ctx, form=form, error=shown(exc))
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -198,12 +199,12 @@ def account_fields_form(request: Request, account_id: uuid.UUID, db: Session = D
 def _render_fields_form(request: Request, db: Session, ctx: TenantContext, account: Account, *, error: str | None = None,
                         form: dict | None = None) -> HTMLResponse:
     customer = customer_service.get_customer(db, ctx.tenant_id, account.customer_id) if account.customer_id else None
+    all_values = custom_fields.values_of(db, ctx.tenant_id, "account", account.id)  # one read for the live and the archived fields
     return render_template(request, "accounts/fields.html", ctx=ctx, account=account, customer=customer, error=error, form=form,
                            custom_fields=custom_fields.list_fields(db, ctx.tenant_id, "account"),
                            custom_values=custom_fields.values_of(db, ctx.tenant_id, "account", account.id, include_archived=False),
-                           archived_values={f.key: v for f, v in ((f, custom_fields.values_of(db, ctx.tenant_id, "account", account.id).get(f.key))
-                                                                  for f in custom_fields.list_fields(db, ctx.tenant_id, "account", include_archived=True)
-                                                                  if f.archived_at) if v is not None},
+                           archived_values={f.key: all_values[f.key] for f in custom_fields.list_fields(db, ctx.tenant_id, "account", include_archived=True)
+                                            if f.archived_at and all_values.get(f.key) is not None},
                            status_code=422 if error else 200)
 
 
@@ -217,7 +218,7 @@ async def save_account_fields(request: Request, account_id: uuid.UUID, db: Sessi
         custom_fields.set_values(db, ctx.tenant_id, "account", account.id, values, user_id=ctx.user_id, require=True)
     except CustomFieldError as exc:
         db.rollback()
-        return _render_fields_form(request, db, ctx, account, error=str(exc), form=dict(await request.form()))
+        return _render_fields_form(request, db, ctx, account, error=shown(exc), form=dict(await request.form()))
     db.commit()
     return see_other(f"/ui/accounts/{account.id}/fields", flash="Saved.")
 
@@ -254,7 +255,7 @@ def set_check_review(
             summary=f"Account {account.account_number}: {'reverse' if mode == CheckReviewMode.REVERSE else 'positive'} positive pay")
     except ValueError as exc:
         db.rollback()
-        return see_other(back, error=str(exc))
+        return see_other(back, error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other(back, flash=waiting_message(outcome))

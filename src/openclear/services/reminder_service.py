@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.customer import Customer
@@ -38,7 +39,7 @@ MAX_OFFSET_MINUTES = 24 * 60
 MAX_OFFSETS = 4
 
 
-class ReminderError(ValueError):
+class ReminderError(UserFacingError):
     """Bad input on the settings form; the message is fit to show."""
 
 

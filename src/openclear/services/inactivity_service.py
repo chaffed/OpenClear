@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import MembershipAccount, TenantMembership
 
@@ -33,7 +34,7 @@ MIN_DAYS = 14
 USER_ADMIN = "user:manage"
 
 
-class InactivityError(ValueError):
+class InactivityError(UserFacingError):
     """The message is fit to show."""
 
 

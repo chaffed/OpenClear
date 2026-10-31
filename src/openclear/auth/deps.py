@@ -20,6 +20,7 @@ from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.customer import Customer
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.security_group import SecurityGroup
+from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.services import session_service
@@ -41,6 +42,14 @@ class AccessRevoked(Exception):
     security group it points at no longer exists. Treated identically to an invalid
     token by every caller — this is what makes deactivating a user/membership take effect
     immediately rather than waiting for the token to expire."""
+
+
+def _service_ended(customer) -> bool:
+    """Its last service day is over (services/customer_offboarding_service.py): nobody there signs
+    in, whatever a later sync set is_active to (REVIEW_1_33_PLAN.md O2, O5)."""
+    from openclear.services import customer_offboarding_service
+
+    return customer_offboarding_service.ended(customer)
 
 
 def _pending_approval_count(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, user_id: uuid.UUID) -> int:
@@ -148,6 +157,8 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     branding = get_tenant_branding_by_id(db, tenant_id)
     if branding is None:
         raise AccessRevoked("Tenant no longer exists")
+    if not db.get(Tenant, tenant_id).is_active:  # loaded for the branding already; a bank frozen for deletion refuses every token
+        raise AccessRevoked("Tenant is no longer active")
 
     permissions = frozenset(group.permissions)
     security_key_due = _security_key_due(db, tenant_id, membership, payload) if expected_type == "access" else None
@@ -164,7 +175,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         # auth/permissions.py::CUSTOMER_SCOPE_MASKED_PERMISSIONS.
         permissions = permissions - CUSTOMER_SCOPE_MASKED_PERMISSIONS
         customer = db.get(Customer, customer_id)
-        if customer is None or not customer.is_active:
+        if customer is None or not customer.is_active or _service_ended(customer):
             raise AccessRevoked("Customer no longer exists")
         customer_name = customer.name
         customer_banner_message = customer.banner_message
@@ -241,6 +252,8 @@ def _support_context(db: Session, payload: dict, user: User, tenant_id: uuid.UUI
     branding = get_tenant_branding_by_id(db, tenant_id)
     if branding is None:
         raise AccessRevoked("Tenant no longer exists")
+    if not db.get(Tenant, tenant_id).is_active:  # loaded for the branding already; a bank frozen for deletion refuses every token
+        raise AccessRevoked("Tenant is no longer active")
     expires_at = grant.expires_at if grant.expires_at.tzinfo else grant.expires_at.replace(tzinfo=timezone.utc)
     ctx = TenantContext(
         tenant_id=tenant_id, user_id=user.id, security_group_id=uuid.UUID(payload["security_group_id"]),

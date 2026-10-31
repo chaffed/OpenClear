@@ -119,15 +119,40 @@ class RedisRateLimiter:
         self._last_error_logged = 0.0
 
     def allow(self, key: str, bucket: str, *, limit: int, window_seconds: float) -> bool:
+        """Falls back to this process's own limiter while Redis can't be reached, so a limit
+        still holds (per instance rather than shared), and says so once per outage
+        (REVIEW_1_33_PLAN.md C2)."""
         try:
-            return bool(self._script(
+            allowed = bool(self._script(
                 keys=[f"{self._KEY_PREFIX}{bucket}:{key}"], args=[limit, int(window_seconds * 1000), uuid.uuid4().hex]
             ))
-        except Exception:  # noqa: BLE001 -- any Redis failure: allow, and say so
-            if time.monotonic() - self._last_error_logged > 60:
-                self._last_error_logged = time.monotonic()
-                logger.exception("Rate limiting is off: Redis at rate_limit_redis_url can't be reached")
-            return True
+        except Exception:  # noqa: BLE001 -- any Redis failure: this process's limiter, and say so
+            self._outage()
+            return limiter.allow(key, bucket, limit=limit, window_seconds=window_seconds)
+        if self.down_since is not None:
+            self.down_since = None
+            logger.warning("Rate limiting is shared through Redis again")
+        return allowed
+
+    down_since: float | None = None
+
+    def _outage(self) -> None:
+        if self.down_since is None:
+            self.down_since = time.monotonic()
+            from openclear.services import security_events
+
+            security_events.emit_detached("rate_limit.backend_down", sampled_key="rate_limit.backend_down", outcome="failure",
+                                          reason="Redis at rate_limit_redis_url can't be reached; limits hold per instance")
+        if time.monotonic() - self._last_error_logged > 60:
+            self._last_error_logged = time.monotonic()
+            logger.exception("Rate limiting is per instance: Redis at rate_limit_redis_url can't be reached")
+
+    def reachable(self) -> bool:
+        """For the Controls page: whether Redis answers now."""
+        try:
+            return bool(self._client.ping())
+        except Exception:  # noqa: BLE001 -- the answer is no
+            return False
 
 
 @lru_cache(maxsize=2)
@@ -140,6 +165,14 @@ def _redis_limiter(url: str) -> RedisRateLimiter:
     from redis.retry import Retry
 
     return RedisRateLimiter(redis.Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5, retry=Retry(NoBackoff(), 0)))
+
+
+def backend_status() -> tuple[str, bool]:
+    """("redis" | "process", reachable): what rate limits are kept in, and whether it answers."""
+    settings = get_settings()
+    if settings.rate_limit_backend == "redis":
+        return "redis", _redis_limiter(settings.rate_limit_redis_url).reachable()
+    return "process", True
 
 
 def allow(key: str, bucket: str, *, limit: int, window_seconds: float) -> bool:

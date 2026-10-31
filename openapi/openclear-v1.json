@@ -5068,7 +5068,7 @@
         "type": "object"
       },
       "IssuedDetails": {
-        "description": "What was issued, to explain a decline. Never sent for a match.",
+        "description": "What was issued, to explain a decline. Never sent for a match, nor when the only problem\nis the payee the teller didn't send; the payee comes only when the one sent differs.",
         "properties": {
           "amount": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -5081,13 +5081,19 @@
             "type": "string"
           },
           "payee_name": {
-            "title": "Payee Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee Name"
           }
         },
         "required": [
           "amount",
-          "payee_name",
           "issue_date"
         ],
         "title": "IssuedDetails",
@@ -6650,6 +6656,7 @@
                 "payee_differs",
                 "stale",
                 "customer_review",
+                "being_cashed",
                 "payee_needed"
               ],
               "type": "string"
@@ -6671,6 +6678,7 @@
               "payee_differs",
               "stale",
               "customer_review",
+              "being_cashed",
               "payee_needed"
             ],
             "title": "Result",
@@ -9908,7 +9916,7 @@
             "description": "No such verification"
           },
           "409": {
-            "description": "Declined, already recorded, expired, or another amount"
+            "description": "Declined, expired, or another amount; or already recorded, in which case `detail` is an object with `message`, `paid_item_id` and `cashed_at`, so a platform that lost the first answer can reconcile"
           },
           "422": {
             "content": {

@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.bank_closure import BankClosure
 from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
 from openclear.config import get_settings
@@ -29,7 +30,7 @@ _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MAX_REVIEW_MINUTES = 24 * 60
 
 
-class CutoffError(ValueError):
+class CutoffError(UserFacingError):
     """The message is fit to show."""
 
 
@@ -130,16 +131,22 @@ def time_zone_for(tenant: Tenant) -> str:
 # --- Deadlines ----------------------------------------------------------------------------------
 
 
-def next_cutoff(arrived: datetime, cutoff: str, zone: str, min_review_minutes: int, closed: frozenset[date] = frozenset()) -> datetime:
-    """The first `cutoff` (HH:MM in `zone`) on a business day at least `min_review_minutes`
-    after `arrived`, in UTC. The local time is kept across a daylight-saving change."""
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def next_cutoff(arrived: datetime, cutoff: str, zone: str, min_review_minutes: int, closed: frozenset[date] = frozenset(), *,
+                open_on_federal_holidays: bool = False) -> datetime:
+    """The first `cutoff` (HH:MM in `zone`) on a banking day at least `min_review_minutes`
+    after `arrived`, in UTC. The local time is kept across a daylight-saving change. A bank
+    that opens on the Federal Reserve's holidays has its cut-off on them too (REVIEW_1_33_PLAN.md G6)."""
     tz = ZoneInfo(zone)
     earliest = arrived.astimezone(tz) + timedelta(minutes=min_review_minutes)
     hours, minutes = (int(part) for part in cutoff.split(":"))
     day = earliest.date()
     for _ in range(400):  # a year and more of closed days would be a configuration error
         candidate = datetime.combine(day, time(hours, minutes), tzinfo=tz)
-        if candidate >= earliest and is_business_day(day, closed):
+        if candidate >= earliest and is_banking_day(day, closed, open_on_federal_holidays=open_on_federal_holidays):
             return candidate.astimezone(timezone.utc)
         day += timedelta(days=1)
     raise CutoffError("No business day was found for the cut-off within a year; check the bank's closures.")
@@ -160,7 +167,8 @@ def deadline_for(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID 
     except ZoneInfoNotFoundError:
         zone = ZoneInfo("UTC")
     closed = frozenset(c.closed_on for c in closures(session, tenant_id))
-    return next_cutoff(arrived or datetime.now(timezone.utc), cutoff, zone.key, tenant.cutoff_min_review_minutes, closed)
+    return next_cutoff(arrived or _now(), cutoff, zone.key, tenant.cutoff_min_review_minutes, closed,
+                       open_on_federal_holidays=tenant.open_on_federal_holidays)
 
 
 # --- A check's return deadline (REGULATORY_PLAN.md RG1) ------------------------------------------
@@ -210,8 +218,10 @@ def within_return_deadline(session: Session, tenant_id: uuid.UUID, customer_id: 
                            deadline: datetime | None, returns_by: datetime | None) -> datetime | None:
     """`deadline`, or earlier: never after the cut-off on the check's return day (or, with no
     cut-off, the return deadline itself), so the core can still send the return in time. A
-    check that arrives after that is due at once. No deadline (no cut-off anywhere: the tests)
-    stays none."""
+    check that arrives after that cut-off, while its midnight deadline is still ahead, gets the
+    bank's minimum review time, never past midnight: a person sees it before a default decides
+    it (REVIEW_1_33_PLAN.md G1, RV-D7). One whose midnight deadline has passed is due at once.
+    No deadline (no cut-off anywhere: the tests) stays none."""
     if returns_by is None or deadline is None:
         return deadline
     tenant = session.get(Tenant, tenant_id)
@@ -225,6 +235,9 @@ def within_return_deadline(session: Session, tenant_id: uuid.UUID, customer_id: 
         hours, minutes = (int(part) for part in cutoff.split(":"))
         last_day = (returns_by.astimezone(zone) - timedelta(days=1)).date()
         latest = datetime.combine(last_day, time(hours, minutes), tzinfo=zone).astimezone(timezone.utc)
+    now = _now()
+    if latest < now < returns_by:
+        latest = min(returns_by, now + timedelta(minutes=tenant.cutoff_min_review_minutes))
     return latest if deadline is None or deadline > latest else deadline
 
 

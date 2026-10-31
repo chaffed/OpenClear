@@ -738,11 +738,12 @@ class InventoryCuec(TypedDict):
 
 
 class IssuedDetails(TypedDict):
-    """What was issued, to explain a decline. Never sent for a match."""
+    """What was issued, to explain a decline. Never sent for a match, nor when the only problem
+is the payee the teller didn't send; the payee comes only when the one sent differs."""
 
     amount: str
     issue_date: str
-    payee_name: str
+    payee_name: NotRequired[str | None]
 
 
 class IssuedItemCreate(TypedDict):
@@ -1025,8 +1026,8 @@ class ValuesBeforeAfter(TypedDict):
 class Verification(TypedDict):
     expires_at: str
     issued: NotRequired[IssuedDetails | None]
-    problems: list[Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "payee_needed"]]
-    result: Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "payee_needed"]
+    problems: list[Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "being_cashed", "payee_needed"]]
+    result: Literal["match", "not_on_positive_pay", "stopped", "already_paid", "voided", "not_issued", "stop_differs", "amount_differs", "payee_differs", "stale", "customer_review", "being_cashed", "payee_needed"]
     verification_id: str
 
 

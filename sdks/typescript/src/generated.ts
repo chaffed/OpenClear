@@ -709,11 +709,11 @@ export interface InventoryCuec {
   withdrawn: boolean;
 }
 
-/** What was issued, to explain a decline. Never sent for a match. */
+/** What was issued, to explain a decline. Never sent for a match, nor when the only problem is the payee the teller didn't send; the payee comes only when the one sent differs. */
 export interface IssuedDetails {
   amount: string;
   issue_date: string;
-  payee_name: string;
+  payee_name?: string | null;
 }
 
 export interface IssuedItemCreate {
@@ -979,8 +979,8 @@ export interface ValuesBeforeAfter {
 export interface Verification {
   expires_at: string;
   issued?: IssuedDetails | null;
-  problems: Array<"match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "payee_needed">;
-  result: "match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "payee_needed";
+  problems: Array<"match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "being_cashed" | "payee_needed">;
+  result: "match" | "not_on_positive_pay" | "stopped" | "already_paid" | "voided" | "not_issued" | "stop_differs" | "amount_differs" | "payee_differs" | "stale" | "customer_review" | "being_cashed" | "payee_needed";
   verification_id: string;
 }
 

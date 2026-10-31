@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.access_review import AccessReview, AccessReviewItem
 from openclear.domain.customer import Customer
 from openclear.domain.security_group import SecurityGroup
@@ -26,7 +27,7 @@ from openclear.domain.user import User
 DECISIONS = ("confirmed", "changed", "removed")
 
 
-class ReviewError(ValueError):
+class ReviewError(UserFacingError):
     """The message is fit to show."""
 
 

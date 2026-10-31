@@ -22,7 +22,7 @@
     <tbody>
       <tr><td>{{ record_keys[0] }}</td><td>Which record to update ({{ record_keys[1] }} works instead)</td></tr>
       {% for f in fields %}
-      <tr><td>cf_{{ f.key }}</td><td>{{ f.label }} ({{ f.field_type }}{% if f.unique %}, unique{% endif %})</td></tr>
+      <tr><td>cf_{{ f.key }}</td><td>{{ f.label }} ({{ f.field_type | custom_field_type | lower }}{% if f.unique %}, unique{% endif %})</td></tr>
       {% endfor %}
     </tbody>
   </table>

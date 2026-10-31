@@ -19,6 +19,7 @@ from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.incident import IncidentContact, IncidentNotice, IncidentNoticeDelivery
 from openclear.domain.tenant import Tenant
@@ -26,11 +27,12 @@ from openclear.services import audit_log_service
 
 KINDS = {"incident": "Incident", "maintenance": "Scheduled maintenance", "update": "Update", "closed": "Closed",
          "offboarding": "Offboarding"}  # offboarding: services/offboarding_service.py, never chosen by hand
+HAND_KINDS = {k: v for k, v in KINDS.items() if k != "offboarding"}  # what the platform's form offers (REVIEW_1_33_PLAN.md G5)
 CONTACT_KINDS = ("contact", "ceo", "cio")
 MAX_CONTACTS = 10
 
 
-class IncidentError(ValueError):
+class IncidentError(UserFacingError):
     """Fit to show."""
 
 
@@ -70,8 +72,9 @@ def set_contacts(session: Session, tenant_id: uuid.UUID, wanted: list[ContactInp
     """Replaces the bank's contacts and confirms them. Audited as incident_contact.changed (a high
     security event: whoever sets these decides where incident notices go), naming the old ones too."""
     cleaned = [_clean(c) for c in wanted if (c.name or c.email)]
-    if not [c for c in cleaned if c.kind == "contact"]:
-        raise IncidentError("Name at least one incident contact.")
+    if not cleaned:
+        # The rule's own fallback (304.24(a)(2)): a bank may name only its CEO and CIO (REVIEW_1_33_PLAN.md G3).
+        raise IncidentError("Name at least one incident contact, or your CEO and CIO.")
     if len(cleaned) > MAX_CONTACTS:
         raise IncidentError(f"At most {MAX_CONTACTS} contacts.")
     before = [f"{c.kind}: {c.name} <{c.email}>" for c in contacts(session, tenant_id)]
@@ -92,8 +95,8 @@ def set_contacts(session: Session, tenant_id: uuid.UUID, wanted: list[ContactInp
 
 def confirm_contacts(session: Session, tenant_id: uuid.UUID, *, user_id: uuid.UUID | None) -> None:
     """The yearly confirmation that the contacts are still right."""
-    if not [c for c in contacts(session, tenant_id) if c.kind == "contact"]:
-        raise IncidentError("Name at least one incident contact first.")
+    if not contacts(session, tenant_id):
+        raise IncidentError("Name at least one incident contact, or your CEO and CIO, first.")
     session.get(Tenant, tenant_id).incident_contacts_confirmed_at = datetime.now(timezone.utc)
     audit_log_service.record_action(session, tenant_id, actor_user_id=user_id, channel="web", action="incident_contact.confirmed",
                                     summary="Confirmed the incident contacts", resource_type="tenant", resource_id=tenant_id)
@@ -170,6 +173,20 @@ def _deliver(session: Session, notice: IncidentNotice, bank: Tenant, user_id: uu
         metadata={"notice_id": str(notice.id), "kind": notice.kind, "recipients": to})
     session.flush()
     return delivery
+
+
+def sent(session: Session, limit: int = 50) -> list[tuple[IncidentNotice, list[IncidentNoticeDelivery]]]:
+    """The notices issued, newest first, each with its deliveries, so the operator sees which banks
+    were told and which had nobody to tell (REVIEW_1_33_PLAN.md G4). Every scope: the caller is the provider."""
+    notices = list(session.execute(select(IncidentNotice).order_by(IncidentNotice.issued_at.desc()).limit(limit)).scalars())
+    if not notices:
+        return []
+    deliveries = session.execute(select(IncidentNoticeDelivery).where(
+        IncidentNoticeDelivery.notice_id.in_([n.id for n in notices]))).scalars().all()
+    by_notice: dict[uuid.UUID, list[IncidentNoticeDelivery]] = {}
+    for d in deliveries:
+        by_notice.setdefault(d.notice_id, []).append(d)
+    return [(n, by_notice.get(n.id, [])) for n in notices]
 
 
 def unacknowledged(session: Session, tenant_id: uuid.UUID) -> list[tuple[IncidentNoticeDelivery, IncidentNotice]]:

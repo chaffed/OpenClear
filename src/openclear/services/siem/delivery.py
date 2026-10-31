@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.crypto import decrypt_secret, encrypt_secret
 from openclear.auth.outbound_http import UnsafeUrlError, check_url
 from openclear.config import Settings, get_settings
@@ -38,7 +39,7 @@ MAX_BATCHES_PER_TICK = 20
 STALE_AFTER = timedelta(hours=1)
 
 
-class DestinationError(ValueError):
+class DestinationError(UserFacingError):
     """Bad input on the settings form; the message is fit to show."""
 
 

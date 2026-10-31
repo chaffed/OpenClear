@@ -16,6 +16,7 @@ from openclear.services import audit_log_service, change_request_service, plugin
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/admin/plugins", tags=["web-plugins"])
 _manage = require_web_permission("admin:manage")
@@ -57,14 +58,14 @@ async def set_choice(
                 summary=f"Turn {'on' if enabled else 'off'} the matching rule {name}")
         except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return see_other("/ui/admin/plugins", flash=str(exc))
+            return see_other("/ui/admin/plugins", flash=shown(exc))
         db.commit()
         return see_other("/ui/admin/plugins", flash=_waiting(outcome))
     try:
         changed = plugin_service.set_enabled(db, ctx.tenant_id, point, name, enabled, user_id=ctx.user_id, config=config)
     except ValueError as exc:
         db.rollback()
-        return see_other("/ui/admin/plugins", flash=str(exc))
+        return see_other("/ui/admin/plugins", flash=shown(exc))
     if changed:
         audit_log_service.record_action(
             db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="plugin.enable" if enabled else "plugin.disable",

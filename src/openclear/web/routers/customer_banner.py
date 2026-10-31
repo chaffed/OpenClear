@@ -12,6 +12,7 @@ from openclear.services import audit_log_service, customer_service
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/banner", tags=["web-customer-banner"])
 
@@ -60,7 +61,7 @@ def update_banner(
         db.rollback()
         return render_template(
             request, "customers/banner.html", ctx=ctx, customer=customer, banner_message=banner_message,
-            error=str(exc), status_code=422,
+            error=shown(exc), status_code=422,
         )
 
     audit_log_service.record_action(

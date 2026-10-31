@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.embed_launch import EmbedLaunch
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
@@ -38,7 +39,7 @@ _CODE = re.compile(r"^oclaunch_([0-9a-f]{32})_([A-Za-z0-9_-]{30,})$")
 MAX_ORIGINS = 20
 
 
-class EmbedError(ValueError):
+class EmbedError(UserFacingError):
     """Refused; the message is fit to show the online banking developer."""
 
 

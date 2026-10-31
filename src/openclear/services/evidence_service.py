@@ -23,6 +23,8 @@ import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from importlib.metadata import PackageNotFoundError, version
 
+from openclear.errors import UserFacingError
+
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -30,7 +32,7 @@ MAX_DECISIONS = 50_000
 MAX_DAYS = 400
 
 
-class EvidenceError(ValueError):
+class EvidenceError(UserFacingError):
     """The request can't be met; the message is fit to show."""
 
 

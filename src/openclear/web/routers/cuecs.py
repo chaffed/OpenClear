@@ -22,6 +22,7 @@ from openclear.services.attestation_service import AttestationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/compliance", tags=["web-cuecs"])
 _read = require_web_permission("compliance:read")
@@ -90,7 +91,7 @@ def settings(attestation_period: str = Form("quarterly"), attest_second_person: 
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(BASE, flash=str(exc))
+        return see_other(BASE, flash=shown(exc))
     second = attest_second_person if outcome.applied else tenant.attest_second_person
     _record(db, ctx, "compliance.settings.changed", f"Attestations {attestation_period}; second person {'required' if second else 'not required'}; "
             f"customers {'asked' if ask_customers_to_attest else 'not asked'} to attest each year", "tenant", ctx.tenant_id)
@@ -108,7 +109,7 @@ async def import_mappings(upload_file: UploadFile, db: Session = Depends(get_db)
         added, problems = attestation_service.import_csv(db, ctx.tenant_id, ctx.customer_id, content, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return see_other(BASE, flash=str(exc))
+        return see_other(BASE, flash=shown(exc))
     _record(db, ctx, "compliance.mapping.changed", f"Imported {added} CUEC mappings from {upload_file.filename}", "tenant", ctx.tenant_id)
     db.commit()
     return see_other(BASE, flash=f"Added {added} mappings." + (f" Skipped: {'; '.join(problems[:5])}" if problems else ""))
@@ -190,7 +191,7 @@ def accept(attestation_id: uuid.UUID, db: Session = Depends(get_db), ctx: Tenant
         attestation_service.accept(db, found, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return see_other(f"{BASE}/{found.cuec_id}", flash=str(exc))
+        return see_other(f"{BASE}/{found.cuec_id}", flash=shown(exc))
     _record(db, ctx, "compliance.attestation.accepted", f"Accepted {found.cuec_id} for {found.period_start} to {found.period_end}: {found.result}",
             "cuec_attestation", found.id)
     attestation_service.announce_accepted(db, ctx.tenant_id, found)
@@ -208,7 +209,7 @@ def reject(attestation_id: uuid.UUID, reason: str = Form(""), db: Session = Depe
         attestation_service.reject(db, found, reason=reason, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return see_other(f"{BASE}/{found.cuec_id}", flash=str(exc))
+        return see_other(f"{BASE}/{found.cuec_id}", flash=shown(exc))
     _record(db, ctx, "compliance.attestation.rejected", f"Rejected {found.cuec_id} for {found.period_start} to {found.period_end}: {reason.strip()[:300]}",
             "cuec_attestation", found.id)
     db.commit()
@@ -241,7 +242,7 @@ def add_mapping(cuec_id: str, control_ref: str = Form(""), control_name: str = F
                                                   owner=owner, link=link, user_id=ctx.user_id)
     except AttestationError as exc:
         db.rollback()
-        return see_other(f"{BASE}/{cuec_id}", flash=str(exc))
+        return see_other(f"{BASE}/{cuec_id}", flash=shown(exc))
     _record(db, ctx, "compliance.mapping.changed", f"Mapped {cuec_id} to {mapping.control_ref}", "cuec_mapping", mapping.id)
     db.commit()
     return see_other(f"{BASE}/{cuec_id}", flash="Mapping added.")
@@ -267,7 +268,7 @@ async def attest(request: Request, cuec_id: str, db: Session = Depends(get_db), 
             files=files, user_id=ctx.user_id)
     except (AttestationError, ValueError) as exc:
         db.rollback()
-        return see_other(f"{BASE}/{cuec_id}", flash=str(exc) if isinstance(exc, AttestationError) else "Choose the period's dates.")
+        return see_other(f"{BASE}/{cuec_id}", flash=shown(exc) if isinstance(exc, AttestationError) else "Choose the period's dates.")
     _record(db, ctx, "compliance.attestation.prepared", f"Prepared an attestation of {cuec_id} for {attestation.period_start} to "
             f"{attestation.period_end}: {attestation.result}" + (f", with {len(files)} files" if files else ""), "cuec_attestation", attestation.id)
     db.commit()

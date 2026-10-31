@@ -29,6 +29,7 @@ from openclear.services import (
 from openclear.web.deps import WebNotFound, render_template, require_any_web_permission, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import clear_auth_cookies, verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/admin", tags=["web-admin"])
 
@@ -97,7 +98,7 @@ def retrain(
     try:
         result = train_model(db, network_code, tenant_id=ctx.tenant_id)
     except (InsufficientTrainingData, RetrainCooldownActive) as exc:
-        return see_other("/ui/admin/ml-models", error=str(exc))
+        return see_other("/ui/admin/ml-models", error=shown(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="ml_model.retrain",
         summary=f"Retrained the bank's {network_code} model ({'activated' if result.promoted else 'not activated'})",
@@ -120,7 +121,7 @@ def activate(
             change_request_service.request_model_activation(db, ctx.tenant_id, model_id, user_id=ctx.user_id)
         except change_request_service.ChangeRequestError as exc:
             db.rollback()
-            return see_other("/ui/admin/ml-models", error=str(exc) if "waiting" in str(exc) else "That model couldn't be found.")
+            return see_other("/ui/admin/ml-models", error=shown(exc) if "waiting" in str(exc) else "That model couldn't be found.")
         db.commit()
         return see_other("/ui/admin/ml-models", flash="Waiting for a second admin to approve (Settings → Changes awaiting approval).")
     try:
@@ -194,7 +195,7 @@ def set_customer_disposition(
             summary=f"Default decision for {network_code}: {mode.value.replace('_', ' ')} for {customer.name}")
     except ValueError as exc:
         db.rollback()
-        return see_other(back, error=str(exc))
+        return see_other(back, error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other(back, flash=waiting_message(outcome))

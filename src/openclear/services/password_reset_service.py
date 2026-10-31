@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.password_policy import validate_password
 from openclear.auth.security import hash_password
 from openclear.config import get_settings
@@ -26,7 +27,7 @@ from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 
 
-class ResetError(ValueError):
+class ResetError(UserFacingError):
     """Why a reset can't be started or finished, for the page to show."""
 
 

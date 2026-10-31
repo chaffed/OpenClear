@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.customer import Customer
 from openclear.domain.security_group import SecurityGroup
 from openclear.domain.tenant import Tenant
@@ -29,7 +30,7 @@ from openclear.domain.tenant_membership import MembershipAccount, TenantMembersh
 from openclear.domain.user import User
 
 
-class ApprovalError(ValueError):
+class ApprovalError(UserFacingError):
     """The message is fit to show."""
 
 

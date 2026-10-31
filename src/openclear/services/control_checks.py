@@ -430,15 +430,16 @@ def incident_contacts(session: Session, tenant_id: uuid.UUID) -> Control:
     evidence = {"contacts": len(named), "ceo_and_cio": sorted(c.kind for c in rows if c.kind != "contact"),
                 "confirmed_at": confirmed.isoformat() if confirmed else None, "unacknowledged_notices": len(waiting)}
     title = "Incident contacts named"
-    if not named:
-        return Control("incident_contacts", title, WARN, "No incident contacts are named, so the service provider's incident notices go "
-                       "to your CEO and CIO, or your administrators (Settings → Incident contacts).", evidence)
+    if not rows:
+        return Control("incident_contacts", title, WARN, "No incident contacts are named, nor a CEO and CIO, so the service provider's "
+                       "incident notices go to your administrators (Settings → Incident contacts).", evidence)
     if waiting:
         return Control("incident_contacts", title, WARN, f"{_plural(len(waiting), 'incident notice')} from the service provider "
                        "not acknowledged yet.", evidence)
     if confirmed is None or confirmed < _now() - timedelta(days=365):
         return Control("incident_contacts", title, WARN, "The incident contacts haven't been confirmed in a year.", evidence)
-    return Control("incident_contacts", title, PASS, f"{_plural(len(named), 'incident contact')}, confirmed {confirmed:%Y-%m-%d}.", evidence)
+    who = _plural(len(named), "incident contact") if named else "The CEO and CIO as the fallback (304.24(a)(2))"
+    return Control("incident_contacts", title, PASS, f"{who}, confirmed {confirmed:%Y-%m-%d}.", evidence)
 
 
 def custom_fields(session: Session, tenant_id: uuid.UUID) -> Control:

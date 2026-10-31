@@ -25,6 +25,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.rate_limit import rate_limit
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-people"])
 _manage = require_web_permission("customer_user:manage")
@@ -105,7 +106,7 @@ def set_approvals(request: Request, changes_need_approval: bool = Form(False), d
                                                           tenant_id=ctx.tenant_id, customer_id=ctx.customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other("/ui/people", flash=str(exc))
+        return see_other("/ui/people", flash=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other("/ui/people", flash=_waiting(outcome))
@@ -135,7 +136,7 @@ async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantCon
                 summary=f"Invite {values['email'].strip()} as an administrator")
         except ValueError as exc:
             db.rollback()
-            return _invite_form(request, db, ctx, error=str(exc), values=values, status_code=422)
+            return _invite_form(request, db, ctx, error=shown(exc), values=values, status_code=422)
         db.commit()
         return see_other("/ui/people", flash=_waiting(outcome))
     try:
@@ -148,7 +149,7 @@ async def invite(request: Request, db: Session = Depends(get_db), ctx: TenantCon
         )
     except PeopleError as exc:
         db.rollback()
-        return _invite_form(request, db, ctx, error=str(exc), values=values, status_code=422)
+        return _invite_form(request, db, ctx, error=shown(exc), values=values, status_code=422)
     _record(db, ctx, "customer_people.invite", f"Invited {invitation.email}")
     db.commit()
     return see_other("/ui/people", flash=f"Invitation sent to {invitation.email}.")
@@ -301,7 +302,7 @@ async def update_person(request: Request, membership_id: uuid.UUID, db: Session 
                 summary=f"Make {current.user.email} an administrator")
         except ValueError as exc:
             db.rollback()
-            return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+            return _person_page(request, db, ctx, membership_id, error=shown(exc), status_code=422)
         db.commit()
         return see_other("/ui/people", flash=_waiting(outcome))
     try:
@@ -313,7 +314,7 @@ async def update_person(request: Request, membership_id: uuid.UUID, db: Session 
         )
     except PeopleError as exc:
         db.rollback()
-        return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+        return _person_page(request, db, ctx, membership_id, error=shown(exc), status_code=422)
     person = customer_people_service.get_person(db, ctx.tenant_id, ctx.customer_id, membership.id)
     _record(db, ctx, "customer_people.update",
             f"Changed {person.user.email}: {person.group.name if person.group else ''}, {person.accounts}"
@@ -327,7 +328,7 @@ def _action(request: Request, db: Session, ctx: TenantContext, membership_id: uu
         result = fn()
     except PeopleError as exc:
         db.rollback()
-        return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+        return _person_page(request, db, ctx, membership_id, error=shown(exc), status_code=422)
     person = customer_people_service.get_person(db, ctx.tenant_id, ctx.customer_id, membership_id)
     _record(db, ctx, action, done.format(email=person.user.email))
     db.commit()
@@ -396,7 +397,7 @@ def change_email(request: Request, membership_id: uuid.UUID, new_email: str = Fo
             base_url=get_settings().public_base_url or str(request.base_url))
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return _person_page(request, db, ctx, membership_id, error=str(exc), status_code=422)
+        return _person_page(request, db, ctx, membership_id, error=shown(exc), status_code=422)
     db.commit()
     return see_other("/ui/people", flash=f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
 
@@ -449,10 +450,10 @@ def accept(request: Request, token: str, password: str = Form(""), password_conf
             user, membership = customer_people_service.accept_as_new(db, opened, password)
     except customer_people_service.InvitationTaken as exc:
         db.rollback()  # nothing this request made survives
-        return _accept_page(request, None, error=str(exc), status_code=410)
+        return _accept_page(request, None, error=shown(exc), status_code=410)
     except ValueError as exc:  # PeopleError, or a password the policy refuses
         db.commit()  # keeps a wrong password's count toward the lockout
-        return _accept_page(request, opened, error=str(exc), status_code=422)
+        return _accept_page(request, opened, error=shown(exc), status_code=422)
     audit_log_service.record_action(db, opened.tenant.id, actor_user_id=user.id, channel="web", action="customer_people.accept",
                                     summary=f"{user.email} accepted the invitation to {opened.customer.name}"
                                             + (", waiting for the bank's approval" if membership.pending_approval_at else ""),

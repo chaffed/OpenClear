@@ -18,6 +18,7 @@ from openclear.services import audit_log_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/settings/fraud-model", tags=["web-fraud-model"])
 _PAGE = "/ui/settings/fraud-model"
@@ -49,7 +50,7 @@ def set_fraud_scoring(
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(_PAGE, error=str(exc))
+        return see_other(_PAGE, error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other(_PAGE, flash=waiting_message(outcome))

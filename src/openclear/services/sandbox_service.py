@@ -21,12 +21,13 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 from openclear.domain.tenant import Tenant
 from openclear.domain.user import User
 
 
-class SandboxError(ValueError):
+class SandboxError(UserFacingError):
     pass
 
 

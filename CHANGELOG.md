@@ -1,5 +1,86 @@
 # Changelog
 
+## Unreleased
+
+- **A check paid by a decision is paid.** Until now only a check that matched its issued item
+  cleanly was recorded as paid; one paid by a decision (an accepted amount mismatch, or every
+  check on a reverse positive pay account, paid at the cut-off by silence) stayed pending, so the
+  same check presented again was the same item again, and on a reverse account was paid again.
+  From the cut-off, a paid check is paid, its issued item with it, and a returned check returned,
+  so a second presentment is a duplicate wherever it comes from; the upgrade brings every
+  decision already final into line. *Pay all N to review* now pays exactly the checks the page
+  listed, not any N. A teller platform that lost the answer to `POST /api/v1/checks/cashed` is
+  told, on its retry, which paid item the first call recorded and when
+  (`plans/REVIEW_1_33_PLAN.md` RV1).
+- **The teller answer gives nothing the caller didn't send.** A decline for a payee the teller
+  didn't send no longer carries the payee it's asking for, and `issued` names the payee only
+  when the one sent differs. A check another teller verified in the last 15 minutes and hasn't
+  recorded cashed is declined `being_cashed`, so two branches can't both pay it out. Ten declines
+  of any kind within an hour (not only "not issued": a wrong amount reveals the issued amount)
+  raise `teller.verify.probing`, counted by teller, branch, API client, and now by the person
+  when a person's token asks. A check on an account whose customer's service has ended answers
+  `not_on_positive_pay`, as the guide said, instead of failing (RV2).
+- **A check that arrives late gets a look before a default decides it.** Its decision deadline
+  is never later than the cut-off on its return day; when a file reaches OpenClear after that
+  cut-off (a core posting yesterday's items mid-morning), the item was due at once and the
+  customer's default decision applied at the next sweep, unseen. It now gets the bank's minimum
+  review time, never past the midnight deadline. A bank that opens on the Federal Reserve's
+  holidays now has its cut-off on them too, as the setting said. The decisions CSV's columns are
+  listed in the BI guide, with the `after_return_deadline` column 1.29.0 added at the end (RV3).
+- **Deleting a bank's data clears every storage area.** The deletion cleared five of the seven:
+  the decision files its core took, and fraud-scoring artifacts, stayed. It now clears every
+  area from storage's own list, the certificate names them all, and a test walks the list. The
+  bank is frozen as the deletion job starts (sign-ins and tokens refused, its queued jobs gone),
+  so nothing is added while the rows go. A deletion the queue gives up on is marked failed, shown
+  on the bank's offboarding page and raised as a critical event, instead of showing as running
+  at a time long past. Offboarding a bank, deleting its data and ending a customer's positive pay
+  always need a second person: with nobody else able to approve, the request is refused rather
+  than applied after the day's cooling-off (RV4).
+- **A customer's positive pay ends at midnight on its last day, everywhere.** Sign-in, files
+  naming its accounts and teller answers now read the last day itself, not the daily run that
+  follows it (which could be a morning later), and the end is recorded as the end of that day, so
+  the 90-day clock and every page agree with the day the customer was told. A core's customer
+  sync can no longer bring an ended customer back: `PUT /api/v1/customers/{number}` with
+  `is_active: true` is refused with 409, and restoring is the two-administrator change on the
+  customer's page. Ending service signs its people out of this bank only. When a customer's data
+  is deleted, the bank's attestations and access reviews about it stay, no longer naming it; a
+  person kept because the action log names them keeps nothing personal (no email, phone,
+  password or sessions). Dates on the customer page, the banner and the Deleted customers list are
+  the bank's days (RV5).
+- **Custom fields: numbers, limits, files and messages.** A negative number in a `cf_` column of
+  the decisions CSV reached the core as `'-5`, the spreadsheet-formula guard's doing; a plain
+  signed number now passes as one. A customer's reader asking the decision feed for a field not
+  shown to the customer is told there's no such field, as for one that doesn't exist. Restoring an
+  archived field counts against the 25-field and 3-in-list limits. An update file naming a field
+  the bank doesn't have, or has archived, is refused whole instead of failing every row; a text
+  cell reading `NA`, `null` or `None` in such a file is that text, not blank. A whole number takes
+  only the digits 0–9, a date only `YYYY-MM-DD`, a decimal no `_`, as their messages said; a form
+  reports every field's problem at once; a dropped choice option is retired only while a record
+  holds it. Field types read as words ("Whole number", "Yes/no"). **Rate limiting with Redis:**
+  while Redis can't be reached each instance now limits on its own instead of allowing
+  everything, the outage is a `rate_limit.backend_down` security event (once per outage), and the
+  Controls page says so (new control OC-SC-08) (RV6).
+- **Incident contacts and notices.** A bank may name only its CEO and CIO, the fallback 12 CFR
+  304.24 gives, and notices then go to them (the page and the control said so; the code required a
+  named contact). The form shows a row for each contact and one more, up to ten. The yearly
+  confirmation is a security event (`incident_contact.confirmed`). The platform's Sent table says
+  which banks each notice reached and how many addresses, and marks a bank with nobody to email;
+  "Offboarding" is no longer a kind an operator can pick. A check refused at a branch is described
+  in words on the customer's Exceptions page ("issued for another amount"). The SAML signing-key
+  page says that finishing before the identity provider has the new certificate stops sign-in and
+  can't be undone, and that withdrawing after it switched needs the old certificate back (RV7).
+- **Refusals are sentences written for people.** Every page that shows why something was refused
+  now shows the sentence OpenClear wrote for it; an exception from a library or a database driver
+  shows a fixed sentence instead and is logged (the class of finding CodeQL #176 raised, closed
+  everywhere rather than in one place). Replacing a customer's SAML signing key from the bank's
+  side goes through the customer's own second-person rule. **For operators:** `scripts/third_party.sh
+  --check` regenerates the third-party inventory and notices and fails when the committed copies
+  differ; the Security workflow runs it. The tests' Postgres image is pinned by digest. A
+  posted-check file with an absurdly long number in an amount or a trailer is refused as a row or
+  a trailer problem, not an error (RV8).
+
+- **Dependencies:** pyasn1 0.6.5 (CVE-2026-119197, CVE-2026-119195) in the image and for development.
+
 ## 1.33.0 — 2026-10-30
 
 - **Third-party components** (`plans/THIRD_PARTY_PLAN.md`). A page listing everything OpenClear

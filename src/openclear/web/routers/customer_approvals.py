@@ -17,6 +17,7 @@ from openclear.services.customer_approval_service import ApprovalError
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/approvals/customer-users", tags=["web-customer-approvals"])
 _manage = require_web_permission("customer:manage")
@@ -49,7 +50,7 @@ def _decide(db: Session, ctx: TenantContext, membership_id: uuid.UUID, *, approv
             customer_approval_service.reject(db, ctx.tenant_id, membership_id, reason)
     except ApprovalError as exc:
         db.rollback()
-        return see_other("/ui/approvals/customer-users", flash=str(exc))
+        return see_other("/ui/approvals/customer-users", flash=shown(exc))
     from openclear.domain.customer import Customer
 
     customer = db.get(Customer, customer_id)

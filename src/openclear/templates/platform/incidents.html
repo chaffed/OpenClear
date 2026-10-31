@@ -15,7 +15,7 @@
       <select name="kind">{% for value, label in kinds.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
     </label>
     <label>Follows an earlier notice (for an update or closure)
-      <select name="follows_id"><option value="">—</option>{% for n in notices %}<option value="{{ n.id }}">{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} {{ n.title }}</option>{% endfor %}</select>
+      <select name="follows_id"><option value="">—</option>{% for n, _d in notices %}<option value="{{ n.id }}">{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} {{ n.title }}</option>{% endfor %}</select>
     </label>
     <label>Title <input type="text" name="title" maxlength="200" required class="field-xl"></label>
     <label>What happened, what's affected, what the bank should do, and when you'll update them
@@ -38,8 +38,9 @@
 <div class="card">
   <h2>Sent</h2>
   <table>
-    <thead><tr><th>Sent</th><th>Kind</th><th>Title</th></tr></thead>
-    <tbody>{% for n in notices %}<tr><td>{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} UTC</td><td>{{ kinds[n.kind] }}</td><td>{{ n.title }}</td></tr>{% endfor %}</tbody>
+    <thead><tr><th>Sent</th><th>Kind</th><th>Title</th><th>Banks told</th></tr></thead>
+    <tbody>{% for n, deliveries in notices %}<tr><td>{{ n.issued_at.strftime("%Y-%m-%d %H:%M") }} UTC</td><td>{{ kinds.get(n.kind, n.kind) }}</td><td>{{ n.title }}</td>
+      <td>{% for d in deliveries %}{{ bank_names.get(d.tenant_id, "a bank") }}: {{ d.recipients | length }} {{ "address" if d.recipients | length == 1 else "addresses" }}{% if not d.recipients %} <strong>(nobody to email)</strong>{% endif %}{% if d.acknowledged_at %}, acknowledged{% endif %}{{ "; " if not loop.last }}{% endfor %}</td></tr>{% endfor %}</tbody>
   </table>
 </div>
 {% endif %}

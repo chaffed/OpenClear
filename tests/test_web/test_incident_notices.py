@@ -42,8 +42,38 @@ def test_a_bank_names_its_contacts_and_the_check_watches_them(client, db_session
                                                              SecurityEvent.tenant_id == tenant.id)).scalars().first()
     assert changed is not None and changed.severity == "high"
 
-    refused = client.post("/ui/settings/incident-contacts", data={"csrf_token": csrf, "ceo_name": "Only", "ceo_email": "ceo@bank.example"})
-    assert "Name at least one incident contact" in refused.text
+    # The rule's own fallback is enough on its own (REVIEW_1_33_PLAN.md G3); nobody at all isn't.
+    only = client.post("/ui/settings/incident-contacts", data={"csrf_token": csrf, "ceo_name": "Only", "ceo_email": "ceo@bank.example",
+                                                                 "cio_name": "Cy", "cio_email": "cio@bank.example"})
+    assert only.status_code in (200, 303) and "Name at least one" not in only.text
+    db_session.expire_all()
+    assert incident_service.recipients(db_session, tenant.id) == ["ceo@bank.example", "cio@bank.example"]
+    assert control_checks.incident_contacts(db_session, tenant.id).status == "PASS"
+    refused = client.post("/ui/settings/incident-contacts", data={"csrf_token": csrf})
+    assert "Name at least one incident contact, or your CEO and CIO" in refused.text
+    confirmed = client.post("/ui/settings/incident-contacts", data={"csrf_token": csrf, "confirm_only": "1"})
+    assert confirmed.status_code in (200, 303)
+    names = set(db_session.execute(select(SecurityEvent.name).where(SecurityEvent.tenant_id == tenant.id)).scalars())
+    assert "incident_contact.confirmed" in names  # the yearly attestation reaches the SIEM too (G8)
+
+
+def test_the_sent_table_says_who_was_told_and_offboarding_isnt_a_kind_to_pick(client, db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md G4, G5."""
+    told, _a, _users = tenant_factory.make(slug="inc-told")
+    _contacts(db_session, told)
+    operator = _staff(db_session, "ops2@incidents.example", "operator")
+    _platform_login(client, operator.email)
+    page = client.get("/ui/platform/incidents").text
+    assert "Offboarding" not in page
+    csrf = client.cookies.get("csrf_token")
+    sent = client.post("/ui/platform/incidents", data={"csrf_token": csrf, "kind": "maintenance", "title": "Sunday window",
+                                                       "message": "Down 02:00–03:00 UTC.", "tenant_ids": str(told.id)}, follow_redirects=False)
+    assert sent.status_code == 303
+    by_hand = client.post("/ui/platform/incidents", data={"csrf_token": csrf, "kind": "offboarding", "title": "x", "message": "y",
+                                                          "tenant_ids": str(told.id)}, follow_redirects=False)
+    assert "Choose+the+kind" in by_hand.headers["location"] or "Choose%20the%20kind" in by_hand.headers["location"]
+    page = client.get("/ui/platform/incidents").text
+    assert "Banks told" in page and f"{told.name}: 1 address" in page
 
 
 def test_the_operator_notifies_the_banks_affected_and_each_acknowledges(client, db_session, tenant_factory):

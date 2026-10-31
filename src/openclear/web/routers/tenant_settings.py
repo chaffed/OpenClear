@@ -36,6 +36,7 @@ from openclear.web import control_panel
 from openclear.web.deps import WebNotFound, WebForbidden, get_web_context, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/settings", tags=["web-tenant-settings"])
 
@@ -190,7 +191,8 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         rows = incident_service.contacts(db, ctx.tenant_id)
         return {"contacts": [c for c in rows if c.kind == "contact"], "ceo": next((c for c in rows if c.kind == "ceo"), None),
                 "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
-                "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS}
+                "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS,
+                "max_contacts": incident_service.MAX_CONTACTS}
     if key == "provider-fields":
         from openclear.services import custom_field_service
 
@@ -333,7 +335,7 @@ def _change(request: Request, db: Session, ctx: TenantContext, kind: str, payloa
         outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return render_section(request, db, ctx, key, error=str(exc), **(error_overrides or {}))
+        return render_section(request, db, ctx, key, error=shown(exc), **(error_overrides or {}))
     if outcome.applied:
         if record and outcome.summary != "Nothing changed.":
             _record(db, ctx, *record)
@@ -369,7 +371,7 @@ async def update_settings(
         )
     except InvalidTenantSettingsInput as exc:
         db.rollback()
-        return render_section(request, db, ctx, "branding", error=str(exc), tenant_display_name=name, accent_color=accent_color)
+        return render_section(request, db, ctx, "branding", error=shown(exc), tenant_display_name=name, accent_color=accent_color)
 
     if tenant is not None:
         _record(db, ctx, "tenant.update_settings", f"Updated organization settings (name: {tenant.name})")
@@ -407,7 +409,7 @@ def update_session_timeout(
         )
     except InvalidTenantSettingsInput as exc:
         db.rollback()
-        return render_section(request, db, ctx, "timeouts", error=str(exc))
+        return render_section(request, db, ctx, "timeouts", error=shown(exc))
 
     if tenant is not None:
         _record(db, ctx, "tenant.update_session_timeout", (
@@ -430,7 +432,7 @@ def update_data_export_timeout(
         tenant = set_data_export_timeout(db, ctx.tenant_id, timeout_seconds=parsed_timeout)
     except InvalidTenantSettingsInput as exc:
         db.rollback()
-        return render_section(request, db, ctx, "timeouts", error=str(exc))
+        return render_section(request, db, ctx, "timeouts", error=shown(exc))
 
     if tenant is not None:
         _record(db, ctx, "tenant.update_data_export_timeout",
@@ -486,7 +488,7 @@ async def update_decision_files(
         decision_outbox_service.save(db, ctx.tenant_id, **payload)
     except decision_outbox_service.OutboxError as exc:
         savepoint.rollback()
-        return render_section(request, db, ctx, "decision-files", error=str(exc))
+        return render_section(request, db, ctx, "decision-files", error=shown(exc))
     savepoint.rollback()
     return _change(request, db, ctx, "decision_files", payload, key="decision-files",
                    record=("tenant.update_decision_files", f"Decision files {'on' if enabled else 'off'}: {layout}, every {interval_minutes} minutes"))
@@ -506,7 +508,7 @@ def update_embedding(
     try:
         origins = embed_service.parse_origins(embed_allowed_origins)
     except embed_service.EmbedError as exc:
-        return render_section(request, db, ctx, "embedding", error=str(exc), embed_allowed_origins=embed_allowed_origins)
+        return render_section(request, db, ctx, "embedding", error=shown(exc), embed_allowed_origins=embed_allowed_origins)
     return _change(request, db, ctx, "embedding", {"text": embed_allowed_origins}, key="embedding",
                    record=("tenant.update_embedding", f"Embedding origins: {', '.join(origins) or 'none (embedding off)'}"),
                    error_overrides={"embed_allowed_origins": embed_allowed_origins})
@@ -620,7 +622,7 @@ def update_dual_control(
             messages.append(waiting_message(switches))
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return render_section(request, db, ctx, "dual-control", error=str(exc), **asked)
+        return render_section(request, db, ctx, "dual-control", error=shown(exc), **asked)
     db.commit()
     return _saved(request, messages[0] if messages else "Settings updated.", key="dual-control")
 
@@ -696,7 +698,7 @@ def update_access_rules(
         db.rollback()
         settings = get_settings()
         return render_section(
-            request, db, ctx, "access-rules", error=str(exc) if isinstance(exc, InvalidTenantSettingsInput)
+            request, db, ctx, "access-rules", error=shown(exc) if isinstance(exc, InvalidTenantSettingsInput)
             or not isinstance(exc, ValueError) or not str(exc).startswith("invalid literal") else "Give whole numbers.",
             max_failed_attempts=max_failed_attempts or None, lockout_minutes=lockout_minutes or None,
             lockout_until_unlocked=lockout_until_unlocked, default_max_failed_attempts=settings.login_max_failed_attempts,
@@ -735,7 +737,7 @@ def update_messages(
         tenant = set_messages(db, ctx.tenant_id, login_message=login_message, banner_message=banner_message)
     except InvalidTenantSettingsInput as exc:
         db.rollback()
-        return render_section(request, db, ctx, "messages", error=str(exc), login_message=login_message, banner_message=banner_message)
+        return render_section(request, db, ctx, "messages", error=shown(exc), login_message=login_message, banner_message=banner_message)
 
     if tenant is not None:
         _record(db, ctx, "tenant.update_messages", "Updated login/banner messages")
@@ -807,7 +809,7 @@ async def update_incident_contacts(
             incident_service.confirm_contacts(db, ctx.tenant_id, user_id=ctx.user_id)
         except incident_service.IncidentError as exc:
             db.rollback()
-            return render_section(request, db, ctx, "incident-contacts", error=str(exc))
+            return render_section(request, db, ctx, "incident-contacts", error=shown(exc))
         db.commit()
         return _saved(request, "Incident contacts confirmed for the year.", key="incident-contacts")
     wanted = []
@@ -823,7 +825,7 @@ async def update_incident_contacts(
         incident_service.set_contacts(db, ctx.tenant_id, wanted, user_id=ctx.user_id)
     except incident_service.IncidentError as exc:
         db.rollback()
-        return render_section(request, db, ctx, "incident-contacts", error=str(exc))
+        return render_section(request, db, ctx, "incident-contacts", error=shown(exc))
     db.commit()
     return _saved(request, "Incident contacts saved: the service provider's incident notices go to them.", key="incident-contacts")
 
@@ -853,7 +855,7 @@ async def update_wsud_form(
                                       filename=getattr(upload, "filename", None), user_id=ctx.user_id)
     except bank_form_service.FormError as exc:
         db.rollback()
-        return render_section(request, db, ctx, "wsud-form", error=str(exc), form_format=chosen or "markdown", form_body=body)
+        return render_section(request, db, ctx, "wsud-form", error=shown(exc), form_format=chosen or "markdown", form_body=body)
     _record(db, ctx, "bank_form.update", f"Updated the unauthorized debit statement form ({form.format})", resource_type="bank_form",
             resource_id=form.id)
     db.commit()
@@ -881,7 +883,7 @@ def update_reminders(
             _record(db, ctx, "tenant.update_reminders", f"Reminders: {reminder_service.describe(reminder_service.bank_offsets(tenant))}")
     except reminder_service.ReminderError as exc:
         db.rollback()
-        return render_section(request, db, ctx, "reminders", error=str(exc), reminder_mode=mode, reminder_offsets=offsets)
+        return render_section(request, db, ctx, "reminders", error=shown(exc), reminder_mode=mode, reminder_offsets=offsets)
     db.commit()
     return _saved(request, key="reminders")
 
@@ -927,12 +929,12 @@ def update_security_events(
             try:
                 delivery.send_test(proposed, actor_label=current.user_email if current else None)
             except Exception as exc:  # noqa: BLE001 -- shown to the admin, who's testing exactly this
-                message = str(exc) if isinstance(exc, senders.DeliveryError) else f"{type(exc).__name__}: {exc}"
+                message = str(exc) if isinstance(exc, senders.DeliveryError) else shown(exc)
                 savepoint.rollback()
                 return render_section(request, db, ctx, "security-events", error=f"The test event wasn't delivered: {message}")
     except delivery.DestinationError as exc:
         savepoint.rollback()
-        return render_section(request, db, ctx, "security-events", error=str(exc))
+        return render_section(request, db, ctx, "security-events", error=shown(exc))
     savepoint.rollback()
     if action == "test":
         return _saved(request, "The test event was delivered. Save to start forwarding there.", key="security-events")

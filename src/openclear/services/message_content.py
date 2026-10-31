@@ -24,6 +24,8 @@ import binascii
 import io
 import re
 
+from openclear.errors import UserFacingError
+
 from PIL import Image, UnidentifiedImageError
 
 # No SVG or ICO here (unlike tenant_service.py's own _ALLOWED_IMAGE_CONTENT_TYPES, used
@@ -41,7 +43,7 @@ _MAX_MESSAGE_LENGTH = 500_000  # total message text, including any embedded imag
 _DATA_URI_RE = re.compile(r"data:image/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/]+=*)")
 
 
-class InvalidMessageContent(ValueError):
+class InvalidMessageContent(UserFacingError):
     """Raised for a message that's too long, or an embedded image that's too large,
     the wrong format, or not a genuinely decodable image -- callers turn this into a
     422 form error, same as every other InvalidTenantSettingsInput-style validation in

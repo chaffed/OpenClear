@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 from openclear.db.base import Base
 from openclear.db.tenancy import acting_as_tenant, bind_session_to_tenant
@@ -33,21 +34,20 @@ from openclear.domain.tenant import Tenant
 
 DELETE_JOB_KIND = "bank.delete"
 # The storage areas a bank's files live in (storage.AREAS), each under the bank's id.
-FILE_AREAS = ("check_images", "bulk_uploads", "tenant_assets", "data_exports", "audit_archives")
 # Kept on the bank's row after deletion; every other column goes back to its default.
 _KEPT_COLUMNS = frozenset({"id", "slug", "name", "created_at", "is_demo", "is_sandbox", "offboarding_started_at",
                            "data_deleted_at"})
 # Each step's security event (services/security_events.py), for the installation's SIEM and the bank's.
 _EVENTS = {
     "bank.offboard.start": "bank.offboarding", "bank.offboard.cancel": "bank.offboarding",
-    "bank.delete.approve": "bank.offboarding", "bank.delete.done": "bank.offboarding",
+    "bank.delete.approve": "bank.offboarding", "bank.delete.done": "bank.offboarding", "bank.delete.failed": "bank.offboarding",
     "bank.legal_hold.on": "bank.legal_hold.changed", "bank.legal_hold.off": "bank.legal_hold.changed",
 }
 BACKUPS_NOTE = ("Copies remain in the host's backups until they expire on the host's backup retention schedule "
                 "(CUEC H-CP-9-01); they aren't restored except to recover the whole installation.")
 
 
-class OffboardingError(ValueError):
+class OffboardingError(UserFacingError):
     """Fit to show."""
 
 
@@ -260,13 +260,25 @@ def queue_deletion(session: Session, bank_id: uuid.UUID, *, requested_by: uuid.U
 
 def _delete_files(bank_id: uuid.UUID, model_paths: list[str]) -> None:
     """Last, once the rows are gone: files can't be put back if the database step fails, but a
-    retried job deletes them again."""
+    retried job deletes them again. Every storage area, from storage's own list, so one added
+    later can't be missed (REVIEW_1_33_PLAN.md O1, RV-D2)."""
     from openclear import storage
 
     for path in model_paths:
         storage.delete(path)
-    for area in FILE_AREAS:
+    for area in storage.AREAS:
         storage.delete_tenant(area, bank_id)
+
+
+def _freeze(session: Session, bank: Tenant) -> None:
+    """Before the wipe, in a transaction of its own: the bank is inactive (sign-ins and tokens
+    refused from now) and its queued and running jobs are gone, so a worker mid-import loses its
+    lease at its next chunk and nothing is added while the rows go (REVIEW_1_33_PLAN.md O7)."""
+    from openclear.domain.job import Job
+
+    bank.is_active = False
+    session.execute(delete(Job).where(Job.tenant_id == bank.id))
+    session.commit()
 
 
 # What's a person's own, and goes with them: their sign-in material, messages and links to identity
@@ -292,21 +304,42 @@ def _forget(session: Session, user_ids: list[uuid.UUID]) -> tuple[int, int]:
     for user_id in user_ids:
         savepoint = session.begin_nested()
         try:
-            for name, column in _PERSONAL:
-                table = Base.metadata.tables.get(name)
-                if table is not None and column in table.columns:
-                    session.execute(delete(table).where(table.c[column] == user_id))
+            _delete_personal(session, user_id)
             delete_users(session, User.id == user_id)
             session.flush()
             savepoint.commit()
             deleted += 1
         except IntegrityError:
             savepoint.rollback()
+            # Named in a record that stays (the action log, a decision), so the row stays: with nothing
+            # personal on it, and no way back in (REVIEW_1_33_PLAN.md O6, RV-D6).
+            _delete_personal(session, user_id)
             user = session.get(User, user_id)
             if user is not None:
-                user.is_active = False
+                _anonymise(user)
+            session.flush()
             kept += 1
     return deleted, kept
+
+
+def _delete_personal(session: Session, user_id: uuid.UUID) -> None:
+    for name, column in _PERSONAL:
+        table = Base.metadata.tables.get(name)
+        if table is not None and column in table.columns:
+            session.execute(delete(table).where(table.c[column] == user_id))
+
+
+def _anonymise(user) -> None:
+    """What's left of a person kept only as the actor on records: an id, and nothing that was theirs."""
+    import secrets
+
+    from openclear.auth.security import hash_password
+
+    user.email = f"deleted-{user.id.hex[:16]}@deleted.invalid"
+    user.hashed_password = hash_password(secrets.token_urlsafe(32))
+    user.phone = None
+    user.is_active = False
+    user.token_version = (user.token_version or 0) + 1
 
 
 def _wipe(session: Session, bank: Tenant) -> dict[str, int]:
@@ -326,7 +359,8 @@ def _strip(bank: Tenant) -> None:
     for column in Tenant.__table__.columns:
         if column.key in _KEPT_COLUMNS:
             continue
-        default = column.default.arg if column.default is not None and not callable(column.default.arg) else None
+        arg = column.default.arg if column.default is not None else None
+        default = arg() if arg in (dict, list) else (None if callable(arg) else arg)  # an empty mapping, not JSON null
         setattr(bank, column.key, default)
     bank.is_active = False
 
@@ -340,7 +374,8 @@ def _email(session: Session, user_id: uuid.UUID | None) -> str | None:
 
 def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
     """The job: deletes the bank's data and signs the certificate. Every check is made again
-    here, so a hold put on, or offboarding cancelled, during the delay stops it. Commits nothing."""
+    here, so a hold put on, or offboarding cancelled, during the delay stops it. Commits once,
+    after freezing the bank; the caller commits the rest."""
     from openclear.domain.audit_log_entry import AuditLogEntry
     from openclear.domain.ml_model import MlModel
     from openclear.services import evidence_service
@@ -354,6 +389,7 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
         record.status, record.last_error = "refused", str(exc)
         return record
     bind_session_to_tenant(session, bank.id)
+    _freeze(session, bank)
     last = session.execute(select(AuditLogEntry).where(AuditLogEntry.tenant_id == bank.id)
                            .order_by(AuditLogEntry.sequence.desc()).limit(1)).scalar_one_or_none()
     entries = session.execute(select(func.count()).select_from(AuditLogEntry).where(AuditLogEntry.tenant_id == bank.id)).scalar_one()
@@ -381,9 +417,10 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
                        "last_entry_hash": getattr(last, "entry_hash", None) if last else None},
         "rows_deleted": dict(sorted(rows.items())),
         "rows_deleted_total": sum(rows.values()),
-        "storage_areas_cleared": [*FILE_AREAS, "ml_models"],
+        "storage_areas_cleared": sorted(storage_areas()),
         "people_deleted": people_deleted,
         "people_kept_because_they_belong_elsewhere_or_are_named_in_records": len(kept) + still_referenced,
+        "people_anonymised_because_they_are_named_in_records": still_referenced,
         "kept": "The bank's name and slug, inactive, so the slug is never reused; this certificate; the service provider's "
                 "own action log and incident notices; the provider's own custom-field values for the bank (its references, "
                 "such as an ERP id).",
@@ -401,6 +438,28 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
            user_id=record.approved_by_user_id)
     session.flush()
     return record
+
+
+def mark_failed(session: Session, deletion_id: uuid.UUID, error: str) -> BankDeletion | None:
+    """The job gave up (workers/job_handlers.py): the record says so, the page shows it, and the
+    operator hears of it as a critical event instead of a deletion that "runs at" a time long
+    past (REVIEW_1_33_PLAN.md O9). Requesting again queues a new run."""
+    record = session.get(BankDeletion, deletion_id)
+    if record is None or record.status != "queued":
+        return record
+    bank = session.get(Tenant, record.bank_id)
+    record.status, record.last_error = "failed", error[:2000]
+    if bank is not None:
+        bank.is_active = True  # frozen for a deletion that didn't happen
+        _event(session, bank, "bank.delete.failed", f"Deleting {bank.name}'s data failed and won't be retried: {error[:200]}", user_id=None)
+    session.flush()
+    return record
+
+
+def storage_areas() -> list[str]:
+    from openclear import storage
+
+    return list(storage.AREAS)
 
 
 def latest(session: Session, bank_id: uuid.UUID) -> BankDeletion | None:

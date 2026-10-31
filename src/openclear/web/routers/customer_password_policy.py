@@ -13,6 +13,7 @@ from openclear.services import audit_log_service, customer_service
 from openclear.web.deps import WebNotFound, render_template, require_any_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/customers/{customer_id}/password-policy", tags=["web-customer-password-policy"])
 # The bank (customer:manage), or the customer's own administrators for their own customer
@@ -88,7 +89,7 @@ def update_password_policy(
                                                           customer_id=customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return _render_form(request, db, ctx, customer_id, error=str(exc), status_code=422)
+        return _render_form(request, db, ctx, customer_id, error=shown(exc), status_code=422)
     if outcome.waiting:
 
         from openclear.web.routers.tenant_settings import waiting_message
@@ -126,7 +127,7 @@ def update_security_keys(
             tenant_id=ctx.tenant_id, customer_id=customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return _render_form(request, db, ctx, customer_id, error=str(exc), status_code=422)
+        return _render_form(request, db, ctx, customer_id, error=shown(exc), status_code=422)
     if outcome.waiting:
         db.commit()
         return see_other(f"/ui/customers/{customer_id}/password-policy", flash=waiting_message(outcome))

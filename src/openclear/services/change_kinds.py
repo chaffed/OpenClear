@@ -17,10 +17,12 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from openclear.errors import UserFacingError
+
 from sqlalchemy.orm import Session
 
 
-class ChangeError(ValueError):
+class ChangeError(UserFacingError):
     """The message is fit to show."""
 
 
@@ -43,6 +45,9 @@ class Kind:
     # Turning a second-person switch on: the permissions someone else must hold (DC-D16), by what turns on.
     switches: Callable[[Session, uuid.UUID | None, uuid.UUID | None, dict, dict], list[tuple[str, str]]] = field(
         default=lambda session, tenant_id, customer_id, before, after: [])
+    # A second person, always: with nobody else to approve, the request is refused rather than
+    # applied after the cooling-off, since what it does can't be undone (REVIEW_1_33_PLAN.md O3, RV-D4).
+    second_person: bool = False
 
 
 _KINDS: dict[str, Kind] = {}
@@ -1476,7 +1481,7 @@ register(Kind(
     # Scheduling the end needs a second administrator; stopping it before the last day keeps the service, so one
     # administrator can; restoring a customer whose service already ended reopens access, so it takes two.
     loosens=lambda before, after: bool(after["last_service_day"]) or before["ended"],
-    apply=_customer_offboard_apply, setting=lambda payload: f"customer_offboard:{payload['customer_id']}",
+    apply=_customer_offboard_apply, setting=lambda payload: f"customer_offboard:{payload['customer_id']}", second_person=True,
     describe=lambda before, after: (f"End a customer's positive pay on {after['last_service_day']}" if after["last_service_day"]
                                     else "Keep a customer on positive pay"),
 ))
@@ -1532,7 +1537,7 @@ register(Kind(
     "platform.bank.offboard", "Offboarding a bank", "protection", _OPERATOR, _offboard_current,
     lambda payload: {"offboarding": bool(payload["offboarding"])},
     loosens=lambda before, after: after["offboarding"],  # stopping it keeps data: one operator
-    apply=_offboard_apply, scope="provider", setting=lambda payload: f"bank_offboard:{payload['bank_id']}",
+    apply=_offboard_apply, scope="provider", setting=lambda payload: f"bank_offboard:{payload['bank_id']}", second_person=True,
     describe=lambda before, after: "Start offboarding a bank" if after["offboarding"] else "Stop offboarding a bank",
 ))
 
@@ -1555,7 +1560,7 @@ def _delete_apply(session, tenant_id, customer_id, payload, user_id) -> str:
 register(Kind(
     "platform.bank.delete", "Deleting a bank's data", "protection", _OPERATOR, _delete_current, lambda payload: {"deleted": True},
     loosens=lambda before, after: True,  # always two operators
-    apply=_delete_apply, scope="provider", setting=lambda payload: f"bank_delete:{payload['bank_id']}",
+    apply=_delete_apply, scope="provider", setting=lambda payload: f"bank_delete:{payload['bank_id']}", second_person=True,
     describe=lambda before, after: "Delete a bank's data",
 ))
 

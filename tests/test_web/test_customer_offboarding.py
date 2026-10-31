@@ -9,6 +9,8 @@ it's on legal hold. Other customers and the bank's own records are untouched."""
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
+import uuid
+
 import pytest
 from sqlalchemy import func, select
 
@@ -56,11 +58,20 @@ def bank(db_session, tenant_factory):
     return tenant, users
 
 
-def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_session, bank):
+def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(client, db_session, bank):
+    from openclear.domain.access_review import AccessReview
+    from openclear.services import audit_log_service, teller_service
+    from tests.conftest import login_headers
+
     tenant, users = bank
     leaving, account = _make_customer_with_account(db_session, tenant, "CO-LEAVE")
     staying, other_account = _make_customer_with_account(db_session, tenant, "CO-STAY")
     person = _person(db_session, tenant, leaving, "ap@leaving.example.com")
+    actor = _person(db_session, tenant, leaving, "actor@leaving.example.com")
+    audit_log_service.record_action(db_session, tenant.id, actor_user_id=actor.id, channel="web", action="exception.decide",
+                                    summary="Decided something: named in the bank's log for good", resource_type="exception_item",
+                                    resource_id=uuid.uuid4())
+    db_session.add(AccessReview(tenant_id=tenant.id, customer_id=leaving.id, item_count=0))  # the bank's evidence about the customer
     issued_item_service.create_issued_item(db_session, tenant.id, issued_item_service.IssuedItemInput(
         account_id=account.id, check_number="501", amount=Decimal("10.00"), payee_name="X", issue_date=date.today()),
         submitted_by_user_id=users["admin"].id)
@@ -75,16 +86,30 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
     leaving = db_session.get(Customer, leaving.id)
     assert leaving.service_ends_at is not None and leaving.is_active
     told = db_session.execute(select(Notification).where(Notification.notification_type == NotificationType.SERVICE_ENDING)).scalars().all()
-    assert [n.destination for n in told] == ["ap@leaving.example.com"] and "Data export" in told[0].body
+    assert sorted(n.destination for n in told) == ["actor@leaving.example.com", "ap@leaving.example.com"] and "Data export" in told[0].body
 
-    # After the last day: no sign-in, its files refused.
+    # The moment the last day ends, before the daily run has come: files refused, tellers told, nobody signs in (RV-D5).
+    leaving.service_ends_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    db_session.commit()
+    assert customer_offboarding_service.ended(leaving) and leaving.is_active
+    with pytest.raises(RowFieldError, match="Positive pay ended"):
+        account_service.get_account_by_number(db_session, tenant.id, account.account_number)
+    assert not teller_service._enrolled(db_session, account)
+    # After the daily run: ended as of the end of the last day, not as of the run.
     customer_offboarding_service.sweep(db_session, tenant.id, now=datetime.now(timezone.utc) + timedelta(days=2))
     db_session.expire_all()
     leaving = db_session.get(Customer, leaving.id)
     assert leaving.service_ended_at is not None and not leaving.is_active
+    assert customer_offboarding_service._aware(leaving.service_ended_at) == customer_offboarding_service._aware(leaving.service_ends_at)
     with pytest.raises(RowFieldError, match="Positive pay ended"):
         account_service.get_account_by_number(db_session, tenant.id, account.account_number)
     assert account_service.get_account_by_number(db_session, tenant.id, other_account.account_number) is not None
+    # A core's sync can't quietly bring it back (RV-D3).
+    headers = login_headers(client, tenant.slug, users["admin"].email)
+    synced = client.put("/api/v1/customers/CO-LEAVE", headers=headers, json={"name": "Leaving Co", "is_active": True})
+    assert synced.status_code == 409 and "two administrators" in synced.json()["detail"]
+    db_session.expire_all()
+    assert not db_session.get(Customer, leaving.id).is_active
 
     # Not yet: 90 days after the end.
     leaving.service_ended_at = datetime.now(timezone.utc) - timedelta(days=89)
@@ -93,7 +118,7 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
     assert db_session.get(Customer, leaving.id) is not None
     leaving.service_ended_at = datetime.now(timezone.utc) - timedelta(days=91)
     db_session.commit()
-    leaving_id, account_id, person_id = leaving.id, account.id, person.id
+    leaving_id, account_id, person_id, actor_id = leaving.id, account.id, person.id, actor.id
     customer_offboarding_service.sweep(db_session, tenant.id)
     db_session.expire_all()
 
@@ -102,6 +127,10 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
         assert db_session.execute(select(func.count()).select_from(model).where(column == value)).scalar_one() == 0
     assert db_session.execute(select(func.count()).select_from(TenantMembership).where(TenantMembership.customer_id == leaving_id)).scalar_one() == 0
     assert db_session.get(User, person_id) is None
+    kept = db_session.get(User, actor_id)  # named in the action log, so the row stays: anonymous and shut (RV-D6)
+    assert kept is not None and kept.email.startswith("deleted-") and not kept.is_active and kept.phone is None
+    [review] = db_session.execute(select(AccessReview).where(AccessReview.tenant_id == tenant.id)).scalars().all()
+    assert review.customer_id is None  # the bank's evidence stays, unlinked (O8)
     assert db_session.get(Customer, staying.id) is not None and db_session.get(Account, other_account.id) is not None
     assert db_session.execute(select(func.count()).select_from(ExceptionItem).where(ExceptionItem.customer_id == staying.id)).scalar_one() == 1
 
@@ -109,8 +138,23 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
     assert record.customer_number == "CO-LEAVE" and evidence_service.verify(record.certificate)
     certificate = record.certificate["bundle"]
     assert certificate["rows_deleted"]["account"] == 1 and certificate["rows_deleted"]["issued_item"] == 1 and certificate["people_deleted"] == 1
+    assert certificate["people_anonymised_because_they_are_named_in_records"] == 1
+    assert certificate["rows_kept_unlinked_from_the_customer"] == {"access_review": 1}
     actions = set(db_session.execute(select(AuditLogEntry.action).where(AuditLogEntry.tenant_id == tenant.id)).scalars())
     assert {"customer.offboard.schedule", "customer.offboard.ended", "customer.offboard.delete"} <= actions  # the bank's log stays
+
+
+def test_a_lone_administrator_cant_end_a_customers_service(db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md O3, RV-D4: the same for a bank with one administrator."""
+    from openclear.services import customer_service
+
+    tenant, _account, users = tenant_factory.make(slug="co-lone")
+    customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="L-1", name="Lone Co"))
+    db_session.commit()
+    with pytest.raises(change_request_service.ChangeError, match="second administrator"):
+        change_request_service.request_or_apply(
+            db_session, "customer.offboard", {"customer_id": str(customer.id), "last_service_day": date(2027, 1, 4).isoformat()},
+            tenant_id=tenant.id, user_id=users["admin"].id)
 
 
 def test_a_hold_stops_the_deletion_and_the_end_can_be_undone(db_session, bank):

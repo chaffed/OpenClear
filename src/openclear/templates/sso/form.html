@@ -130,6 +130,10 @@
     the metadata has carried a new RSA-{{ saml_key_bits(connection.saml_sp_next_certificate) }} certificate beside the current one, and sign-in
     still uses the current key. Once your identity provider has the new certificate (most re-read the metadata URL; otherwise
     upload it from the metadata), finish, and OpenClear signs with the new key and drops the old.</p>
+  <p class="hint"><strong>Before finishing,</strong> make sure the identity provider shows the new certificate: finishing can't be
+    undone, and if the provider still has only the old certificate, nobody signs in until it's given the new one. And if the
+    provider has already switched to the new certificate, withdrawing the new key stops sign-in until the old certificate is
+    given back. Trying a sign-in in a private window is the simplest check.</p>
   <form method="post" action="{{ base }}/{{ connection.id }}/signing-key" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="step" value="finish">

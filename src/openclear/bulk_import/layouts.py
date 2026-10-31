@@ -42,6 +42,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Callable
 
 from openclear.bulk_import.fields import RowFieldError
+from openclear.errors import UserFacingError
 
 ISSUED_ITEMS, PAID_ITEMS = "issued_items", "paid_items"
 
@@ -89,7 +90,7 @@ DELIMITERS = {",": "Comma", "\t": "Tab", "|": "Pipe", ";": "Semicolon"}
 MAX_SAMPLE_ROWS = 15
 
 
-class LayoutError(ValueError):
+class LayoutError(UserFacingError):
     """The layout itself is wrong, or the file can't be read by it; fit to show."""
 
 
@@ -443,6 +444,8 @@ def _amount(settings: dict, values: dict[str, str]) -> Decimal:
     text = text.strip("()")
     if any(ch.isalpha() for ch in text):
         raise RowFieldError(f"Amount {raw!r} contains a letter", "amount")
+    if len(text) > 24:  # no amount is this long; a hostile file's digits must fail as a row, not as an error (REVIEW_1_33_PLAN.md T8)
+        raise RowFieldError(f"Amount {raw[:24]!r}... is too long to be an amount", "amount")
     try:
         if settings.get("amount_format") == "implied":
             if not text.lstrip("-").isdigit():
@@ -640,8 +643,8 @@ def check_trailer(settings: dict, filename: str, content: bytes) -> TrailerCheck
         raw_count = cells[trailer_settings["count_column"] - 1] if trailer_settings["count_column"] <= len(cells) else ""
         raw_total = cells[trailer_settings["total_column"] - 1] if trailer_settings["total_column"] <= len(cells) else ""
     raw_count, raw_total = raw_count.strip(), raw_total.strip()
-    if not raw_count.isdigit():
-        return result(f"The trailer's item count {raw_count!r} isn't a number.")
+    if not raw_count.isdigit() or len(raw_count) > 18:
+        return result(f"The trailer's item count {raw_count[:24]!r} isn't a number.")
     total = _signed_amount(settings, raw_total) if raw_total.strip("0") else Decimal("0.00")
     if total is None:
         return result(f"The trailer's total {raw_total!r} isn't an amount.", int(raw_count))

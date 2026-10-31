@@ -74,6 +74,14 @@ export is recorded as a security event, so your SOC sees the pipeline's activity
 | Accounts and customers | `/api/v1/accounts`, `/api/v1/customers` | The same. |
 | Everything, once | `POST /api/v1/data-exports`, then poll `GET /api/v1/data-exports/{id}` and download its `file_url` | A first load, or a periodic archive. |
 | Users and their access (for access reviews) | `/api/v1/users` | Full load. |
+
+The decisions CSV (`feed.csv`, `GET /api/v1/decisions/file`, and the OpenClear CSV decision file a
+core takes) has these columns, in this order: `sequence`, `network`, `outcome`, `reason_code`,
+`return_transaction_code`, `account_number`, `customer_number`, `check_number`, `trace_number`,
+`amount`, `presented_date`, `effective_date`, `originator_id`, `originator_name`, `sec_code`,
+`source`, `decided_by`, `decided_at`, `decision_id`, `exception_id`, `after_return_deadline`
+(added in 1.29.0), then a `cf_<key>` column for each custom field the file or request asks for.
+A release may add a column at the end; read the file by its header row, not by position.
 | Billing | `/api/v1/billing/statements?period=YYYY-MM`, `/api/v1/billing/report.csv` | Per period, after it's finalized. |
 | Controls | `/api/v1/controls/status` | A daily snapshot, to chart controls over time. |
 

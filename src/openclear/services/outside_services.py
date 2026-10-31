@@ -17,12 +17,13 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 
 REVIEW_EVERY_DAYS = 365
 
 
-class OutsideServiceError(ValueError):
+class OutsideServiceError(UserFacingError):
     """A review the bank can't record; the message is written for the person who tried."""
 
 

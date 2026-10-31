@@ -14,12 +14,13 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.account import Account
 from openclear.domain.tenant_membership import MembershipAccount, TenantMembership
 from openclear.repositories.tenant_membership_repo import TenantMembershipRepository
 
 
-class AccountAccessError(ValueError):
+class AccountAccessError(UserFacingError):
     """Bad input; the message is fit to show."""
 
 

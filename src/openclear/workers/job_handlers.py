@@ -88,7 +88,15 @@ def _retrain_model_slot(session: Session, job: Job) -> None:
 def _delete_bank(session: Session, job: Job) -> None:
     from openclear.services import offboarding_service
 
-    offboarding_service.run(session, uuid.UUID(job.payload["deletion_id"]))
+    deletion_id, last_try = uuid.UUID(job.payload["deletion_id"]), job.attempts >= job.max_attempts
+    try:
+        offboarding_service.run(session, deletion_id)
+    except Exception as exc:  # noqa: BLE001 -- the queue retries; on the last try the record says it failed
+        if last_try:
+            session.rollback()
+            offboarding_service.mark_failed(session, deletion_id, str(exc))
+            session.commit()
+        raise
 
 
 @handler("control_run.execute")  # services/long_runs.JOB_KIND

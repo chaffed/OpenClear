@@ -14,6 +14,7 @@ from openclear.services import sandbox_service
 from openclear.web.deps import WebNotFound, render_template
 from openclear.web.rate_limit import rate_limit
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/sandbox", tags=["web-sandbox"])
 
@@ -49,7 +50,7 @@ def create_sandbox(
     except sandbox_service.SandboxError as exc:
         db.rollback()
         return render_template(request, "sandbox/signup.html", ctx=None, lifetime_days=settings.sandbox_lifetime_days, values=values,
-                               error=str(exc), status_code=422)
+                               error=shown(exc), status_code=422)
     base = (settings.public_base_url or str(request.base_url)).rstrip("/")
     response = render_template(request, "sandbox/ready.html", ctx=None, sandbox=sandbox, base=base)
     response.headers["Cache-Control"] = "no-store"  # secrets on the page

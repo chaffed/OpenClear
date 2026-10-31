@@ -26,6 +26,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.bulk_import.nacha import NachaParseError, parse_nacha_file
 from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
 from openclear.domain.ach_transaction import AchMatchStatus, AchTransaction, AchTransactionSource, AchTransactionType
@@ -39,7 +40,7 @@ ANOMALY_CAPTURE = "anomaly_capture"
 MAX_REPLAY_ITEMS = 20_000
 
 
-class ReplayError(ValueError):
+class ReplayError(UserFacingError):
     """The file can't be replayed; the message is fit to show."""
 
 
@@ -104,7 +105,7 @@ def _replay_check(session: Session, tenant_id: uuid.UUID, content: bytes) -> lis
         label = x937_item_label(item)
         account = None
         for number in (item.account_number, item.on_us.partition("/")[0].replace(" ", "")):
-            account = account_service.get_account_by_number(session, tenant_id, number) if number else None
+            account = account_service.find_account_by_number(session, tenant_id, number) if number else None  # history, not a file
             if account:
                 break
         if account is None or not item.check_number:

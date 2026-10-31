@@ -19,6 +19,7 @@ from openclear.services.sso_service import SsoConnectionInput
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-sso"])
 
@@ -144,7 +145,7 @@ def add_bank_domain(domain: str = Form(""), db: Session = Depends(get_db),
         row = customer_sign_on_service.add_domain(db, ctx.tenant_id, None, domain)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return see_other("/ui/admin/sso", error=str(exc))
+        return see_other("/ui/admin/sso", error=shown(exc))
     _domain_action(db, ctx, "sso.domain_added", f"Added the email domain {row.domain}")
     db.commit()
     return see_other("/ui/admin/sso", flash=f"Added {row.domain}. Publish its TXT record, then press Verify.")
@@ -167,7 +168,7 @@ def move_bank_domain(request: Request, from_domain: str = Form(""), to_domain: s
             summary=f"Move everyone at {payload['from_domain']} to {payload['to_domain']}")
     except ValueError as exc:
         db.rollback()
-        return see_other("/ui/admin/sso", error=str(exc))
+        return see_other("/ui/admin/sso", error=shown(exc))
     db.commit()
     return see_other("/ui/admin/sso", flash=outcome.summary if outcome.applied else waiting_message(outcome))
 
@@ -179,7 +180,7 @@ def verify_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
         row = customer_sign_on_service.verify_domain(db, ctx.tenant_id, None, domain_id)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return see_other("/ui/admin/sso", error=str(exc))
+        return see_other("/ui/admin/sso", error=shown(exc))
     _domain_action(db, ctx, "sso.domain_verified", f"Verified the email domain {row.domain}")
     db.commit()
     return see_other("/ui/admin/sso", flash=f"{row.domain} is verified.")
@@ -192,7 +193,7 @@ def remove_bank_domain(domain_id: uuid.UUID, db: Session = Depends(get_db),
         name = customer_sign_on_service.remove_domain(db, ctx.tenant_id, None, domain_id)
     except customer_sign_on_service.SignOnError as exc:
         db.rollback()
-        return see_other("/ui/admin/sso", error=str(exc))
+        return see_other("/ui/admin/sso", error=shown(exc))
     _domain_action(db, ctx, "sso.domain_removed", f"Removed the email domain {name}")
     db.commit()
     return see_other("/ui/admin/sso", flash=f"Removed {name}.")
@@ -246,7 +247,7 @@ def create_bank_connection(
         return render_template(
             request, "sso/form.html", ctx=ctx, back_path="/ui/admin/sso", connection=None, mappings=[],
             groups=security_group_service.list_security_groups(db, ctx.tenant_id), providers=list(SsoProvider),
-            error=str(exc), status_code=422,
+            error=shown(exc), status_code=422,
         )
     from openclear.services import change_request_service
     from openclear.web.routers.tenant_settings import waiting_message
@@ -285,7 +286,7 @@ def set_bank_password_login(
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other("/ui/admin/sso", error=str(exc))
+        return see_other("/ui/admin/sso", error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other("/ui/admin/sso", flash=waiting_message(outcome))
@@ -332,7 +333,7 @@ def update_bank_connection(
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except (UnsafeUrlError, ValueError) as exc:
         savepoint.rollback()
-        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=str(exc))
+        return see_other(f"/ui/admin/sso/{connection_id}/edit", error=shown(exc))
     savepoint.rollback()
     outcome, error = _sso_change(db, ctx, "sso_connection.update", _input_payload(data, connection_id))
     if error:
@@ -495,7 +496,7 @@ def create_customer_connection(
         return render_template(
             request, "sso/form.html", ctx=ctx, back_path=f"/ui/customers/{customer_id}/sso", connection=None, mappings=[],
             groups=security_group_service.list_security_groups(db, ctx.tenant_id), providers=list(SsoProvider),
-            error=str(exc), status_code=422, customer=customer,
+            error=shown(exc), status_code=422, customer=customer,
         )
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.create",
@@ -519,7 +520,7 @@ def set_customer_password_login(
         sso_service.set_customer_password_login_enabled(db, ctx.tenant_id, customer_id, enabled=not require_sso)
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}/sso", error=shown(exc))
     db.commit()
     return see_other(f"/ui/customers/{customer_id}/sso", flash="Updated.")
 
@@ -561,7 +562,7 @@ def update_customer_connection(
         sso_service.update_connection(db, ctx.tenant_id, connection_id, data)
     except UnsafeUrlError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=shown(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.update",
         summary=f"Updated SSO connection for customer {customer.name}", resource_type="sso_connection", resource_id=connection_id,
@@ -575,22 +576,29 @@ def rekey_customer_connection(
     customer_id: uuid.UUID, connection_id: uuid.UUID, step: str = Form(...), db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("customer:manage")), _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    """A customer's connection, by the bank's staff: applied at once, as their other edits to it are."""
+    """A customer's connection, by the bank's staff: under the customer's own second-person rule, as
+    finishing can't be undone (REVIEW_1_33_PLAN.md K4)."""
+    from openclear.services import change_request_service
+    from openclear.web.routers.tenant_settings import waiting_message
+
     customer = _get_customer_or_404(db, ctx.tenant_id, customer_id)
     connection = sso_service.get_connection(db, ctx.tenant_id, connection_id)
     if connection is None or connection.customer_id != customer_id or step not in sso_service.REKEY_STEPS:
         raise WebNotFound()
     back = f"/ui/customers/{customer_id}/sso/{connection_id}/edit"
     try:
-        done = sso_service.rekey(db, connection, step)
+        outcome = change_request_service.request_or_apply(
+            db, "customer.sign_on.rekey", {"connection_id": str(connection_id), "step": step}, tenant_id=ctx.tenant_id,
+            customer_id=customer_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other(back, error=str(exc))
-    audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.rekey",
-                                    summary=f"{done} (customer {customer.name})"[:500], resource_type="sso_connection",
-                                    resource_id=connection_id, metadata={"step": step})
+        return see_other(back, error=shown(exc))
+    if not outcome.waiting:
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="sso_connection.rekey",
+                                        summary=f"{outcome.summary} (customer {customer.name})"[:500], resource_type="sso_connection",
+                                        resource_id=connection_id, metadata={"step": step})
     db.commit()
-    return see_other(back, flash=_REKEY_DONE[step])
+    return see_other(back, flash=waiting_message(outcome) if outcome.waiting else _REKEY_DONE[step])
 
 
 @router.post("/ui/customers/{customer_id}/sso/{connection_id}/deactivate")
@@ -637,7 +645,7 @@ def add_customer_group_mapping(
         )
     except ValueError as exc:
         db.rollback()
-        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=str(exc))
+        return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", error=shown(exc))
     db.commit()
     return see_other(f"/ui/customers/{customer_id}/sso/{connection_id}/edit", flash="Mapping added.")
 

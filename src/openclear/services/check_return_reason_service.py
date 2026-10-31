@@ -8,6 +8,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.check_return_reason import CheckReturnReason
 
 # Seeded for every bank: new ones at provisioning, existing ones by the migration that
@@ -43,7 +44,7 @@ def get_check_return_reason(session: Session, tenant_id: uuid.UUID, reason_id: u
     return reason if reason is not None and reason.tenant_id == tenant_id else None
 
 
-class InvalidCheckReturnReasonInput(ValueError):
+class InvalidCheckReturnReasonInput(UserFacingError):
     """Bad input; the message is fit to show."""
 
 

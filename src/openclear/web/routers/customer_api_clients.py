@@ -22,6 +22,7 @@ from openclear.services.api_client_service import ApiClientError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 BASE = "/ui/api-clients"
 router = APIRouter(prefix=BASE, tags=["web-customer-api-clients"])
@@ -88,7 +89,7 @@ async def create_client(request: Request, db: Session = Depends(get_db), ctx: Te
         )
     except ApiClientError as exc:
         db.rollback()
-        return _form(request, db, ctx, error=str(exc), values=values, status_code=422)
+        return _form(request, db, ctx, error=shown(exc), values=values, status_code=422)
     from openclear.domain.tenant_membership import TenantMembership
     from openclear.domain.user import User
     from openclear.services import change_request_service
@@ -104,7 +105,7 @@ async def create_client(request: Request, db: Session = Depends(get_db), ctx: Te
                 customer_id=ctx.customer_id, user_id=ctx.user_id, summary=f"Let the new API client {issued.client.name} be used")
         except ValueError as exc:
             db.rollback()
-            return _form(request, db, ctx, error=str(exc), values=values, status_code=422)
+            return _form(request, db, ctx, error=shown(exc), values=values, status_code=422)
         waiting = outcome.change if outcome.waiting else None
     _record(db, ctx, "api_client.create",
             f"Created {'read-only ' if issued.client.read_only else ''}API client {issued.client.name} ({issued.client.client_id})", issued.client)
@@ -154,7 +155,7 @@ async def set_key_pair(request: Request, api_client_id: uuid.UUID, db: Session =
     except ApiClientError as exc:
         db.rollback()
         return render_template(request, "admin/api_client_key.html", ctx=ctx, client=_client(db, ctx, api_client_id),
-                               public_key_pem=public_key_pem, error=str(exc), status_code=422, base_path=BASE)
+                               public_key_pem=public_key_pem, error=shown(exc), status_code=422, base_path=BASE)
     _record(db, ctx, "api_client.rotate_secret", f"API client {client.name} now signs in with a key pair; its secret no longer works", client)
     db.commit()
     return see_other(BASE, flash=f"{client.name} now signs in with its key pair.")

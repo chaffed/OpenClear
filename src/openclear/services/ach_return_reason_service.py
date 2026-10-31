@@ -7,11 +7,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.ach_return_reason import AchReturnReason
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
 
 
-class InvalidAchReturnReasonInput(ValueError):
+class InvalidAchReturnReasonInput(UserFacingError):
     """Raised for a blank reason_text or a non-blank, non-digit transaction_code —
     callers turn this into a form error, never a 500."""
 

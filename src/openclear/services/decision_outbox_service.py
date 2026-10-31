@@ -26,6 +26,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.decision_outbox import DecisionBatch, DecisionOutbox
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ MAX_BATCH = 10_000
 CONSUMER = "outbox"
 
 
-class OutboxError(ValueError):
+class OutboxError(UserFacingError):
     """Refused; the message is fit to show."""
 
 

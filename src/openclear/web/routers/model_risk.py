@@ -18,6 +18,7 @@ from openclear.services import mrm_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-model-risk"])
 _manage = require_web_permission("admin:manage")
@@ -51,7 +52,7 @@ def replay(file: UploadFile = File(...), db: Session = Depends(get_db), ctx: Ten
                                      channel="web")
     except mrm_service.ReplayError as exc:
         db.rollback()
-        return see_other("/ui/admin/model-risk", error=str(exc))
+        return see_other("/ui/admin/model-risk", error=shown(exc))
     db.commit()
     jobs_queued(db.get_bind())
     return see_other("/ui/admin/model-risk", run=run.id)

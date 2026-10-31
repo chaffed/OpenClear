@@ -124,6 +124,8 @@ class ImportSpec:
     creates_check_image: bool = False
     # `load` also takes the upload's options (a layout's settings, for "layout").
     load_takes_options: bool = False
+    # `load` also takes (session, tenant_id): it checks the file against the bank's definitions.
+    load_takes_bank: bool = False
     # It updates records that exist (custom-field values, CF-D10): `ingest` returns a
     # custom_field_service.RowUpdate, nothing is tracked for backing out, and the file is
     # audited once when it's done instead of once per row.
@@ -146,9 +148,9 @@ def _local_file(ref: str, loaded_closers: list) -> Path:
     return path
 
 
-def _load_tabular(path: str, filename: str) -> LoadedFile:
+def _load_tabular(path: str, filename: str, *, keep_na_text: bool = False) -> LoadedFile:
     try:
-        rows = parse_tabular_file(filename, _read(path))
+        rows = parse_tabular_file(filename, _read(path), keep_na_text=keep_na_text)
     except TabularParseError as exc:
         raise BulkFileRejected(str(exc)) from None
     if not rows:
@@ -378,20 +380,30 @@ def _account_tabular(ctx: RowContext, row: SourceRow, loaded: LoadedFile) -> uui
     return account_service.create_account_from_row(ctx.session, ctx.tenant_id, row.data, scoped_customer_id=ctx.scoped_customer_id)
 
 
-def _field_loader(owner: str) -> Callable[[str, str], LoadedFile]:
+def _field_loader(owner: str) -> Callable:
     """An update file of custom-field values (plans/CUSTOM_FIELDS_PLAN.md CF-D10): refused whole
-    if it doesn't name its records or has no cf_ column."""
-    from openclear.services.custom_field_service import RECORD_KEYS
+    if it doesn't name its records, has no cf_ column, or names a field the bank doesn't have or
+    has archived (one mistyped header shouldn't fail twenty thousand rows one by one;
+    REVIEW_1_33_PLAN.md C5)."""
+    from openclear.services import custom_field_service as cf
 
-    keys = RECORD_KEYS[owner]
+    keys = cf.RECORD_KEYS[owner]
 
-    def load(path: str, filename: str) -> LoadedFile:
-        loaded = _load_tabular(path, filename)
+    def load(path: str, filename: str, session: Session, tenant_id: uuid.UUID) -> LoadedFile:
+        loaded = _load_tabular(path, filename, keep_na_text=True)
         columns = set(loaded.rows[0].data)
         if not columns & set(keys):
             raise BulkFileRejected(f"Name each record with a {keys[0]} or {keys[1]} column.")
-        if not any(str(c).startswith("cf_") for c in columns):
+        wanted = {str(c)[3:] for c in columns if str(c).startswith("cf_")}
+        if not wanted:
             raise BulkFileRejected("No custom-field columns: name each one cf_ and the field's key, such as cf_officer_code.")
+        fields = {f.key: f for f in cf.list_fields(session, tenant_id, owner, include_archived=True)}
+        unknown = sorted(k for k in wanted if k not in fields)
+        if unknown:
+            raise BulkFileRejected(f"No such field: {', '.join('cf_' + k for k in unknown)}. The field's key follows cf_.")
+        archived = sorted(k for k in wanted if fields[k].archived_at is not None)
+        if archived:
+            raise BulkFileRejected(f"Archived, so not written: {', '.join('cf_' + k for k in archived)}.")
         return loaded
 
     return load
@@ -437,17 +449,21 @@ BUILTIN_SPECS: dict[tuple[BulkUploadKind, str], ImportSpec] = {
     (BulkUploadKind.ACCOUNTS, "tabular"): ImportSpec(
         _load_tabular, _account_tabular, resource_type="account", audit_action="account.create", audit_noun="Account"
     ),
-    (BulkUploadKind.ACCOUNT_FIELDS, "tabular"): ImportSpec(_field_loader("account"), _field_updater("account"), **_ACCOUNT_FIELDS),
+    (BulkUploadKind.ACCOUNT_FIELDS, "tabular"): ImportSpec(_field_loader("account"), _field_updater("account"), load_takes_bank=True,
+                                                          **_ACCOUNT_FIELDS),
     (BulkUploadKind.ACCOUNT_FIELDS, "json"): ImportSpec(_load_json, _field_updater("account"), **_ACCOUNT_FIELDS),
-    (BulkUploadKind.CUSTOMER_FIELDS, "tabular"): ImportSpec(_field_loader("customer"), _field_updater("customer"), **_CUSTOMER_FIELDS),
+    (BulkUploadKind.CUSTOMER_FIELDS, "tabular"): ImportSpec(_field_loader("customer"), _field_updater("customer"), load_takes_bank=True,
+                                                           **_CUSTOMER_FIELDS),
     (BulkUploadKind.CUSTOMER_FIELDS, "json"): ImportSpec(_load_json, _field_updater("customer"), **_CUSTOMER_FIELDS),
 }
 
 
 @contextlib.contextmanager
-def _loaded(spec: ImportSpec, record: BulkUploadFile) -> Iterator[LoadedFile]:
+def _loaded(spec: ImportSpec, record: BulkUploadFile, session: Session | None = None) -> Iterator[LoadedFile]:
     if spec.load_takes_options:
         loaded = spec.load(record.storage_path, record.original_filename, record.options or {})
+    elif spec.load_takes_bank:
+        loaded = spec.load(record.storage_path, record.original_filename, session, record.tenant_id)
     else:
         loaded = spec.load(record.storage_path, record.original_filename)
     try:
@@ -516,7 +532,7 @@ def receive_upload(
     record.options = {**(options or {}), "format": file_format}
     spec = spec_for(kind, file_format)
     try:
-        with _loaded(spec, record) as loaded:
+        with _loaded(spec, record, session) as loaded:
             record.total_rows = len(loaded.rows)
             if loaded.skipped:
                 record.options = {**record.options, "skipped_rows": loaded.skipped}  # reassigned, so the JSON column is saved
@@ -600,7 +616,7 @@ def _import(session: Session, record: BulkUploadFile) -> None:
     chunk_rows = max(1, get_settings().bulk_import_chunk_rows)
     queued_ocr = False
 
-    with _loaded(spec, record) as loaded, notification_service.exceptions_summarized():
+    with _loaded(spec, record, session) as loaded, notification_service.exceptions_summarized():
         rows = loaded.rows
         record.total_rows = len(rows)
         start = record.processed_rows or 0
@@ -858,7 +874,7 @@ def open_failures(session: Session, record: BulkUploadFile, *, limit: int = MAX_
     failures = [r for r in row_results(session, record, failures_only=True) if r.row_index not in fixed][:limit]
     if not failures:
         return []
-    with _loaded(_spec(record), record) as loaded:
+    with _loaded(_spec(record), record, session) as loaded:
         rows = []
         for result in failures:
             if result.row_index >= len(loaded.rows) or not isinstance(loaded.rows[result.row_index].data, dict):
@@ -887,7 +903,7 @@ def apply_corrections(session: Session, record: BulkUploadFile, edits: dict[int,
     ctx = RowContext(session, record.tenant_id, record.customer_id, user_id, record.options or {})
     fixed = still = 0
     audit = []
-    with _loaded(spec, record) as loaded:
+    with _loaded(spec, record, session) as loaded:
         for row_index, values in sorted(edits.items())[:MAX_FIXES_SHOWN]:
             if row_index not in failed or row_index >= len(loaded.rows):
                 continue

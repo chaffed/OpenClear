@@ -16,6 +16,7 @@ from openclear.services import controls_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-controls"])
 
@@ -79,7 +80,7 @@ def export_evidence(start: date = Form(...), end: date = Form(...), format: str 
     except HTTPException as exc:
         return see_other("/ui/admin/controls", error=str(exc.detail))
     except evidence_service.EvidenceError as exc:
-        return see_other("/ui/admin/controls", error=str(exc))
+        return see_other("/ui/admin/controls", error=shown(exc))
     db.commit()
     jobs_queued(db.get_bind())
     return see_other("/ui/admin/controls", export=run.id)

@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.security import hash_password
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.api_client import ApiClient
@@ -39,7 +40,7 @@ _CLIENT_ID = re.compile(r"^occ_([0-9a-f]{32})_[A-Za-z0-9_-]{8,}$")
 _SERVICE_EMAIL_DOMAIN = "api-client.invalid"  # .invalid is reserved: no inbox, no identity provider
 
 
-class ApiClientError(ValueError):
+class ApiClientError(UserFacingError):
     """Bad input when creating or changing a client; the message is fit to show."""
 
 

@@ -221,10 +221,13 @@ def list_exceptions(
     if not hasattr(page_obj, "items"):
         return page_obj
     # Checks to review (reverse positive pay), across every page of the work queue (RPP-D6).
-    to_review = 0
+    to_review, review_ids = 0, []
     if statuses == exception_service.NEEDS_ATTENTION and not search.active:
-        to_review = exception_service.count_exceptions(
-            db, ctx.tenant_id, statuses=statuses, customer_id=customer_id, where=_review_only_where(network_code or None))
+        review_filters = dict(statuses=statuses, customer_id=customer_id, where=_review_only_where(network_code or None))
+        to_review = exception_service.count_exceptions(db, ctx.tenant_id, **review_filters)
+        if 0 < to_review <= MAX_PAY_ALL:
+            # Pay all pays exactly these: a check that arrives or is decided in between isn't paid unseen (REVIEW_1_33_PLAN.md T11).
+            review_ids = [str(item.id) for item in exception_service.list_exceptions(db, ctx.tenant_id, limit=MAX_PAY_ALL, **review_filters)]
     # Per-row enrichment only ever runs over the current page's rows.
     sources = _load_sources(db, page_obj.items)
     accounts, customers = _names_for_page(db, ctx, page_obj.items, sources)
@@ -251,7 +254,7 @@ def list_exceptions(
         show_deadlines=any(r["exception"].decision_deadline is not None for r in rows),
         show_customers=ctx.customer_id is None and any(r["customer"] for r in rows),
         customer_filter=str(customer_id) if customer_id and ctx.customer_id is None else "",
-        customer_choices=_customer_choices(db, ctx), to_review=to_review, max_pay_all=MAX_PAY_ALL,
+        customer_choices=_customer_choices(db, ctx), to_review=to_review, review_ids=review_ids, max_pay_all=MAX_PAY_ALL,
         # Checks presented at a branch and declined (TELLER_PLAN.md TL-D4): information, nothing to decide.
         branch_declines=teller_service.declined_recently(db, ctx.tenant_id, customer_id) if statuses == exception_service.NEEDS_ATTENTION
         and not search.active else [],
@@ -528,13 +531,13 @@ def _review_customer(ctx: TenantContext, customer: str) -> uuid.UUID | None:
 def pay_all_to_review(
     customer: str = Form(""),
     network_code: str = Form(""),
-    expected: int = Form(...),
+    shown: str = Form(""),
     db: Session = Depends(get_db),
     ctx: TenantContext = Depends(require_web_permission("exception:read")),
     _csrf: None = Depends(verify_csrf),
 ) -> RedirectResponse:
-    """Pays every check to review on the list as shown, after the person confirmed how many.
-    If the list changed since (one decided, a new one arrived), nothing is done and they look
+    """Pays every check to review on the list as shown: the page sends the ids it listed. If
+    the list changed since (one decided, a new one arrived), nothing is done and they look
     again. Each is still its own decision, by the same rules as one at a time."""
     back = "/ui/exceptions" + (f"?customer={customer}" if customer and ctx.customer_id is None else "")
     filters = dict(statuses=exception_service.NEEDS_ATTENTION, customer_id=_review_customer(ctx, customer),
@@ -542,7 +545,7 @@ def pay_all_to_review(
     items = exception_service.list_exceptions(db, ctx.tenant_id, limit=MAX_PAY_ALL + 1, **filters)
     if len(items) > MAX_PAY_ALL:
         return see_other(back, error=f"There are more than {MAX_PAY_ALL} checks to review; narrow the list to one customer first.")
-    if len(items) != expected:
+    if {str(item.id) for item in items} != {part for part in shown.split(",") if part}:
         return see_other(back, error="The list changed since you looked: check it again, then pay.")
     done, problems = _decide_each(db, ctx, [item.id for item in items], DecisionOutcome.PAY, check_return_reason_id="",
                                   ach_return_reason_id="", notes="", together="paying every check to review")

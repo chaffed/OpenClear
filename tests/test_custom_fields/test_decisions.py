@@ -40,6 +40,19 @@ def _setup(db_session, tenant_factory, slug):
     return tenant, customer, account, users
 
 
+def test_a_negative_number_reaches_the_csv_as_a_number(client, db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md C1: the formula guard quotes `=G-1`, not `-5`."""
+    from openclear.services import decision_feed_service
+
+    tenant, _customer, account, users = _setup(db_session, tenant_factory, "cfd-neg")
+    _define(db_session, tenant, "account", "adjustment", field_type="decimal")
+    cf.set_values(db_session, tenant.id, "account", account.id, {"adjustment": "-5.25"}, user_id=None)
+    db_session.commit()
+    feed = decision_feed_service.read_feed(db_session, tenant.id, custom_fields=["adjustment", "agg_id"])
+    line = decision_feed_service.to_csv(feed, ["adjustment", "agg_id"]).splitlines()[1]
+    assert line.endswith(",-5.25,'=G-1")
+
+
 def test_the_feed_carries_only_the_fields_asked_for(client, db_session, tenant_factory):
     tenant, customer, account, users = _setup(db_session, tenant_factory, "cfd-feed")
     headers = login_headers(client, tenant.slug, users["admin"].email)
@@ -65,8 +78,10 @@ def test_a_customers_reader_gets_only_fields_shown_to_it(client, db_session, ten
                                                       security_group_id=group.id, customer_id=customer.id)
     db_session.commit()
     headers = login_headers(client, tenant.slug, person.email)
-    [entry] = client.get("/api/v1/decisions?custom_fields=agg_id,officer_code,customer.tier", headers=headers).json()
-    assert entry["custom_fields"] == {"agg_id": "=G-1", "officer_code": None, "customer.tier": None}
+    hidden = client.get("/api/v1/decisions?custom_fields=agg_id,officer_code,customer.tier", headers=headers)
+    assert hidden.status_code == 422 and "No such field: officer_code, customer.tier" in hidden.json()["detail"]  # not even the keys (C3)
+    [entry] = client.get("/api/v1/decisions?custom_fields=agg_id", headers=headers).json()
+    assert entry["custom_fields"] == {"agg_id": "=G-1"}
 
 
 def test_the_decision_file_adds_its_settings_fields_at_the_end(client, db_session, tenant_factory):
