@@ -11,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear import colors
 from openclear.config import get_settings
 from openclear.domain.tenant import Tenant
@@ -29,7 +30,7 @@ _ALLOWED_IMAGE_FORMATS = {"PNG": "image/png", "JPEG": "image/jpeg", "ICO": "imag
 SERVABLE_IMAGE_CONTENT_TYPES = frozenset(_ALLOWED_IMAGE_FORMATS.values()) | {"image/vnd.microsoft.icon"}
 
 
-class InvalidTenantSettingsInput(ValueError):
+class InvalidTenantSettingsInput(UserFacingError):
     """Raised for any malformed tenant-settings form input — a bad accent color, a
     disallowed image content-type, or an invalid session timeout — callers turn this
     into a form error, never a 500."""

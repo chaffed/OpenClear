@@ -18,6 +18,7 @@ from openclear.services.access_review_service import ReviewError
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_any_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/access-reviews", tags=["web-access-reviews"])
 BASE = "/ui/access-reviews"
@@ -55,7 +56,7 @@ def start_review(db: Session = Depends(get_db), ctx: TenantContext = Depends(_re
         review = access_review_service.start(db, ctx.tenant_id, ctx.customer_id, user_id=ctx.user_id)
     except ReviewError as exc:
         db.rollback()
-        return see_other(BASE, flash=str(exc))
+        return see_other(BASE, flash=shown(exc))
     _record(db, ctx, "access_review.started", f"Started an access review of {review.item_count} memberships"
             + (f" at {ctx.customer_name}" if ctx.customer_id else ""), review)
     db.commit()
@@ -78,7 +79,7 @@ def decide(review_id: uuid.UUID, item_id: uuid.UUID, decision: str = Form(""), n
         item = access_review_service.decide(db, review, item_id, decision, note=note, user_id=ctx.user_id)
     except ReviewError as exc:
         db.rollback()
-        return see_other(path, flash=str(exc))
+        return see_other(path, flash=shown(exc))
     if item.decision == "removed":
         _record(db, ctx, "access_review.removed", f"Removed {item.who}'s access ({item.role}, {item.scope}) in an access review", review,
                 {"membership_id": str(item.membership_id)})

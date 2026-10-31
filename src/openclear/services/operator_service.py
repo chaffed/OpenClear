@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.bulk_upload_file import BulkUploadFile
 from openclear.domain.customer import Customer
@@ -26,7 +27,7 @@ from openclear.services.exception_service import NEEDS_ATTENTION
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 
 
-class ProvisioningError(ValueError):
+class ProvisioningError(UserFacingError):
     """Bad input; the message is fit to show."""
 
 

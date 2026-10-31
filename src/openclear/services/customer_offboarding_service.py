@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 from openclear.db.base import Base
 from openclear.db.tenancy import bind_session_to_tenant
@@ -42,7 +43,7 @@ _FILE_COLUMNS = {"check_image": ("front_image_path", "back_image_path"), "bulk_u
 _CHUNK = 500
 
 
-class CustomerOffboardingError(ValueError):
+class CustomerOffboardingError(UserFacingError):
     """Fit to show."""
 
 

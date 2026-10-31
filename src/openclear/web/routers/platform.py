@@ -21,6 +21,7 @@ from openclear.web.deps import render_template
 from openclear.web.rate_limit import rate_limit
 from openclear.web.redirects import see_other
 from openclear.web.security import clear_auth_cookies, verify_csrf, verify_csrf_header
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/platform", tags=["web-platform"])
 
@@ -276,7 +277,7 @@ def offboarding(request: Request, tenant_id: uuid.UUID, step: str = Form(...), r
         outcome = change_request_service.request_or_apply(db, kind, payload, tenant_id=None, user_id=user.id, summary=summary)
     except change_request_service.ChangeRequestError as exc:
         db.rollback()
-        return _offboarding_page(request, db, bank, error=str(exc), status_code=422, reason=reason, confirm_slug=confirm_slug,
+        return _offboarding_page(request, db, bank, error=shown(exc), status_code=422, reason=reason, confirm_slug=confirm_slug,
                                  override_reason=override_reason)
     db.commit()
     if outcome.applied:
@@ -363,7 +364,7 @@ def accept_host_attestation(attestation_id: uuid.UUID, db: Session = Depends(get
         attestation_service.accept_installation(db, attestation, user_id=user.id)
     except attestation_service.AttestationError as exc:
         db.rollback()
-        return see_other("/ui/platform/host-attestations", flash=str(exc))
+        return see_other("/ui/platform/host-attestations", flash=shown(exc))
     platform_log_service.record(db, actor_user_id=user.id, action="platform.host_attestation.accept",
                                 summary=f"Accepted and signed {attestation.cuec_id} for {attestation.period_start} to {attestation.period_end}",
                                 resource_type="cuec_attestation", resource_id=attestation.id)
@@ -426,7 +427,7 @@ async def save_platform_custom_field(request: Request, db: Session = Depends(get
         change_request_service.request_or_apply(db, "platform.custom_field.save", payload, tenant_id=None, user_id=user.id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return _platform_fields_page(request, db, user, error=str(exc), status_code=422)
+        return _platform_fields_page(request, db, user, error=shown(exc), status_code=422)
     db.commit()
     return see_other("/ui/platform/changes", flash="Another operator makes it by approving it under Changes.")
 
@@ -449,7 +450,7 @@ def archive_platform_custom_field(request: Request, field_id: uuid.UUID, archive
                                                 tenant_id=None, user_id=user.id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return _platform_fields_page(request, db, user, error=str(exc), status_code=422)
+        return _platform_fields_page(request, db, user, error=shown(exc), status_code=422)
     db.commit()
     return see_other("/ui/platform/changes", flash="Another operator makes it by approving it under Changes.")
 
@@ -483,7 +484,7 @@ async def save_bank_fields(request: Request, tenant_id: uuid.UUID, db: Session =
         custom_field_service.set_platform_values(db, bank.id, values, user_id=user.id)
     except custom_field_service.CustomFieldError as exc:
         db.rollback()
-        return render_template(request, "platform/bank_fields.html", user=user, bank=bank, error=str(exc), form=dict(form),
+        return render_template(request, "platform/bank_fields.html", user=user, bank=bank, error=shown(exc), form=dict(form),
                                custom_fields=fields, custom_values=custom_field_service.platform_values_for(db, [bank.id], include_archived=False)[bank.id],
                                status_code=422)
     db.commit()
@@ -553,7 +554,7 @@ def create_bank(request: Request, name: str = Form(...), slug: str = Form(...), 
         operator_service.provision(db, name=name, slug=slug, admin_email=admin_email, operator_email=user.email)
     except operator_service.ProvisioningError as exc:
         savepoint.rollback()
-        return render_template(request, "platform/provision.html", error=str(exc), bank_name=name, slug=slug, admin_email=admin_email,
+        return render_template(request, "platform/provision.html", error=shown(exc), bank_name=name, slug=slug, admin_email=admin_email,
                                status_code=422)
     savepoint.rollback()
     try:
@@ -562,7 +563,7 @@ def create_bank(request: Request, name: str = Form(...), slug: str = Form(...), 
                                        "operator_email": user.email}, tenant_id=None, user_id=user.id, summary=f"Set up {name.strip()} ({slug.strip().lower()})")
     except change_request_service.ChangeRequestError as exc:
         db.rollback()
-        return render_template(request, "platform/provision.html", error=str(exc), bank_name=name, slug=slug, admin_email=admin_email,
+        return render_template(request, "platform/provision.html", error=shown(exc), bank_name=name, slug=slug, admin_email=admin_email,
                                status_code=422)
     db.commit()
     note = ("Nobody else can approve it, so it's set up in 24 hours unless you withdraw it." if outcome.change and outcome.change.applies_at
@@ -613,7 +614,7 @@ def decide_change(request: Request, change_id: uuid.UUID, verdict: str, reason: 
             change_request_service.decide(db, None, change_id, approve=verdict == "approve", user_id=user.id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other("/ui/platform/changes", flash=str(exc))
+        return see_other("/ui/platform/changes", flash=shown(exc))
     provisioned = db.info.pop("provisioned", None)
     db.commit()
     if provisioned:
@@ -634,7 +635,7 @@ def start_support(grant_id: uuid.UUID, db: Session = Depends(get_db), user: User
         grant = support_access_service.start(db, grant_id, user=user)
     except support_access_service.SupportAccessError as exc:
         db.commit()
-        return see_other("/ui/platform", error=str(exc))
+        return see_other("/ui/platform", error=shown(exc))
     db.commit()
     expires_at = support_access_service._aware(grant.expires_at)
     token = create_token(user_id=user.id, tenant_id=grant.tenant_id, security_group_id=uuid.UUID(int=0), token_type="access",

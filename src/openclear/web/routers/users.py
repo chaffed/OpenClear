@@ -35,6 +35,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.pagination import paginate
 from openclear.web.redirects import checklist_return, see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/users", tags=["web-users"])
 
@@ -314,7 +315,7 @@ def reactivate_user(
                 summary=f"Restore access for {UserRepository(db).get(membership.user_id).email}")
         except ValueError as exc:
             db.rollback()
-            return see_other("/ui/users", error=str(exc))
+            return see_other("/ui/users", error=shown(exc))
         db.commit()
         return see_other("/ui/users", flash=access_changes.message([outcome]) or 'Access restored.')
     membership = user_service.reactivate_membership(db, ctx.tenant_id, membership_id)
@@ -403,7 +404,7 @@ def reset_security_keys(
         user, removed = user_service.admin_reset_security_keys(db, ctx.tenant_id, membership_id, actor_user_id=ctx.user_id,
                                                                identity_check=identity_check)
     except user_service.PasswordChangeError as exc:
-        return see_other(f"/ui/users/{membership_id}/edit", error=str(exc))
+        return see_other(f"/ui/users/{membership_id}/edit", error=shown(exc))
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="user.security_key_reset",
         summary=f"Reset the security keys of {user.email} ({removed} removed). Identity confirmed by: {identity_check.strip()[:300]}",
@@ -430,7 +431,7 @@ def reset_password(
             base_url=get_settings().public_base_url or str(request.base_url),
         )
     except user_service.PasswordChangeError as exc:
-        return see_other("/ui/users", error=str(exc))
+        return see_other("/ui/users", error=shown(exc))
     audit_log_service.record_action(
         db,
         ctx.tenant_id,
@@ -483,7 +484,7 @@ async def bulk_upload_users(
         rows = parse_tabular_file(upload_file.filename or "upload.csv", content)
     except TabularParseError as exc:
         return render_template(
-            request, "users/bulk_upload.html", ctx=ctx, error=str(exc), status_code=422, upload_record=upload_record
+            request, "users/bulk_upload.html", ctx=ctx, error=shown(exc), status_code=422, upload_record=upload_record
         )
     if not rows:
         return render_template(
@@ -703,7 +704,7 @@ def change_email(
             base_url=get_settings().public_base_url or str(request.base_url))
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return see_other(f"/ui/users/{membership_id}/edit", error=str(exc))
+        return see_other(f"/ui/users/{membership_id}/edit", error=shown(exc))
     db.commit()
     return see_other(f"/ui/users/{membership_id}/edit", flash=f"A link was sent to {change.new_email}. {user.email}'s address changes when it's opened.")
 
@@ -834,7 +835,7 @@ def update_user(
             member_user=member_user,
             groups=groups,
             customers=customers,
-            error=str(exc),
+            error=shown(exc),
             status_code=422,
         )
 

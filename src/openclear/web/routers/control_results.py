@@ -20,6 +20,7 @@ from openclear.services.control_results_service import DeviationError
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/admin/controls", tags=["web-control-results"])
 _read = require_web_permission("audit_log:read")
@@ -114,7 +115,7 @@ def respond(deviation_id: uuid.UUID, cause: str = Form(""), response: str = Form
         db.rollback()
         if control_results_service.get_deviation(db, ctx.tenant_id, deviation_id) is None:
             raise WebNotFound() from None
-        return see_other(path, flash=str(exc))
+        return see_other(path, flash=shown(exc))
     audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="compliance.deviation.responded",
                                     summary=f"Recorded the cause of and response to the {found.check_key} deviation opened "
                                             f"{found.opened_at:%Y-%m-%d %H:%M}", resource_type="control_deviation", resource_id=found.id)

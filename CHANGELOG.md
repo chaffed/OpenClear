@@ -69,6 +69,15 @@
   in words on the customer's Exceptions page ("issued for another amount"). The SAML signing-key
   page says that finishing before the identity provider has the new certificate stops sign-in and
   can't be undone, and that withdrawing after it switched needs the old certificate back (RV7).
+- **Refusals are sentences written for people.** Every page that shows why something was refused
+  now shows the sentence OpenClear wrote for it; an exception from a library or a database driver
+  shows a fixed sentence instead and is logged (the class of finding CodeQL #176 raised, closed
+  everywhere rather than in one place). Replacing a customer's SAML signing key from the bank's
+  side goes through the customer's own second-person rule. **For operators:** `scripts/third_party.sh
+  --check` regenerates the third-party inventory and notices and fails when the committed copies
+  differ; the Security workflow runs it. The tests' Postgres image is pinned by digest. A
+  posted-check file with an absurdly long number in an amount or a trailer is refused as a row or
+  a trailer problem, not an error (RV8).
 
 ## 1.33.0 — 2026-10-30
 

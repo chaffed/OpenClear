@@ -17,10 +17,12 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from openclear.errors import UserFacingError
+
 from sqlalchemy.orm import Session
 
 
-class ChangeError(ValueError):
+class ChangeError(UserFacingError):
     """The message is fit to show."""
 
 

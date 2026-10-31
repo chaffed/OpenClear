@@ -329,3 +329,18 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   (configuration, low) (G8); the `teller_result` filter (T9); the re-key page's warnings (K3).
   **Not done:** a "test sign-in" link beside Finish: the page says to try a sign-in in a private
   window, which is what the link would have done.
+- 2026-10-31: RV8 built on `review-1-33`. `openclear/errors.py::UserFacingError` and
+  `web/errors.py::shown()` (a UserFacingError's or any openclear-raised error's text; a fixed
+  sentence for a library's), every `error=str(exc)` and `flash=str(exc)` in `web/routers/` goes
+  through it, the bare-Exception site shows the fixed sentence, and 35 service error classes
+  inherit UserFacingError; `tests/test_web/test_error_text.py` greps for the old pattern (K2).
+  `scripts/third_party.sh --check` and a step in `security.yml` (K1). The bank's customer re-key
+  goes through `customer.sign_on.rekey` (K4). `shows_number` excludes hex and hyphens (K6);
+  `postgres:16` pinned by digest and `_waiver` needs an instance (K9); long numbers in amounts
+  and trailers refused as rows (T8). **Not done:** K5 (the docstring on encryption keys is left:
+  the fallback is correct for an IdP configured by hand); K8 (`IMAGE_ENV` is the release image's
+  platform, x86_64, which is what the page documents; the generator runs in that image's base);
+  T7 (waits for a core's sample, PAID_ITEM_LAYOUTS_PLAN.md); lock-refresh PRs with no CI (K7: the
+  ruleset's required checks still gate the merge).
+- 2026-10-31: **RV1–RV8 built**, each with the full SQLite suite green at its commit; Postgres and
+  Linux suites to run on the branch head before the pull request.

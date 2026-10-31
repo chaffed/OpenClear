@@ -102,5 +102,6 @@ def _seed_decisions(db_session, tenant, account, users, count: int, prefix: str)
 def shows_number(page: str, number: str) -> bool:
     """Whether a page shows this account or check number as a number of its own. Every page's head
     carries Unix timestamps (base.html's session-expiry meta tags), so a plain `"4001" in page`
-    is true whenever the clock's digits happen to contain it."""
-    return re.search(rf"(?<![0-9]){re.escape(number)}(?![0-9])", page) is not None
+    is true whenever the clock's digits happen to contain it. Nor inside an id: a UUID's groups are
+    hex, and one in 4,096 has "-4001-" in its third (REVIEW_1_33_PLAN.md K6)."""
+    return re.search(rf"(?<![0-9A-Fa-f-]){re.escape(number)}(?![0-9A-Fa-f-])", page) is not None

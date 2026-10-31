@@ -27,6 +27,7 @@ from openclear.services import audit_log_service, notification_service, session_
 from openclear.web.deps import PASSWORD_CHANGE_PATH, get_web_context, render_template
 from openclear.web.redirects import see_other
 from openclear.web.security import set_session_cookies, verify_csrf, verify_csrf_header
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/security", tags=["web-security-settings"])
 
@@ -105,7 +106,7 @@ def change_my_email(
                                                      base_url=get_settings().public_base_url or str(request.base_url))
     except email_change_service.EmailChangeError as exc:
         db.rollback()
-        return see_other("/ui/security", error=str(exc))
+        return see_other("/ui/security", error=shown(exc))
     db.commit()
     return see_other("/ui/security", flash=f'We sent a link to {change.new_email}. Open it to finish the change.')
 
@@ -168,7 +169,7 @@ def change_password(
         )
     except user_service.PasswordChangeError as exc:
         db.commit()  # persist a wrong-current-password strike toward the lockout
-        return _render_password_form(request, db, ctx, error=str(exc))
+        return _render_password_form(request, db, ctx, error=shown(exc))
     audit_log_service.record_action(
         db,
         ctx.tenant_id,

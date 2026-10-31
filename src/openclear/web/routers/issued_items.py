@@ -18,6 +18,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.form_errors import friendly_error
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/issued-items", tags=["web-issued-items"])
 
@@ -197,7 +198,7 @@ def void_issued_item(
         item = issued_item_service.void_issued_item(db, ctx.tenant_id, item_id, reason, scoped_customer_id=ctx.customer_id)
     except issued_item_service.CantVoid as exc:
         db.rollback()
-        return see_other(f"/ui/issued-items/{item_id}", error=str(exc))
+        return see_other(f"/ui/issued-items/{item_id}", error=shown(exc))
     if item is None:
         db.commit()
         return see_other("/ui/issued-items", error='Issued item not found.')

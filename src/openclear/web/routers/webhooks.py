@@ -17,6 +17,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
 from openclear.workers.jobs import jobs_queued
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/admin/webhooks", tags=["web-webhooks"])
 _manage = require_web_permission("api_client:manage")
@@ -74,7 +75,7 @@ async def create_webhook(request: Request, db: Session = Depends(get_db), ctx: T
                 tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except (webhook_service.WebhookError, ValueError) as exc:
         db.rollback()
-        return _form(request, ctx, values=values, error=str(exc), status_code=422)
+        return _form(request, ctx, values=values, error=shown(exc), status_code=422)
     _audit(db, ctx, "webhook.create", f"Added webhook {endpoint.url}" + (" (waiting for approval)" if waits else ""), endpoint.id)
     db.commit()
     return _secret_page(request, ctx, endpoint, secret, waiting=outcome.change if outcome and outcome.waiting else None)
@@ -123,7 +124,7 @@ async def update_webhook(
                                                           tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except (webhook_service.WebhookError, ValueError) as exc:
         db.rollback()
-        return _form(request, ctx, endpoint=endpoint, values=values, error=str(exc), status_code=422)
+        return _form(request, ctx, endpoint=endpoint, values=values, error=shown(exc), status_code=422)
     if outcome.waiting:
         db.commit()
         return see_other(f"/ui/admin/webhooks/{endpoint_id}", flash=waiting_message(outcome))

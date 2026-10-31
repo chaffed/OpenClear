@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.bank_closure import BankClosure
 from openclear.domain.customer_disposition_setting import CustomerDispositionSetting
 from openclear.config import get_settings
@@ -29,7 +30,7 @@ _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MAX_REVIEW_MINUTES = 24 * 60
 
 
-class CutoffError(ValueError):
+class CutoffError(UserFacingError):
     """The message is fit to show."""
 
 

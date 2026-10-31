@@ -21,6 +21,7 @@ from types import SimpleNamespace
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.account import Account, CheckReviewMode
 from openclear.domain.paid_item import PaidItem
 from openclear.domain.teller_verification import TellerVerification
@@ -59,7 +60,7 @@ _ORDER = [*RESULTS.values(), BEING_CASHED, PAYEE_NEEDED]
 PROBE_THRESHOLD = 10
 
 
-class TellerError(ValueError):
+class TellerError(UserFacingError):
     """Fit to show to the teller platform. `details` are facts the platform can act on beside
     the sentence (what the first `cashed` call recorded, when its own answer was lost)."""
 

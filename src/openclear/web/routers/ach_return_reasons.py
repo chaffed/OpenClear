@@ -17,6 +17,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.pagination import paginate
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/ach-return-reasons", tags=["web-ach-return-reasons"])
 
@@ -60,7 +61,7 @@ def create_ach_return_reason(
         db.rollback()
         return render_template(
             request, "ach_return_reasons/form.html", ctx=ctx, reason=None,
-            reason_text=reason_text, transaction_code=transaction_code, error=str(exc), status_code=422,
+            reason_text=reason_text, transaction_code=transaction_code, error=shown(exc), status_code=422,
         )
 
     audit_log_service.record_action(
@@ -105,7 +106,7 @@ def update_ach_return_reason(
             raise WebNotFound() from None
         return render_template(
             request, "ach_return_reasons/form.html", ctx=ctx, reason=existing,
-            reason_text=reason_text, transaction_code=transaction_code, error=str(exc), status_code=422,
+            reason_text=reason_text, transaction_code=transaction_code, error=shown(exc), status_code=422,
         )
 
     if reason is None:

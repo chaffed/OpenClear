@@ -19,6 +19,7 @@ from openclear.services import support_access_service
 from openclear.web.deps import render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/settings/support-access", tags=["web-support-access"])
 _PERMISSION = "tenant:manage"
@@ -43,7 +44,7 @@ def grant(support_email: str = Form(...), reason: str = Form(...), hours: int = 
                                            write_access=write_access, granted_by_user_id=ctx.user_id)
     except support_access_service.SupportAccessError as exc:
         db.rollback()
-        return see_other("/ui/settings/support-access", error=str(exc))
+        return see_other("/ui/settings/support-access", error=shown(exc))
     db.commit()
     return see_other("/ui/settings/support-access", flash="Write access granted; a second admin must approve it before it starts." if row.write_access
                  else "Access granted.")
@@ -63,6 +64,6 @@ def decide(grant_id: uuid.UUID, verdict: str, db: Session = Depends(get_db), ctx
             return see_other("/ui/settings/support-access", error="Unknown action.")
     except support_access_service.SupportAccessError as exc:
         db.rollback()
-        return see_other("/ui/settings/support-access", error=str(exc))
+        return see_other("/ui/settings/support-access", error=shown(exc))
     db.commit()
     return see_other("/ui/settings/support-access", flash=message)

@@ -31,6 +31,7 @@ from openclear.services.billing.statements import build_statements
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/billing", tags=["web-billing"])
 
@@ -345,7 +346,7 @@ async def save_fee(
     except (ValueError, InvalidOperation) as exc:
         db.rollback()
         fee = billing_terms.get_fee_item(db, ctx.tenant_id, uuid.UUID(fee_id)) if fee_id else None
-        return _fee_form(request, ctx, fee, values=form, error=str(exc), status_code=422)
+        return _fee_form(request, ctx, fee, values=form, error=shown(exc), status_code=422)
     _audit(db, ctx, action, summary, "billing_fee_item", fee.id)
     db.commit()
     return see_other("/ui/billing/fees", flash="Fee saved.")
@@ -388,7 +389,7 @@ def save_settings(
         db.rollback()
         return render_template(
             request, "billing/settings.html", ctx=ctx, settings=billing_terms.get_bank_settings(db, ctx.tenant_id),
-            accounts=_bank_accounts(db, ctx.tenant_id), method_labels=METHOD_LABELS, error=str(exc), status_code=422,
+            accounts=_bank_accounts(db, ctx.tenant_id), method_labels=METHOD_LABELS, error=shown(exc), status_code=422,
         )
     _audit(db, ctx, "billing.settings.update",
            f"Billing defaults: customers {customer_default_billing_method.value}, bank-wide {bank_billing_method.value}", "tenant", ctx.tenant_id)
@@ -453,7 +454,7 @@ async def save_customer_terms(
         )
     except (ValueError, LookupError) as exc:
         db.rollback()
-        return _terms_page(request, db, ctx, customer, error=str(exc), status_code=422)
+        return _terms_page(request, db, ctx, customer, error=shown(exc), status_code=422)
     _audit(db, ctx, "billing.customer_terms.update", f"Customer billed by {terms.billing_method.value}", "customer", customer_id)
     db.commit()
     return see_other(f"/ui/customers/{customer_id}/billing", flash="Billing terms saved.")

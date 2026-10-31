@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.password_policy import context_words, effective_policy, validate_password
 from openclear.auth.security import hash_password, verify_password
 from openclear.db.tenancy import bind_session_to_tenant, memberships_elsewhere
@@ -40,7 +41,7 @@ ADMIN_PERMISSION = "customer_user:manage"
 INVITATION_DAYS = 7
 
 
-class PeopleError(ValueError):
+class PeopleError(UserFacingError):
     """Refused; the message is fit to show."""
 
 

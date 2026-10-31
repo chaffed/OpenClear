@@ -17,6 +17,7 @@ from openclear.services import audit_log_service, change_request_service, securi
 from openclear.web.deps import render_template, require_any_web_permission, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(tags=["web-changes"])
 
@@ -57,7 +58,7 @@ def decide_change(change_id: uuid.UUID, verdict: str, reason: str = Form(""), db
             change_request_service.decide(db, ctx.tenant_id, change_id, approve=verdict == "approve", user_id=ctx.user_id, reason=reason)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other("/ui/admin/changes", error=str(exc))
+        return see_other("/ui/admin/changes", error=shown(exc))
     db.commit()
     done = {"approve": "Approved: it has taken effect.", "reject": "Rejected.", "withdraw": "Withdrawn."}[verdict]
     return see_other("/ui/admin/changes", flash=done)
@@ -85,7 +86,7 @@ def set_sod_mode(mode: str = Form(...), db: Session = Depends(get_db),
                                                           user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return see_other("/ui/settings/segregation-of-duties", error=str(exc))
+        return see_other("/ui/settings/segregation-of-duties", error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other("/ui/settings/segregation-of-duties", flash=waiting_message(outcome))

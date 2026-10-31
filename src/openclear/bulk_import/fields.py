@@ -4,11 +4,12 @@
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from openclear.errors import UserFacingError
 
 _DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y/%m/%d")
 
 
-class RowFieldError(ValueError):
+class RowFieldError(UserFacingError):
     """A specific row/entry's field failed to parse or is missing — the message is
     surfaced directly to the user in the bulk-upload results page, so it's written to be
     read by someone looking at their own spreadsheet row, not a developer. `field` names

@@ -10,6 +10,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear import storage
 from openclear.domain.bank_form import BankForm
 
@@ -19,7 +20,7 @@ MAX_TEXT = 200_000
 MAX_PDF_BYTES = 10 * 1024 * 1024
 
 
-class FormError(ValueError):
+class FormError(UserFacingError):
     """The message is fit to show."""
 
 

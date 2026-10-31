@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.crypto import decrypt_secret, encrypt_secret
 from openclear.auth.outbound_http import UnsafeUrlError, check_url, public_only_client
 from openclear.config import get_settings
@@ -62,7 +63,7 @@ RETRY_SCHEDULE = (
 _SESSION_CACHE_KEY = "webhook_endpoints_by_tenant"
 
 
-class WebhookError(ValueError):
+class WebhookError(UserFacingError):
     """Bad input; the message is fit to show."""
 
 

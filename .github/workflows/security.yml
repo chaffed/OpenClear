@@ -23,6 +23,8 @@ jobs:
         with: {python-version: "3.13", cache: pip, cache-dependency-path: requirements/dev.txt}
       - run: pip install --require-hashes -r requirements/dev.txt
       - run: python scripts/audit_dependencies.py
+      # The third-party inventory and notices match a regeneration in the image's base (REVIEW_1_33_PLAN.md K1).
+      - run: scripts/third_party.sh --check
 
   lock-current:
     # requirements/*.txt must match pyproject.toml: a dependency added without re-locking fails.

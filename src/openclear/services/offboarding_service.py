@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.config import get_settings
 from openclear.db.base import Base
 from openclear.db.tenancy import acting_as_tenant, bind_session_to_tenant
@@ -46,7 +47,7 @@ BACKUPS_NOTE = ("Copies remain in the host's backups until they expire on the ho
                 "(CUEC H-CP-9-01); they aren't restored except to recover the whole installation.")
 
 
-class OffboardingError(ValueError):
+class OffboardingError(UserFacingError):
     """Fit to show."""
 
 

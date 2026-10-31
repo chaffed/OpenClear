@@ -24,6 +24,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.account import Account
 from openclear.domain.custom_field import (
     CustomField,
@@ -44,7 +45,7 @@ OWNERS = {o.value: o for o in CustomFieldOwner}
 _TRUE, _FALSE = {"true", "yes", "1", "y"}, {"false", "no", "0", "n"}
 
 
-class CustomFieldError(ValueError):
+class CustomFieldError(UserFacingError):
     """Fit to show."""
 
 

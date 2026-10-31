@@ -19,6 +19,7 @@ from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.incident import IncidentContact, IncidentNotice, IncidentNoticeDelivery
 from openclear.domain.tenant import Tenant
@@ -31,7 +32,7 @@ CONTACT_KINDS = ("contact", "ceo", "cio")
 MAX_CONTACTS = 10
 
 
-class IncidentError(ValueError):
+class IncidentError(UserFacingError):
     """Fit to show."""
 
 

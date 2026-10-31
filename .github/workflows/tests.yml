@@ -79,7 +79,7 @@ jobs:
       image: ghcr.io/chaffed/openclear-ci@sha256:921ef8081264154aa92f27fd30013a2aa1f447ec1636528c4ad77a11ddb37e83  # py3.13
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c  # 16, pinned (REVIEW_1_33_PLAN.md K9)
         env:
           POSTGRES_USER: openclear
           POSTGRES_PASSWORD: openclear

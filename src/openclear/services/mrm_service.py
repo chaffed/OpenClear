@@ -26,6 +26,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.bulk_import.nacha import NachaParseError, parse_nacha_file
 from openclear.bulk_import.x937 import X937ParseError, parse_x937_file
 from openclear.domain.ach_transaction import AchMatchStatus, AchTransaction, AchTransactionSource, AchTransactionType
@@ -39,7 +40,7 @@ ANOMALY_CAPTURE = "anomaly_capture"
 MAX_REPLAY_ITEMS = 20_000
 
 
-class ReplayError(ValueError):
+class ReplayError(UserFacingError):
     """The file can't be replayed; the message is fit to show."""
 
 

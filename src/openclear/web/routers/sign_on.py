@@ -22,6 +22,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.redirects import see_other
 from openclear.web.routers.sso_settings import SsoForm, _saml_urls, _scim_base, sso_form
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/sign-on", tags=["web-sign-on"])
 _manage = require_web_permission("customer_sso:manage")
@@ -108,7 +109,7 @@ def password_sign_in(allowed: bool = Form(False), db: Session = Depends(get_db),
                                                       signed_in_through_sign_on=ctx.confined)
     except SignOnError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     _record(db, ctx, "customer_sign_on.password_sign_in", f"Password sign-in {'allowed' if allowed else 'turned off'}")
     db.commit()
     return see_other(_BASE, flash="Password sign-in allowed." if allowed else "Password sign-in turned off: your people sign in through sign-on.")
@@ -121,7 +122,7 @@ def add_domain(domain: str = Form(""), db: Session = Depends(get_db), ctx: Tenan
         row = customer_sign_on_service.add_domain(db, ctx.tenant_id, ctx.customer_id, domain)
     except SignOnError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     _record(db, ctx, "customer_sign_on.domain_added", f"Added the email domain {row.domain}")
     db.commit()
     return see_other(_BASE, flash=f"Added {row.domain}. Publish its TXT record, then press Verify.")
@@ -144,7 +145,7 @@ def move_domain(request: Request, from_domain: str = Form(""), to_domain: str = 
             summary=f"Move everyone at {payload['from_domain']} to {payload['to_domain']}")
     except ValueError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     db.commit()
     return see_other(_BASE, flash=outcome.summary if outcome.applied else waiting_message(outcome))
 
@@ -164,7 +165,7 @@ def create_connection(request: Request, form: SsoForm = Depends(sso_form), db: S
         connection = customer_sign_on_service.create(db, ctx.tenant_id, ctx.customer_id, form.to_input(ctx.customer_id))
     except SignOnError as exc:
         db.rollback()
-        return _form(request, db, ctx, error=str(exc), status_code=422)
+        return _form(request, db, ctx, error=shown(exc), status_code=422)
     from openclear.services import change_request_service
 
     note = "Connection added. Map your identity provider's groups to roles below."
@@ -204,7 +205,7 @@ def update_connection(request: Request, connection_id: uuid.UUID, form: SsoForm 
         customer_sign_on_service.update(db, ctx.tenant_id, ctx.customer_id, connection_id, data)
     except SignOnError as exc:
         savepoint.rollback()
-        return _form(request, db, ctx, _connection(db, ctx, connection_id), error=str(exc), status_code=422)
+        return _form(request, db, ctx, _connection(db, ctx, connection_id), error=shown(exc), status_code=422)
     savepoint.rollback()
     outcome, error = _change(db, ctx, "customer.sign_on.update", _input_payload(data, connection_id))
     if error:
@@ -238,7 +239,7 @@ def set_active(request: Request, connection_id: uuid.UUID, db: Session = Depends
         connection = customer_sign_on_service.set_active(db, ctx.tenant_id, ctx.customer_id, connection_id, active)
     except SignOnError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     _record(db, ctx, "customer_sign_on.reactivate" if active else "customer_sign_on.deactivate",
             f"{'Turned on' if active else 'Turned off'} the sign-on connection {connection.display_name}")
     db.commit()
@@ -271,7 +272,7 @@ def remove_mapping(connection_id: uuid.UUID, mapping_id: uuid.UUID, db: Session 
         customer_sign_on_service.remove_mapping(db, ctx.tenant_id, ctx.customer_id, connection_id, mapping_id)
     except SignOnError as exc:
         db.rollback()
-        return see_other(f"{_BASE}/{connection_id}/edit", error=str(exc))
+        return see_other(f"{_BASE}/{connection_id}/edit", error=shown(exc))
     _record(db, ctx, "customer_sign_on.mapping_removed", f"Removed a group mapping from {connection.display_name}")
     db.commit()
     return see_other(f"{_BASE}/{connection_id}/edit", flash="Mapping removed.")
@@ -342,7 +343,7 @@ def verify_domain(domain_id: uuid.UUID, db: Session = Depends(get_db), ctx: Tena
         row = customer_sign_on_service.verify_domain(db, ctx.tenant_id, ctx.customer_id, domain_id)
     except SignOnError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     _record(db, ctx, "customer_sign_on.domain_verified", f"Verified the email domain {row.domain}")
     db.commit()
     return see_other(_BASE, flash=f"{row.domain} is verified.")
@@ -355,7 +356,7 @@ def remove_domain(domain_id: uuid.UUID, db: Session = Depends(get_db), ctx: Tena
         name = customer_sign_on_service.remove_domain(db, ctx.tenant_id, ctx.customer_id, domain_id)
     except SignOnError as exc:
         db.rollback()
-        return see_other(_BASE, error=str(exc))
+        return see_other(_BASE, error=shown(exc))
     _record(db, ctx, "customer_sign_on.domain_removed", f"Removed the email domain {name}")
     db.commit()
     return see_other(_BASE, flash=f"Removed {name}.")

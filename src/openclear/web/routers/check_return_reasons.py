@@ -18,6 +18,7 @@ from openclear.services.check_return_reason_service import InvalidCheckReturnRea
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/check-return-reasons", tags=["web-check-return-reasons"])
 _PERMISSION = "ach_return_reason:manage"
@@ -48,7 +49,7 @@ def create_reason(request: Request, reason_text: str = Form(...), return_code: s
     except InvalidCheckReturnReasonInput as exc:
         db.rollback()
         return render_template(request, "check_return_reasons/form.html", ctx=ctx, reason=None, reason_text=reason_text,
-                               return_code=return_code, error=str(exc), status_code=422)
+                               return_code=return_code, error=shown(exc), status_code=422)
     _record(db, ctx, "create", f"Added check return reason {reason.reason_text!r}", reason)
     db.commit()
     return see_other("/ui/check-return-reasons", flash="Return reason added.")
@@ -76,7 +77,7 @@ def update_reason(request: Request, reason_id: uuid.UUID, reason_text: str = For
         if existing is None:
             raise WebNotFound() from None
         return render_template(request, "check_return_reasons/form.html", ctx=ctx, reason=existing, reason_text=reason_text,
-                               return_code=return_code, error=str(exc), status_code=422)
+                               return_code=return_code, error=shown(exc), status_code=422)
     if reason is None:
         raise WebNotFound()
     _record(db, ctx, "update", f"Updated check return reason {reason.reason_text!r}", reason)

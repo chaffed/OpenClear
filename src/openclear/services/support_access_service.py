@@ -21,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.auth.permissions import SUPPORT_READ_PERMISSIONS, SUPPORT_WRITE_PERMISSIONS
 from openclear.db.tenancy import bind_session_to_tenant
 from openclear.domain.support_access_grant import SupportAccessGrant
@@ -32,7 +33,7 @@ MAX_HOURS = 72
 PLATFORM_ROLES = ("operator", "support")
 
 
-class SupportAccessError(ValueError):
+class SupportAccessError(UserFacingError):
     """Not allowed, or bad input; the message is fit to show."""
 
 

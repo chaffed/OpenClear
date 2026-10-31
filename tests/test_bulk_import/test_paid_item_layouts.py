@@ -359,3 +359,14 @@ def test_the_same_check_in_two_files_is_a_duplicate(client, db_session, tenant_f
     jobs.drain(db_session.get_bind())
     types = [e.exception_types for e in db_session.execute(select(ExceptionItem).where(ExceptionItem.tenant_id == tenant.id)).scalars()]
     assert len(types) == 1 and "duplicate_paid" in types[0]  # Monday's matched and paid; Tuesday's is the duplicate
+
+
+def test_an_absurdly_long_number_is_a_row_or_trailer_problem_not_an_error():
+    """REVIEW_1_33_PLAN.md T8: Python refuses to turn 5,000 digits into an int; the file must fail
+    as a row (or as a trailer that doesn't read), never as an unhandled error."""
+    with pytest.raises(RowFieldError, match="too long"):
+        layouts._amount({"amount_format": "implied"}, {"amount": "1" * 5000})
+    csv_settings = layouts.clean_settings(layouts.PAID_TEMPLATES["micr_onus"].settings)
+    with pytest.raises(RowFieldError, match="too long"):
+        layouts.convert(csv_settings, {"micr_onus": "1/2", "amount": "9" * 5000, "posted_date": "2026-10-21"})
+    assert layouts._signed_amount({"amount_format": "implied"}, "7" * 5000) is None  # a trailer total that doesn't read

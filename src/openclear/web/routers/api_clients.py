@@ -17,6 +17,7 @@ from openclear.services import api_client_service, audit_log_service, customer_s
 from openclear.web.deps import WebNotFound, render_template, require_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/admin/api-clients", tags=["web-api-clients"])
 _manage = require_web_permission("api_client:manage")
@@ -67,7 +68,7 @@ def update_key_pairs_only(
             user_id=ctx.user_id)
     except (change_request_service.ChangeRequestError, ValueError) as exc:
         db.rollback()
-        return see_other("/ui/admin/api-clients", error=str(exc))
+        return see_other("/ui/admin/api-clients", error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other("/ui/admin/api-clients", flash=waiting_message(outcome))
@@ -117,7 +118,7 @@ def create_api_client(
             summary=f"Let the new API client {issued.client.name} be used") if waits else None
     except (api_client_service.ApiClientError, ValueError) as exc:
         db.rollback()
-        return _form(request, db, ctx, error=str(exc) if isinstance(exc, api_client_service.ApiClientError) else "Choose a security group.",
+        return _form(request, db, ctx, error=shown(exc) if isinstance(exc, api_client_service.ApiClientError) else "Choose a security group.",
                      values=values, status_code=422)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="api_client.create",
@@ -184,7 +185,7 @@ def set_key_pair(
         if client is None:
             raise WebNotFound() from None
         return render_template(request, "admin/api_client_key.html", ctx=ctx, client=client, public_key_pem=public_key_pem,
-                               error=str(exc), status_code=422)
+                               error=shown(exc), status_code=422)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="api_client.rotate_secret",
         summary=f"API client {client.name} now signs in with a key pair; its secret no longer works", resource_type="api_client",

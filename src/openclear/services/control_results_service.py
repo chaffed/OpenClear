@@ -23,13 +23,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.control_result import ControlDeviation, ControlTestResult
 from openclear.domain.tenant import Tenant
 
 RESPONSE_LIMIT = 4000
 
 
-class DeviationError(ValueError):
+class DeviationError(UserFacingError):
     """The message is fit to show."""
 
 

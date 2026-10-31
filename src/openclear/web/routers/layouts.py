@@ -26,6 +26,7 @@ from openclear.services import audit_log_service, bulk_upload_file_service, cust
 from openclear.web.deps import WebForbidden, WebNotFound, render_template, require_any_web_permission
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/layouts", tags=["web-layouts"])
 _ANY = require_any_web_permission(*import_layout_service.PERMISSION.values())
@@ -257,7 +258,7 @@ async def _submitted(request: Request, db: Session, ctx: TenantContext, layout) 
     except layouts.LayoutError as exc:
         db.rollback()
         return _render(request, db, ctx, layout=layout, name=name, owner=owner, settings=raw, sample_name=sample_name, sample=sample,
-                       is_default=is_default, error=str(exc), status_code=422)
+                       is_default=is_default, error=shown(exc), status_code=422)
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="import_layout.save",
         summary=f"{'Changed' if layout else 'Added'} the {import_layout_service.NOUN[kind]} {saved.name!r}", resource_type="import_layout",

@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.email_change import EmailChange
 from openclear.domain.notification import NotificationType
 from openclear.domain.tenant import Tenant
@@ -26,7 +27,7 @@ from openclear.services.email_address import looks_like_email
 CONFIRM_HOURS = 24
 
 
-class EmailChangeError(ValueError):
+class EmailChangeError(UserFacingError):
     pass
 
 

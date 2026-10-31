@@ -18,6 +18,7 @@ from openclear.web.deps import WebNotFound, render_template, require_web_permiss
 from openclear.web.pagination import paginate
 from openclear.web.redirects import see_other
 from openclear.web.security import verify_csrf
+from openclear.web.errors import shown
 
 router = APIRouter(prefix="/ui/security-groups", tags=["web-security-groups"])
 
@@ -75,7 +76,7 @@ def _save(request: Request, db: Session, ctx: TenantContext, group, name: str, p
         outcome = change_request_service.request_or_apply(db, "security_group.save", payload, tenant_id=ctx.tenant_id, user_id=ctx.user_id)
     except ValueError as exc:
         db.rollback()
-        return _form_with_error(request, ctx, group, name, permissions, error=str(exc))
+        return _form_with_error(request, ctx, group, name, permissions, error=shown(exc))
     if outcome.waiting:
         db.commit()
         return see_other("/ui/security-groups", flash=waiting_message(outcome))

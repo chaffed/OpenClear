@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from openclear.errors import UserFacingError
 from openclear.domain.customer import Customer
 from openclear.domain.customer_admin import CustomerEmailDomain
 from openclear.domain.security_group import SecurityGroup
@@ -40,7 +41,7 @@ _SHARED_MAIL_DOMAINS = frozenset({
 })
 
 
-class SignOnError(ValueError):
+class SignOnError(UserFacingError):
     """Refused; the message is fit to show."""
 
 
