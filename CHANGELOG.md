@@ -20,6 +20,13 @@
   raise `teller.verify.probing`, counted by teller, branch, API client, and now by the person
   when a person's token asks. A check on an account whose customer's service has ended answers
   `not_on_positive_pay`, as the guide said, instead of failing (RV2).
+- **A check that arrives late gets a look before a default decides it.** Its decision deadline
+  is never later than the cut-off on its return day; when a file reaches OpenClear after that
+  cut-off (a core posting yesterday's items mid-morning), the item was due at once and the
+  customer's default decision applied at the next sweep, unseen. It now gets the bank's minimum
+  review time, never past the midnight deadline. A bank that opens on the Federal Reserve's
+  holidays now has its cut-off on them too, as the setting said. The decisions CSV's columns are
+  listed in the BI guide, with the `after_return_deadline` column 1.29.0 added at the end (RV3).
 
 ## 1.33.0 — 2026-10-30
 

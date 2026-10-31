@@ -32,14 +32,16 @@
   </label>
   <p class="hint">An item arriving closer to the cut-off than this is due at the next business day's. A check is never due
     later than the cut-off on its return day, the banking day after it was presented (its midnight deadline), so the
-    core can still return it.</p>
+    core can still return it; one that arrives after that cut-off gets this much time, never past midnight, before a
+    default decision applies.</p>
   <label><input type="checkbox" name="open_on_federal_holidays" value="true" {{ "checked" if open_on_federal_holidays else "" }}>
-    The bank opens on the Federal Reserve's holidays (they then count as banking days for a check's return deadline)</label>
+    The bank opens on the Federal Reserve's holidays (they then count as banking days: the cut-off falls on them, and so can a
+    check's return deadline)</label>
   <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
 </form>
 
 <h3>Days the bank is closed</h3>
-<p class="hint">Besides weekends and the Federal Reserve's holidays, which are always skipped.</p>
+<p class="hint">Besides weekends and, unless the bank opens on them, the Federal Reserve's holidays.</p>
 {% if closures %}
 <table>
   <thead><tr><th>Day</th><th>Why</th><th><span class="visually-hidden">Remove</span></th></tr></thead>

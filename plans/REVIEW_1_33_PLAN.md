@@ -276,3 +276,12 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   the counter that matters is the probing one. Also fixed while running the suite for RV1: backing
   out a file whose check was paid by a decision restores the issued check, as a matched one does,
   and a check already returned by a decision can't be backed out (it was always so for a return).
+- 2026-10-31: RV3 built on `review-1-33`. `within_return_deadline` gives a check arriving after its
+  return day's cut-off the bank's minimum review time, never past midnight (RV-D7); one whose
+  midnight has passed is still due at once. `next_cutoff` takes `open_on_federal_holidays`, so a
+  bank open on them has its cut-off on them (G6), and the two hints say so. The decisions CSV's
+  columns are listed in `docs/guides/bi.md` (G2), with "read by header, not position". The
+  flagged-decision test now asserts the CSV column and the webhook payload too. **Not done:** the
+  ML floor test (the review's list was wrong: `test_a_first_model_needs_enough_own_decisions_to_be_activated`
+  already covers it); DST in Phoenix and Honolulu (the arithmetic is on aware wall clocks, and
+  the review probed the fall-back; a parametrised zone would prove little more).

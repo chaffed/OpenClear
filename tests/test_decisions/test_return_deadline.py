@@ -5,7 +5,7 @@
 day it was presented, in the bank's banking days, and the decision deadline is never later than
 the cut-off on the check's return day, whatever the minimum review time or a late file would say."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -73,27 +73,62 @@ def test_a_late_file_cant_push_the_decision_past_the_return_day(db_session, tena
     assert _ny(on_time.decision_deadline) == datetime(2026, 11, 27, 11, 0, tzinfo=NY)  # the cut-off holds
 
 
-def test_a_decision_after_the_return_deadline_is_flagged(db_session, tenant_factory):
+@pytest.mark.parametrize("arrived, due", [
+    (datetime(2026, 11, 25, 14, 0, tzinfo=NY), datetime(2026, 11, 25, 16, 0, tzinfo=NY)),   # after the cut-off: two hours to look
+    (datetime(2026, 11, 25, 23, 0, tzinfo=NY), datetime(2026, 11, 26, 0, 0, tzinfo=NY)),    # ...but never past midnight
+    (datetime(2026, 11, 26, 9, 0, tzinfo=NY), datetime(2026, 11, 25, 11, 0, tzinfo=NY)),    # midnight has passed: due at once
+])
+def test_a_check_arriving_after_its_return_days_cutoff_gets_a_look_before_a_default(db_session, tenant_factory, monkeypatch, arrived, due):
+    """REVIEW_1_33_PLAN.md G1, RV-D7: presented Tuesday 24 November (returned by Wednesday 24:00),
+    reaching OpenClear after Wednesday's 11:00 cut-off."""
+    import openclear.services.cutoff_service as cs
+
+    tenant, account, _users = tenant_factory.make(slug="return-late-arrival")
+    tenant.decision_cutoffs, tenant.time_zone, tenant.cutoff_min_review_minutes = {"check": "11:00"}, "America/New_York", 120
+    db_session.commit()
+    monkeypatch.setattr(cs, "_now", lambda: arrived.astimezone(timezone.utc))
+    item = _present(db_session, tenant, account, date(2026, 11, 24))
+    assert _ny(item.decision_deadline) == due
+
+
+def test_a_bank_open_on_federal_holidays_has_its_cutoff_on_them():
+    """REVIEW_1_33_PLAN.md G6: the setting said holidays count as banking days; the cut-off agrees."""
+    arrived = datetime(2026, 10, 12, 8, 0, tzinfo=NY)  # Columbus Day, 08:00
+    assert _ny(cutoff_service.next_cutoff(arrived, "11:00", "America/New_York", 120)) == datetime(2026, 10, 13, 11, 0, tzinfo=NY)
+    assert _ny(cutoff_service.next_cutoff(arrived, "11:00", "America/New_York", 120, open_on_federal_holidays=True)) == \
+        datetime(2026, 10, 12, 11, 0, tzinfo=NY)
+
+
+def test_a_decision_after_the_return_deadline_is_flagged(db_session, tenant_factory, monkeypatch):
+    """In the feed, the CSV, the webhook and a security event, from one answer."""
     from sqlalchemy import select
 
+    from openclear.config import get_settings
     from openclear.domain.decision import DecisionOutcome
     from openclear.domain.security_event import SecurityEvent
-    from openclear.services import decision_feed_service, decision_service
+    from openclear.domain.webhook import WebhookDelivery
+    from openclear.services import decision_feed_service, decision_service, webhook_service
     from tests.test_web.test_web_exception_review import _ctx
 
     tenant, account, users = tenant_factory.make(slug="return-late")
     tenant.decision_cutoffs = {"check": "11:00"}
+    monkeypatch.setattr(get_settings(), "webhook_allow_private_hosts", True)
+    webhook_service.create_endpoint(db_session, tenant.id, url="http://127.0.0.1:9/hook", event_types=["exception.decided"])
     db_session.commit()
     item = _present(db_session, tenant, account, date(2026, 10, 1))  # weeks ago: due at once, and late
     result = decision_service.decide(db_session, tenant.id, item.id, _ctx(tenant, users["admin"]), outcome=DecisionOutcome.PAY,
                                      reason_code="Reviewed", notes=None, channel="web")
     assert result.error is None
     db_session.commit()
-    [entry] = decision_feed_service.read_feed(db_session, tenant.id)
+    feed = decision_feed_service.read_feed(db_session, tenant.id)
+    [entry] = feed
     events = db_session.execute(select(SecurityEvent).where(SecurityEvent.name == "decision.after_return_deadline",
                                                             SecurityEvent.tenant_id == tenant.id)).scalars().all()
     assert len(events) == 1 and events[0].severity == "high"
     assert entry["after_return_deadline"] is True
+    assert decision_feed_service.to_csv(feed).splitlines()[1].endswith(",True")  # the last column of the OpenClear CSV layout
+    [delivery] = db_session.execute(select(WebhookDelivery).where(WebhookDelivery.tenant_id == tenant.id)).scalars().all()
+    assert delivery.payload["data"]["after_return_deadline"] is True
 
 
 def test_the_control_fails_after_a_late_decision_and_warns_on_a_later_customer_cutoff(db_session, tenant_factory):
