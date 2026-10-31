@@ -524,7 +524,7 @@ def read_key(area: str, key: str) -> bytes | None:
     store = backend()
     try:
         if isinstance(store, LocalStorage):
-            path = Path(getattr(get_settings(), AREAS[area])) / safe_key(key)
+            path = store._path(area, key)  # safe_key, and the resolved path stays in the area
             return path.read_bytes() if path.is_file() else None
         if isinstance(store, S3Storage):
             return store.open(store._ref(store._key(area, key))).read()

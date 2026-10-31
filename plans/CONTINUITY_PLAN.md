@@ -139,3 +139,4 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   Postgres and Linux suites on the branch head before the pull request. Three migrations
   (`d4e8f2a6c1b7`, `e5f9a3b7d2c8`, `f7a1b5c9d3e2`), four controls (OC-CP-02 to OC-CP-04 and the
   checks under them), one script (`scripts/restore_drill.py`).
+- 2026-10-31 Pull request #71. CodeQL flagged the open-items download's `?day=` reaching a file name (three path-injection alerts): the route now builds the name from the parsed date, and a local `read_key` goes through `LocalStorage._path`'s resolved-path check like every other local read.

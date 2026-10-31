@@ -822,7 +822,16 @@ def download_open_items(day: str = "", db: Session = Depends(get_db),
 
     if ctx.customer_id is not None:
         raise WebNotFound()  # the bank's whole list; a customer's people see their items on the Exceptions page
-    name = f"open-items-{day}.csv" if day else continuity_snapshot.LATEST
+    if day:
+        # The name is built from the parsed date, never from the string the browser sent.
+        from datetime import date
+
+        try:
+            name = f"open-items-{date.fromisoformat(day).isoformat()}.csv"
+        except ValueError:
+            raise WebNotFound() from None
+    else:
+        name = continuity_snapshot.LATEST
     data = continuity_snapshot.read(ctx.tenant_id, name)
     if data is None:
         raise WebNotFound()

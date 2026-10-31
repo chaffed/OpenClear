@@ -60,6 +60,9 @@ def test_the_settings_section_and_the_download(client, db_session, tenant_factor
     got = client.get("/ui/settings/continuity/open-items.csv")
     assert got.status_code == 200 and got.headers["content-type"].startswith("text/csv") and "4201" in got.text
     assert client.get("/ui/settings/continuity/open-items.csv?day=2020-01-01").status_code == 404
+    # Only a date names a dated copy: nothing else the browser sends reaches the file name.
+    assert client.get("/ui/settings/continuity/open-items.csv?day=../../open-items-latest").status_code == 404
+    assert client.get("/ui/settings/continuity/open-items.csv?day=latest").status_code == 404
     saved = client.post("/ui/settings/continuity", data={"csrf_token": csrf, "emailed": "true"}, follow_redirects=False)
     assert saved.status_code in (200, 303)
     db_session.expire_all()
