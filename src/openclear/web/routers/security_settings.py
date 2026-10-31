@@ -42,7 +42,7 @@ _PREFERENCE_TYPES = [
                                              NotificationType.EMAIL_CHANGED, NotificationType.MALWARE_DETECTED,
                                              NotificationType.INACTIVITY_WARNING, NotificationType.SIGN_IN_LINKS,
                                              NotificationType.INCIDENT_NOTICE, NotificationType.SERVICE_ENDING,
-                                             NotificationType.CONTINUITY_GAP)
+                                             NotificationType.CONTINUITY_GAP, NotificationType.CONTINUITY_SNAPSHOT)
 ]
 
 _NOTIFICATION_TYPE_LABELS = {

@@ -37,7 +37,7 @@ from openclear.web.templates import templates
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
                                  NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
                                  NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED, NotificationType.SIGN_IN_LINKS,
-                                 NotificationType.CONTINUITY_GAP})
+                                 NotificationType.CONTINUITY_GAP, NotificationType.CONTINUITY_SNAPSHOT})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -55,6 +55,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EMAIL_CHANGED: "The email address on your OpenClear sign-in changed",
     NotificationType.MALWARE_DETECTED: "Malware was found in a file uploaded to OpenClear",
     NotificationType.CONTINUITY_GAP: "OpenClear was unavailable across a cut-off: items are due again",
+    NotificationType.CONTINUITY_SNAPSHOT: "Your open positive pay items, for your continuity plan",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",

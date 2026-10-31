@@ -24,6 +24,17 @@
   restore test on every bank's Controls page. Nightly, every row that names a file and every file
   are checked against each other (*Files and rows agree*, control OC-CP-04), and Platform →
   Continuity shows the last backup, the drills and any row whose file is gone (BC4).
+- **Maintenance mode** (`OPENCLEAR_MAINTENANCE_MODE=1`): while an installation is being restored,
+  people can sign in and look, an administrator can take a data export, and every other change
+  answers 503 with the reason; every page carries the notice; the cut-off sweep pauses, and the
+  pause counts as an outage across a cut-off when the mode ends, so nothing is decided by
+  default for the gap. The Controls page shows the mode (BC5).
+- **Your open items, as a file for your continuity plan.** Every hour OpenClear writes each
+  bank's open and pending items (customer, account, item, amount, problems, when it's due, the
+  return deadline, the default at the cut-off) as a signed CSV, with a dated copy at the end of
+  the bank's day; Settings → Continuity downloads them, and can email the daily copy to the
+  incident contacts, so the bank can decide by hand and reach its core before the midnight
+  deadline when OpenClear can't be reached (CUEC B-CP-2-01) (BC5).
 
 ## 1.34.0 — 2026-10-31
 

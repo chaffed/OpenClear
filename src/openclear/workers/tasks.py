@@ -137,6 +137,13 @@ def sweep_expired_dispositions_job() -> None:
 
     session = get_session_factory()()
     try:
+        if get_settings().maintenance_mode:
+            # Being restored (CONTINUITY_PLAN.md BC-D4): nothing is decided; the pause is a gap when it ends.
+            from openclear.services import continuity_service
+
+            continuity_service.note_paused(session)
+            session.commit()
+            return
         # First, warn about deadlines that are near (exception.deadline_approaching webhook).
         try:
             if warned := webhook_service.warn_deadlines_approaching(session):
@@ -398,6 +405,19 @@ def malware_recheck_job() -> None:
     except Exception:  # noqa: BLE001
         session.rollback()
         logger.exception("Malware re-check failed")
+    finally:
+        session.close()
+
+
+def continuity_snapshot_job() -> None:
+    """Hourly: each bank's open items as a signed CSV in its storage (services/continuity_snapshot.py)."""
+    from openclear.services import continuity_snapshot
+
+    session = get_session_factory()()
+    try:
+        written = continuity_snapshot.run_all(session)
+        if written:
+            logger.info("Continuity snapshots written for %d banks", written)
     finally:
         session.close()
 

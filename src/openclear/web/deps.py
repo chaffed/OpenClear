@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from openclear.auth.deps import AccessRevoked, WrongTokenType, decode_and_build_context
 from openclear.db.session import get_db
 from openclear.web.demo_guard import DEMO_LOCKED_MESSAGE, is_locked_in_demo
+from openclear.config import get_settings
 from openclear.db.tenancy import TenantContext
 from openclear.web.security import (
     read_cookie,
@@ -100,6 +101,10 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
 
         count, nearest = exception_service.attention_summary(db, ctx.tenant_id, customer_id=ctx.customer_id)
         ctx = dataclasses.replace(ctx, needs_attention_count=count, nearest_deadline=nearest)
+    if get_settings().maintenance_mode:
+        import dataclasses
+
+        ctx = dataclasses.replace(ctx, maintenance=True)
     if ctx.customer_id is None and ({"admin:manage", "tenant:manage"} & set(ctx.permissions)):
         import dataclasses
 

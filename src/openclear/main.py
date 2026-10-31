@@ -51,6 +51,12 @@ _WEB_ERRORS = {
 }
 
 
+_WRITES = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+# What still works in maintenance mode: signing in and out, and taking a data export.
+_MAINTENANCE_ALLOWED = ("/ui/login", "/ui/logout", "/ui/webauthn", "/ui/session", "/api/v1/auth/", "/api/v1/oauth/", "/api/v1/webauthn",
+                        "/ui/settings/data-export", "/api/v1/data-exports", "/ui/platform/login")
+
+
 def _wants_json(request: Request) -> bool:
     return request.url.path.startswith(_API_PREFIXES)
 
@@ -216,6 +222,19 @@ def create_app() -> FastAPI:
     from openclear.api import idempotency
 
     idempotency.install(app)
+
+    @app.middleware("http")
+    async def _maintenance_mode(request: Request, call_next):
+        # Being restored (CONTINUITY_PLAN.md BC-D4): people can sign in and look, and an administrator can take a
+        # data export; nothing else changes until the mode is off. Decisions already made are safe.
+        if get_settings().maintenance_mode and request.method in _WRITES and not request.url.path.startswith(_MAINTENANCE_ALLOWED):
+            if request.url.path.startswith(_API_PREFIXES):
+                return JSONResponse({"detail": "OpenClear is being restored; nothing can be changed until it's done. Decisions already made are safe."},
+                                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers={"Retry-After": "600"})
+            return _web_error(request, 503, title="OpenClear is being restored",
+                              message="Nothing can be changed until the restore is done; decisions already made are safe. You can still look, "
+                                      "and an administrator can take a data export.", headers={"Retry-After": "600"})
+        return await call_next(request)
 
     @app.middleware("http")
     async def _limit_request_body_size(request: Request, call_next):

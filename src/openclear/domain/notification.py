@@ -45,6 +45,9 @@ class NotificationType(str, enum.Enum):
     # services/continuity_service.py: OpenClear was down across a cut-off and the items due then are due
     # again (CONTINUITY_PLAN.md BC-D1). To the bank's administrators and the customers' deciders; always email.
     CONTINUITY_GAP = "continuity_gap"
+    # services/continuity_snapshot.py: the bank's open items as of its end of day, to its incident contacts when it asks
+    # (CONTINUITY_PLAN.md BC-D5). To addresses, always email.
+    CONTINUITY_SNAPSHOT = "continuity_snapshot"
     # services/sign_in_links.py: someone asked for their organizations' sign-in links (FR8). To
     # the address asked about, so always email.
     SIGN_IN_LINKS = "sign_in_links"

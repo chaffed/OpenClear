@@ -95,6 +95,15 @@ def _storage_consistency(session) -> Control:
     return storage_reconcile.consistency_check(session)
 
 
+def _maintenance_mode() -> Control:
+    """Whether the installation is in maintenance mode (config.maintenance_mode; CONTINUITY_PLAN.md BC-D4)."""
+    title = "Not in maintenance mode"
+    if get_settings().maintenance_mode:
+        return Control("maintenance_mode", title, WARN, "OpenClear is in maintenance mode: sign-in and reading work, writes are refused, "
+                       "the cut-off sweep is paused and will treat the pause as a gap when it ends.", {"maintenance_mode": True})
+    return Control("maintenance_mode", title, PASS, "Not in maintenance mode.", {"maintenance_mode": False})
+
+
 def _backup_freshness() -> Control:
     """The last backup, from the manifest the host's job leaves (services/backup_service.py; CONTINUITY_PLAN.md BC-D2)."""
     from openclear.services import backup_service

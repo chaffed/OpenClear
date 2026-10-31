@@ -1,0 +1,21 @@
+{% from "_macros/icon.html" import icon %}
+<p class="hint">For your continuity plan (CUEC B-CP-2-01): every hour OpenClear writes your open items, with when each is due
+  and what happens by default at the cut-off, as a signed file you can download here and work from if OpenClear can't be
+  reached. A dated copy is kept each day at the end of your day{% if emailed %} and emailed to your incident contacts{% endif %}.</p>
+{% if snapshot %}
+<p><strong>{{ snapshot.bundle.rows }}</strong> open {{ "item" if snapshot.bundle.rows == 1 else "items" }} as of
+  <time datetime="{{ snapshot.bundle.as_of }}" data-local-time>{{ snapshot.bundle.as_of[:16].replace("T", " ") }} UTC</time>
+  · <a href="/ui/settings/continuity/open-items.csv">{{ icon("download") }}Download the latest</a>
+  · SHA-256 <code>{{ snapshot.bundle.sha256[:16] }}…</code>, signed with the installation's file-signing key.</p>
+{% else %}
+<p class="hint">No snapshot yet: the first is written within the hour.</p>
+{% endif %}
+{% if dated %}
+<p>Daily copies: {% for name in dated %}<a href="/ui/settings/continuity/open-items.csv?day={{ name[11:21] }}">{{ name[11:21] }}</a>{{ ", " if not loop.last }}{% endfor %}</p>
+{% endif %}
+<form method="post" action="/ui/settings/continuity">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label><input type="checkbox" name="emailed" value="true" {{ "checked" if emailed else "" }}>
+    Email the daily copy to the incident contacts (Settings → Incident contacts), so it's in their inbox when OpenClear isn't</label>
+  <div class="form-actions"><button type="submit">{{ icon("save") }}Save</button></div>
+</form>

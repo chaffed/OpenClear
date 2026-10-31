@@ -176,6 +176,7 @@ erDiagram
 <tr><td>data_deleted_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank's data was deleted. The row stays, inactive and with its settings cleared, so the slug is never reused.</td></tr>
 <tr><td>legal_hold_reason</td><td>String(500)</td><td>yes</td><td></td><td>Set while the bank's data is on legal hold; deletion is refused.</td></tr>
 <tr><td>incident_contacts_confirmed_at</td><td>Timestamp</td><td>yes</td><td></td><td>When an administrator last set or confirmed the incident contacts; the control check warns after a year.</td></tr>
+<tr><td>continuity_snapshot_emailed</td><td>Boolean</td><td>no</td><td></td><td>Email the daily open-items snapshot to the incident contacts (Settings → Continuity; 1.35.0).</td></tr>
 <tr><td>open_on_federal_holidays</td><td>Boolean</td><td>no</td><td></td><td>The bank opens on the Federal Reserve's holidays, so they count as banking days for a check's return deadline. Default false.</td></tr>
 <tr><td>security_event_feed_read_at</td><td>Timestamp</td><td>yes</td><td></td><td>When the bank last read its security events through the API (for the "Security events delivered" control).</td></tr>
 </tbody>

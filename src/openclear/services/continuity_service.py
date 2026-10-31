@@ -28,6 +28,7 @@ from openclear.domain.tenant import Tenant
 logger = logging.getLogger(__name__)
 
 SWEEP_JOB_ID = "sweep_expired_dispositions_job"
+PAUSED_MARKER = SWEEP_JOB_ID + ":paused"  # a ScheduledJobRun row: when maintenance mode first stopped the sweep (BC-D4)
 GRACE = timedelta(minutes=5)  # a slow sweep isn't an outage
 OUTAGE = "outage"  # exception_item.deadline_moved_reason
 
@@ -50,8 +51,25 @@ def _aware(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
 
 
+def note_paused(session: Session, now: datetime | None = None) -> None:
+    """Maintenance mode stopped the sweep: remember when it began, so the pause counts as a gap
+    once it ends (the sweep's own run row keeps being written by the scheduler meanwhile)."""
+    now = now or _now()
+    marker = session.get(ScheduledJobRun, PAUSED_MARKER)
+    if marker is None:
+        session.add(ScheduledJobRun(job_id=PAUSED_MARKER, last_started_at=now, last_finished_at=None, last_ok=None))
+    session.flush()
+
+
 def gap_before(session: Session, now: datetime) -> tuple[datetime, datetime] | None:
-    """(from, to) when the sweep's previous run finished longer ago than its interval allows."""
+    """(from, to) when the sweep's previous run finished longer ago than its interval allows, or
+    when maintenance mode paused it: from the pause's start (the marker is then cleared)."""
+    marker = session.get(ScheduledJobRun, PAUSED_MARKER)
+    if marker is not None:
+        since = _aware(marker.last_started_at)
+        session.delete(marker)
+        session.flush()
+        return (since, now)
     run = session.get(ScheduledJobRun, SWEEP_JOB_ID)
     last = _aware(run.last_finished_at) if run else None
     if last is None:

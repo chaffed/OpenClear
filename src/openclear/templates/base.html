@@ -186,6 +186,10 @@
         visitors out are turned off.</p>
       {% endif %}
       {% include "partials/_flash.html" %}
+      {% if ctx and ctx.maintenance %}
+      <p class="flash flash-warn maintenance-notice" role="status"><strong>OpenClear is being restored.</strong> You can look, and an
+        administrator can take a data export, but nothing can be changed until it's done. Decisions already made are safe.</p>
+      {% endif %}
       {% for delivery_id, kind, title in (ctx.incident_notices if ctx else ()) %}
       {# The service provider's incident notice (services/incident_service.py): until an administrator acknowledges it. #}
       <div class="flash flash-error incident-notice" role="alert">

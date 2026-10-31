@@ -313,7 +313,7 @@ CONTROLS: tuple[OcControl, ...] = (
       "and reconciles the restored rows against file storage, then signs the result; the Controls page shows the last passed "
       "drill as the last restore test. Nightly, the rows that name files and the files are checked against each other, and "
       "Platform → Continuity lists any that disagree.",
-      ("CP-4", "CP-9", "CP-10"), "detective", "built_in", ("storage_consistency",), ("H-CP-9-01", "H-CP-2-01"),
+      ("CP-4", "CP-9", "CP-10"), "detective", "built_in", ("storage_consistency", "maintenance_mode"), ("H-CP-9-01", "H-CP-2-01"),
       "scripts/restore_drill.py; Controls → Files and rows agree; Platform → Continuity"),
     C("OC-CP-02", "An outage across a cut-off decides nothing by default",
       "When OpenClear was unavailable across a cut-off, the items due in that time are given the bank's minimum review time "

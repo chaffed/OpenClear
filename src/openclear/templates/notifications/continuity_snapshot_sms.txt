@@ -1,0 +1,1 @@
+OpenClear: {{ bank_name }} has {{ count }} open positive pay items as of {{ as_of }}; the daily file is in Settings → Continuity.

@@ -124,3 +124,11 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   OC-CP-04); `scripts/restore_drill.py` with `restore_test` rows (migration `e5f9a3b7d2c8`), read by
   the recovery-objectives check as the last restore test; Platform → Continuity (the manifest, the
   drills, "Check now"); the runbook's drill commands; H-CP-9-01 cites them.
+- 2026-10-31: BC5 built on `bc1-gap`: `maintenance_mode` (the write guard in `main.py` with the
+  sign-in, session and data-export paths allowed; `ctx.maintenance` and the banner; the sweep's
+  pause marker, read by `gap_before`; the `maintenance_mode` check); `services/continuity_snapshot.py`
+  (hourly `continuity_snapshot_job`; the signed latest file and the dated copy at the bank's 23:00;
+  emailed to the incident contacts when `tenant.continuity_snapshot_emailed`, migration
+  `f7a1b5c9d3e2`); Settings → Continuity with the download and the switch. **Deviation from
+  BC-D4:** the mode is a setting, not a platform switch: a switch kept in the database is exactly
+  what's unavailable during a restore.
