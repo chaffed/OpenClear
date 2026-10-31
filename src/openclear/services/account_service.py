@@ -60,12 +60,14 @@ class ServiceEnded(RowFieldError):
 
 def _refuse_ended(session: Session, account: Account | None) -> Account | None:
     from openclear.domain.customer import Customer
+    from openclear.services import customer_offboarding_service as offboarding
 
     if account is not None and account.customer_id is not None:
         customer = session.get(Customer, account.customer_id)
-        if customer is not None and customer.service_ended_at is not None:
-            raise ServiceEnded(f"Positive pay ended for {customer.name}, this account's customer, on "
-                               f"{customer.service_ended_at:%Y-%m-%d}; its items are no longer read.", "account_number")
+        if offboarding.ended(customer):  # from midnight at the bank on its last day, not from the daily run (RV-D5)
+            raise ServiceEnded(f"Positive pay ended for {customer.name}, this account's customer, after "
+                               f"{offboarding.last_service_day(session, customer):%Y-%m-%d}; its items are no longer read.",
+                               "account_number")
     return account
 
 

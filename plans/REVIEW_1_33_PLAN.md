@@ -297,3 +297,15 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   one administrator; refusing them would lock such a bank out of its own settings. Only what
   can't be undone needs the second person always. The S3 `delete_tenant` test is left: the
   Azure one covers the same shape and the walk is backend-independent.
+- 2026-10-31: RV5 built on `review-1-33`. `customer_offboarding_service.ended()` reads
+  `service_ends_at <= now` as well as `service_ended_at`, and the file refusal, the teller and the
+  request gate use it; `end_service` records the end as the end of the last day (O5). The API's
+  upsert refuses `is_active: true` for an ended customer (O2). Kept people are anonymised
+  (`_anonymise`: email, phone, password, token version) after the personal rows go outside the
+  savepoint (O6); `cuec_attestation`, `access_review` and `access_review_item` are kept, unlinked
+  (`_unlink_kept`), and the certificate says which (O8). Sessions end at this bank only (O11);
+  `_strip` writes empty mappings, not JSON null. `bank_day` filter and `ctx.service_last_day` show
+  the bank's days (O10). **Deviations:** finalised billing statements go with the customer:
+  `billing_statement.customer_id` is NOT NULL, billing is frozen (FR-D19), and the bank's invoices
+  live in its own system; `stop()` still restores `is_active=True` (there's no record of what it
+  was, and a customer restored to positive pay is active).

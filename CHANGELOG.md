@@ -36,6 +36,17 @@
   at a time long past. Offboarding a bank, deleting its data and ending a customer's positive pay
   always need a second person: with nobody else able to approve, the request is refused rather
   than applied after the day's cooling-off (RV4).
+- **A customer's positive pay ends at midnight on its last day, everywhere.** Sign-in, files
+  naming its accounts and teller answers now read the last day itself, not the daily run that
+  follows it (which could be a morning later), and the end is recorded as the end of that day, so
+  the 90-day clock and every page agree with the day the customer was told. A core's customer
+  sync can no longer bring an ended customer back: `PUT /api/v1/customers/{number}` with
+  `is_active: true` is refused with 409, and restoring is the two-administrator change on the
+  customer's page. Ending service signs its people out of this bank only. When a customer's data
+  is deleted, the bank's attestations and access reviews about it stay, no longer naming it; a
+  person kept because the action log names them keeps nothing personal (no email, phone,
+  password or sessions). Dates on the customer page, the banner and the Deleted customers list are
+  the bank's days (RV5).
 
 ## 1.33.0 — 2026-10-30
 

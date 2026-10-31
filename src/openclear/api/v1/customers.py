@@ -7,7 +7,7 @@ list and an upsert by the bank's own customer number. `PUT` is naturally safe to
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ from openclear.db.session import get_db
 from openclear.db.tenancy import TenantContext
 from openclear.domain.customer import Customer
 from openclear.repositories.customer_repo import CustomerRepository
-from openclear.services import audit_log_service, customer_service
+from openclear.services import audit_log_service, customer_offboarding_service, customer_service
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 _manage = require_permission("customer:manage")
@@ -110,6 +110,11 @@ def upsert_customer(customer_number: str, payload: CustomerUpsert, db: Session =
     else:
         customer = customer_service.update_customer(db, ctx.tenant_id, existing.id, data)
         action, code = "customer.update", status.HTTP_200_OK
+    if payload.is_active and customer_offboarding_service.ended(customer):
+        # A core's routine sync mustn't quietly undo the end of service; restoring it is two administrators' change (RV-D3).
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Positive pay for {customer.name} has ended; restoring it is a change two "
+                                                      "administrators make on the customer's page, not a sync.")
     customer.is_active = payload.is_active
     audit_log_service.record_action(
         db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="api", action=action,
@@ -117,8 +122,6 @@ def upsert_customer(customer_number: str, payload: CustomerUpsert, db: Session =
         resource_type="customer", resource_id=customer.id,
     )
     if payload.custom_fields:
-        from fastapi import HTTPException
-
         from openclear.services import custom_field_service
 
         try:
@@ -140,8 +143,6 @@ def _self_service(db: Session, ctx: TenantContext, customer: Customer) -> SelfSe
 
 
 def _by_number(db: Session, ctx: TenantContext, customer_number: str) -> Customer:
-    from fastapi import HTTPException
-
     customer = customer_service.get_customer_by_number(db, ctx.tenant_id, customer_number)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")

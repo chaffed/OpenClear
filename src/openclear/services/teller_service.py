@@ -134,8 +134,10 @@ def _enrolled(session: Session, account: Account) -> bool:
 
     if account.customer_id is None:
         return True
+    from openclear.services import customer_offboarding_service as offboarding
+
     customer = session.get(Customer, account.customer_id)
-    return customer is not None and customer.is_active and customer.service_ended_at is None
+    return customer is not None and customer.is_active and not offboarding.ended(customer)
 
 
 def _in_another_tellers_hands(session: Session, tenant_id: uuid.UUID, account: Account, check_number: str) -> bool:

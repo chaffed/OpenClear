@@ -14,8 +14,8 @@
       {% for d in deletions %}
       <tr>
         <td data-label="Customer">{{ d.customer_name }}<br><span class="hint">{{ d.customer_number }}</span></td>
-        <td data-label="Service ended">{{ d.service_ended_at.strftime("%Y-%m-%d") if d.service_ended_at else "—" }}</td>
-        <td data-label="Deleted">{{ d.completed_at.strftime("%Y-%m-%d") }}</td>
+        <td data-label="Service ended">{{ (d.service_ended_at | bank_day(bank_time_zone, last=True)) if d.service_ended_at else "—" }}</td>
+        <td data-label="Deleted">{{ d.completed_at | bank_day(bank_time_zone) }}</td>
         <td data-label="Certificate"><a href="/ui/customers/deleted/{{ d.id }}/certificate">Download</a></td>
       </tr>
       {% endfor %}

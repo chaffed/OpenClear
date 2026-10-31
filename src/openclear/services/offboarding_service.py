@@ -303,21 +303,42 @@ def _forget(session: Session, user_ids: list[uuid.UUID]) -> tuple[int, int]:
     for user_id in user_ids:
         savepoint = session.begin_nested()
         try:
-            for name, column in _PERSONAL:
-                table = Base.metadata.tables.get(name)
-                if table is not None and column in table.columns:
-                    session.execute(delete(table).where(table.c[column] == user_id))
+            _delete_personal(session, user_id)
             delete_users(session, User.id == user_id)
             session.flush()
             savepoint.commit()
             deleted += 1
         except IntegrityError:
             savepoint.rollback()
+            # Named in a record that stays (the action log, a decision), so the row stays: with nothing
+            # personal on it, and no way back in (REVIEW_1_33_PLAN.md O6, RV-D6).
+            _delete_personal(session, user_id)
             user = session.get(User, user_id)
             if user is not None:
-                user.is_active = False
+                _anonymise(user)
+            session.flush()
             kept += 1
     return deleted, kept
+
+
+def _delete_personal(session: Session, user_id: uuid.UUID) -> None:
+    for name, column in _PERSONAL:
+        table = Base.metadata.tables.get(name)
+        if table is not None and column in table.columns:
+            session.execute(delete(table).where(table.c[column] == user_id))
+
+
+def _anonymise(user) -> None:
+    """What's left of a person kept only as the actor on records: an id, and nothing that was theirs."""
+    import secrets
+
+    from openclear.auth.security import hash_password
+
+    user.email = f"deleted-{user.id.hex[:16]}@deleted.invalid"
+    user.hashed_password = hash_password(secrets.token_urlsafe(32))
+    user.phone = None
+    user.is_active = False
+    user.token_version = (user.token_version or 0) + 1
 
 
 def _wipe(session: Session, bank: Tenant) -> dict[str, int]:
@@ -337,7 +358,8 @@ def _strip(bank: Tenant) -> None:
     for column in Tenant.__table__.columns:
         if column.key in _KEPT_COLUMNS:
             continue
-        default = column.default.arg if column.default is not None and not callable(column.default.arg) else None
+        arg = column.default.arg if column.default is not None else None
+        default = arg() if arg in (dict, list) else (None if callable(arg) else arg)  # an empty mapping, not JSON null
         setattr(bank, column.key, default)
     bank.is_active = False
 
@@ -397,6 +419,7 @@ def run(session: Session, deletion_id: uuid.UUID) -> BankDeletion | None:
         "storage_areas_cleared": sorted(storage_areas()),
         "people_deleted": people_deleted,
         "people_kept_because_they_belong_elsewhere_or_are_named_in_records": len(kept) + still_referenced,
+        "people_anonymised_because_they_are_named_in_records": still_referenced,
         "kept": "The bank's name and slug, inactive, so the slug is never reused; this certificate; the service provider's "
                 "own action log and incident notices; the provider's own custom-field values for the bank (its references, "
                 "such as an ERP id).",

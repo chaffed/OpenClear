@@ -197,7 +197,10 @@ def deleted_customers(request: Request, db: Session = Depends(get_db),
     (plans/CUSTOMER_OFFBOARDING_PLAN.md)."""
     from openclear.services import customer_offboarding_service
 
-    return render_template(request, "customers/deleted.html", ctx=ctx, deletions=customer_offboarding_service.deletions(db, ctx.tenant_id))
+    from openclear.services import cutoff_service
+
+    return render_template(request, "customers/deleted.html", ctx=ctx, deletions=customer_offboarding_service.deletions(db, ctx.tenant_id),
+                           bank_time_zone=cutoff_service.time_zone_for(db.get(Tenant, ctx.tenant_id)))
 
 
 @router.get("/deleted/{deletion_id}/certificate")
@@ -263,16 +266,10 @@ def customer_detail(
 
 
 def _offboarding_context(db: Session, customer, tenant) -> dict:
-    from datetime import timedelta
-    from zoneinfo import ZoneInfo
+    from openclear.services import customer_offboarding_service
 
-    from openclear.services import customer_offboarding_service, cutoff_service
-
-    last_day = None
-    if customer.service_ends_at is not None:
-        ends = customer.service_ends_at
-        ends = ends.replace(tzinfo=ZoneInfo("UTC")) if ends.tzinfo is None else ends
-        last_day = (ends.astimezone(ZoneInfo(cutoff_service.time_zone_for(tenant))) - timedelta(seconds=1)).date().isoformat()
+    last_day = customer_offboarding_service.last_service_day(db, customer)
+    last_day = last_day.isoformat() if last_day else None
     # The earliest last service day is today at the bank, not on the server.
     return {"offboarding_deletion_due": customer_offboarding_service.deletion_due(customer), "offboarding_last_day": last_day,
             "retention_days": customer_offboarding_service.retention_days(),

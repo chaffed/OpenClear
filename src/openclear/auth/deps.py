@@ -44,6 +44,14 @@ class AccessRevoked(Exception):
     immediately rather than waiting for the token to expire."""
 
 
+def _service_ended(customer) -> bool:
+    """Its last service day is over (services/customer_offboarding_service.py): nobody there signs
+    in, whatever a later sync set is_active to (REVIEW_1_33_PLAN.md O2, O5)."""
+    from openclear.services import customer_offboarding_service
+
+    return customer_offboarding_service.ended(customer)
+
+
 def _pending_approval_count(db: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID | None, user_id: uuid.UUID) -> int:
     stmt = select(func.count(ExceptionItem.id)).where(
         ExceptionItem.tenant_id == tenant_id,
@@ -167,7 +175,7 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
         # auth/permissions.py::CUSTOMER_SCOPE_MASKED_PERMISSIONS.
         permissions = permissions - CUSTOMER_SCOPE_MASKED_PERMISSIONS
         customer = db.get(Customer, customer_id)
-        if customer is None or not customer.is_active:
+        if customer is None or not customer.is_active or _service_ended(customer):
             raise AccessRevoked("Customer no longer exists")
         customer_name = customer.name
         customer_banner_message = customer.banner_message

@@ -200,7 +200,7 @@
       {% if ctx and ctx.service_ends_at %}
       {# The bank is ending this customer's positive pay (services/customer_offboarding_service.py). #}
       <div class="flash flash-warn" role="status">
-        <strong>Your positive pay service ends</strong> on <time datetime="{{ ctx.service_ends_at | iso_utc }}" data-local-time>{{ ctx.service_ends_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>.
+        <strong>Your positive pay service ends</strong> at the end of {{ ctx.service_last_day.isoformat() if ctx.service_last_day else ctx.service_ends_at.strftime("%Y-%m-%d") }}.
         {% if can(ctx, "data_export:run") %}Take a <a href="/ui/settings/data-export">data export</a> before then to keep with your records.{% else %}Ask your administrator to take a data export before then.{% endif %}
       </div>
       {% endif %}

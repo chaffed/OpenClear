@@ -398,6 +398,26 @@ def _iso_utc(value) -> str:
 templates.env.filters["iso_utc"] = _iso_utc
 
 
+def _bank_day(value, zone: str, last: bool = False) -> str:
+    """Exposed as `bank_day`: a moment as the date it was at the bank. With `last`, the day that
+    ended at that moment (a service that ended at midnight ended on the day before it)."""
+    if value is None:
+        return ""
+    from datetime import timedelta, timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    try:
+        local = value.astimezone(ZoneInfo(zone))
+    except (ZoneInfoNotFoundError, TypeError):
+        local = value.astimezone(timezone.utc)
+    return ((local - timedelta(seconds=1)) if last else local).date().isoformat()
+
+
+templates.env.filters["bank_day"] = _bank_day
+
+
 # --- Plugin UI slots (plugins/ui_slots.py; MOBILE_PLAN.md R5) -------------------------------
 
 _slot_ids = itertools.count(1)  # unique ids for a slot's sheet on the page

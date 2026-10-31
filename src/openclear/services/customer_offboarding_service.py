@@ -31,8 +31,11 @@ from openclear.domain.bank_deletion import CustomerDeletion
 from openclear.domain.customer import Customer
 from openclear.domain.tenant import Tenant
 
-# Never deleted with a customer: the bank's own records, and what isn't the customer's.
-_KEPT_TABLES = frozenset({"tenant", "user", "audit_log_entry", "security_event", "customer_deletion", "bank_deletion"})
+# Never deleted with a customer: the bank's own records, and what isn't the customer's. The
+# bank's attestations and access reviews about the customer are the bank's compliance evidence
+# and outlive it, unlinked from the customer (REVIEW_1_33_PLAN.md O8, RV-D6).
+_KEPT_TABLES = frozenset({"tenant", "user", "audit_log_entry", "security_event", "customer_deletion", "bank_deletion",
+                          "cuec_attestation", "access_review", "access_review_item"})
 # Columns holding a stored file's key, by table: the file goes with the row.
 _FILE_COLUMNS = {"check_image": ("front_image_path", "back_image_path"), "bulk_upload_file": ("storage_path",),
                  "data_export_job": ("archive_path",)}
@@ -172,18 +175,35 @@ def set_hold(session: Session, tenant_id: uuid.UUID, customer_id: uuid.UUID, hel
 # --- Ending the service ----------------------------------------------------------------------
 
 
-def ended(customer: Customer | None) -> bool:
-    return customer is not None and customer.service_ended_at is not None
+def ended(customer: Customer | None, *, now: datetime | None = None) -> bool:
+    """Service has ended: the daily run has recorded it, or the last day is over and the run
+    hasn't come yet (REVIEW_1_33_PLAN.md O5, RV-D5). Every refusal reads this, so service ends at
+    midnight at the bank, not at the next run."""
+    if customer is None:
+        return False
+    if customer.service_ended_at is not None:
+        return True
+    ends = _aware(customer.service_ends_at)
+    return ends is not None and ends <= (now or _now())
+
+
+def last_service_day(session: Session, customer: Customer) -> date | None:
+    """The last day, as the bank counts days: the one that ended when `service_ends_at` struck."""
+    end = _aware(customer.service_ends_at) or _aware(customer.service_ended_at)
+    return (end.astimezone(_zone(session, customer.tenant_id)) - timedelta(seconds=1)).date() if end else None
 
 
 def end_service(session: Session, customer: Customer) -> None:
     """The last service day has passed: no sign-in, no sessions; files naming its accounts are
-    refused (services/account_service.py), and tellers are told it's not on positive pay."""
+    refused (services/account_service.py), and tellers are told it's not on positive pay. The
+    end is recorded as the moment the last day ended, not when this ran, so the retention clock
+    and the pages agree with the day the customer was told."""
     from openclear.services import session_service
 
-    customer.service_ended_at, customer.is_active = _now(), False
-    for user in _people(session, customer):
-        session_service.revoke_all_sessions(session, user)
+    customer.service_ended_at, customer.is_active = _aware(customer.service_ends_at) or _now(), False
+    # Their sessions at this bank only: someone who also works elsewhere stays signed in there (REVIEW_1_33_PLAN.md O11).
+    people = [u.id for u in _people(session, customer)]
+    session_service.end_sessions(session, session_service.active_sessions(session, customer.tenant_id, people))
     _record(session, customer, "customer.offboard.ended",
             f"Positive pay for {customer.name} ended; its data is deleted on or after "
             f"{deletion_due(customer).date().isoformat()}", user_id=None)
@@ -220,6 +240,24 @@ def _collect(session: Session, customer: Customer) -> dict[str, set]:
                     found.setdefault(table.name, set()).update(new)
                     queue.append((table.name, new))
     return found
+
+
+def _unlink_kept(session: Session, customer: Customer) -> dict[str, int]:
+    """The kept tables' references to the customer are cleared, so its row can go and the
+    records stay as the bank's own. Returns the rows unlinked per table."""
+    from sqlalchemy import update
+
+    unlinked: dict[str, int] = {}
+    for name in sorted(_KEPT_TABLES):
+        table = Base.metadata.tables.get(name)
+        if table is None:
+            continue
+        for fk in table.foreign_keys:
+            if fk.column.table.name == "customer" and fk.column.name == "id" and fk.parent.nullable:
+                count = session.execute(update(table).where(fk.parent == customer.id).values({fk.parent.name: None})).rowcount or 0
+                if count:
+                    unlinked[name] = unlinked.get(name, 0) + count
+    return unlinked
 
 
 def _files(session: Session, found: dict[str, set]) -> list[str]:
@@ -271,6 +309,7 @@ def delete_data(session: Session, customer: Customer) -> CustomerDeletion:
     _record(session, customer, "customer.offboard.delete",
             f"Deleting {customer.name}'s data: {sum(len(v) for v in found.values())} rows, {len(paths)} files", user_id=None)
     session.flush()
+    unlinked = _unlink_kept(session, customer)
     rows: dict[str, int] = {}
     for table in reversed(Base.metadata.sorted_tables):
         ids = found.get(table.name)
@@ -307,8 +346,10 @@ def delete_data(session: Session, customer: Customer) -> CustomerDeletion:
         "files_deleted": len(paths),
         "people_deleted": people_deleted,
         "people_kept_because_they_belong_elsewhere_or_are_named_in_records": len(people) - len(alone) + still_referenced,
+        "people_anonymised_because_they_are_named_in_records": still_referenced,
+        "rows_kept_unlinked_from_the_customer": dict(sorted(unlinked.items())),
         "kept": "The bank's action log and security events, which record what was done for the customer and this "
-                "deletion; this certificate.",
+                "deletion; the bank's attestations and access reviews about the customer, no longer naming it; this certificate.",
         "action_log_last_entry": {"sequence": last.sequence, "entry_hash": last.entry_hash} if last else None,
         "backups": BACKUPS_NOTE,
     }

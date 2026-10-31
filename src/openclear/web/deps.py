@@ -115,7 +115,10 @@ def get_web_context(request: Request, db: Session = Depends(get_db)) -> TenantCo
 
         customer = db.get(Customer, ctx.customer_id)
         if customer is not None and customer.service_ends_at is not None:
-            ctx = dataclasses.replace(ctx, service_ends_at=customer.service_ends_at)
+            from openclear.services import customer_offboarding_service
+
+            ctx = dataclasses.replace(ctx, service_ends_at=customer.service_ends_at,
+                                      service_last_day=customer_offboarding_service.last_service_day(db, customer))
     if ctx.customer_id is None and "customer:manage" in ctx.permissions:
         import dataclasses
 

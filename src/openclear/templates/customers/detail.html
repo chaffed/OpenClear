@@ -214,7 +214,7 @@
 <div class="card" id="offboarding">
   <h2>Offboarding</h2>
   {% if customer.service_ended_at %}
-  <p><span class="badge badge-danger">Service ended</span> on {{ customer.service_ended_at.strftime("%Y-%m-%d") }}. Its people
+  <p><span class="badge badge-danger">Service ended</span> after {{ offboarding_last_day or customer.service_ended_at.strftime("%Y-%m-%d") }}. Its people
     can't sign in and files naming its accounts are refused. Its data is deleted on or after
     {{ offboarding_deletion_due.strftime("%Y-%m-%d") }}{% if customer.legal_hold_reason %}, once it's off legal hold{% endif %}.</p>
   {% elif customer.service_ends_at %}
