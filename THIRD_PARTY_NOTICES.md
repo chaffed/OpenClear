@@ -8919,7 +8919,7 @@ Library.
 
 `LICENSE.txt`: the same text as psycopg's, above.
 
-### pyasn1 0.6.4 (BSD-2-Clause)
+### pyasn1 0.6.5 (BSD-2-Clause)
 
 `LICENSE.rst`:
 

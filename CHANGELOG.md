@@ -79,6 +79,8 @@
   posted-check file with an absurdly long number in an amount or a trailer is refused as a row or
   a trailer problem, not an error (RV8).
 
+- **Dependencies:** pyasn1 0.6.5 (CVE-2026-119197, CVE-2026-119195) in the image and for development.
+
 ## 1.33.0 — 2026-10-30
 
 - **Third-party components** (`plans/THIRD_PARTY_PLAN.md`). A page listing everything OpenClear

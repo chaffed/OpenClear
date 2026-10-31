@@ -72,7 +72,7 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | propcache | 0.5.4 | Apache-2.0 | for aiohttp, yarl |
 | psycopg | 3.3.6 | LGPL-3.0-only | OpenClear |
 | psycopg-binary | 3.3.6 | LGPL-3.0-only | for psycopg |
-| pyasn1 | 0.6.4 | BSD-2-Clause | for pyasn1-modules, webauthn |
+| pyasn1 | 0.6.5 | BSD-2-Clause | for pyasn1-modules, webauthn |
 | pyasn1-modules | 0.4.2 | BSD | for webauthn |
 | pycparser | 3.12 | BSD-3-Clause | for cffi |
 | pydantic | 2.14.1 | MIT | OpenClear |
