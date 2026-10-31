@@ -255,3 +255,13 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   five clusters read end to end, every High and Medium re-checked by hand against the code.
   Three Highs (T1, O1, O2), fifteen Mediums, the rest polish. The RLS coverage test, the
   OpenAPI contract test and the data-dictionary check were run as part of the review and pass.
+- 2026-10-31: RV1 built on `review-1-33`. `decision_service.lock` settles the check (`_settle_check`:
+  paid or returned; a paid check's outstanding, stale or stopped issued item becomes paid; a void
+  is kept), so `_is_duplicate_paid` and the paid-candidate rule see every paid check; migration
+  `b8c4d2e6f1a3` brings decisions already final into line, per bank under RLS. *Pay all* posts the
+  ids the page listed and pays exactly those. `cashed` on an already-cashed verification answers
+  409 with `message`, `paid_item_id` and `cashed_at`. Tests: `tests/test_decisions/
+  test_check_settlement.py` (reverse paid then presented again; an accepted amount mismatch then
+  two more presentments; a return; a voided check paid), the pay-all and teller tests amended,
+  and `tests/test_postgres/test_teller_concurrency.py` (a branch cash against a file presentment;
+  one verification cashed twice at once; *Pay all* against the sweep).

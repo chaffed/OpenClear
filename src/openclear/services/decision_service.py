@@ -14,6 +14,8 @@ from openclear.db.tenancy import TenantContext
 from openclear.domain.ach_transaction import AchSettlementStatus, AchTransaction
 from openclear.domain.decision import Decision, DecisionOutcome, DecisionRevision, DecisionSource
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
+from openclear.domain.issued_item import IssuedItem, IssuedItemStatus
+from openclear.domain.paid_item import PaidItem, PaidItemSettlementStatus
 from openclear.domain.tenant import Tenant
 from openclear.networks.registry import get_adapter
 from openclear.repositories.ach_return_reason_repo import AchReturnReasonRepository
@@ -260,8 +262,8 @@ def after_return_deadline(decision: Decision, exception: ExceptionItem) -> bool:
 
 def lock(session: Session, decision: Decision, exception: ExceptionItem) -> None:
     """Makes a decision final and sends it out: its number in the decision feed (so the
-    bank's core and the decision files see it), the exception.decided webhook, and an ACH
-    return's settlement. Nothing leaves OpenClear before this."""
+    bank's core and the decision files see it), the exception.decided webhook, and the item's
+    settlement (a check paid or returned, an ACH return). Nothing leaves OpenClear before this."""
     if decision.locked_at is not None:
         return
     decision.locked_at = datetime.now(timezone.utc)
@@ -282,10 +284,30 @@ def lock(session: Session, decision: Decision, exception: ExceptionItem) -> None
         source_item = get_adapter(exception.network_code).load_source_item(session, exception.source_item_id)
         if isinstance(source_item, AchTransaction):
             source_item.settlement_status = AchSettlementStatus.RETURNED
+    if exception.network_code == "check":
+        _settle_check(session, decision, exception)
     if exception.change_recommended_at is not None:
         # A change nobody approved by the cut-off: the decision already made is what locks.
         _restore_recommendation(session, exception, decision)
     session.flush()
+
+
+def _settle_check(session: Session, decision: Decision, exception: ExceptionItem) -> None:
+    """A check paid by a decision is paid, and a returned one returned, from the moment the
+    decision is final; a paid check's issued item is paid too. Until 1.34.0 only a clean match
+    set these, so a check decided *pay* (on a reverse positive pay account, every check) could be
+    presented again and never be a duplicate (REVIEW_1_33_PLAN.md T1, RV-D1). A voided issued
+    item keeps the customer's void: a second presentment then shows as voided, which is enough."""
+    paid_item = get_adapter("check").load_source_item(session, exception.source_item_id)
+    if not isinstance(paid_item, PaidItem) or paid_item.settlement_status == PaidItemSettlementStatus.REVERSED:
+        return
+    if decision.outcome == DecisionOutcome.PAY:
+        paid_item.settlement_status = PaidItemSettlementStatus.PAID
+        issued = session.get(IssuedItem, exception.related_reference_id) if exception.related_reference_id else None
+        if issued is not None and issued.status in (IssuedItemStatus.OUTSTANDING, IssuedItemStatus.STALE, IssuedItemStatus.STOPPED):
+            issued.status = IssuedItemStatus.PAID
+    else:
+        paid_item.settlement_status = PaidItemSettlementStatus.RETURNED
 
 
 def _restore_recommendation(session: Session, exception: ExceptionItem, decision: Decision) -> None:

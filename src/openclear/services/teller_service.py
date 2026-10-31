@@ -57,11 +57,13 @@ PROBE_THRESHOLD = 10
 
 
 class TellerError(ValueError):
-    """Fit to show to the teller platform."""
+    """Fit to show to the teller platform. `details` are facts the platform can act on beside
+    the sentence (what the first `cashed` call recorded, when its own answer was lost)."""
 
-    def __init__(self, message: str, status: int = 409):
+    def __init__(self, message: str, status: int = 409, **details):
         super().__init__(message)
         self.status = status
+        self.details = details
 
 
 @dataclass(frozen=True)
@@ -221,7 +223,9 @@ def cash(session: Session, tenant_id: uuid.UUID, verification_id: uuid.UUID, amo
     if claimed != 1:
         session.refresh(verification)
         if verification.cashed_at is not None:
-            raise TellerError("That verification was already recorded as cashed.")
+            # A platform that lost the first answer can tell its own success from someone else's (REVIEW_1_33_PLAN.md T10).
+            raise TellerError("That verification was already recorded as cashed.", paid_item_id=verification.paid_item_id,
+                              cashed_at=verification.cashed_at)
         raise TellerError(f"That verification expired ({VERIFICATION_MINUTES} minutes). Verify the check again.")
     session.refresh(verification)
 

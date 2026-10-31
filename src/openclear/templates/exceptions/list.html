@@ -88,7 +88,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="customer" value="{{ customer_filter }}">
       <input type="hidden" name="network_code" value="{{ network_filter or '' }}">
-      <input type="hidden" name="expected" value="{{ to_review }}">
+      <input type="hidden" name="shown" value="{{ review_ids|join(',') }}">
       <button type="submit" class="button-pay">{{ icon("check_circle") }}Pay all {{ to_review }} to review</button>
     </form>
     {% endif %}

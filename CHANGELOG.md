@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **A check paid by a decision is paid.** Until now only a check that matched its issued item
+  cleanly was recorded as paid; one paid by a decision (an accepted amount mismatch, or every
+  check on a reverse positive pay account, paid at the cut-off by silence) stayed pending, so the
+  same check presented again was the same item again, and on a reverse account was paid again.
+  From the cut-off, a paid check is paid, its issued item with it, and a returned check returned,
+  so a second presentment is a duplicate wherever it comes from; the upgrade brings every
+  decision already final into line. *Pay all N to review* now pays exactly the checks the page
+  listed, not any N. A teller platform that lost the answer to `POST /api/v1/checks/cashed` is
+  told, on its retry, which paid item the first call recorded and when
+  (`plans/REVIEW_1_33_PLAN.md` RV1).
+
 ## 1.33.0 — 2026-10-30
 
 - **Third-party components** (`plans/THIRD_PARTY_PLAN.md`). A page listing everything OpenClear

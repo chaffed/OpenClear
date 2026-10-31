@@ -83,7 +83,9 @@ def verify_check(payload: VerifyCheck, db: Session = Depends(get_db),
 
 @router.post("/cashed", response_model=CashedCheck, status_code=201,
              responses={404: {"description": "No such verification"},
-                        409: {"description": "Declined, already recorded, expired, or another amount"}})
+                        409: {"description": "Declined, expired, or another amount; or already recorded, in which case `detail` is an "
+                                             "object with `message`, `paid_item_id` and `cashed_at`, so a platform that lost the "
+                                             "first answer can reconcile"}})
 def record_cashed(payload: CashCheck, db: Session = Depends(get_db),
                   ctx: TenantContext = Depends(require_permission("check:verify"))) -> CashedCheck:
     """Records a verified check as cashed: it's presented as paid at once, so the same check
@@ -92,6 +94,8 @@ def record_cashed(payload: CashCheck, db: Session = Depends(get_db),
         cashed = teller_service.cash(db, ctx.tenant_id, payload.verification_id, payload.amount, user_id=ctx.user_id)
     except teller_service.TellerError as exc:
         db.rollback()
-        raise HTTPException(exc.status, str(exc)) from None
+        detail = {"message": str(exc), **{k: (str(v) if isinstance(v, uuid.UUID) else v.isoformat() if hasattr(v, "isoformat") else v)
+                                          for k, v in exc.details.items()}} if exc.details else str(exc)
+        raise HTTPException(exc.status, detail) from None
     db.commit()
     return CashedCheck(verification_id=cashed.verification.id, paid_item_id=cashed.paid_item.id, exception_types=cashed.exception_types)

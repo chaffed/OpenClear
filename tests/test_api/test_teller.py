@@ -99,7 +99,9 @@ def test_cashing_once_marks_it_paid_and_clearing_later_finds_a_duplicate(client,
     assert cashed.status_code == 201 and cashed.json()["exception_types"] == []
     db_session.expire_all()
     assert db_session.get(IssuedItem, issued.id).status.value == "paid"
-    assert _cash(client, headers, answer).json()["detail"] == "That verification was already recorded as cashed."
+    again = _cash(client, headers, answer)  # the platform lost the first answer: it's told what was recorded (REVIEW_1_33_PLAN.md T10)
+    assert again.status_code == 409 and again.json()["detail"]["message"] == "That verification was already recorded as cashed."
+    assert again.json()["detail"]["paid_item_id"] == cashed.json()["paid_item_id"] and again.json()["detail"]["cashed_at"]
     assert _verify(client, headers, account, "200")["result"] == "already_paid"  # a second branch is told
 
     paid = ingest_paid_item(db_session, tenant.id, PaidItemSubmission(
