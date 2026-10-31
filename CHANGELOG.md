@@ -35,6 +35,10 @@
   the bank's day; Settings → Continuity downloads them, and can email the daily copy to the
   incident contacts, so the bank can decide by hand and reach its core before the midnight
   deadline when OpenClear can't be reached (CUEC B-CP-2-01) (BC5).
+- **The runbook's "Recovering the installation"**: the order of operations after a loss (the
+  banks told; the keys before the database; maintenance mode; the restore and the migrations;
+  storage; `/ready`; the action-log chains and the file reconciliation; maintenance mode off, and
+  what the first sweep then does; closing the incident and recording the drill) (BC6).
 
 ## 1.34.0 — 2026-10-31
 

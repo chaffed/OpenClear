@@ -169,6 +169,50 @@ the dump's hash against the manifest, prints each step and writes a signed `rest
 the live database. Platform → Continuity lists the drills; the newest passed one is the "last
 restore test" on every bank's Controls page, in place of `OPENCLEAR_LAST_RESTORE_TEST`.
 
+## Recovering the installation (for the service provider)
+
+In this order, because each step needs the one before it (CONTINUITY_PLAN.md BC-D7; rehearse it
+against the sandbox at least yearly, and record the rehearsal):
+
+1. **Tell the banks** from Platform → Incidents (an *Incident* notice: what happened, that
+   decisions already made are safe, when you'll update them), or by the incident contacts' emails
+   if OpenClear itself is down (Settings → Incident contacts lists them; the daily open-items file
+   in each bank's storage, `data_exports/<bank>/continuity/`, is what a bank works from meanwhile).
+2. **Start with the keys, not the database.** Nothing reads without them: the JWT key pair
+   (`OPENCLEAR_JWT_PRIVATE_KEY_PATH`, `_PUBLIC_`), the file-signing pair
+   (`OPENCLEAR_FILE_SIGNING_*`), the action-log signing pair (`OPENCLEAR_AUDIT_LOG_SIGNING_*`)
+   and `OPENCLEAR_SSO_ENCRYPTION_KEY` (and `_PREVIOUS` if a rotation was under way), from the key
+   store, exactly as they were. A different key verifies no signature and decrypts no SAML
+   secret.
+3. **Set `OPENCLEAR_MAINTENANCE_MODE=1`** on every instance before the database is reachable
+   again: people can sign in and look, an administrator can take a data export, and nothing
+   changes; the cut-off sweep pauses and the pause is treated as an outage across a cut-off when
+   the mode ends (step 8), so nothing is decided by default for the gap.
+4. **Restore the database** from the newest backup (`pg_restore --clean --if-exists`, or copy the
+   SQLite file into place), then **`alembic upgrade head`**. If the backup predates the running
+   release, the migrations bring it up; a backup from a newer release than the code is not
+   restorable: deploy that release first.
+5. **Restore file storage** to the same point as the database (the bucket's versioning point, or
+   the directories' copy). The two are backed up apart; step 7 finds what disagrees.
+6. **Start one instance** and check `GET /ready`: `database` and `storage` must be `ok`; `redis`
+   may be `degraded` (limits are then per instance); `scheduler` says when the sweep last ran.
+7. **Verify** before anyone decides anything: every bank's Controls page shows *Action log intact*
+   (the chain verifies against the restored rows; a break means the backup and the log disagree
+   and the bank must be told); Platform → Continuity → *Check now* reconciles rows and files and
+   lists any row whose file is gone (an upload or image written after the backup: its bank should
+   re-upload it, and the row is otherwise harmless); *Backups fresh* shows the backup you restored.
+8. **Turn maintenance mode off** and start the other instances. The first cut-off sweep treats
+   the pause as a gap: items due during it get the minimum review time again (never past a
+   check's midnight deadline), the bank's administrators and the customers' deciders are
+   emailed, and every bank's Controls page shows *No outage across a cut-off* failing for a
+   week. Decisions a core had already taken before the backup are in its files; decisions made
+   after the backup and before the outage are gone with the rows and must be made again, which
+   the gap's notice asks for.
+9. **Close the incident** with an *Update* or *Closed* notice, and record the recovery (the time
+   it took, against the stated recovery objectives) in the restore drill's place: run
+   `scripts/restore_drill.py` against the backup you used so the Controls page's last restore test
+   is this one.
+
 ## Incidents (for the service provider)
 
 The host of an installation is a bank service provider. When something disrupts the service, or

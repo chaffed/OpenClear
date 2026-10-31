@@ -132,3 +132,10 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   `f7a1b5c9d3e2`); Settings → Continuity with the download and the switch. **Deviation from
   BC-D4:** the mode is a setting, not a platform switch: a switch kept in the database is exactly
   what's unavailable during a restore.
+- 2026-10-31: BC6 written: RUNBOOK.md "Recovering the installation", nine steps in the order each
+  needs the one before. The tabletop against the sandbox is for the product owner to schedule;
+  it needs a restore of the sandbox's database, which is the host's operation.
+- 2026-10-31: **BC1–BC6 built** on `bc1-gap`, each stage's SQLite suite green at its commit; the
+  Postgres and Linux suites on the branch head before the pull request. Three migrations
+  (`d4e8f2a6c1b7`, `e5f9a3b7d2c8`, `f7a1b5c9d3e2`), four controls (OC-CP-02 to OC-CP-04 and the
+  checks under them), one script (`scripts/restore_drill.py`).
