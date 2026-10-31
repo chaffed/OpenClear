@@ -120,7 +120,7 @@ def test_every_scheduled_job_goes_through_the_lock(monkeypatch):
         jobs = sched.get_jobs()
         assert {job.id for job in jobs} == {
             "ml_retrain_job", "dropbox_import_job", "notification_dispatch_job",
-            "sweep_expired_dispositions_job", "decision_lock_job", "demo_reset_job",
+            "sweep_expired_dispositions_job", "decision_lock_job", "continuity_snapshot_job", "demo_reset_job",
         }
         for job in jobs:
             job.func()
