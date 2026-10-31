@@ -32,7 +32,7 @@ def _normalize_header(raw: str) -> str:
     return _HEADER_WHITESPACE.sub("_", str(raw).strip().lower())
 
 
-def parse_tabular_file(filename: str, content: bytes) -> list[dict[str, Any]]:
+def parse_tabular_file(filename: str, content: bytes, *, keep_na_text: bool = False) -> list[dict[str, Any]]:
     """Parses any delimited file (comma/tab/semicolon/pipe — auto-detected) or Excel
     (.xlsx/.xls) file into a list of row dicts keyed by normalized column header
     (lowercased, stripped, internal whitespace collapsed to a single underscore), so
@@ -44,11 +44,14 @@ def parse_tabular_file(filename: str, content: bytes) -> list[dict[str, Any]]:
     bulk_import.fields."""
     lower_name = filename.lower()
     try:
+        # keep_na_text: a cell reading NA, N/A, null or None is that text, not an empty cell (a
+        # free-text custom field may hold it; REVIEW_1_33_PLAN.md C6). Elsewhere pandas' reading stands.
+        na = {"keep_default_na": False, "na_values": [""]} if keep_na_text else {}
         if lower_name.endswith((".xlsx", ".xls")):
-            df = pd.read_excel(io.BytesIO(content), dtype=str)
+            df = pd.read_excel(io.BytesIO(content), dtype=str, **na)
         else:
             delimiter = _detect_delimiter(content)
-            df = pd.read_csv(io.BytesIO(content), sep=delimiter, dtype=str)
+            df = pd.read_csv(io.BytesIO(content), sep=delimiter, dtype=str, **na)
     except Exception as exc:  # noqa: BLE001 — pandas raises a wide variety of exception types for malformed input
         raise TabularParseError(f"Could not parse {filename!r}: {exc}") from exc
 

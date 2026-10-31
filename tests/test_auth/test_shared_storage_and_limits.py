@@ -110,18 +110,30 @@ def test_redis_limiter_counts_across_instances():
     assert two.allow("1.2.3.4", "markdown_preview", limit=3, window_seconds=60) is True  # and other buckets
 
 
-def test_redis_limiter_fails_open_when_redis_is_down(caplog):
-    """And fails open at once: the app's limiter makes one try, with no retries and back-off
-    (redis-py's default held each request for seconds)."""
+def test_redis_limiter_falls_back_to_the_process_when_redis_is_down(caplog, db_session, monkeypatch):
+    """At once: one try, no retries (redis-py's default held each request for seconds). And not
+    open: this process's own limiter holds until Redis is back, and the outage is a security
+    event once (REVIEW_1_33_PLAN.md C2)."""
     import time
+
+    from openclear.domain.security_event import SecurityEvent
+    from openclear.services import security_events
 
     pytest.importorskip("redis")
     rate_limit._redis_limiter.cache_clear()
+    rate_limit.limiter.reset() if hasattr(rate_limit.limiter, "reset") else None
+    emitted = []
+    monkeypatch.setattr(security_events, "emit_detached", lambda name, **kw: emitted.append(name))
     down = rate_limit._redis_limiter("redis://127.0.0.1:1/0")
     started = time.monotonic()
-    assert all(down.allow("1.2.3.4", "global", limit=1, window_seconds=60) for _ in range(3))
+    answers = [down.allow("1.2.3.4", "fallback-test", limit=2, window_seconds=60) for _ in range(3)]
     assert time.monotonic() - started < 3  # three requests, each one quick failed try
-    assert "can't be reached" in caplog.text
+    assert answers == [True, True, False]  # the process's limit held
+    assert "can't be reached" in caplog.text and emitted == ["rate_limit.backend_down"]
+    assert down.down_since is not None and not down.reachable()
+    monkeypatch.setattr(get_settings(), "rate_limit_backend", "redis")
+    monkeypatch.setattr(get_settings(), "rate_limit_redis_url", "redis://127.0.0.1:1/0")
+    assert rate_limit.backend_status() == ("redis", False)
     rate_limit._redis_limiter.cache_clear()
 
 

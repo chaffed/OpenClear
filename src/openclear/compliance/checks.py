@@ -51,6 +51,8 @@ def _registry() -> tuple[Check, ...]:
         Check("storage_encryption", "Disk and database encryption", lambda session, tenant_id: s._storage_encryption(), scope="installation"),
         Check("recovery_objectives", "Recovery objectives stated", lambda session, tenant_id: s._recovery_objectives(),
               scope="installation"),
+        Check("rate_limit_backend", "Rate limits shared across instances", lambda session, tenant_id: s._rate_limit_backend(),
+              scope="installation"),
         Check("edge", "Edge network set up", lambda session, tenant_id: s._edge(), scope="installation", needs_request=True),
         Check("audit_chain", "Action log intact", s._audit_chain),
         Check("segregation_of_duties", "Segregation of duties", s._sod),
@@ -134,7 +136,7 @@ def by_key() -> dict[str, Check]:
 # The keys, without importing the services (compliance/controls.py and the CUEC inventory read
 # them at import time); tests/test_compliance checks this matches registry().
 KEYS = (
-    "field_encryption", "storage_encryption", "recovery_objectives", "edge", "audit_chain", "segregation_of_duties", "admin_mfa", "anomaly_capture",
+    "field_encryption", "storage_encryption", "recovery_objectives", "rate_limit_backend", "edge", "audit_chain", "segregation_of_duties", "admin_mfa", "anomaly_capture",
     "parser_hardening", "sla", "api_client_secrets", "customer_self_service", "event_delivery", "production_safety",
     "dormant_accounts", "customer_dormant_users", "privileged_accounts", "staff_mfa", "customer_mfa", "customer_sod",
     "customer_api_client_secrets", "customer_sso", "scim_sync", "integration_tls",

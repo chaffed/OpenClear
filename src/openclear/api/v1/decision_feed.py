@@ -34,7 +34,7 @@ def _custom_fields(db: Session, ctx: TenantContext, text: str | None) -> list[st
     from openclear.services import custom_field_service
 
     try:
-        return custom_field_service.output_keys(db, ctx.tenant_id, text)
+        return custom_field_service.output_keys(db, ctx.tenant_id, text, customer_id=ctx.customer_id)
     except custom_field_service.CustomFieldError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
 

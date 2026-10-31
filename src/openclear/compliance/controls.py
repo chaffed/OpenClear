@@ -196,6 +196,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "The host's statement of how disks and the database are encrypted is shown on the Controls page, which warns until "
       "there is one.",
       ("SC-28",), "detective", "built_in", ("storage_encryption",), ("H-SC-28(1)-01",), "Controls → Storage encryption"),
+    C("OC-SC-08", "Sign-in and API attempts rate-limited",
+      "Sign-in, token and password-reset attempts are limited per address and per route; with several instances the counts "
+      "are shared through Redis, and while Redis can't be reached each instance limits on its own and the Controls page "
+      "says so.",
+      ("SC-5", "AC-7"), "preventive", "built_in", ("rate_limit_backend",), (), "web/rate_limit.py; Controls → Rate limits shared across instances"),
     C("OC-SC-03", "Files signed",
       "Every uploaded file is kept with its SHA-256 and a signature, and every webhook and evidence bundle OpenClear sends "
       "is signed.",

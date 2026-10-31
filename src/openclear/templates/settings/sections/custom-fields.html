@@ -15,7 +15,7 @@
     <tr{% if f.archived_at %} class="text-muted"{% endif %}>
       <td>{{ f.label }}{% if f.archived_at %} <span class="badge">archived</span>{% endif %}</td>
       <td><code>{{ f.key }}</code></td>
-      <td>{{ f.field_type }}{% if f.field_type == "text" and f.max_length %} ({{ f.max_length }}){% endif %}
+      <td>{{ f.field_type | custom_field_type }}{% if f.field_type == "text" and f.max_length %} ({{ f.max_length }}){% endif %}
         {%- if f.field_type == "choice" %}: {{ f.options | rejectattr("retired") | map(attribute="value") | join(", ") }}{% endif %}</td>
       <td>{{ ["required" if f.required, "unique" if f.unique, "shown to the customer" if f.shown_to_customer, "in the list" if f.show_in_list] | select | join(", ") or "—" }}</td>
       <td class="cell-actions">
@@ -53,7 +53,7 @@
   <div class="inline-fields">
     <label>Type
       <select name="field_type"{% if editing %} data-fixed{% endif %}>
-        {% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+        {% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t | custom_field_type }}</option>{% endfor %}
       </select>
       {% if editing %}<span class="hint">Fixed once the field has values.</span>{% endif %}
     </label>

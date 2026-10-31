@@ -17,6 +17,7 @@ a consumer falling behind."""
 import csv
 import hashlib
 import io
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -160,10 +161,14 @@ def custom_fields_setting(settings: dict | None) -> list[str]:
     return [k.strip() for k in str((settings or {}).get("custom_fields") or "").split(",") if k.strip()]
 
 
+_PLAIN_NUMBER = re.compile(r"[+-]?\d+(\.\d+)?")
+
+
 def _csv_safe(value):
     # Originator names come from ACH files, custom-field values from people (CF-D13); don't let a
-    # spreadsheet run one.
-    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+    # spreadsheet run one. A plain signed number (a decimal custom field's -5) is a number to a
+    # spreadsheet, not a formula, and must reach the core as one (REVIEW_1_33_PLAN.md C1).
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r") and not _PLAIN_NUMBER.fullmatch(value):
         return "'" + value
     return value
 

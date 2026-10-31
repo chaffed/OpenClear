@@ -71,6 +71,23 @@ def _storage_encryption() -> Control:
                    "then record how they're done in OPENCLEAR_STORAGE_ENCRYPTION_ATTESTATION.", {"attestation": None})
 
 
+def _rate_limit_backend() -> Control:
+    """Shared rate limits need Redis; while it can't be reached each instance limits on its own
+    (web/rate_limit.py). The page says which is happening (REVIEW_1_33_PLAN.md C2)."""
+    from openclear.web import rate_limit
+
+    title = "Rate limits shared across instances"
+    backend, reachable = rate_limit.backend_status()
+    evidence = {"backend": backend, "reachable": reachable}
+    if backend != "redis":
+        return Control("rate_limit_backend", title, PASS, "Rate limits are kept in each process: one instance, or an edge that limits "
+                       "for it (OPENCLEAR_RATE_LIMIT_BACKEND=redis shares them).", evidence)
+    if not reachable:
+        return Control("rate_limit_backend", title, WARN, "Redis at OPENCLEAR_RATE_LIMIT_REDIS_URL can't be reached: each instance is "
+                       "limiting sign-in and API attempts on its own until it can.", evidence)
+    return Control("rate_limit_backend", title, PASS, "Rate limits are shared through Redis, which answers.", evidence)
+
+
 def _recovery_objectives() -> Control:
     settings = get_settings()
     statement, tested = settings.recovery_objectives_attestation, settings.last_restore_test

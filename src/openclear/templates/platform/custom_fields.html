@@ -18,7 +18,7 @@
       <tr{% if f.archived_at %} class="text-muted"{% endif %}>
         <td>{{ f.label }}{% if f.archived_at %} <span class="badge">archived</span>{% endif %}</td>
         <td><code>{{ f.key }}</code></td>
-        <td>{{ f.field_type }}{% if f.field_type == "choice" %}: {{ f.options | rejectattr("retired") | map(attribute="value") | join(", ") }}{% endif %}</td>
+        <td>{{ f.field_type | custom_field_type }}{% if f.field_type == "choice" %}: {{ f.options | rejectattr("retired") | map(attribute="value") | join(", ") }}{% endif %}</td>
         <td>{{ ["required" if f.required, "unique" if f.unique, "shown to the bank" if f.shown_to_bank] | select | join(", ") or "—" }}</td>
         {% for b in banks %}<td>{{ values.get(b.tenant.id, {}).get(f.key) or "—" }}</td>{% endfor %}
         <td class="cell-actions">
@@ -46,7 +46,7 @@
       <span class="hint">A lowercase letter, then lowercase letters, digits and underscores. Never changes.</span></label>
     <label>Label <input type="text" name="label" value="{{ editing.label if editing else '' }}" maxlength="255" required></label>
     <label>Type
-      <select name="field_type">{% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+      <select name="field_type">{% for t in types %}<option value="{{ t }}"{% if editing and editing.field_type == t %} selected{% endif %}>{{ t | custom_field_type }}</option>{% endfor %}</select>
       {% if editing %}<span class="hint">Fixed once the field has values.</span>{% endif %}
     </label>
     <label>Maximum length (text) <input type="number" name="max_length" min="1" max="255" value="{{ editing.max_length or '' if editing else '' }}"></label>

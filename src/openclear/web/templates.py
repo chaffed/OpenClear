@@ -417,6 +417,18 @@ def _bank_day(value, zone: str, last: bool = False) -> str:
 
 templates.env.filters["bank_day"] = _bank_day
 
+_CUSTOM_FIELD_TYPES = {"text": "Text", "integer": "Whole number", "decimal": "Decimal", "date": "Date", "boolean": "Yes/no",
+                       "choice": "Choice"}
+
+
+def _custom_field_type(value) -> str:
+    """Exposed as `custom_field_type`: a custom field's type in words (REVIEW_1_33_PLAN.md C10)."""
+    key = getattr(value, "value", value)
+    return _CUSTOM_FIELD_TYPES.get(str(key), str(key))
+
+
+templates.env.filters["custom_field_type"] = _custom_field_type
+
 
 # --- Plugin UI slots (plugins/ui_slots.py; MOBILE_PLAN.md R5) -------------------------------
 

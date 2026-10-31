@@ -47,6 +47,19 @@
   person kept because the action log names them keeps nothing personal (no email, phone,
   password or sessions). Dates on the customer page, the banner and the Deleted customers list are
   the bank's days (RV5).
+- **Custom fields: numbers, limits, files and messages.** A negative number in a `cf_` column of
+  the decisions CSV reached the core as `'-5`, the spreadsheet-formula guard's doing; a plain
+  signed number now passes as one. A customer's reader asking the decision feed for a field not
+  shown to the customer is told there's no such field, as for one that doesn't exist. Restoring an
+  archived field counts against the 25-field and 3-in-list limits. An update file naming a field
+  the bank doesn't have, or has archived, is refused whole instead of failing every row; a text
+  cell reading `NA`, `null` or `None` in such a file is that text, not blank. A whole number takes
+  only the digits 0–9, a date only `YYYY-MM-DD`, a decimal no `_`, as their messages said; a form
+  reports every field's problem at once; a dropped choice option is retired only while a record
+  holds it. Field types read as words ("Whole number", "Yes/no"). **Rate limiting with Redis:**
+  while Redis can't be reached each instance now limits on its own instead of allowing
+  everything, the outage is a `rate_limit.backend_down` security event (once per outage), and the
+  Controls page says so (new control OC-SC-08) (RV6).
 
 ## 1.33.0 — 2026-10-30
 

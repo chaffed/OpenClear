@@ -79,9 +79,13 @@ def test_each_type_parses_formats_and_refuses(db_session, tenant_factory):
 
     for key, bad, message in (("code", "ABCDE", "at most 4"), ("count", "1.5", "whole number"), ("rate", "x", "a number"),
                               ("rate", "1.1234567", "6 decimal"), ("opened", "03/01/2026", "YYYY-MM-DD"), ("vip", "maybe", "yes or no"),
-                              ("branch", "South", "one of")):
+                              ("branch", "South", "one of"),
+                              # What the messages say, exactly (REVIEW_1_33_PLAN.md C7): ASCII digits, YYYY-MM-DD, a plain number.
+                              ("count", "\u0663", "whole number"), ("opened", "20260301", "YYYY-MM-DD"), ("rate", "1_000", "a number")):
         with pytest.raises(CustomFieldError, match=message):
             cf.set_values(db_session, tenant.id, "account", account.id, {key: bad}, user_id=None)
+    with pytest.raises(CustomFieldError, match="whole number.*YYYY-MM-DD"):  # every field's complaint at once (C10)
+        cf.set_values(db_session, tenant.id, "account", account.id, {"count": "1.5", "opened": "nope"}, user_id=None)
     with pytest.raises(CustomFieldError, match="No such field"):
         cf.set_values(db_session, tenant.id, "account", account.id, {"nope": "1"}, user_id=None)
 
@@ -160,6 +164,52 @@ def test_a_fields_type_and_options_once_it_has_values(db_session, tenant_factory
     with pytest.raises(CustomFieldError, match="Archived"):
         cf.set_values(db_session, tenant.id, "account", account.id, {"memo": "x"}, user_id=None)
     assert cf.values_of(db_session, tenant.id, "account", account.id)["memo"] == "short"  # still read
+
+
+def test_restoring_an_archived_field_counts_against_the_limits(db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md C4."""
+    tenant, _account, _users = tenant_factory.make(slug="cf-restore")
+    shown = [_field(db_session, tenant, key=f"s{n}", show_in_list=True) for n in range(cf.MAX_IN_LIST)]
+    extra = _field(db_session, tenant, key="s_extra")
+    cf.archive_field(db_session, tenant.id, extra.id)
+    cf.archive_field(db_session, tenant.id, shown[0].id)
+    db_session.commit()
+    assert cf.archive_field(db_session, tenant.id, extra.id, archived=False).archived_at is None  # room in the list: fine
+    _field(db_session, tenant, key="s_fourth", show_in_list=True)  # takes the freed place
+    with pytest.raises(CustomFieldError, match="show in the list"):
+        cf.archive_field(db_session, tenant.id, shown[0].id, archived=False)
+    for n in range(cf.MAX_FIELDS - 4):  # four are active: the full complement
+        _field(db_session, tenant, key=f"f{n}")
+    cf.archive_field(db_session, tenant.id, extra.id)
+    db_session.commit()
+    _field(db_session, tenant, key="f_last")  # takes the freed place
+    with pytest.raises(CustomFieldError, match=f"At most {cf.MAX_FIELDS}"):
+        cf.archive_field(db_session, tenant.id, extra.id, archived=False)
+
+
+def test_a_dropped_option_is_retired_only_while_a_record_holds_it(db_session, tenant_factory):
+    """CF-D11 as meant (REVIEW_1_33_PLAN.md C9): a typo'd option can simply go."""
+    tenant, account, _users = tenant_factory.make(slug="cf-options")
+    branch = _field(db_session, tenant, key="branch", field_type="choice", options=["Main", "North", "Nroth"])
+    cf.set_values(db_session, tenant.id, "account", account.id, {"branch": "North"}, user_id=None)
+    db_session.commit()
+    data = FieldInput(key="branch", label="Branch", field_type="choice", options=["Main"])
+    updated = cf.update_field(db_session, tenant.id, branch.id, data, user_id=None)
+    assert updated.options == [{"value": "Main", "retired": False}, {"value": "North", "retired": True}]  # Nroth is gone
+
+
+def test_a_customers_feed_reader_cant_learn_hidden_keys(db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md C3: a field not shown to the customer doesn't exist for its reader."""
+    from tests.items import _make_customer_with_account
+
+    tenant, _house, _users = tenant_factory.make(slug="cf-hidden-keys")
+    customer, _account = _make_customer_with_account(db_session, tenant, "HK-1")
+    _field(db_session, tenant, key="officer_code")
+    _field(db_session, tenant, key="tier", shown_to_customer=True)
+    assert cf.output_keys(db_session, tenant.id, "officer_code,tier") == ["officer_code", "tier"]
+    assert cf.output_keys(db_session, tenant.id, "tier", customer_id=customer.id) == ["tier"]
+    with pytest.raises(CustomFieldError, match="No such field: officer_code"):
+        cf.output_keys(db_session, tenant.id, "officer_code,tier", customer_id=customer.id)
 
 
 def test_a_customer_sees_only_its_own_accounts_and_fields_shown_to_it(db_session, tenant_factory):

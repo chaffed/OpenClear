@@ -309,3 +309,16 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   `billing_statement.customer_id` is NOT NULL, billing is frozen (FR-D19), and the bank's invoices
   live in its own system; `stop()` still restores `is_active=True` (there's no record of what it
   was, and a customer restored to positive pay is active).
+- 2026-10-31: RV6 built on `review-1-33`. `_csv_safe` lets a plain signed number through (C1;
+  **deviation from RV-D11:** by shape rather than by field type, which also covers built-in
+  columns and needs no definitions in the CSV path). `RedisRateLimiter.allow` falls back to the
+  process's limiter, `rate_limit.backend_down` (integration, high) once per outage,
+  `backend_status()` and the `rate_limit_backend` check with control OC-SC-08 (C2). `output_keys`
+  takes `customer_id` and hides fields not shown to the customer (C3); `archive_field(archived=
+  False)` re-checks both limits (C4); `_field_loader` takes the bank (`ImportSpec.load_takes_bank`)
+  and refuses unknown or archived `cf_` headers whole, reading NA text as text
+  (`parse_tabular_file(keep_na_text=True)`, update files only) (C5, C6); strict integer, date and
+  decimal parsing (C7); `update_field` keeps a dropped option only while a value holds it (C9);
+  `set_values` reports every field's problem at once; the `custom_field_type` filter; one read
+  for the account fields page (C10). **Not done:** C8 (two first writes to one field at once
+  report as a unique clash: harmless and unlikely); choice option labels (options are values).

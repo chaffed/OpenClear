@@ -106,12 +106,12 @@ def parse(definition, text: str | None) -> Any:
             raise CustomFieldError(f"{label}: at most {limit} characters.")
         return text
     if kind == CustomFieldType.INTEGER:
-        if not re.fullmatch(r"[+-]?\d{1,18}", text):
+        if not re.fullmatch(r"[+-]?[0-9]{1,18}", text):  # ASCII digits only: what the message says
             raise CustomFieldError(f"{label}: a whole number.")
         return int(text)
     if kind == CustomFieldType.DECIMAL:
         try:
-            value = Decimal(text)
+            value = Decimal(text) if re.fullmatch(r"[+-]?[0-9]*\.?[0-9]+", text) else Decimal("x")
         except InvalidOperation:
             raise CustomFieldError(f"{label}: a number.") from None
         if not value.is_finite() or value.as_tuple().exponent < -6 or abs(value) >= Decimal("1e12"):
@@ -119,6 +119,8 @@ def parse(definition, text: str | None) -> Any:
         return value
     if kind == CustomFieldType.DATE:
         try:
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", text):
+                raise ValueError
             return date.fromisoformat(text)
         except ValueError:
             raise CustomFieldError(f"{label}: a date as YYYY-MM-DD.") from None
@@ -296,6 +298,11 @@ def update_field(session: Session, tenant_id: uuid.UUID, field_id: uuid.UUID, da
     definition = get_field(session, tenant_id, field_id)
     values_exist = _values_exist(session, CustomFieldValue, definition.id)
     columns = _clean_definition(data, existing=definition, values_exist=values_exist)
+    if columns["options"]:
+        # A dropped option is retired only while a record holds it (CF-D11); a typo'd one simply goes (REVIEW_1_33_PLAN.md C9).
+        in_use = set(session.execute(select(CustomFieldValue.text_value).where(CustomFieldValue.field_id == definition.id,
+                                                                                CustomFieldValue.text_value.is_not(None)).distinct()).scalars())
+        columns["options"] = [o for o in columns["options"] if not o["retired"] or o["value"] in in_use]
     if data.show_in_list and not definition.show_in_list:
         _check_list_limit(session, tenant_id, definition.owner, excluding=definition.id)
     turning_unique = columns["unique"] and not definition.unique
@@ -309,8 +316,16 @@ def update_field(session: Session, tenant_id: uuid.UUID, field_id: uuid.UUID, da
 
 
 def archive_field(session: Session, tenant_id: uuid.UUID, field_id: uuid.UUID, *, archived: bool = True) -> CustomField:
-    """Archived: hidden from forms, still read everywhere, never written (CF-D11)."""
+    """Archived: hidden from forms, still read everywhere, never written (CF-D11). Restoring one
+    counts against the limits like adding one (REVIEW_1_33_PLAN.md C4)."""
     definition = get_field(session, tenant_id, field_id)
+    if not archived and definition.archived_at is not None:
+        active = session.execute(select(func.count()).select_from(CustomField).where(
+            CustomField.tenant_id == tenant_id, CustomField.owner == definition.owner, CustomField.archived_at.is_(None))).scalar_one()
+        if active >= MAX_FIELDS:
+            raise CustomFieldError(f"At most {MAX_FIELDS} fields on {definition.owner}s; archive one first.")
+        if definition.show_in_list:
+            _check_list_limit(session, tenant_id, definition.owner, excluding=definition.id)
     definition.archived_at = datetime.now(timezone.utc) if archived else None
     session.flush()
     return definition
@@ -363,15 +378,16 @@ def values_for(session: Session, tenant_id: uuid.UUID, owner: str, record_ids, *
 CUSTOMER_PREFIX = "customer."
 
 
-def output_keys(session: Session, tenant_id: uuid.UUID, text: str | None) -> list[str]:
+def output_keys(session: Session, tenant_id: uuid.UUID, text: str | None, *, customer_id: uuid.UUID | None = None) -> list[str]:
     """The fields a destination asks for, in its order (CF-D7): comma-separated, an account's field
     by its key and its customer's as customer.<key>. Raises CustomFieldError naming any that don't
-    exist."""
+    exist; for a customer's reader, a field not shown to the customer doesn't exist (REVIEW_1_33_PLAN.md C3)."""
     keys = list(dict.fromkeys(k.strip() for k in (text or "").split(",") if k.strip()))
     if not keys:
         return []
-    known = {f.key for f in list_fields(session, tenant_id, CustomFieldOwner.ACCOUNT, include_archived=True)}
-    known |= {CUSTOMER_PREFIX + f.key for f in list_fields(session, tenant_id, CustomFieldOwner.CUSTOMER, include_archived=True)}
+    visible = (lambda f: f.shown_to_customer) if customer_id is not None else (lambda f: True)
+    known = {f.key for f in list_fields(session, tenant_id, CustomFieldOwner.ACCOUNT, include_archived=True) if visible(f)}
+    known |= {CUSTOMER_PREFIX + f.key for f in list_fields(session, tenant_id, CustomFieldOwner.CUSTOMER, include_archived=True) if visible(f)}
     unknown = [k for k in keys if k not in known]
     if unknown:
         raise CustomFieldError(f"No such field: {', '.join(unknown)}. Name an account's field by its key and a customer's as "
@@ -421,14 +437,27 @@ def set_values(session: Session, tenant_id: uuid.UUID, owner: str, record_id: uu
     changes = Changes()
     savepoint = session.begin_nested()
     try:
+        problems: list[str] = []
+        parsed_values = {}
+        for key, text in values.items():  # every field's complaint at once, not the first (REVIEW_1_33_PLAN.md C10)
+            definition = fields[key]
+            # A retired option already on the record stays if it's sent back unchanged.
+            if definition.field_type == CustomFieldType.CHOICE and text is not None \
+                    and text.strip() == format_value(definition, existing.get(definition.id)):
+                continue
+            try:
+                parsed_values[key] = parse(definition, text)
+            except CustomFieldError as exc:
+                problems.append(str(exc))
+        if problems:
+            raise CustomFieldError(" ".join(problems))
         for key, text in values.items():
+            if key not in parsed_values:
+                continue
             definition = fields[key]
             row = existing.get(definition.id)
             before = format_value(definition, row)
-            # A retired option already on the record stays if it's sent back unchanged.
-            if definition.field_type == CustomFieldType.CHOICE and text is not None and text.strip() == before:
-                continue
-            parsed = parse(definition, text)
+            parsed = parsed_values[key]
             after = None if parsed is None else format_value(definition, _preview(definition, parsed))
             if before == after:
                 continue

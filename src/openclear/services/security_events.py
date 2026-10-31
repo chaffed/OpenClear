@@ -71,6 +71,8 @@ CATALOG: dict[str, EventType] = {
     # access
     "access.denied": EventType("access", "medium"),
     "rate_limit.exceeded": EventType("access", "medium"),
+    # Redis for shared rate limits can't be reached: each instance limits on its own until it can (REVIEW_1_33_PLAN.md C2).
+    "rate_limit.backend_down": EventType("integration", "high"),
     "sod.violation": EventType("access", "high"),  # critical when enforce refused it (from_audit_entry)
     "edge.secret.refused": EventType("access", "high"),
     # identity
