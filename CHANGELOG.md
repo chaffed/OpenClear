@@ -10,6 +10,10 @@
   log and a `continuity.gap` security event (high), and the Controls page shows it for a week
   (new control OC-CP-02, check *No outage across a cut-off*). An item whose midnight deadline
   passed during the outage is still due at once, flagged as a late decision is.
+- **`GET /ready`** says which parts of an instance work: the database and file storage (a 503
+  without them), Redis when configured and whether the cut-off sweep has run within its interval
+  (degraded without them); `/health` stays the load balancer's one-question check. The metrics
+  gain `openclear_component_up{component=…}`, and the runbook says what to alert on (BC2).
 
 ## 1.34.0 — 2026-10-31
 

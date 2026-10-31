@@ -123,6 +123,11 @@ Scrape `GET /api/v1/platform/metrics` every minute with a platform API key that 
 | `openclear_decision_files_oldest_unacknowledged_seconds` | above a bank's own file schedule plus an hour | A core isn't taking its decision files. |
 | `openclear_webhook_deliveries{status="failed"}` | rises | A bank's webhook endpoint stopped answering for a day. |
 | `openclear_http_requests_total{status="5xx"}` | rising fast | Server errors; the access log has the request ids. |
+| `openclear_component_up{component=…}` | 0 for 2 minutes | That part of the instance isn't working: `database`, `storage` (a probe byte couldn't be written), `redis` (limits are being held per instance), or `scheduler` (the cut-off sweep hasn't run within its interval; check the scheduler and the leader lock). |
+
+`GET /ready` answers the same per component, as JSON: `ready`, `degraded` (Redis or the sweep;
+the instance still serves) or `unavailable` with a 503 (the database or storage). Point the
+host's monitor at it; `GET /health` stays the load balancer's one-question check (the database).
 
 Request counts are per process since it started; the rest is read from the database.
 

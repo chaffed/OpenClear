@@ -262,7 +262,7 @@ def create_app() -> FastAPI:
             if request.url.path.startswith(_API_PREFIXES):
                 return JSONResponse({"detail": "Too many requests; try again in a minute"},
                                     status_code=status.HTTP_429_TOO_MANY_REQUESTS, headers={"Retry-After": "60"})
-            if request.url.path.startswith("/static/") or request.url.path == "/health":
+            if request.url.path.startswith("/static/") or request.url.path in ("/health", "/ready"):
                 return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                                          headers={"Retry-After": "60"})
             return _web_error(request, 429, headers={"Retry-After": "60"})
@@ -534,6 +534,22 @@ def create_app() -> FastAPI:
             return JSONResponse({"status": "unavailable", "database": "unreachable"}, status_code=503,
                                 headers={"Retry-After": "30", "Cache-Control": "no-store"})
         return {"status": "ok"}
+
+    @app.get("/ready")
+    def ready(db: Session = Depends(get_db)):
+        """Which parts of this instance work (CONTINUITY_PLAN.md BC-D6): the database and file
+        storage (required: 503 without them), Redis when configured and the cut-off sweep's last run
+        (degraded without them: 200, with the component named). For the host's monitors; `/health`
+        stays the load balancer's one-question check."""
+        from openclear.services import readiness
+
+        found = readiness.components(db)
+        state = readiness.status(found)
+        body = {"status": state, "components": {c.name: {"ok": c.ok, "detail": c.detail} for c in found}}
+        headers = {"Cache-Control": "no-store"}
+        if state == "unavailable":
+            return JSONResponse(body, status_code=503, headers={**headers, "Retry-After": "30"})
+        return JSONResponse(body, headers=headers)
 
     @app.get("/.well-known/security.txt", include_in_schema=False)
     def security_txt():

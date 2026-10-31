@@ -90,4 +90,13 @@ def render(session: Session) -> str:
     out += ["# HELP openclear_http_request_seconds_total Time this process spent serving them.",
             "# TYPE openclear_http_request_seconds_total counter"]
     out += [_line("openclear_http_request_seconds_total", round(t, 3), method=m, status=s) for (m, s), t in sorted(seconds.items())]
+    # Each component this instance needs, 1 or 0 (CONTINUITY_PLAN.md BC-D6; services/readiness.py).
+    from openclear.services import readiness
+
+    bind_session_to_tenant(session, None)
+    out += ["# HELP openclear_component_up Whether the database, file storage, Redis (when configured) and the cut-off sweep are working.",
+            "# TYPE openclear_component_up gauge"]
+    for component in readiness.components(session):
+        out.append(_line("openclear_component_up", 1 if component.ok else 0, component=component.name))
+
     return "\n".join(out) + "\n"

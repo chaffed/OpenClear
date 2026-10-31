@@ -112,3 +112,7 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   from BC-D1:** nothing is skipped on the recovering sweep: moving the deadlines is enough, since
   the sweep decides only items whose deadline has passed, and items that were due *before* the
   gap (missed by the previous sweep for a reason of their own) are swept as usual.
+- 2026-10-31: BC2 built on `bc1-gap`: `services/readiness.py` (database, a probe byte written and
+  deleted in storage, Redis when configured, the sweep's last run against its interval), `GET
+  /ready` (503 only for the database and storage; `degraded` for the rest), the
+  `openclear_component_up` metric, the runbook's row and paragraph.
