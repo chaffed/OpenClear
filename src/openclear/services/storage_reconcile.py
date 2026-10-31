@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from openclear import storage
 from openclear.db.base import Base
-from openclear.db.tenancy import bind_session_to_tenant
+from openclear.db.tenancy import acting_as_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -67,22 +67,25 @@ class Reconciliation:
 
 def reconcile(session: Session, *, list_files: bool = True) -> Reconciliation:
     """Every bank's rows (bound to each in turn, for row-level security) against the files.
-    Leaves the session unbound. With `list_files` off, only rows are checked (quick, nightly)."""
+    Leaves the session bound as it found it. With `list_files` off, only rows are checked."""
     from openclear.domain.tenant import Tenant
 
     result = Reconciliation()
     referenced: set[str] = set()
-    bind_session_to_tenant(session, None)
-    tenant_ids = list(session.execute(select(Tenant.id)).scalars())
+    # Each bank in turn, and back to whatever the caller was bound to (a check runner records its
+    # results for the bank it started with): acting_as_tenant restores the binding on exit.
+    with acting_as_tenant(session, None):
+        tenant_ids = list(session.execute(select(Tenant.id)).scalars())
     for name, columns in REFERENCES.items():
         table = Base.metadata.tables[name]
         scopes = tenant_ids if "tenant_id" in table.columns and name != "tenant" else [None]
         for tenant_id in scopes:
-            bind_session_to_tenant(session, tenant_id)
             stmt = select(table.c.id, *(table.c[c] for c, _area in columns), *([table.c.tenant_id] if tenant_id else []))
             if tenant_id:
                 stmt = stmt.where(table.c.tenant_id == tenant_id)
-            for row in session.execute(stmt):
+            with acting_as_tenant(session, tenant_id):
+                rows = session.execute(stmt).all()
+            for row in rows:
                 for index, (column, _area) in enumerate(columns):
                     ref = row[1 + index]
                     if not ref:
@@ -92,7 +95,6 @@ def reconcile(session: Session, *, list_files: bool = True) -> Reconciliation:
                     if not storage.exists(str(ref)):
                         result.missing.append({"table": name, "id": str(row[0]), "tenant_id": str(tenant_id or row[0]) if name == "tenant" else str(tenant_id),
                                                "column": column, "ref": str(ref)})
-    bind_session_to_tenant(session, None)
     if list_files:
         for area in storage.AREAS:
             if area in UNREFERENCED_AREAS:

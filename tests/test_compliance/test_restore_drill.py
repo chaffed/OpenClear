@@ -9,6 +9,7 @@ import importlib.util
 import sqlite3
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine, select
 
 from openclear.domain.restore_test import RestoreTest
@@ -25,6 +26,8 @@ def _drill():
 
 
 def test_a_drill_restores_migrates_verifies_and_records(db_session, tenant_factory, tmp_path, engine):
+    if engine.dialect.name != "sqlite":
+        pytest.skip("the drill's SQLite path copies the file; the Postgres path is pg_restore, exercised by the host's own drill")
     tenant_factory.make(slug="drill-bank")
     db_session.commit()
     dump = tmp_path / "copy.sqlite"
