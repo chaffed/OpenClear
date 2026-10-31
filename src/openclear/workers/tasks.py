@@ -174,6 +174,14 @@ def sweep_expired_dispositions_job() -> None:
             session.rollback()
             logger.exception("Deadline reminders failed")
         now = datetime.now(timezone.utc)
+        # Down across a cut-off? The items due in the gap get a look before any default (CONTINUITY_PLAN.md BC-D1).
+        try:
+            from openclear.services import continuity_service
+
+            continuity_service.recover_from_gap(session, now)
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            session.rollback()
+            logger.exception("Recovering from a gap failed")
         rows = session.execute(
             select(ExceptionItem.id, ExceptionItem.tenant_id).where(
                 ExceptionItem.status.in_([ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL]),

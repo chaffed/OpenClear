@@ -21,6 +21,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from openclear.config import get_settings
+from openclear.domain.customer import Customer
 from openclear.domain.decision import Decision
 from openclear.domain.exception_item import ExceptionItem
 from openclear.domain.notification import Notification, NotificationChannel, NotificationPreference, NotificationType
@@ -35,7 +36,8 @@ from openclear.web.templates import templates
 # SMS for every type, including these) stays fully preference-controlled.
 _ALWAYS_EMAIL_TYPES = frozenset({NotificationType.ACCOUNT_LOCKED, NotificationType.PASSWORD_CHANGED, NotificationType.INACTIVITY_WARNING,
                                  NotificationType.PASSWORD_RESET_LINK, NotificationType.SECURITY_KEY_CHANGED,
-                                 NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED, NotificationType.SIGN_IN_LINKS})
+                                 NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.MALWARE_DETECTED, NotificationType.SIGN_IN_LINKS,
+                                 NotificationType.CONTINUITY_GAP})
 
 _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EXCEPTION_CREATED: "New exception ready for review",
@@ -52,6 +54,7 @@ _EMAIL_SUBJECTS: dict[NotificationType, str] = {
     NotificationType.EMAIL_CHANGE_CONFIRM: "Confirm your new OpenClear email address",
     NotificationType.EMAIL_CHANGED: "The email address on your OpenClear sign-in changed",
     NotificationType.MALWARE_DETECTED: "Malware was found in a file uploaded to OpenClear",
+    NotificationType.CONTINUITY_GAP: "OpenClear was unavailable across a cut-off: items are due again",
     NotificationType.CUSTOMER_USER_DECIDED: "Your bank decided on a new person",
     NotificationType.ATTESTATION_REQUESTED: "Your bank asks you to attest your responsibilities",
     NotificationType.INACTIVITY_WARNING: "Sign in to keep your OpenClear access",
@@ -462,6 +465,29 @@ def notify_malware_detected(session: Session, tenant_id: uuid.UUID, *, filename:
         _queue(session, tenant_id=tenant_id, recipient=admin, notification_type=NotificationType.MALWARE_DETECTED,
                template_context={"filename": filename, "found": found, "scanner": "ClamAV" if scanner == "clamav" else "VirusTotal",
                                  "later": later}, resource_type="file")
+
+
+def notify_continuity_gap(session: Session, tenant, gap, *, zone) -> None:
+    """OpenClear was down across a cut-off (services/continuity_service.py): the bank's
+    administrators hear of every item moved; each customer's deciders of their own."""
+    def context(count: int, customer_name: str | None) -> dict[str, Any]:
+        return {"unavailable_from": gap.unavailable_from.astimezone(zone).strftime("%Y-%m-%d %H:%M"),
+                "unavailable_to": gap.unavailable_to.astimezone(zone).strftime("%H:%M"),
+                "due_again_at": gap.due_again_at.astimezone(zone).strftime("%Y-%m-%d %H:%M"), "zone": zone.key, "count": count,
+                "customer_name": customer_name, "exceptions_url": _absolute_url("/ui/exceptions")}
+
+    for admin in _recipients_for_permission(session, tenant.id, "admin:manage", customer_id=None):
+        _queue(session, tenant_id=tenant.id, recipient=admin, notification_type=NotificationType.CONTINUITY_GAP,
+               template_context=context(gap.moved, None), resource_type="tenant", resource_id=tenant.id)
+    for customer_id, count in gap.by_customer.items():
+        if customer_id is None:
+            continue
+        customer = session.get(Customer, customer_id)
+        for person in _recipients_for_permission(session, tenant.id, "exception:decide", customer_id=customer_id):
+            if person.id in {a.id for a in _recipients_for_permission(session, tenant.id, "admin:manage", customer_id=None)}:
+                continue  # told already, as an administrator
+            _queue(session, tenant_id=tenant.id, recipient=person, notification_type=NotificationType.CONTINUITY_GAP,
+                   template_context=context(count, customer.name if customer else None), resource_type="customer", resource_id=customer_id)
 
 
 def notify_email_address(session: Session, user: User, *, destination: str, notification_type: NotificationType,

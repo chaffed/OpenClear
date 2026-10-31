@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **An outage across a cut-off no longer decides by default** (`plans/CONTINUITY_PLAN.md` BC1).
+  When OpenClear comes back after being down longer than its sweep interval, the items whose
+  cut-off passed in the gap are given the bank's minimum review time again, never past a check's
+  midnight deadline, instead of the customer's default being applied to what nobody could look
+  at. The bank's administrators and the customers' deciders are emailed, the gap is in the action
+  log and a `continuity.gap` security event (high), and the Controls page shows it for a week
+  (new control OC-CP-02, check *No outage across a cut-off*). An item whose midnight deadline
+  passed during the outage is still due at once, flagged as a late decision is.
+
 ## 1.34.0 — 2026-10-31
 
 - **A check paid by a decision is paid.** Until now only a check that matched its issued item

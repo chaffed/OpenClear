@@ -71,10 +71,10 @@ NIST's mapping links no subcategory to `MP-6`, `AU-10`, `MA-4`, `SC-18`, `SC-23`
 | **ID.RA-08** Processes for receiving, analyzing, and responding to vulnerability disclosures are established | — | H-RA-5-01 |
 | **ID.RA-09** The authenticity and integrity of hardware and software are assessed prior to acquisition and use | OC-AU-02, OC-SC-03, OC-SI-02 | B-SI-7-01, B-SA-4-01, B-SA-11-01, C-SI-7-01 |
 | **ID.RA-10** Critical suppliers are assessed prior to acquisition | — | — |
-| **ID.IM-01** Improvements are identified from evaluations | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
-| **ID.IM-02** Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
-| **ID.IM-03** Improvements are identified from execution of operational processes, procedures, and activities | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-4-01, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
-| **ID.IM-04** Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved | OC-SI-05, OC-CP-01 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01, H-IR-8-01 |
+| **ID.IM-01** Improvements are identified from evaluations | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-CP-02, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
+| **ID.IM-02** Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-CP-02, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
+| **ID.IM-03** Improvements are identified from execution of operational processes, procedures, and activities | OC-AU-04, OC-SI-03, OC-SI-04, OC-SI-05, OC-SI-09, OC-SI-10, OC-SI-11, OC-CM-02, OC-CP-01, OC-CP-02, OC-IR-01, OC-CA-01, OC-CA-02, OC-CA-03 | B-PL-1-01, B-CA-2-01, B-RA-3-02, B-RA-3-01, B-RA-3-03, B-RA-3-04, B-RA-3-05, B-CA-7-01, B-CA-7-02, B-SI-4-01, B-SI-4-02, B-SI-4-03, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-SA-4-01, B-SA-11-01, C-SI-4-02, C-SI-4-01, H-CP-2-01, H-SI-2-01, H-RA-5-01, H-SI-4-01, H-IR-8-01, H-CA-8-01 |
+| **ID.IM-04** Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved | OC-SI-05, OC-CP-01, OC-CP-02 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01, H-IR-8-01 |
 
 ## Protect (PR)
 
@@ -99,8 +99,8 @@ NIST's mapping links no subcategory to `MP-6`, `AU-10`, `MA-4`, `SC-18`, `SC-23`
 | **PR.PS-05** Installation and execution of unauthorized software are prevented | — | — |
 | **PR.PS-06** Secure software development practices are integrated, and their performance is monitored throughout the software development life cycle | — | B-SA-11-01 |
 | **PR.IR-01** Networks and environments are protected from unauthorized logical access and usage | OC-AC-01, OC-AC-03, OC-AC-04, OC-AC-06, OC-AC-07, OC-AC-08, OC-AC-09, OC-AC-12, OC-AC-13, OC-SC-08, OC-SC-05, OC-SC-06, OC-SC-07, OC-SI-08 | B-AC-3(2)-01, C-AC-3-01, H-SC-7-01 |
-| **PR.IR-02** The organization's technology assets are protected from environmental threats | OC-SI-05, OC-CP-01 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01 |
-| **PR.IR-03** Mechanisms are implemented to achieve resilience requirements in normal and adverse situations | OC-SI-05, OC-SI-07, OC-CM-02, OC-CP-01, OC-IR-01, OC-IR-02 | B-IR-6-03, B-IR-6-04, B-IR-6-05, B-IR-6-06, B-IR-6-07, B-IR-6-08, B-IR-6-02, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-IR-6-01, C-IR-6-01, H-CP-9-01, H-CP-2-01, H-IR-6-01, H-IR-6-02, H-IR-8-01 |
+| **PR.IR-02** The organization's technology assets are protected from environmental threats | OC-SI-05, OC-CP-01, OC-CP-02 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01 |
+| **PR.IR-03** Mechanisms are implemented to achieve resilience requirements in normal and adverse situations | OC-SI-05, OC-SI-07, OC-CM-02, OC-CP-01, OC-CP-02, OC-IR-01, OC-IR-02 | B-IR-6-03, B-IR-6-04, B-IR-6-05, B-IR-6-06, B-IR-6-07, B-IR-6-08, B-IR-6-02, B-CP-2-02, B-CP-2-01, B-CP-2-03, B-IR-6-01, C-IR-6-01, H-CP-9-01, H-CP-2-01, H-IR-6-01, H-IR-6-02, H-IR-8-01 |
 | **PR.IR-04** Adequate resource capacity to ensure availability is maintained | — | — |
 
 ## Detect (DE)
@@ -141,11 +141,11 @@ NIST's mapping links no subcategory to `MP-6`, `AU-10`, `MA-4`, `SC-18`, `SC-23`
 
 | Subcategory | OpenClear controls | CUECs |
 |---|---|---|
-| **RC.RP-01** The recovery portion of the incident response plan is executed once initiated from the incident response process | OC-CM-02, OC-IR-01 | H-IR-8-01 |
-| **RC.RP-02** Recovery actions are selected, scoped, prioritized, and performed | OC-CM-02, OC-IR-01 | H-IR-8-01 |
-| **RC.RP-03** The integrity of backups and other restoration assets is verified before using them for restoration | OC-SI-05, OC-CP-01 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-9-01, H-CP-2-01 |
+| **RC.RP-01** The recovery portion of the incident response plan is executed once initiated from the incident response process | OC-CM-02, OC-CP-02, OC-IR-01 | H-IR-8-01 |
+| **RC.RP-02** Recovery actions are selected, scoped, prioritized, and performed | OC-CM-02, OC-CP-02, OC-IR-01 | H-IR-8-01 |
+| **RC.RP-03** The integrity of backups and other restoration assets is verified before using them for restoration | OC-SI-05, OC-CP-01, OC-CP-02 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-9-01, H-CP-2-01 |
 | **RC.RP-04** Critical mission functions and cybersecurity risk management are considered to establish post-incident operational norms | — | H-IR-8-01 |
-| **RC.RP-05** The integrity of restored assets is verified, systems and services are restored, and normal operating status is confirmed | OC-CM-02 | — |
+| **RC.RP-05** The integrity of restored assets is verified, systems and services are restored, and normal operating status is confirmed | OC-CM-02, OC-CP-02 | — |
 | **RC.RP-06** The end of incident recovery is declared based on criteria, and incident-related documentation is completed | OC-IR-01 | H-IR-8-01 |
 | **RC.CO-03** Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders | OC-SI-07, OC-IR-01, OC-IR-02 | B-IR-6-03, B-IR-6-04, B-IR-6-05, B-IR-6-06, B-IR-6-07, B-IR-6-08, B-IR-6-02, B-IR-6-01, C-IR-6-01, H-IR-6-01, H-IR-6-02 |
-| **RC.CO-04** Public updates on incident recovery are shared using approved methods and messaging | OC-SI-05, OC-CP-01, OC-IR-01 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01 |
+| **RC.CO-04** Public updates on incident recovery are shared using approved methods and messaging | OC-SI-05, OC-CP-01, OC-CP-02, OC-IR-01 | B-CP-2-02, B-CP-2-01, B-CP-2-03, H-CP-2-01 |

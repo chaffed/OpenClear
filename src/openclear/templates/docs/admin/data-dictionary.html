@@ -1003,6 +1003,7 @@ erDiagram
 <tr><td>recommended_by_user_id</td><td>UUID</td><td>yes</td><td>FK → user.id</td><td></td></tr>
 <tr><td>decision_deadline</td><td>Timestamp</td><td>yes</td><td></td><td>When the default-disposition sweep will auto-decide this if nobody responds. For a check, never later than the bank's cut-off on its return day.</td></tr>
 <tr><td>return_deadline</td><td>Timestamp</td><td>yes</td><td></td><td>A check's midnight deadline (UCC 4-104, 4-301): the end of the banking day after the one it was presented on, in the bank's zone. A decision sent after it is flagged. None for ACH.</td></tr>
+<tr><td>deadline_moved_reason</td><td>String(30)</td><td>yes</td><td></td><td>Why the decision deadline was moved after it was set: <code>outage</code> when OpenClear was down across the cut-off and the sweep gave the item the bank's minimum review time again (1.35.0).</td></tr>
 <tr><td>change_recommended_at</td><td>Timestamp</td><td>yes</td><td></td><td>Under dual control, when a change to its decision was recommended; the recommended_* columns then hold the change, and the decision in place stands until someone else approves it. Cleared on approval or at the cut-off.</td></tr>
 <tr><td>created_at</td><td>Timestamp</td><td>no</td><td></td><td></td></tr>
 <tr><td>source</td><td>String(20) enum</td><td>no</td><td></td><td><code>LIVE</code> (real activity), the only value.</td></tr>

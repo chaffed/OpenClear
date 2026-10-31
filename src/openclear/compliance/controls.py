@@ -303,6 +303,12 @@ CONTROLS: tuple[OcControl, ...] = (
       "page, which warns until they're recorded or once the test is over a year old.",
       ("CP-2", "CP-4"), "detective", "built_in", ("recovery_objectives",), ("H-CP-2-01", "H-CP-9-01", "B-CP-2-03"),
       "Controls → Recovery objectives stated"),
+    C("OC-CP-02", "An outage across a cut-off decides nothing by default",
+      "When OpenClear was unavailable across a cut-off, the items due in that time are given the bank's minimum review time "
+      "again, never past a check's midnight deadline, instead of the customer's default being applied unseen; the bank's "
+      "administrators and the customers' deciders are told, and the Controls page shows the gap for a week.",
+      ("CP-2", "CP-10"), "preventive", "built_in", ("continuity_gaps",), ("B-CP-2-01",),
+      "services/continuity_service.py; Controls → No outage across a cut-off"),
     # --- Incident response -------------------------------------------------------------------
     C("OC-IR-01", "Incident notices to each bank",
       "The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's "

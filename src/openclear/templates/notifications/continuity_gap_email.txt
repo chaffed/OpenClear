@@ -1,0 +1,10 @@
+OpenClear was unavailable from {{ unavailable_from }} to {{ unavailable_to }} ({{ zone }}), across a cut-off.
+
+{{ count }} {{ "item was" if count == 1 else "items were" }} due in that time{% if customer_name %} for {{ customer_name }}{% endif %}. Nobody could look at
+{{ "it" if count == 1 else "them" }}, so no default decision was applied: {{ "it is" if count == 1 else "they are" }} due again from
+{{ due_again_at }} ({{ zone }}). Decide {{ "it" if count == 1 else "them" }} before then, or the customer's default applies as it would
+have at the cut-off.
+
+Review them here: {{ exceptions_url }}
+
+You're receiving this because your role decides exceptions or administers OpenClear for your organization.

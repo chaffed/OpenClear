@@ -1,0 +1,1 @@
+OpenClear: unavailable {{ unavailable_from }}–{{ unavailable_to }} across a cut-off; {{ count }} {{ "item is" if count == 1 else "items are" }} due again from {{ due_again_at }} ({{ zone }}).
