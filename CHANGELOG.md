@@ -14,6 +14,10 @@
   without them), Redis when configured and whether the cut-off sweep has run within its interval
   (degraded without them); `/health` stays the load balancer's one-question check. The metrics
   gain `openclear_component_up{component=…}`, and the runbook says what to alert on (BC2).
+- **Backups measured.** The host's backup job leaves a manifest (`backup_manifests/latest.json`;
+  the runbook gives its shape) and the Controls page shows the last backup, warning when there's
+  none or it's older than `OPENCLEAR_BACKUP_MAX_AGE_HOURS` (new control OC-CP-03). A SQLite
+  installation makes its own consistent copy nightly and writes the manifest itself (BC3).
 
 ## 1.34.0 — 2026-10-31
 

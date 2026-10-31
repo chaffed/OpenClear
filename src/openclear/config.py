@@ -147,6 +147,11 @@ class Settings(BaseSettings):
     data_export_storage_dir: str = "./data/exports"
     audit_archive_storage_dir: str = "./data/audit_archives"
     decision_file_storage_dir: str = "./data/decision_files"
+    # Where the host's backup job leaves its manifest (latest.json) and a SQLite installation its nightly
+    # copy (CONTINUITY_PLAN.md BC-D2, BC-D8); RUNBOOK.md "Backups" has the manifest's shape.
+    backup_manifest_storage_dir: str = "./data/backups"
+    backup_max_age_hours: int = 26  # the Controls page warns when the last backup is older
+    sqlite_backup_keep_days: int = 14
     # Where new files are written (storage.py): "local" (the directories above) or "s3",
     # an S3-compatible bucket shared by every instance (pip install 'openclear[s3]').
     # s3_endpoint_url is for MinIO, Cloudflare R2 and the like; leave it empty for AWS.

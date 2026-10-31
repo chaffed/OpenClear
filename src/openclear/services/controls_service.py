@@ -88,6 +88,13 @@ def _rate_limit_backend() -> Control:
     return Control("rate_limit_backend", title, PASS, "Rate limits are shared through Redis, which answers.", evidence)
 
 
+def _backup_freshness() -> Control:
+    """The last backup, from the manifest the host's job leaves (services/backup_service.py; CONTINUITY_PLAN.md BC-D2)."""
+    from openclear.services import backup_service
+
+    return backup_service.freshness()
+
+
 def _recovery_objectives() -> Control:
     settings = get_settings()
     statement, tested = settings.recovery_objectives_attestation, settings.last_restore_test

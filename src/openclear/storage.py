@@ -49,6 +49,7 @@ AREAS = {
     "ml_artifacts": "ml_artifact_dir",
     "audit_archives": "audit_archive_storage_dir",
     "decision_files": "decision_file_storage_dir",
+    "backup_manifests": "backup_manifest_storage_dir",
 }
 
 
@@ -454,6 +455,22 @@ def size(ref: str) -> int:
 
 def delete(ref: str) -> None:
     for_ref(ref).delete(ref)
+
+
+def read_key(area: str, key: str) -> bytes | None:
+    """A file by its area and key, or None when there isn't one or the store can't be reached:
+    for the backup manifest the host's job leaves (CONTINUITY_PLAN.md BC-D2), which nothing in
+    OpenClear wrote, so there's no stored reference to it."""
+    store = backend()
+    try:
+        if isinstance(store, LocalStorage):
+            path = Path(getattr(get_settings(), AREAS[area])) / safe_key(key)
+            return path.read_bytes() if path.is_file() else None
+        if isinstance(store, S3Storage):
+            return store.open(store._ref(store._key(area, key))).read()
+        return store.open(store._ref(store._name(area, key))).read()
+    except Exception:  # noqa: BLE001 -- not there, or unreachable: either way there's nothing to read
+        return None
 
 
 def delete_tenant(area: str, tenant_id) -> None:

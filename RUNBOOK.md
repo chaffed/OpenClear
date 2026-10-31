@@ -135,6 +135,27 @@ A single-process SQLite installation uses write-ahead logging and waits up to fi
 write lock, so the in-process worker importing a file doesn't make web requests fail with
 "database is locked".
 
+## Backups (for the service provider)
+
+Back up the database and every storage area together, as CUEC H-CP-9-01 asks, with the host's own
+tooling (snapshots, `pg_dump`, bucket replication). When the job finishes, have it write a
+manifest to the `backup_manifests` storage area (`OPENCLEAR_BACKUP_MANIFEST_STORAGE_DIR`, or the
+`backup_manifests/` prefix of the bucket) as `latest.json`:
+
+```json
+{"completed_at": "2026-10-31T02:14:09+00:00",
+ "database": {"bytes": 734003200, "sha256": "…"},
+ "storage_areas": {"check_images": {"objects": 18240}, "bulk_uploads": {"objects": 912}, "decision_files": {"objects": 3310}},
+ "kept_at": "s3://acme-backups/openclear/2026-10-31/", "retention_days": 35,
+ "made_by": "backup.sh"}
+```
+
+The Controls page's *Backups fresh* (OC-CP-03) reads it: a warning when there's no manifest or
+the last backup is older than `OPENCLEAR_BACKUP_MAX_AGE_HOURS` (26). A SQLite installation
+needs no job: housekeeping makes a consistent copy nightly (`VACUUM INTO`) into the same area,
+keeps `OPENCLEAR_SQLITE_BACKUP_KEEP_DAYS` (14) of them, and writes the manifest itself. Keep at
+least one copy immutable or offline, behind a sign-in separate from production.
+
 ## Incidents (for the service provider)
 
 The host of an installation is a bank service provider. When something disrupts the service, or

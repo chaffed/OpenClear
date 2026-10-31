@@ -413,6 +413,12 @@ def housekeeping_job() -> None:
     try:
         housekeeping_service.run(session)
         try:
+            from openclear.services import backup_service
+
+            backup_service.sqlite_copy(session.get_bind())  # a SQLite installation's nightly backup (CONTINUITY_PLAN.md BC-D8)
+        except Exception:  # noqa: BLE001
+            logger.exception("The SQLite backup copy failed")
+        try:
             inactivity_service.sweep_all(session)
         except Exception:  # noqa: BLE001
             session.rollback()

@@ -303,6 +303,11 @@ CONTROLS: tuple[OcControl, ...] = (
       "page, which warns until they're recorded or once the test is over a year old.",
       ("CP-2", "CP-4"), "detective", "built_in", ("recovery_objectives",), ("H-CP-2-01", "H-CP-9-01", "B-CP-2-03"),
       "Controls → Recovery objectives stated"),
+    C("OC-CP-03", "Backups fresh",
+      "The host's backup job leaves a manifest when it finishes (when, what, where it's kept, for how long); the Controls page "
+      "shows the last backup and warns when there's no manifest or it's older than the hours allowed. A SQLite installation "
+      "makes its own nightly copy and manifest.",
+      ("CP-9", "CP-10"), "detective", "built_in", ("backup_freshness",), ("H-CP-9-01",), "Controls → Backups fresh; RUNBOOK.md, Backups"),
     C("OC-CP-02", "An outage across a cut-off decides nothing by default",
       "When OpenClear was unavailable across a cut-off, the items due in that time are given the bank's minimum review time "
       "again, never past a check's midnight deadline, instead of the customer's default being applied unseen; the bank's "

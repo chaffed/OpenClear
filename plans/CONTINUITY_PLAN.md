@@ -116,3 +116,6 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   deleted in storage, Redis when configured, the sweep's last run against its interval), `GET
   /ready` (503 only for the database and storage; `degraded` for the rest), the
   `openclear_component_up` metric, the runbook's row and paragraph.
+- 2026-10-31: BC3 built on `bc1-gap`: the `backup_manifests` area, `storage.read_key`,
+  `services/backup_service.py` (the manifest, `freshness`, `sqlite_copy` with `VACUUM INTO` from
+  housekeeping), check `backup_freshness` and control OC-CP-03, the runbook's "Backups".
