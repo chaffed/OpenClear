@@ -119,3 +119,8 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
 - 2026-10-31: BC3 built on `bc1-gap`: the `backup_manifests` area, `storage.read_key`,
   `services/backup_service.py` (the manifest, `freshness`, `sqlite_copy` with `VACUUM INTO` from
   housekeeping), check `backup_freshness` and control OC-CP-03, the runbook's "Backups".
+- 2026-10-31: BC4 built on `bc1-gap`: `storage.exists/ref/list_keys` on every backend;
+  `services/storage_reconcile.py` (`reconcile`, the `storage_consistency` nightly check, control
+  OC-CP-04); `scripts/restore_drill.py` with `restore_test` rows (migration `e5f9a3b7d2c8`), read by
+  the recovery-objectives check as the last restore test; Platform → Continuity (the manifest, the
+  drills, "Check now"); the runbook's drill commands; H-CP-9-01 cites them.

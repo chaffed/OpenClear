@@ -18,6 +18,12 @@
   the runbook gives its shape) and the Controls page shows the last backup, warning when there's
   none or it's older than `OPENCLEAR_BACKUP_MAX_AGE_HOURS` (new control OC-CP-03). A SQLite
   installation makes its own consistent copy nightly and writes the manifest itself (BC3).
+- **Restores proven and reconciled.** `scripts/restore_drill.py` restores a backup into a scratch
+  database, migrates it, verifies every bank's action-log chain and checks the restored rows
+  against file storage, then records the signed result; the newest passed drill is the last
+  restore test on every bank's Controls page. Nightly, every row that names a file and every file
+  are checked against each other (*Files and rows agree*, control OC-CP-04), and Platform →
+  Continuity shows the last backup, the drills and any row whose file is gone (BC4).
 
 ## 1.34.0 — 2026-10-31
 

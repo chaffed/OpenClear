@@ -1923,6 +1923,23 @@ durable queue that OCR, data exports, dropbox scans and retraining run through.<
 </tbody>
 </table>
 
+<h3>restore_test</h3>
+<p>A restore drill's signed result (<code>scripts/restore_drill.py</code>; CONTINUITY_PLAN.md BC-D2): a backup restored into a
+scratch database, migrated, its action logs verified, its files reconciled. One row per drill, for the installation: no bank's data,
+so no <code>tenant_id</code> (1.35.0).</p>
+<table data-sortable>
+<thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>UUID</td><td>no</td><td>PK</td><td></td></tr>
+<tr><td>run_at</td><td>Timestamp</td><td>no</td><td></td><td>When the drill ran; the newest passed one is the last restore test on the Controls page.</td></tr>
+<tr><td>ok</td><td>Boolean</td><td>no</td><td></td><td>Every step passed.</td></tr>
+<tr><td>backup_completed_at</td><td>Timestamp</td><td>yes</td><td></td><td>From the backup's manifest, when one was given.</td></tr>
+<tr><td>source</td><td>String(1000)</td><td>no</td><td></td><td>The dump or copy restored.</td></tr>
+<tr><td>detail</td><td>JSON</td><td>no</td><td></td><td>Each step and what it found: restore, migrate, chains, files.</td></tr>
+<tr><td>certificate / certificate_sha256</td><td>JSON / String(64)</td><td>yes</td><td></td><td>The detail, signed with the installation's file-signing key.</td></tr>
+</tbody>
+</table>
+
 <h3>job</h3>
 <table data-sortable>
 <thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th><th>Description</th></tr></thead>

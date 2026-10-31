@@ -156,6 +156,19 @@ needs no job: housekeeping makes a consistent copy nightly (`VACUUM INTO`) into 
 keeps `OPENCLEAR_SQLITE_BACKUP_KEEP_DAYS` (14) of them, and writes the manifest itself. Keep at
 least one copy immutable or offline, behind a sign-in separate from production.
 
+Prove a restore at least yearly with the drill, against a throwaway database (never the live one):
+
+```
+scripts/restore_drill.py /backups/openclear-2026-10-31.dump --scratch postgresql+psycopg://…/openclear_drill --manifest latest.json
+scripts/restore_drill.py data/backups/sqlite/openclear-20261031T020000Z.sqlite --scratch sqlite:////tmp/drill.sqlite
+```
+
+It restores the dump (`pg_restore`, or a copy of the SQLite file), runs the migrations to head,
+verifies every bank's action-log chain, reconciles the restored rows against file storage, checks
+the dump's hash against the manifest, prints each step and writes a signed `restore_test` row to
+the live database. Platform → Continuity lists the drills; the newest passed one is the "last
+restore test" on every bank's Controls page, in place of `OPENCLEAR_LAST_RESTORE_TEST`.
+
 ## Incidents (for the service provider)
 
 The host of an installation is a bank service provider. When something disrupts the service, or

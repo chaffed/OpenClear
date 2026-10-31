@@ -308,6 +308,13 @@ CONTROLS: tuple[OcControl, ...] = (
       "shows the last backup and warns when there's no manifest or it's older than the hours allowed. A SQLite installation "
       "makes its own nightly copy and manifest.",
       ("CP-9", "CP-10"), "detective", "built_in", ("backup_freshness",), ("H-CP-9-01",), "Controls → Backups fresh; RUNBOOK.md, Backups"),
+    C("OC-CP-04", "A restore is proven and reconciled",
+      "scripts/restore_drill.py restores a backup into a scratch database, migrates it, verifies every bank's action-log chain "
+      "and reconciles the restored rows against file storage, then signs the result; the Controls page shows the last passed "
+      "drill as the last restore test. Nightly, the rows that name files and the files are checked against each other, and "
+      "Platform → Continuity lists any that disagree.",
+      ("CP-4", "CP-9", "CP-10"), "detective", "built_in", ("storage_consistency",), ("H-CP-9-01", "H-CP-2-01"),
+      "scripts/restore_drill.py; Controls → Files and rows agree; Platform → Continuity"),
     C("OC-CP-02", "An outage across a cut-off decides nothing by default",
       "When OpenClear was unavailable across a cut-off, the items due in that time are given the bank's minimum review time "
       "again, never past a check's midnight deadline, instead of the customer's default being applied unseen; the bank's "
