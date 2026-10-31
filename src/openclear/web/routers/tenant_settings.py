@@ -190,7 +190,8 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
         rows = incident_service.contacts(db, ctx.tenant_id)
         return {"contacts": [c for c in rows if c.kind == "contact"], "ceo": next((c for c in rows if c.kind == "ceo"), None),
                 "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
-                "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS}
+                "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS,
+                "max_contacts": incident_service.MAX_CONTACTS}
     if key == "provider-fields":
         from openclear.services import custom_field_service
 

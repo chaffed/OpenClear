@@ -140,6 +140,7 @@ CATALOG: dict[str, EventType] = {
     "incident.notice.sent": EventType("integrity", "critical"),
     "incident.notice.acknowledged": EventType("integrity", "medium"),
     "incident_contact.changed": EventType("configuration", "high"),
+    "incident_contact.confirmed": EventType("configuration", "low"),  # the yearly attestation, for the SIEM too (REVIEW_1_33_PLAN.md G8)
     # Offboarding a bank: starting it, cancelling it, and approving, starting and finishing the deletion of its
     # data; and its legal hold (plans/OFFBOARDING_PLAN.md).
     "bank.offboarding": EventType("data", "critical"),
@@ -212,6 +213,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "incident.notice.sent": "incident.notice.sent",
     "incident.notice.acknowledged": "incident.notice.acknowledged",
     "incident_contact.changed": "incident_contact.changed",
+    "incident_contact.confirmed": "incident_contact.confirmed",
     "bank.offboard.start": "bank.offboarding",
     "bank.offboard.cancel": "bank.offboarding",
     "bank.delete.approve": "bank.offboarding",

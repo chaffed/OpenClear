@@ -1,14 +1,14 @@
 {% from "_macros/icon.html" import icon %}
 <p class="hint">When something at OpenClear's host disrupts your positive pay service, or affects your data,
   the service provider must tell the contacts you name here as soon as possible (12 CFR 304.24; for New York
-  banks, 23 NYCRR 500.11). With no contact named, it falls back to your CEO and CIO. Confirm the contacts
-  once a year.</p>
+  banks, 23 NYCRR 500.11). Name the people who should hear, or only your CEO and CIO, the fallback the
+  rule gives; with nobody named, notices go to your administrators. Confirm the contacts once a year.</p>
 {% if confirmed_at %}<p>Last confirmed {{ confirmed_at.strftime("%Y-%m-%d") }}.</p>{% else %}<p class="flash flash-warn">Not set yet.</p>{% endif %}
 <form method="post" action="/ui/settings/incident-contacts">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <fieldset>
-    <legend>Incident contacts (at least one)</legend>
-    {% for n in range(3) %}{% set c = contacts[n] if n < contacts | length else none %}
+    <legend>Incident contacts</legend>
+    {% for n in range([[contacts | length + 1, 3] | max, max_contacts] | min) %}{% set c = contacts[n] if n < contacts | length else none %}
     <div class="inline-fields">
       <label>Name <input type="text" name="contact_{{ n }}_name" value="{{ c.name if c else '' }}" maxlength="255" class="field-l"></label>
       <label>Role <input type="text" name="contact_{{ n }}_role" value="{{ c.role or '' if c else '' }}" maxlength="255" class="field-m"></label>

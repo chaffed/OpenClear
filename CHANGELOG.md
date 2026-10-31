@@ -60,6 +60,15 @@
   while Redis can't be reached each instance now limits on its own instead of allowing
   everything, the outage is a `rate_limit.backend_down` security event (once per outage), and the
   Controls page says so (new control OC-SC-08) (RV6).
+- **Incident contacts and notices.** A bank may name only its CEO and CIO, the fallback 12 CFR
+  304.24 gives, and notices then go to them (the page and the control said so; the code required a
+  named contact). The form shows a row for each contact and one more, up to ten. The yearly
+  confirmation is a security event (`incident_contact.confirmed`). The platform's Sent table says
+  which banks each notice reached and how many addresses, and marks a bank with nobody to email;
+  "Offboarding" is no longer a kind an operator can pick. A check refused at a branch is described
+  in words on the customer's Exceptions page ("issued for another amount"). The SAML signing-key
+  page says that finishing before the identity provider has the new certificate stops sign-in and
+  can't be undone, and that withdrawing after it switched needs the old certificate back (RV7).
 
 ## 1.33.0 — 2026-10-30
 

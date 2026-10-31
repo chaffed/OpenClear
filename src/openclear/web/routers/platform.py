@@ -495,8 +495,9 @@ def incidents(request: Request, db: Session = Depends(get_db), user: User = Depe
     """Incident and maintenance notices to banks (services/incident_service.py; REGULATORY_PLAN.md RG3)."""
     from openclear.services import incident_service
 
-    return render_template(request, "platform/incidents.html", user=user, banks=operator_service.banks(db, include_sandboxes=True),
-                           notices=incident_service.issued(db), kinds=incident_service.KINDS)
+    banks = operator_service.banks(db, include_sandboxes=True)
+    return render_template(request, "platform/incidents.html", user=user, banks=banks, notices=incident_service.sent(db),
+                           bank_names={b.tenant.id: b.tenant.name for b in banks}, kinds=incident_service.HAND_KINDS)
 
 
 @router.post("/incidents")
@@ -515,6 +516,8 @@ async def issue_incident_notice(request: Request, db: Session = Depends(get_db),
         return datetime.fromisoformat(value).replace(tzinfo=timezone.utc) if value else None
 
     try:
+        if str(form.get("kind") or "") not in incident_service.HAND_KINDS:  # offboarding notices come from offboarding itself
+            raise incident_service.IncidentError("Choose the kind of notice.")
         chosen = [uuid.UUID(v) for v in form.getlist("tenant_ids")]
         if form.get("all_banks") == "true":
             chosen = [b.tenant.id for b in operator_service.banks(db, include_sandboxes=True)]

@@ -322,3 +322,10 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   `set_values` reports every field's problem at once; the `custom_field_type` filter; one read
   for the account fields page (C10). **Not done:** C8 (two first writes to one field at once
   report as a unique clash: harmless and unlikely); choice option labels (options are values).
+- 2026-10-31: RV7 built on `review-1-33`. `set_contacts` and `confirm_contacts` accept a CEO and CIO
+  alone, so `recipients()`' fallback is reachable and the check counts it (G3); `sent()` and the
+  Sent table's "Banks told" column (G4); `HAND_KINDS` on the form and in the route (G5); the form
+  renders `contacts + 1` rows up to `MAX_CONTACTS` (G7); `incident_contact.confirmed`
+  (configuration, low) (G8); the `teller_result` filter (T9); the re-key page's warnings (K3).
+  **Not done:** a "test sign-in" link beside Finish: the page says to try a sign-in in a private
+  window, which is what the link would have done.

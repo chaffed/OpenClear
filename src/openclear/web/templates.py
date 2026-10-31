@@ -429,6 +429,21 @@ def _custom_field_type(value) -> str:
 
 templates.env.filters["custom_field_type"] = _custom_field_type
 
+# A teller verification's result, as a customer reads it on the exceptions page (REVIEW_1_33_PLAN.md T9).
+_TELLER_RESULTS = {
+    "not_issued": "not issued by you", "amount_differs": "issued for another amount", "payee_differs": "issued to another payee",
+    "voided": "voided by you", "stopped": "a stop payment is on it", "stop_differs": "a stop payment for another amount is on it",
+    "already_paid": "already paid", "stale": "older than the bank allows", "customer_review": "on reverse positive pay, for you to review",
+    "payee_needed": "the payee wasn't checked", "being_cashed": "being cashed at another branch", "not_on_positive_pay": "not on positive pay",
+}
+
+
+def _teller_result(value) -> str:
+    return _TELLER_RESULTS.get(str(value), str(value).replace("_", " "))
+
+
+templates.env.filters["teller_result"] = _teller_result
+
 
 # --- Plugin UI slots (plugins/ui_slots.py; MOBILE_PLAN.md R5) -------------------------------
 
