@@ -1,5 +1,45 @@
 # Changelog
 
+## Unreleased
+
+- **An outage across a cut-off no longer decides by default** (`plans/CONTINUITY_PLAN.md` BC1).
+  When OpenClear comes back after being down longer than its sweep interval, the items whose
+  cut-off passed in the gap are given the bank's minimum review time again, never past a check's
+  midnight deadline, instead of the customer's default being applied to what nobody could look
+  at. The bank's administrators and the customers' deciders are emailed, the gap is in the action
+  log and a `continuity.gap` security event (high), and the Controls page shows it for a week
+  (new control OC-CP-02, check *No outage across a cut-off*). An item whose midnight deadline
+  passed during the outage is still due at once, flagged as a late decision is.
+- **`GET /ready`** says which parts of an instance work: the database and file storage (a 503
+  without them), Redis when configured and whether the cut-off sweep has run within its interval
+  (degraded without them); `/health` stays the load balancer's one-question check. The metrics
+  gain `openclear_component_up{component=…}`, and the runbook says what to alert on (BC2).
+- **Backups measured.** The host's backup job leaves a manifest (`backup_manifests/latest.json`;
+  the runbook gives its shape) and the Controls page shows the last backup, warning when there's
+  none or it's older than `OPENCLEAR_BACKUP_MAX_AGE_HOURS` (new control OC-CP-03). A SQLite
+  installation makes its own consistent copy nightly and writes the manifest itself (BC3).
+- **Restores proven and reconciled.** `scripts/restore_drill.py` restores a backup into a scratch
+  database, migrates it, verifies every bank's action-log chain and checks the restored rows
+  against file storage, then records the signed result; the newest passed drill is the last
+  restore test on every bank's Controls page. Nightly, every row that names a file and every file
+  are checked against each other (*Files and rows agree*, control OC-CP-04), and Platform →
+  Continuity shows the last backup, the drills and any row whose file is gone (BC4).
+- **Maintenance mode** (`OPENCLEAR_MAINTENANCE_MODE=1`): while an installation is being restored,
+  people can sign in and look, an administrator can take a data export, and every other change
+  answers 503 with the reason; every page carries the notice; the cut-off sweep pauses, and the
+  pause counts as an outage across a cut-off when the mode ends, so nothing is decided by
+  default for the gap. The Controls page shows the mode (BC5).
+- **Your open items, as a file for your continuity plan.** Every hour OpenClear writes each
+  bank's open and pending items (customer, account, item, amount, problems, when it's due, the
+  return deadline, the default at the cut-off) as a signed CSV, with a dated copy at the end of
+  the bank's day; Settings → Continuity downloads them, and can email the daily copy to the
+  incident contacts, so the bank can decide by hand and reach its core before the midnight
+  deadline when OpenClear can't be reached (CUEC B-CP-2-01) (BC5).
+- **The runbook's "Recovering the installation"**: the order of operations after a loss (the
+  banks told; the keys before the database; maintenance mode; the restore and the migrations;
+  storage; `/ready`; the action-log chains and the file reconciliation; maintenance mode off, and
+  what the first sweep then does; closing the incident and recording the drill) (BC6).
+
 ## 1.34.0 — 2026-10-31
 
 - **A check paid by a decision is paid.** Until now only a check that matched its issued item

@@ -536,6 +536,37 @@ async def issue_incident_notice(request: Request, db: Session = Depends(get_db),
     return see_other("/ui/platform/incidents", flash=f"Notice {notice.title!r} sent.")
 
 
+@router.get("/continuity")
+def continuity(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
+    """Backups, restore drills and files against rows (CONTINUITY_PLAN.md BC-D2, BC-D3)."""
+    from sqlalchemy import select
+
+    from openclear.domain.restore_test import RestoreTest
+    from openclear.services import backup_service
+
+    drills = db.execute(select(RestoreTest).order_by(RestoreTest.run_at.desc()).limit(20)).scalars().all()
+    return render_template(request, "platform/continuity.html", user=user, manifest=backup_service.latest(),
+                           freshness=backup_service.freshness(), drills=drills, reconciliation=None)
+
+
+@router.post("/continuity/reconcile")
+def reconcile_storage(request: Request, db: Session = Depends(get_db), user: User = Depends(platform_session.require_operator),
+                      _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
+    """Rows against files, now: after a restore, or when the nightly check warned."""
+    from sqlalchemy import select
+
+    from openclear.domain.restore_test import RestoreTest
+    from openclear.services import backup_service, platform_log_service, storage_reconcile
+
+    found = storage_reconcile.reconcile(db)
+    platform_log_service.record(db, actor_user_id=user.id, action="platform.continuity.reconcile", summary=found.summary()[:500],
+                                resource_type="installation", resource_id=None)
+    db.commit()
+    drills = db.execute(select(RestoreTest).order_by(RestoreTest.run_at.desc()).limit(20)).scalars().all()
+    return render_template(request, "platform/continuity.html", user=user, manifest=backup_service.latest(),
+                           freshness=backup_service.freshness(), drills=drills, reconciliation=found)
+
+
 @router.get("/banks/new")
 def new_bank(request: Request, _user: User = Depends(platform_session.require_operator)) -> HTMLResponse:
     return render_template(request, "platform/provision.html")

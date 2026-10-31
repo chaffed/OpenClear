@@ -1,0 +1,9 @@
+{{ bank_name }}'s open positive pay items as of {{ as_of }} ({{ zone }}): {{ count }}.
+
+This is the daily copy for your continuity plan: if OpenClear can't be reached, these are the
+items nobody has decided, with when each is due and what happens by default at the cut-off.
+The same file is in Settings → Continuity in OpenClear, signed.
+
+{% for r in shown %}{{ r.customer_number }} {{ r.customer_name }} | account {{ r.account_number }} | {{ r.network }} {{ r.item }} | {{ r.amount }} | {{ r.problems }} | decide by {{ r.decide_by }}{% if r.return_by %} | return by {{ r.return_by }}{% endif %} | default {{ r.default_at_cutoff or "none" }}
+{% endfor %}{% if more %}… and {{ more }} more: the full file is in Settings → Continuity.
+{% endif %}

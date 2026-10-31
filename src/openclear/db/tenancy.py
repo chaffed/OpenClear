@@ -133,6 +133,8 @@ class TenantContext:
     # (services/customer_offboarding_service.py): shown to its people on every page until then.
     service_ends_at: datetime | None = None
     service_last_day: date | None = None  # the same, as the day it is at the bank (REVIEW_1_33_PLAN.md O10)
+    # The installation is being restored (config.maintenance_mode): every page says so (CONTINUITY_PLAN.md BC-D4).
+    maintenance: bool = False
     # The soonest decision deadline among them (base.html's "decide now" banner).
     nearest_deadline: datetime | None = None
     # For base.html's "New customer users" nav entry: people a customer's side added who wait

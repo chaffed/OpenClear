@@ -95,6 +95,8 @@ class ExceptionItem(Base):
     # When the exception.deadline_approaching webhook went out (services/webhook_service.py
     # warn_deadlines_approaching), so each exception is announced once.
     deadline_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Why the deadline was moved after it was set: "outage" (services/continuity_service.py, CONTINUITY_PLAN.md BC-D1).
+    deadline_moved_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # When the row last changed: what list endpoints' updated_since filters on, so a bank's
     # data pipeline fetches only what changed (docs/guides/bi.md).

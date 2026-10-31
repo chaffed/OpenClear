@@ -103,3 +103,40 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
 ## Progress log
 
 - 2026-10-31: Plan written. Waiting for the product owner's decisions BC-D1 to BC-D8.
+- 2026-10-31: BC1 built on `bc1-gap`: `services/continuity_service.py` (`recover_from_gap`, run at the
+  start of the sweep, compares the sweep's own `ScheduledJobRun` with its interval plus five
+  minutes; moves the deadlines that fell in the gap to `min(midnight, now + min review)`;
+  `exception_item.deadline_moved_reason = "outage"`, migration `d4e8f2a6c1b7`; the action-log
+  entry and `continuity.gap` (integrity, high); `notify_continuity_gap` to administrators and to
+  each customer's deciders); control check `continuity_gaps` and control OC-CP-02. **Deviation
+  from BC-D1:** nothing is skipped on the recovering sweep: moving the deadlines is enough, since
+  the sweep decides only items whose deadline has passed, and items that were due *before* the
+  gap (missed by the previous sweep for a reason of their own) are swept as usual.
+- 2026-10-31: BC2 built on `bc1-gap`: `services/readiness.py` (database, a probe byte written and
+  deleted in storage, Redis when configured, the sweep's last run against its interval), `GET
+  /ready` (503 only for the database and storage; `degraded` for the rest), the
+  `openclear_component_up` metric, the runbook's row and paragraph.
+- 2026-10-31: BC3 built on `bc1-gap`: the `backup_manifests` area, `storage.read_key`,
+  `services/backup_service.py` (the manifest, `freshness`, `sqlite_copy` with `VACUUM INTO` from
+  housekeeping), check `backup_freshness` and control OC-CP-03, the runbook's "Backups".
+- 2026-10-31: BC4 built on `bc1-gap`: `storage.exists/ref/list_keys` on every backend;
+  `services/storage_reconcile.py` (`reconcile`, the `storage_consistency` nightly check, control
+  OC-CP-04); `scripts/restore_drill.py` with `restore_test` rows (migration `e5f9a3b7d2c8`), read by
+  the recovery-objectives check as the last restore test; Platform → Continuity (the manifest, the
+  drills, "Check now"); the runbook's drill commands; H-CP-9-01 cites them.
+- 2026-10-31: BC5 built on `bc1-gap`: `maintenance_mode` (the write guard in `main.py` with the
+  sign-in, session and data-export paths allowed; `ctx.maintenance` and the banner; the sweep's
+  pause marker, read by `gap_before`; the `maintenance_mode` check); `services/continuity_snapshot.py`
+  (hourly `continuity_snapshot_job`; the signed latest file and the dated copy at the bank's 23:00;
+  emailed to the incident contacts when `tenant.continuity_snapshot_emailed`, migration
+  `f7a1b5c9d3e2`); Settings → Continuity with the download and the switch. **Deviation from
+  BC-D4:** the mode is a setting, not a platform switch: a switch kept in the database is exactly
+  what's unavailable during a restore.
+- 2026-10-31: BC6 written: RUNBOOK.md "Recovering the installation", nine steps in the order each
+  needs the one before. The tabletop against the sandbox is for the product owner to schedule;
+  it needs a restore of the sandbox's database, which is the host's operation.
+- 2026-10-31: **BC1–BC6 built** on `bc1-gap`, each stage's SQLite suite green at its commit; the
+  Postgres and Linux suites on the branch head before the pull request. Three migrations
+  (`d4e8f2a6c1b7`, `e5f9a3b7d2c8`, `f7a1b5c9d3e2`), four controls (OC-CP-02 to OC-CP-04 and the
+  checks under them), one script (`scripts/restore_drill.py`).
+- 2026-10-31: Pull request #71. CodeQL flagged the open-items download's `?day=` reaching a file name (three path-injection alerts): the route now builds the name from the parsed date, and a local `read_key` goes through `LocalStorage._path`'s resolved-path check like every other local read.

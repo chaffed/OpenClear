@@ -178,6 +178,8 @@ class Tenant(Base):
     # When an administrator last confirmed the bank's incident contacts (domain/incident.py;
     # REGULATORY_PLAN.md RG3): the control check incident_contacts asks for it yearly.
     incident_contacts_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Email the daily open-items snapshot to the incident contacts (services/continuity_snapshot.py; CONTINUITY_PLAN.md BC-D5).
+    continuity_snapshot_emailed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Offboarding (plans/OFFBOARDING_PLAN.md): when the service provider started it, so the bank's
     # data can be deleted once the wait is over; and when it was deleted (the row stays, inactive,
     # so the slug is never reused).

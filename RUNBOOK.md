@@ -123,12 +123,95 @@ Scrape `GET /api/v1/platform/metrics` every minute with a platform API key that 
 | `openclear_decision_files_oldest_unacknowledged_seconds` | above a bank's own file schedule plus an hour | A core isn't taking its decision files. |
 | `openclear_webhook_deliveries{status="failed"}` | rises | A bank's webhook endpoint stopped answering for a day. |
 | `openclear_http_requests_total{status="5xx"}` | rising fast | Server errors; the access log has the request ids. |
+| `openclear_component_up{component=…}` | 0 for 2 minutes | That part of the instance isn't working: `database`, `storage` (a probe byte couldn't be written), `redis` (limits are being held per instance), or `scheduler` (the cut-off sweep hasn't run within its interval; check the scheduler and the leader lock). |
+
+`GET /ready` answers the same per component, as JSON: `ready`, `degraded` (Redis or the sweep;
+the instance still serves) or `unavailable` with a 503 (the database or storage). Point the
+host's monitor at it; `GET /health` stays the load balancer's one-question check (the database).
 
 Request counts are per process since it started; the rest is read from the database.
 
 A single-process SQLite installation uses write-ahead logging and waits up to five seconds for a
 write lock, so the in-process worker importing a file doesn't make web requests fail with
 "database is locked".
+
+## Backups (for the service provider)
+
+Back up the database and every storage area together, as CUEC H-CP-9-01 asks, with the host's own
+tooling (snapshots, `pg_dump`, bucket replication). When the job finishes, have it write a
+manifest to the `backup_manifests` storage area (`OPENCLEAR_BACKUP_MANIFEST_STORAGE_DIR`, or the
+`backup_manifests/` prefix of the bucket) as `latest.json`:
+
+```json
+{"completed_at": "2026-10-31T02:14:09+00:00",
+ "database": {"bytes": 734003200, "sha256": "…"},
+ "storage_areas": {"check_images": {"objects": 18240}, "bulk_uploads": {"objects": 912}, "decision_files": {"objects": 3310}},
+ "kept_at": "s3://acme-backups/openclear/2026-10-31/", "retention_days": 35,
+ "made_by": "backup.sh"}
+```
+
+The Controls page's *Backups fresh* (OC-CP-03) reads it: a warning when there's no manifest or
+the last backup is older than `OPENCLEAR_BACKUP_MAX_AGE_HOURS` (26). A SQLite installation
+needs no job: housekeeping makes a consistent copy nightly (`VACUUM INTO`) into the same area,
+keeps `OPENCLEAR_SQLITE_BACKUP_KEEP_DAYS` (14) of them, and writes the manifest itself. Keep at
+least one copy immutable or offline, behind a sign-in separate from production.
+
+Prove a restore at least yearly with the drill, against a throwaway database (never the live one):
+
+```
+scripts/restore_drill.py /backups/openclear-2026-10-31.dump --scratch postgresql+psycopg://…/openclear_drill --manifest latest.json
+scripts/restore_drill.py data/backups/sqlite/openclear-20261031T020000Z.sqlite --scratch sqlite:////tmp/drill.sqlite
+```
+
+It restores the dump (`pg_restore`, or a copy of the SQLite file), runs the migrations to head,
+verifies every bank's action-log chain, reconciles the restored rows against file storage, checks
+the dump's hash against the manifest, prints each step and writes a signed `restore_test` row to
+the live database. Platform → Continuity lists the drills; the newest passed one is the "last
+restore test" on every bank's Controls page, in place of `OPENCLEAR_LAST_RESTORE_TEST`.
+
+## Recovering the installation (for the service provider)
+
+In this order, because each step needs the one before it (CONTINUITY_PLAN.md BC-D7; rehearse it
+against the sandbox at least yearly, and record the rehearsal):
+
+1. **Tell the banks** from Platform → Incidents (an *Incident* notice: what happened, that
+   decisions already made are safe, when you'll update them), or by the incident contacts' emails
+   if OpenClear itself is down (Settings → Incident contacts lists them; the daily open-items file
+   in each bank's storage, `data_exports/<bank>/continuity/`, is what a bank works from meanwhile).
+2. **Start with the keys, not the database.** Nothing reads without them: the JWT key pair
+   (`OPENCLEAR_JWT_PRIVATE_KEY_PATH`, `_PUBLIC_`), the file-signing pair
+   (`OPENCLEAR_FILE_SIGNING_*`), the action-log signing pair (`OPENCLEAR_AUDIT_LOG_SIGNING_*`)
+   and `OPENCLEAR_SSO_ENCRYPTION_KEY` (and `_PREVIOUS` if a rotation was under way), from the key
+   store, exactly as they were. A different key verifies no signature and decrypts no SAML
+   secret.
+3. **Set `OPENCLEAR_MAINTENANCE_MODE=1`** on every instance before the database is reachable
+   again: people can sign in and look, an administrator can take a data export, and nothing
+   changes; the cut-off sweep pauses and the pause is treated as an outage across a cut-off when
+   the mode ends (step 8), so nothing is decided by default for the gap.
+4. **Restore the database** from the newest backup (`pg_restore --clean --if-exists`, or copy the
+   SQLite file into place), then **`alembic upgrade head`**. If the backup predates the running
+   release, the migrations bring it up; a backup from a newer release than the code is not
+   restorable: deploy that release first.
+5. **Restore file storage** to the same point as the database (the bucket's versioning point, or
+   the directories' copy). The two are backed up apart; step 7 finds what disagrees.
+6. **Start one instance** and check `GET /ready`: `database` and `storage` must be `ok`; `redis`
+   may be `degraded` (limits are then per instance); `scheduler` says when the sweep last ran.
+7. **Verify** before anyone decides anything: every bank's Controls page shows *Action log intact*
+   (the chain verifies against the restored rows; a break means the backup and the log disagree
+   and the bank must be told); Platform → Continuity → *Check now* reconciles rows and files and
+   lists any row whose file is gone (an upload or image written after the backup: its bank should
+   re-upload it, and the row is otherwise harmless); *Backups fresh* shows the backup you restored.
+8. **Turn maintenance mode off** and start the other instances. The first cut-off sweep treats
+   the pause as a gap: items due during it get the minimum review time again (never past a
+   check's midnight deadline), the bank's administrators and the customers' deciders are
+   emailed, and every bank's Controls page shows *No outage across a cut-off* failing for a
+   week. Decisions a core had already taken before the backup are in its files; decisions made
+   after the backup and before the outage are gone with the rows and must be made again, which
+   the gap's notice asks for.
+9. **Close the incident** with an *Update* or *Closed* notice, and record the recovery (the time
+   it took, against the stated recovery objectives) in the restore drill's place: run
+   `scripts/restore_drill.py` against the backup you used so the Controls page's last restore test
+   is this one.
 
 ## Incidents (for the service provider)
 

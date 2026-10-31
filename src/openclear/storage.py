@@ -49,6 +49,7 @@ AREAS = {
     "ml_artifacts": "ml_artifact_dir",
     "audit_archives": "audit_archive_storage_dir",
     "decision_files": "decision_file_storage_dir",
+    "backup_manifests": "backup_manifest_storage_dir",
 }
 
 
@@ -138,6 +139,18 @@ class LocalStorage:
     def delete_tenant(self, area: str, tenant_id) -> None:
         shutil.rmtree(Path(getattr(get_settings(), AREAS[area])) / str(tenant_id), ignore_errors=True)
 
+    def exists(self, ref: str) -> bool:
+        return Path(ref).is_file()
+
+    def ref(self, area: str, key: str) -> str:
+        return str(Path(getattr(get_settings(), AREAS[area])) / safe_key(key))
+
+    def list_keys(self, area: str, prefix: str = "") -> list[str]:
+        root = Path(getattr(get_settings(), AREAS[area]))
+        if not root.is_dir():
+            return []
+        return sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and p.relative_to(root).as_posix().startswith(prefix))
+
 
 class S3Storage:
     """An S3-compatible bucket. `s3_endpoint_url` points it at MinIO, R2 or another
@@ -198,6 +211,24 @@ class S3Storage:
     def open(self, ref: str) -> BinaryIO:
         bucket, key = self._split(ref)
         return self.client.get_object(Bucket=bucket, Key=key)["Body"]
+
+    def exists(self, ref: str) -> bool:
+        bucket, key = self._split(ref)
+        try:
+            self.client.head_object(Bucket=bucket, Key=key)
+            return True
+        except Exception:  # noqa: BLE001 -- NoSuchKey, 404 and 403 alike read as "not there"
+            return False
+
+    def ref(self, area: str, key: str) -> str:
+        return self._ref(self._key(area, key))
+
+    def list_keys(self, area: str, prefix: str = "") -> list[str]:
+        base = self._key(area, "") .rstrip("/") + "/"
+        keys = []
+        for page in self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=base + prefix):
+            keys.extend(obj["Key"].removeprefix(base) for obj in page.get("Contents", []))
+        return sorted(keys)
 
     @contextlib.contextmanager
     def local_path(self, ref: str) -> Iterator[Path]:
@@ -298,6 +329,21 @@ class AzureBlobStorage:
         container, name = self._split(ref)
         return _ChunkReader(self._blob(container, name).download_blob().chunks())
 
+
+    def exists(self, ref: str) -> bool:
+        container, name = self._split(ref)
+        try:
+            return bool(self._blob(container, name).exists())
+        except Exception:  # noqa: BLE001 -- unreachable reads as "not there"
+            return False
+
+    def ref(self, area: str, key: str) -> str:
+        return self._ref(self._name(area, key))
+
+    def list_keys(self, area: str, prefix: str = "") -> list[str]:
+        base = self._name(area, "").rstrip("/") + "/"
+        container = self.service.get_container_client(self.container)
+        return sorted(b.name.removeprefix(base) for b in container.list_blobs(name_starts_with=base + prefix))
     @contextlib.contextmanager
     def local_path(self, ref: str) -> Iterator[Path]:
         container, name = self._split(ref)
@@ -454,6 +500,37 @@ def size(ref: str) -> int:
 
 def delete(ref: str) -> None:
     for_ref(ref).delete(ref)
+
+
+def exists(ref: str) -> bool:
+    """Whether the file a stored reference names is there (services/storage_reconcile.py)."""
+    return for_ref(ref).exists(ref)
+
+
+def ref(area: str, key: str) -> str:
+    """The reference `put(area, key, …)` would return, without writing."""
+    return backend().ref(area, key)
+
+
+def list_keys(area: str, prefix: str = "") -> list[str]:
+    """Every key in an area (relative to it), from the configured backend."""
+    return backend().list_keys(area, prefix)
+
+
+def read_key(area: str, key: str) -> bytes | None:
+    """A file by its area and key, or None when there isn't one or the store can't be reached:
+    for the backup manifest the host's job leaves (CONTINUITY_PLAN.md BC-D2), which nothing in
+    OpenClear wrote, so there's no stored reference to it."""
+    store = backend()
+    try:
+        if isinstance(store, LocalStorage):
+            path = store._path(area, key)  # safe_key, and the resolved path stays in the area
+            return path.read_bytes() if path.is_file() else None
+        if isinstance(store, S3Storage):
+            return store.open(store._ref(store._key(area, key))).read()
+        return store.open(store._ref(store._name(area, key))).read()
+    except Exception:  # noqa: BLE001 -- not there, or unreachable: either way there's nothing to read
+        return None
 
 
 def delete_tenant(area: str, tenant_id) -> None:

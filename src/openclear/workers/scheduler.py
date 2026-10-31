@@ -23,6 +23,7 @@ from openclear.workers.tasks import (
     notification_dispatch_job,
     retrain_job,
     security_event_delivery_job,
+    continuity_snapshot_job,
     sweep_expired_dispositions_job,
     decision_outbox_job,
     decision_lock_job,
@@ -48,6 +49,8 @@ def _jobs(settings) -> list[tuple[str, Callable[[], None], object, timedelta]]:
                      IntervalTrigger(seconds=settings.disposition_sweep_interval_seconds), timedelta(seconds=settings.disposition_sweep_interval_seconds)))
         jobs.append(("decision_lock_job", decision_lock_job, IntervalTrigger(seconds=settings.decision_lock_interval_seconds),
                      timedelta(seconds=settings.decision_lock_interval_seconds)))
+        # Each bank's open items as a signed file it can work from without OpenClear (CONTINUITY_PLAN.md BC-D5).
+        jobs.append(("continuity_snapshot_job", continuity_snapshot_job, IntervalTrigger(hours=1), hour))
     if settings.enable_decision_outbox_scheduler:
         jobs.append(("decision_outbox_job", decision_outbox_job, IntervalTrigger(seconds=settings.decision_outbox_tick_seconds),
                      timedelta(seconds=settings.decision_outbox_tick_seconds)))

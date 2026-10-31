@@ -9,7 +9,7 @@ Saving redirects to the panel with a message; an error shows the setting again w
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -64,6 +64,7 @@ SECTIONS = {
     "auto-import": "Auto-import",
     "wsud-form": "Unauthorized debit statement",
     "incident-contacts": "Incident contacts",
+    "continuity": "Continuity",
     "custom-fields": "Custom fields",
     "provider-fields": "From your service provider",
 }
@@ -193,6 +194,11 @@ def _section_context(db: Session, ctx: TenantContext, key: str) -> dict:
                 "cio": next((c for c in rows if c.kind == "cio"), None), "confirmed_at": tenant.incident_contacts_confirmed_at,
                 "notices": incident_service.history(db, ctx.tenant_id, limit=20), "kinds": incident_service.KINDS,
                 "max_contacts": incident_service.MAX_CONTACTS}
+    if key == "continuity":
+        from openclear.services import continuity_snapshot
+
+        return {"snapshot": continuity_snapshot.latest(ctx.tenant_id), "dated": continuity_snapshot.dated(ctx.tenant_id)[:14],
+                "emailed": tenant.continuity_snapshot_emailed}
     if key == "provider-fields":
         from openclear.services import custom_field_service
 
@@ -790,6 +796,46 @@ def archive_custom_field(request: Request, field_id: uuid.UUID, archived: str = 
                          ctx: TenantContext = Depends(require_web_permission("tenant:manage")),
                          _csrf: None = Depends(verify_csrf)) -> HTMLResponse:
     return _change(request, db, ctx, "custom_field.archive", {"field_id": str(field_id), "archived": archived == "1"}, key="custom-fields")
+
+
+@router.post("/continuity")
+async def update_continuity(request: Request, db: Session = Depends(get_db),
+                            ctx: TenantContext = Depends(require_web_permission("tenant:manage")), _csrf: None = Depends(verify_csrf)):
+    """Whether the daily open-items snapshot is emailed to the incident contacts (CONTINUITY_PLAN.md BC-D5)."""
+    form = await request.form()
+    tenant = db.get(Tenant, ctx.tenant_id)
+    wanted = form.get("emailed") == "true"
+    if wanted != tenant.continuity_snapshot_emailed:
+        tenant.continuity_snapshot_emailed = wanted
+        audit_log_service.record_action(db, ctx.tenant_id, actor_user_id=ctx.user_id, channel="web", action="continuity.snapshot_email.changed",
+                                        summary=f"The daily open-items snapshot is {'now' if wanted else 'no longer'} emailed to the incident contacts",
+                                        resource_type="tenant", resource_id=ctx.tenant_id)
+        db.commit()
+    return _saved(request, "Continuity settings saved.", key="continuity")
+
+
+@router.get("/continuity/open-items.csv")
+def download_open_items(day: str = "", db: Session = Depends(get_db),
+                        ctx: TenantContext = Depends(require_web_permission("exception:read"))) -> Response:
+    """The latest open-items snapshot, or a dated copy (`?day=YYYY-MM-DD`): the bank's own, signed."""
+    from openclear.services import continuity_snapshot
+
+    if ctx.customer_id is not None:
+        raise WebNotFound()  # the bank's whole list; a customer's people see their items on the Exceptions page
+    if day:
+        # The name is built from the parsed date, never from the string the browser sent.
+        from datetime import date
+
+        try:
+            name = f"open-items-{date.fromisoformat(day).isoformat()}.csv"
+        except ValueError:
+            raise WebNotFound() from None
+    else:
+        name = continuity_snapshot.LATEST
+    data = continuity_snapshot.read(ctx.tenant_id, name)
+    if data is None:
+        raise WebNotFound()
+    return Response(data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
 
 
 @router.post("/incident-contacts")

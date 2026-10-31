@@ -666,8 +666,11 @@ CUECS: tuple[Cuec, ...] = (
          "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or "
          "offline behind sign-in separate from production; state how long backups are kept; and test a clean restore at least "
          "yearly.",
-         "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
-         "attested", None, "Daily; restore tested yearly", "The host's backup records", related=("CP-4", "CP-10")),
+         "OpenClear's database migrations upgrade and downgrade, its action log verifies after a restore, and "
+         "scripts/restore_drill.py does both against a scratch database and signs the result; the Controls page reads the "
+         "host's backup manifest (Backups fresh) and the last passed drill (Recovery objectives stated).",
+         "attested", None, "Daily; restore tested yearly", "The host's backup records; Controls → Backups fresh; the restore drill",
+         related=("CP-4", "CP-10")),
     Cuec("H-CP-2-01", "host", "CP-2", "State recovery objectives",
          "State the installation's recovery time and recovery point objectives, record them and each restore test's date in "
          "OpenClear's settings, and give the banks the restore tests' results.",

@@ -303,6 +303,24 @@ CONTROLS: tuple[OcControl, ...] = (
       "page, which warns until they're recorded or once the test is over a year old.",
       ("CP-2", "CP-4"), "detective", "built_in", ("recovery_objectives",), ("H-CP-2-01", "H-CP-9-01", "B-CP-2-03"),
       "Controls → Recovery objectives stated"),
+    C("OC-CP-03", "Backups fresh",
+      "The host's backup job leaves a manifest when it finishes (when, what, where it's kept, for how long); the Controls page "
+      "shows the last backup and warns when there's no manifest or it's older than the hours allowed. A SQLite installation "
+      "makes its own nightly copy and manifest.",
+      ("CP-9", "CP-10"), "detective", "built_in", ("backup_freshness",), ("H-CP-9-01",), "Controls → Backups fresh; RUNBOOK.md, Backups"),
+    C("OC-CP-04", "A restore is proven and reconciled",
+      "scripts/restore_drill.py restores a backup into a scratch database, migrates it, verifies every bank's action-log chain "
+      "and reconciles the restored rows against file storage, then signs the result; the Controls page shows the last passed "
+      "drill as the last restore test. Nightly, the rows that name files and the files are checked against each other, and "
+      "Platform → Continuity lists any that disagree.",
+      ("CP-4", "CP-9", "CP-10"), "detective", "built_in", ("storage_consistency", "maintenance_mode"), ("H-CP-9-01", "H-CP-2-01"),
+      "scripts/restore_drill.py; Controls → Files and rows agree; Platform → Continuity"),
+    C("OC-CP-02", "An outage across a cut-off decides nothing by default",
+      "When OpenClear was unavailable across a cut-off, the items due in that time are given the bank's minimum review time "
+      "again, never past a check's midnight deadline, instead of the customer's default being applied unseen; the bank's "
+      "administrators and the customers' deciders are told, and the Controls page shows the gap for a week.",
+      ("CP-2", "CP-10"), "preventive", "built_in", ("continuity_gaps",), ("B-CP-2-01",),
+      "services/continuity_service.py; Controls → No outage across a cut-off"),
     # --- Incident response -------------------------------------------------------------------
     C("OC-IR-01", "Incident notices to each bank",
       "The installation's operator sends incident and maintenance notices to the banks affected: each is emailed to the bank's "

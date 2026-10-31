@@ -442,6 +442,23 @@ def incident_contacts(session: Session, tenant_id: uuid.UUID) -> Control:
     return Control("incident_contacts", title, PASS, f"{who}, confirmed {confirmed:%Y-%m-%d}.", evidence)
 
 
+def continuity_gaps(session: Session, tenant_id: uuid.UUID) -> Control:
+    """OpenClear wasn't down across a cut-off in the last seven days (CONTINUITY_PLAN.md BC-D1).
+    When it was, the items due then were given the minimum review time instead of a default, and
+    the bank should know: FAIL for a week, with the gap."""
+    from openclear.domain.audit_log_entry import AuditLogEntry
+
+    title = "No outage across a cut-off"
+    since = _now() - timedelta(days=7)
+    gaps = session.execute(select(AuditLogEntry).where(AuditLogEntry.tenant_id == tenant_id, AuditLogEntry.action == "continuity.gap",
+                                                       AuditLogEntry.occurred_at >= since).order_by(AuditLogEntry.occurred_at.desc())).scalars().all()
+    evidence = {"gaps_last_7_days": [{"at": _aware(g.occurred_at).isoformat(), "summary": g.summary} for g in gaps]}
+    if gaps:
+        return Control("continuity_gaps", title, FAIL, f"{_plural(len(gaps), 'outage')} across a cut-off in the last 7 days; the latest: "
+                       f"{gaps[0].summary}", evidence)
+    return Control("continuity_gaps", title, PASS, "No outage across a cut-off in the last 7 days.", evidence)
+
+
 def custom_fields(session: Session, tenant_id: uuid.UUID) -> Control:
     """Required custom fields are filled in (plans/CUSTOM_FIELDS_PLAN.md CF-D5). Required holds in
     people's forms only, so a record made by a file, the API or the core's sync can lack one; the

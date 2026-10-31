@@ -41,7 +41,8 @@ _PREFERENCE_TYPES = [
                                              NotificationType.NEW_DEVICE_SIGN_IN, NotificationType.EMAIL_CHANGE_CONFIRM,
                                              NotificationType.EMAIL_CHANGED, NotificationType.MALWARE_DETECTED,
                                              NotificationType.INACTIVITY_WARNING, NotificationType.SIGN_IN_LINKS,
-                                             NotificationType.INCIDENT_NOTICE, NotificationType.SERVICE_ENDING)
+                                             NotificationType.INCIDENT_NOTICE, NotificationType.SERVICE_ENDING,
+                                             NotificationType.CONTINUITY_GAP, NotificationType.CONTINUITY_SNAPSHOT)
 ]
 
 _NOTIFICATION_TYPE_LABELS = {

@@ -51,6 +51,12 @@ _WEB_ERRORS = {
 }
 
 
+_WRITES = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+# What still works in maintenance mode: signing in and out, and taking a data export.
+_MAINTENANCE_ALLOWED = ("/ui/login", "/ui/logout", "/ui/webauthn", "/ui/session", "/api/v1/auth/", "/api/v1/oauth/", "/api/v1/webauthn",
+                        "/ui/settings/data-export", "/api/v1/data-exports", "/ui/platform/login")
+
+
 def _wants_json(request: Request) -> bool:
     return request.url.path.startswith(_API_PREFIXES)
 
@@ -218,6 +224,19 @@ def create_app() -> FastAPI:
     idempotency.install(app)
 
     @app.middleware("http")
+    async def _maintenance_mode(request: Request, call_next):
+        # Being restored (CONTINUITY_PLAN.md BC-D4): people can sign in and look, and an administrator can take a
+        # data export; nothing else changes until the mode is off. Decisions already made are safe.
+        if get_settings().maintenance_mode and request.method in _WRITES and not request.url.path.startswith(_MAINTENANCE_ALLOWED):
+            if request.url.path.startswith(_API_PREFIXES):
+                return JSONResponse({"detail": "OpenClear is being restored; nothing can be changed until it's done. Decisions already made are safe."},
+                                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers={"Retry-After": "600"})
+            return _web_error(request, 503, title="OpenClear is being restored",
+                              message="Nothing can be changed until the restore is done; decisions already made are safe. You can still look, "
+                                      "and an administrator can take a data export.", headers={"Retry-After": "600"})
+        return await call_next(request)
+
+    @app.middleware("http")
     async def _limit_request_body_size(request: Request, call_next):
         # Fast, uniform first line of defense against oversized uploads — reads
         # Content-Length off every incoming request before any route handler (or
@@ -262,7 +281,7 @@ def create_app() -> FastAPI:
             if request.url.path.startswith(_API_PREFIXES):
                 return JSONResponse({"detail": "Too many requests; try again in a minute"},
                                     status_code=status.HTTP_429_TOO_MANY_REQUESTS, headers={"Retry-After": "60"})
-            if request.url.path.startswith("/static/") or request.url.path == "/health":
+            if request.url.path.startswith("/static/") or request.url.path in ("/health", "/ready"):
                 return PlainTextResponse("Too many requests -- please slow down.", status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                                          headers={"Retry-After": "60"})
             return _web_error(request, 429, headers={"Retry-After": "60"})
@@ -534,6 +553,22 @@ def create_app() -> FastAPI:
             return JSONResponse({"status": "unavailable", "database": "unreachable"}, status_code=503,
                                 headers={"Retry-After": "30", "Cache-Control": "no-store"})
         return {"status": "ok"}
+
+    @app.get("/ready")
+    def ready(db: Session = Depends(get_db)):
+        """Which parts of this instance work (CONTINUITY_PLAN.md BC-D6): the database and file
+        storage (required: 503 without them), Redis when configured and the cut-off sweep's last run
+        (degraded without them: 200, with the component named). For the host's monitors; `/health`
+        stays the load balancer's one-question check."""
+        from openclear.services import readiness
+
+        found = readiness.components(db)
+        state = readiness.status(found)
+        body = {"status": state, "components": {c.name: {"ok": c.ok, "detail": c.detail} for c in found}}
+        headers = {"Cache-Control": "no-store"}
+        if state == "unavailable":
+            return JSONResponse(body, status_code=503, headers={**headers, "Retry-After": "30"})
+        return JSONResponse(body, headers=headers)
 
     @app.get("/.well-known/security.txt", include_in_schema=False)
     def security_txt():

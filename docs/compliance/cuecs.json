@@ -3641,7 +3641,7 @@
       ],
       "title": "Back up and test restores",
       "statement": "Back up the database and file storage, encrypted and kept apart from the primary, with at least one copy immutable or offline behind sign-in separate from production; state how long backups are kept; and test a clean restore at least yearly.",
-      "complements": "OpenClear's database migrations upgrade and downgrade, and its action log verifies after a restore.",
+      "complements": "OpenClear's database migrations upgrade and downgrade, its action log verifies after a restore, and scripts/restore_drill.py does both against a scratch database and signs the result; the Controls page reads the host's backup manifest (Backups fresh) and the last passed drill (Recovery objectives stated).",
       "evidence": "attested",
       "check": null,
       "check_status": null,
@@ -3668,7 +3668,7 @@
           "title": "The integrity of backups and other restoration assets is verified before using them for restoration"
         }
       ],
-      "where": "The host's backup records",
+      "where": "The host's backup records; Controls \u2192 Backups fresh; the restore drill",
       "withdrawn": false
     },
     {

@@ -137,6 +137,13 @@ def sweep_expired_dispositions_job() -> None:
 
     session = get_session_factory()()
     try:
+        if get_settings().maintenance_mode:
+            # Being restored (CONTINUITY_PLAN.md BC-D4): nothing is decided; the pause is a gap when it ends.
+            from openclear.services import continuity_service
+
+            continuity_service.note_paused(session)
+            session.commit()
+            return
         # First, warn about deadlines that are near (exception.deadline_approaching webhook).
         try:
             if warned := webhook_service.warn_deadlines_approaching(session):
@@ -174,6 +181,14 @@ def sweep_expired_dispositions_job() -> None:
             session.rollback()
             logger.exception("Deadline reminders failed")
         now = datetime.now(timezone.utc)
+        # Down across a cut-off? The items due in the gap get a look before any default (CONTINUITY_PLAN.md BC-D1).
+        try:
+            from openclear.services import continuity_service
+
+            continuity_service.recover_from_gap(session, now)
+        except Exception:  # noqa: BLE001 -- the sweep itself matters more
+            session.rollback()
+            logger.exception("Recovering from a gap failed")
         rows = session.execute(
             select(ExceptionItem.id, ExceptionItem.tenant_id).where(
                 ExceptionItem.status.in_([ExceptionStatus.OPEN, ExceptionStatus.PENDING_APPROVAL]),
@@ -394,6 +409,19 @@ def malware_recheck_job() -> None:
         session.close()
 
 
+def continuity_snapshot_job() -> None:
+    """Hourly: each bank's open items as a signed CSV in its storage (services/continuity_snapshot.py)."""
+    from openclear.services import continuity_snapshot
+
+    session = get_session_factory()()
+    try:
+        written = continuity_snapshot.run_all(session)
+        if written:
+            logger.info("Continuity snapshots written for %d banks", written)
+    finally:
+        session.close()
+
+
 def housekeeping_job() -> None:
     """Daily clean-up of operational rows (services/housekeeping_service.py): finished
     jobs, sent notifications, old bulk-upload row results and expired export archives; then
@@ -404,6 +432,12 @@ def housekeeping_job() -> None:
     session = get_session_factory()()
     try:
         housekeeping_service.run(session)
+        try:
+            from openclear.services import backup_service
+
+            backup_service.sqlite_copy(session.get_bind())  # a SQLite installation's nightly backup (CONTINUITY_PLAN.md BC-D8)
+        except Exception:  # noqa: BLE001
+            logger.exception("The SQLite backup copy failed")
         try:
             inactivity_service.sweep_all(session)
         except Exception:  # noqa: BLE001

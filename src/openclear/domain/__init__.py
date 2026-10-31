@@ -58,6 +58,7 @@ from openclear.domain import (  # noqa: F401
     platform_log_verification,
     platform_webauthn,
     revoked_session,
+    restore_test,
     scheduled_job_run,
     security_event,
     security_event_destination,

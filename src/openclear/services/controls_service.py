@@ -88,11 +88,48 @@ def _rate_limit_backend() -> Control:
     return Control("rate_limit_backend", title, PASS, "Rate limits are shared through Redis, which answers.", evidence)
 
 
-def _recovery_objectives() -> Control:
+def _storage_consistency(session) -> Control:
+    """Rows whose files are gone (services/storage_reconcile.py; CONTINUITY_PLAN.md BC-D3)."""
+    from openclear.services import storage_reconcile
+
+    return storage_reconcile.consistency_check(session)
+
+
+def _maintenance_mode() -> Control:
+    """Whether the installation is in maintenance mode (config.maintenance_mode; CONTINUITY_PLAN.md BC-D4)."""
+    title = "Not in maintenance mode"
+    if get_settings().maintenance_mode:
+        return Control("maintenance_mode", title, WARN, "OpenClear is in maintenance mode: sign-in and reading work, writes are refused, "
+                       "the cut-off sweep is paused and will treat the pause as a gap when it ends.", {"maintenance_mode": True})
+    return Control("maintenance_mode", title, PASS, "Not in maintenance mode.", {"maintenance_mode": False})
+
+
+def _backup_freshness() -> Control:
+    """The last backup, from the manifest the host's job leaves (services/backup_service.py; CONTINUITY_PLAN.md BC-D2)."""
+    from openclear.services import backup_service
+
+    return backup_service.freshness()
+
+
+def _last_restore_drill(session):
+    """The newest passed restore drill (scripts/restore_drill.py), if any: measured, where the setting is typed."""
+    from sqlalchemy import select
+
+    from openclear.domain.restore_test import RestoreTest
+
+    return session.execute(select(RestoreTest).where(RestoreTest.ok.is_(True)).order_by(RestoreTest.run_at.desc()).limit(1)).scalar_one_or_none()
+
+
+def _recovery_objectives(session=None) -> Control:
     settings = get_settings()
     statement, tested = settings.recovery_objectives_attestation, settings.last_restore_test
+    drill = _last_restore_drill(session) if session is not None else None
+    if drill is not None and (tested is None or _aware(drill.run_at).date() > tested):
+        tested = _aware(drill.run_at).date()  # the drill's own record wins over a date typed in (CONTINUITY_PLAN.md BC-D2)
     title = "Recovery objectives stated"
-    evidence = {"attestation": statement, "last_restore_test": tested.isoformat() if tested else None, "verified_by_openclear": False}
+    evidence = {"attestation": statement, "last_restore_test": tested.isoformat() if tested else None,
+                "verified_by_openclear": drill is not None and _aware(drill.run_at).date() == tested,
+                "last_restore_drill": {"run_at": _aware(drill.run_at).isoformat(), "certificate_sha256": drill.certificate_sha256} if drill else None}
     if not statement:
         return Control("recovery_objectives", title, WARN,
                        "The host's recovery time and recovery point objectives aren't recorded. Agree them with your provider, then "

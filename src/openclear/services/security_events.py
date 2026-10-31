@@ -152,6 +152,8 @@ CATALOG: dict[str, EventType] = {
     "custom_field.changed": EventType("configuration", "medium"),
     # A check decided after its midnight deadline: the bank may be accountable for it (REGULATORY_PLAN.md RG1).
     "decision.after_return_deadline": EventType("integrity", "high"),
+    # OpenClear was down across a cut-off; the items due then were given time instead of a default (CONTINUITY_PLAN.md BC-D1).
+    "continuity.gap": EventType("integrity", "high"),
     # Teller positive pay (TELLER_PLAN.md TL-D6): each check verified at a branch, declined, recorded cashed, and
     # what looks like someone trying check numbers.
     "teller.verify": EventType("data", "low"),
@@ -211,6 +213,7 @@ AUDIT_EVENTS: dict[str, str] = {
     "file.malware_detected": "file.malware_detected",
     "bulk_upload.refused": "bulk_upload.refused",
     "incident.notice.sent": "incident.notice.sent",
+    "continuity.gap": "continuity.gap",
     "incident.notice.acknowledged": "incident.notice.acknowledged",
     "incident_contact.changed": "incident_contact.changed",
     "incident_contact.confirmed": "incident_contact.confirmed",

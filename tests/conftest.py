@@ -109,6 +109,10 @@ def isolated_filesystem_settings(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENCLEAR_CHECK_IMAGE_STORAGE_DIR", str(tmp_path / "check_images"))
     monkeypatch.setenv("OPENCLEAR_TENANT_ASSET_STORAGE_DIR", str(tmp_path / "tenant_assets"))
     monkeypatch.setenv("OPENCLEAR_BULK_UPLOAD_STORAGE_DIR", str(tmp_path / "bulk_uploads"))
+    monkeypatch.setenv("OPENCLEAR_BACKUP_MANIFEST_STORAGE_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("OPENCLEAR_DATA_EXPORT_STORAGE_DIR", str(tmp_path / "exports"))
+    monkeypatch.setenv("OPENCLEAR_DECISION_FILE_STORAGE_DIR", str(tmp_path / "decision_files"))
+    monkeypatch.setenv("OPENCLEAR_AUDIT_ARCHIVE_STORAGE_DIR", str(tmp_path / "audit_archives"))
     # No default cut-off in tests: decisions are final when made unless a test sets a cut-off
     # (tests/test_decisions). Production refuses to start without one (config.assert_production_safe).
     monkeypatch.setenv("OPENCLEAR_DEFAULT_DECISION_CUTOFF", "")

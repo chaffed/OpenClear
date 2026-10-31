@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros/icon.html" import icon %}
+{% block title %}Continuity — OpenClear{% endblock %}
+{% block content %}
+<p class="back-link"><a href="/ui/platform">Platform</a></p>
+<div class="card">
+  <h1>Continuity</h1>
+  <p>Backups measured, restores proven, files and rows checked against each other (<code>plans/CONTINUITY_PLAN.md</code>).
+    The runbook's <em>Backups</em> section says what the host's backup job writes and how the restore drill is run.</p>
+  <h2>Last backup</h2>
+  <p><span class="badge {{ 'badge-ok' if freshness.status == 'PASS' else 'badge-warn' }}">{{ freshness.status }}</span> {{ freshness.detail }}</p>
+  {% if manifest %}
+  <dl class="dl-grid">
+    <dt>Finished</dt><dd><time datetime="{{ manifest.completed_at | iso_utc }}" data-local-time>{{ manifest.completed_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></dd>
+    <dt>Database</dt><dd>{{ "{:,}".format(manifest.database_bytes) if manifest.database_bytes else "size not stated" }} bytes{% if manifest.database_sha256 %}, SHA-256 <code>{{ manifest.database_sha256[:16] }}…</code>{% endif %}</dd>
+    <dt>Storage areas</dt><dd>{{ manifest.storage_areas | list | sort | join(", ") or "none listed" }}</dd>
+    <dt>Kept at</dt><dd>{{ manifest.kept_at or "not stated" }}{% if manifest.retention_days %}, {{ manifest.retention_days }} days{% endif %}</dd>
+    <dt>Made by</dt><dd>{{ manifest.made_by or "not stated" }}</dd>
+  </dl>
+  {% endif %}
+</div>
+<div class="card">
+  <h2>Restore drills</h2>
+  <p class="hint">Run <code>scripts/restore_drill.py &lt;dump&gt; --scratch &lt;database url&gt; --manifest latest.json</code> on the host; each
+    run is recorded here, signed, and the newest passed one is the last restore test on every bank's Controls page.</p>
+  {% if drills %}
+  <table>
+    <thead><tr><th>Ran</th><th>Result</th><th>Backup</th><th>Restored</th><th>Chains</th><th>Files</th></tr></thead>
+    <tbody>
+      {% for d in drills %}
+      <tr>
+        <td><time datetime="{{ d.run_at | iso_utc }}" data-local-time>{{ d.run_at.strftime("%Y-%m-%d %H:%M") }} UTC</time></td>
+        <td><span class="badge {{ 'badge-ok' if d.ok else 'badge-danger' }}">{{ "passed" if d.ok else "failed" }}</span></td>
+        <td>{{ d.backup_completed_at.strftime("%Y-%m-%d %H:%M") if d.backup_completed_at else "—" }}</td>
+        <td>{{ d.detail.get("restore", {}).get("method") or d.detail.get("restore", {}).get("error", "—") }}</td>
+        <td>{% set chains = d.detail.get("chains", {}) %}{{ chains.get("banks", "—") }} banks{% if chains.get("broken") %}, <strong>{{ chains.broken | length }} broken</strong>{% endif %}</td>
+        <td>{{ d.detail.get("files", {}).get("summary") or d.detail.get("files", {}).get("error", "—") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint">No drill recorded yet.</p>
+  {% endif %}
+</div>
+<div class="card">
+  <h2>Files and rows</h2>
+  <form method="post" action="/ui/platform/continuity/reconcile" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ icon("sync") }}Check now</button>
+  </form>
+  {% if reconciliation %}
+  <p><span class="badge {{ 'badge-ok' if reconciliation.ok else 'badge-warn' }}">{{ "agree" if reconciliation.ok else "disagree" }}</span> {{ reconciliation.summary() }}</p>
+  {% if reconciliation.missing %}
+  <h3>Rows whose file is gone</h3>
+  <table>
+    <thead><tr><th>Table</th><th>Row</th><th>Bank</th><th>Column</th><th>Reference</th></tr></thead>
+    <tbody>{% for m in reconciliation.missing[:200] %}<tr><td>{{ m.table }}</td><td><code>{{ m.id }}</code></td><td><code>{{ m.tenant_id }}</code></td><td>{{ m.column }}</td><td><code>{{ m.ref }}</code></td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+  {% if reconciliation.orphans %}
+  <h3>Files no row names</h3>
+  <ul class="plain-list">{% for area, keys in reconciliation.orphans.items() %}<li><strong>{{ area }}</strong>: {{ keys | length }}{% if keys | length <= 20 %} — <code>{{ keys | join("</code>, <code>") | safe }}</code>{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+  {% else %}
+  <p class="hint">The nightly check <em>Files and rows agree</em> runs this; run it by hand after a restore.</p>
+  {% endif %}
+</div>
+{% endblock %}
