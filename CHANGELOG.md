@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.34.0 — 2026-10-31
 
 - **A check paid by a decision is paid.** Until now only a check that matched its issued item
   cleanly was recorded as paid; one paid by a decision (an accepted amount mismatch, or every
