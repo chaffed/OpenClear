@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.35.0 — 2026-10-31
 
 - **An outage across a cut-off no longer decides by default** (`plans/CONTINUITY_PLAN.md` BC1).
   When OpenClear comes back after being down longer than its sweep interval, the items whose
