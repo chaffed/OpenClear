@@ -20,6 +20,7 @@ from openclear.db.tenancy import TenantContext, bind_session_to_tenant
 from openclear.domain.customer import Customer
 from openclear.domain.exception_item import ExceptionItem, ExceptionStatus
 from openclear.domain.security_group import SecurityGroup
+from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
 from openclear.services import session_service
@@ -148,6 +149,8 @@ def decode_and_build_context(token: str, db: Session, *, expected_type: str) -> 
     branding = get_tenant_branding_by_id(db, tenant_id)
     if branding is None:
         raise AccessRevoked("Tenant no longer exists")
+    if not db.get(Tenant, tenant_id).is_active:  # loaded for the branding already; a bank frozen for deletion refuses every token
+        raise AccessRevoked("Tenant is no longer active")
 
     permissions = frozenset(group.permissions)
     security_key_due = _security_key_due(db, tenant_id, membership, payload) if expected_type == "access" else None
@@ -241,6 +244,8 @@ def _support_context(db: Session, payload: dict, user: User, tenant_id: uuid.UUI
     branding = get_tenant_branding_by_id(db, tenant_id)
     if branding is None:
         raise AccessRevoked("Tenant no longer exists")
+    if not db.get(Tenant, tenant_id).is_active:  # loaded for the branding already; a bank frozen for deletion refuses every token
+        raise AccessRevoked("Tenant is no longer active")
     expires_at = grant.expires_at if grant.expires_at.tzinfo else grant.expires_at.replace(tzinfo=timezone.utc)
     ctx = TenantContext(
         tenant_id=tenant_id, user_id=user.id, security_group_id=uuid.UUID(payload["security_group_id"]),

@@ -27,6 +27,15 @@
   review time, never past the midnight deadline. A bank that opens on the Federal Reserve's
   holidays now has its cut-off on them too, as the setting said. The decisions CSV's columns are
   listed in the BI guide, with the `after_return_deadline` column 1.29.0 added at the end (RV3).
+- **Deleting a bank's data clears every storage area.** The deletion cleared five of the seven:
+  the decision files its core took, and fraud-scoring artifacts, stayed. It now clears every
+  area from storage's own list, the certificate names them all, and a test walks the list. The
+  bank is frozen as the deletion job starts (sign-ins and tokens refused, its queued jobs gone),
+  so nothing is added while the rows go. A deletion the queue gives up on is marked failed, shown
+  on the bank's offboarding page and raised as a critical event, instead of showing as running
+  at a time long past. Offboarding a bank, deleting its data and ending a customer's positive pay
+  always need a second person: with nobody else able to approve, the request is refused rather
+  than applied after the day's cooling-off (RV4).
 
 ## 1.33.0 — 2026-10-30
 

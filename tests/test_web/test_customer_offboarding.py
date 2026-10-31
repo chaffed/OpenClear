@@ -113,6 +113,19 @@ def test_a_customers_service_ends_and_its_data_is_deleted_ninety_days_later(db_s
     assert {"customer.offboard.schedule", "customer.offboard.ended", "customer.offboard.delete"} <= actions  # the bank's log stays
 
 
+def test_a_lone_administrator_cant_end_a_customers_service(db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md O3, RV-D4: the same for a bank with one administrator."""
+    from openclear.services import customer_service
+
+    tenant, _account, users = tenant_factory.make(slug="co-lone")
+    customer = customer_service.create_customer(db_session, tenant.id, customer_service.CustomerInput(customer_number="L-1", name="Lone Co"))
+    db_session.commit()
+    with pytest.raises(change_request_service.ChangeError, match="second administrator"):
+        change_request_service.request_or_apply(
+            db_session, "customer.offboard", {"customer_id": str(customer.id), "last_service_day": date(2027, 1, 4).isoformat()},
+            tenant_id=tenant.id, user_id=users["admin"].id)
+
+
 def test_a_hold_stops_the_deletion_and_the_end_can_be_undone(db_session, bank):
     tenant, users = bank
     customer, _account = _make_customer_with_account(db_session, tenant, "CO-HOLD")

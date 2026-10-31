@@ -19,7 +19,7 @@ class BankDeletion(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_uuid)
     bank_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False, index=True)
-    status: Mapped[str] = mapped_column(String(10), nullable=False, default="queued")  # queued, done, cancelled, refused
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="queued")  # queued, done, cancelled, refused, failed
     requested_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id"), nullable=True)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

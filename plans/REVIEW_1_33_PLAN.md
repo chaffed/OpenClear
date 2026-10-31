@@ -285,3 +285,15 @@ storage layout. The 1.26.0 review's portfolio decisions (FR-D19) stand. The trai
   ML floor test (the review's list was wrong: `test_a_first_model_needs_enough_own_decisions_to_be_activated`
   already covers it); DST in Phoenix and Honolulu (the arithmetic is on aware wall clocks, and
   the review probed the fall-back; a parametrised zone would prove little more).
+- 2026-10-31: RV4 built on `review-1-33`. `_delete_files` walks `storage.AREAS` and the certificate
+  lists them (O1); `_freeze` (the bank inactive, its job rows deleted, committed before the wipe;
+  every token check refuses an inactive bank) (O7); `mark_failed` from the job handler's last try,
+  `bank.delete.failed` (critical), the page's "The last deletion failed" (O9); `Kind.second_person`
+  on `platform.bank.offboard`, `platform.bank.delete` and `customer.offboard` refuses a request
+  with nobody else to approve (O3). Tests: a file in every area gone; no row in any
+  `tenant_id` table on SQLite; a lone operator and a lone administrator refused; a deletion
+  that gives up. **Deviation from RV-D4:** the other protection-tier kinds (a bank's password
+  policy, lockout rules, security keys) keep DUAL_CONTROL_PLAN.md's cooling-off for a bank with
+  one administrator; refusing them would lock such a bank out of its own settings. Only what
+  can't be undone needs the second person always. The S3 `delete_tenant` test is left: the
+  Azure one covers the same shape and the walk is backend-independent.

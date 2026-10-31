@@ -65,7 +65,7 @@
     <time datetime="{{ deletion.runs_at | iso_utc }}" data-local-time>{{ deletion.runs_at.strftime("%Y-%m-%d %H:%M") }} UTC</time>
     unless offboarding is stopped or the data is put on hold first.</p>
   {% else %}
-  {% if deletion and deletion.status in ("refused", "cancelled") %}<p class="hint">The last deletion was {{ deletion.status }}: {{ deletion.last_error }}</p>{% endif %}
+  {% if deletion and deletion.status in ("refused", "cancelled", "failed") %}<p class="hint">The last deletion {{ "failed" if deletion.status == "failed" else "was " + deletion.status }}: {{ deletion.last_error }}</p>{% endif %}
   <p>What would be deleted:</p>
   <ul>
     <li>{{ preview.total }} rows in {{ preview.rows | length }} tables{% if preview.rows %}

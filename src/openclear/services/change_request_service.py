@@ -189,6 +189,9 @@ def request_or_apply(session: Session, kind_key: str, payload: dict, *, tenant_i
         raise ChangeError(f"A change to {kind.title.lower()} is already waiting for approval: approve, reject or withdraw it first.")
     now = _now()
     others = approvers(session, tenant_id, customer_id, kind.permission, excluding=user_id)
+    if not others and kind.second_person:
+        who = "operator" if tenant_id is None else "administrator"
+        raise ChangeError(f"{kind.title} needs a second {who} to approve it, and nobody else here can. Add one first.")
     change = ChangeRequest(
         tenant_id=tenant_id, customer_id=customer_id, scope="provider" if tenant_id is None else ("customer" if customer_id else "bank"),
         kind=kind.key, setting=setting, summary=summary, payload=payload, before=_jsonable(before), after=_jsonable(after),

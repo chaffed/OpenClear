@@ -20,7 +20,11 @@ from openclear.domain.security_group import SecurityGroup
 from openclear.domain.tenant import Tenant
 from openclear.domain.tenant_membership import TenantMembership
 from openclear.domain.user import User
+from openclear import storage
+from openclear.db.base import Base
+from openclear.domain.job import Job
 from openclear.services import change_request_service, evidence_service, offboarding_service
+from openclear.workers import jobs
 from openclear.services.offboarding_service import OffboardingError
 from tests.test_web.test_staff_and_operator import _platform_login, _staff
 
@@ -73,6 +77,10 @@ def test_a_bank_is_told_waits_and_its_data_is_deleted_with_a_certificate(db_sess
     record = db_session.execute(select(BankDeletion).where(BankDeletion.bank_id == bank.id)).scalar_one()
     runs_at = record.runs_at.replace(tzinfo=timezone.utc) if record.runs_at.tzinfo is None else record.runs_at  # SQLite drops the zone
     assert record.status == "queued" and runs_at > datetime.now(timezone.utc) + timedelta(hours=23)
+    # A file in every storage area (the decision files the core took among them), and a job of the bank's still queued.
+    files = {area: storage.put(area, f"{bank.id}/left-behind.txt", b"x") for area in storage.AREAS}
+    jobs.enqueue(db_session, "data_export.run", tenant_id=bank.id, payload={}, dedupe_key=f"left:{bank.id}")
+    db_session.commit()
 
     offboarding_service.run(db_session, record.id)
     db_session.commit()
@@ -80,8 +88,12 @@ def test_a_bank_is_told_waits_and_its_data_is_deleted_with_a_certificate(db_sess
 
     bank = db_session.get(Tenant, bank.id)
     assert bank.data_deleted_at is not None and not bank.is_active and bank.slug == "leaving"
-    for model in (Account, AuditLogEntry, TenantMembership):
-        assert db_session.execute(select(func.count()).select_from(model).where(model.tenant_id == bank.id)).scalar_one() == 0
+    for table in Base.metadata.sorted_tables:  # no row of the bank's anywhere, in any table there is or will be (RV-D2)
+        if "tenant_id" in table.columns and table.name != "tenant":
+            assert db_session.execute(select(func.count()).select_from(table).where(table.c.tenant_id == bank.id)).scalar_one() == 0, table.name
+    for area, ref in files.items():
+        with pytest.raises(FileNotFoundError):
+            storage.read(ref)
     assert db_session.execute(select(User).where(User.email == users["admin"].email)).scalar_one_or_none() is None
     assert db_session.get(User, users["viewer"].id) is not None  # belongs to another bank
     assert db_session.get(Account, other_account.id) is not None  # the other bank untouched
@@ -93,8 +105,48 @@ def test_a_bank_is_told_waits_and_its_data_is_deleted_with_a_certificate(db_sess
     assert certificate["deletion_requested_by"] == ops[0].email and certificate["deletion_approved_by"] == ops[1].email
     assert certificate["action_log"]["entries"] > 0 and certificate["people_kept_because_they_belong_elsewhere_or_are_named_in_records"] == 1
     assert "backups" in certificate and certificate["final_data_export_completed_at"]
+    assert certificate["storage_areas_cleared"] == sorted(storage.AREAS)
     actions = set(db_session.execute(select(PlatformActionEntry.action)).scalars())
     assert {"platform.bank.offboard.start", "platform.bank.delete.approve", "platform.bank.delete.done"} <= actions
+
+
+def test_a_lone_operator_cant_offboard_a_bank(db_session, tenant_factory):
+    """REVIEW_1_33_PLAN.md O3, RV-D4: with nobody else to approve, the request is refused, not applied a day later."""
+    bank, _account, _users = tenant_factory.make(slug="lone-op")
+    only = _staff(db_session, "only@offboard.example", "operator")
+    with pytest.raises(change_request_service.ChangeError, match="second operator"):
+        change_request_service.request_or_apply(db_session, "platform.bank.offboard", {"bank_id": str(bank.id), "offboarding": True},
+                                                tenant_id=None, user_id=only.id, summary="alone")
+    db_session.rollback()
+    assert db_session.get(Tenant, bank.id).offboarding_started_at is None
+    assert change_request_service.pending(db_session, None) == []  # nothing waiting to cool off
+
+
+def test_a_deletion_that_gives_up_says_so(client, db_session, tenant_factory, monkeypatch):
+    """REVIEW_1_33_PLAN.md O9: the record is failed, the operator hears of it, the page doesn't say it runs at a time long past."""
+    bank, _account, _users = tenant_factory.make(slug="failing")
+    ops = _operators(db_session)
+    bank = _start_and_wait(db_session, bank, ops)
+    _approve(db_session, "platform.bank.delete", {"bank_id": str(bank.id), "confirm_slug": "failing", "requested_by": str(ops[0].id)}, *ops)
+    record = db_session.execute(select(BankDeletion).where(BankDeletion.bank_id == bank.id)).scalar_one()
+    job = db_session.execute(select(Job).where(Job.kind == offboarding_service.DELETE_JOB_KIND)).scalars().all()[-1]
+    job.run_after, job.max_attempts = datetime.now(timezone.utc) - timedelta(seconds=1), 1
+    db_session.commit()
+
+    def broken(session, bank):
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(offboarding_service, "_wipe", broken)
+    jobs.drain(db_session.get_bind())
+    db_session.expire_all()
+    record = db_session.get(BankDeletion, record.id)
+    assert record.status == "failed" and "went away" in record.last_error
+    bank = db_session.get(Tenant, bank.id)
+    assert bank.data_deleted_at is None and bank.is_active  # frozen for a deletion that didn't happen, so not frozen
+    assert "platform.bank.delete.failed" in set(db_session.execute(select(PlatformActionEntry.action)).scalars())
+    _platform_login(client, ops[0].email)
+    page = client.get(f"/ui/platform/banks/{bank.id}/offboarding").text
+    assert "The last deletion failed" in page and "runs at" not in page
 
 
 def test_deletion_is_refused_until_every_safeguard_is_met(db_session, tenant_factory):
