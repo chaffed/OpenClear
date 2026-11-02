@@ -140,4 +140,27 @@ model. The host's backup job stays the host's; OpenClear only reads what it leav
   (`d4e8f2a6c1b7`, `e5f9a3b7d2c8`, `f7a1b5c9d3e2`), four controls (OC-CP-02 to OC-CP-04 and the
   checks under them), one script (`scripts/restore_drill.py`).
 - 2026-10-31: Pull request #71. CodeQL flagged the open-items download's `?day=` reaching a file name (three path-injection alerts): the route now builds the name from the parsed date, and a local `read_key` goes through `LocalStorage._path`'s resolved-path check like every other local read.
-- 2026-11-01: The tabletop of the recovery procedure parked (PARKED_PLAN.md), at the product owner's decision: it is rehearsed on the first deployment by a bank or a service provider, not on the sandbox. The sandbox's look found three things for that deployment to check (the backup-manifest directory off the persistent volume in the image, the keys only on the host, five days of snapshots), recorded with the parked item.
+- 2026-11-02: **The recovery procedure rehearsed on Fly**, against the sandbox's volume snapshot
+  of 14:23 UTC, restored into a separate app (`openclear-sandbox-drill`) and destroyed after.
+  Steps 2 to 8 in order: the signing keys came back with the volume (fingerprints match the
+  sandbox's); the three Fly secrets were copied from the running sandbox; maintenance mode on from
+  the first boot (a write answered 503 with the notice); 1.35.0 deployed by image digest; `/ready`
+  database and storage ok; `scripts/restore_drill.py` passed inside the machine (four banks' chains
+  intact, no row missing its file, four ML model files without a row) and recorded the restore
+  test; maintenance off, the first sweep ran and `/ready` was ready. Measured:
+
+  | From the first command | |
+  |---|---|
+  | Instance up, in maintenance | 2 min 47 s |
+  | Verified (drill passed) | 3 min 51 s |
+  | Serving, sweep run | 9 min 41 s |
+  | Data lost (snapshot age) | 2 h 44 min; up to 24 h with daily snapshots |
+
+  Found: (1) the SSO encryption key and the attestation texts exist only as Fly secrets, which
+  can't be read back, so the recovery needed the sandbox's machine alive: with the sandbox lost,
+  every SAML secret is lost; they belong in a key store too. (2) `scripts/restore_drill.py` isn't
+  in the image, so step 9 needed it copied in. (3) The image leaves the backup-manifest directory
+  off the `/data` volume, so the SQLite copy and its manifest go with each deploy. (4) Fly keeps
+  five days of snapshots. (5) The sandbox states no recovery objectives. (6) No open item had a
+  deadline in the gap, so the first sweep had nothing to move: correct, but the outage handling
+  wasn't seen on real items. The rehearsal on a real deployment stays parked (PARKED_PLAN.md).
