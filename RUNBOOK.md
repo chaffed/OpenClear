@@ -172,7 +172,7 @@ restore test" on every bank's Controls page, in place of `OPENCLEAR_LAST_RESTORE
 ## Recovering the installation (for the service provider)
 
 In this order, because each step needs the one before it (CONTINUITY_PLAN.md BC-D7; rehearse it
-against the sandbox at least yearly, and record the rehearsal):
+on your own installation at least yearly, and record the rehearsal):
 
 1. **Tell the banks** from Platform → Incidents (an *Incident* notice: what happened, that
    decisions already made are safe, when you'll update them), or by the incident contacts' emails

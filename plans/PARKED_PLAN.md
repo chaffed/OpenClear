@@ -45,6 +45,7 @@ The product owner's decision of 2026-10-12: these wait for a first client, who w
 | **Confirming the edge on a real zone** (Cloudflare, then Akamai); built and tested against a stub only | A real zone | MASTER_PLAN.md M7; WAF_PLAN.md W0 |
 | **Publishing the SDKs** to PyPI and npm, and the docs site | Approval to publish | MASTER_PLAN.md; SDK_PLAN.md |
 | **An independent penetration test**; its report joins the third-party risk pack | Funding | OWASP_PLAN.md OW-D2 |
+| **A rehearsal of the runbook's "Recovering the installation" on a bank's or provider's own installation**: Postgres and object storage restored to one point, real open items across the gap so the first sweep's outage handling is seen working, and the time against the recovery objectives that installation states. The sandbox was rehearsed on 2026-11-02 (CONTINUITY_PLAN.md progress log); it has one SQLite file, no open items and no stated objectives, so it couldn't show those | A bank or a service provider deploying | CONTINUITY_PLAN.md BC6 |
 
 ## Dates
 
@@ -58,3 +59,4 @@ The product owner's decision of 2026-10-12: these wait for a first client, who w
 - 2026-10-22: Counsel's review of the check-law page added (REGULATORY_PLAN.md RG-D4).
 - 2026-10-22: A direct CRI Profile crosswalk added (REGULATORY_PLAN.md RG-D6).
 - 2026-10-23: Retention periods for a bank's records added (OFFBOARDING_PLAN.md OB-D1).
+- 2026-11-02: The rehearsal of the recovery procedure on a real deployment added (CONTINUITY_PLAN.md BC6); the sandbox's was run the same day.
