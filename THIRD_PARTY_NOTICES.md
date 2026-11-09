@@ -1103,7 +1103,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### anyio 4.15.1 (MIT)
+### anyio 4.16.0 (MIT)
 
 `LICENSE`:
 
@@ -1184,7 +1184,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### authlib 1.9.1 (BSD-3-Clause)
+### authlib 1.9.5 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -1252,11 +1252,11 @@ SOFTWARE.
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
-### azure-identity 1.26.0 (MIT)
+### azure-identity 1.27.0 (MIT)
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
-### azure-storage-blob 12.31.0 (MIT)
+### azure-storage-blob 12.31.1 (MIT)
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
@@ -1468,7 +1468,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### boto3 1.43.118 (Apache-2.0)
+### boto3 1.43.126 (Apache-2.0)
 
 `LICENSE`:
 
@@ -1658,7 +1658,7 @@ boto3
 Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 ```
 
-### botocore 1.43.118 (Apache-2.0)
+### botocore 1.43.126 (Apache-2.0)
 
 `LICENSE.txt`: the same text as boto3's, above.
 
@@ -1753,7 +1753,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### cbor2 6.1.5 (MIT)
+### cbor2 6.2.1 (MIT)
 
 `LICENSE.txt`:
 
@@ -1863,7 +1863,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### click 8.5.0 (BSD-3-Clause)
+### click 8.5.1 (BSD-3-Clause)
 
 `LICENSE.txt`:
 
@@ -2221,9 +2221,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### dnspython 2.9.0 (ISC)
+### dnspython 2.9.2 (ISC)
 
-`dnspython.txt, from the package's source (its wheel leaves it out)`:
+`LICENSE`:
 
 ```text
 ISC License
@@ -2640,7 +2640,7 @@ The authors in alphabetical order
 * Elias Rabel
 ```
 
-### fastapi 0.162.0 (MIT)
+### fastapi 0.162.2 (MIT)
 
 `LICENSE`:
 
@@ -2668,7 +2668,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### fonttools 4.67.0 (MIT)
+### fonttools 4.68.0 (MIT)
 
 `LICENSE`:
 
@@ -3399,7 +3399,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### joserfc 1.7.7 (BSD-3-Clause)
+### joserfc 1.8.0 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -3630,7 +3630,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### markdown 3.11.2 (BSD-3-Clause)
+### markdown 3.11.3 (BSD-3-Clause)
 
 `LICENSE.md`:
 
@@ -3765,7 +3765,7 @@ MIT License
 
 `LICENSE`: the same text as aiohttp's, above.
 
-### narwhals 2.27.1 (MIT)
+### narwhals 2.28.0 (MIT)
 
 `LICENSE.md`:
 
@@ -5717,7 +5717,7 @@ See <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 `LICENCE.rst`: the same text as et-xmlfile's, above.
 
-### opentelemetry-api 1.45.1 (Apache-2.0)
+### opentelemetry-api 1.45.2 (Apache-2.0)
 
 `LICENSE`:
 
@@ -5965,7 +5965,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### pandas 3.1.0 (BSD-3-Clause)
+### pandas 3.1.1 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -8743,7 +8743,7 @@ Copyright 2016-2021, Andrew Svetlov and aio-libs team
    limitations under the License.
 ```
 
-### psycopg 3.3.6 (LGPL-3.0-only)
+### psycopg 3.3.8 (LGPL-3.0-only)
 
 `LICENSE.txt`:
 
@@ -8915,7 +8915,7 @@ permanent authorization for you to choose that version for the
 Library.
 ```
 
-### psycopg-binary 3.3.6 (LGPL-3.0-only)
+### psycopg-binary 3.3.8 (LGPL-3.0-only)
 
 `LICENSE.txt`: the same text as psycopg's, above.
 
@@ -8988,7 +8988,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### pydantic 2.14.1 (MIT)
+### pydantic 2.14.3 (MIT)
 
 `LICENSE`:
 
@@ -9016,7 +9016,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pydantic-core 2.50.1 (MIT)
+### pydantic-core 2.50.4 (MIT)
 
 `LICENSE`:
 
@@ -9044,7 +9044,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pydantic-settings 2.16.1 (MIT)
+### pydantic-settings 2.16.2 (MIT)
 
 `LICENSE`:
 
@@ -10545,7 +10545,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### python-multipart 0.0.32 (Apache-2.0)
+### python-multipart 0.0.33 (Apache-2.0)
 
 `LICENSE.txt`: the same text as opentelemetry-api's, above.
 
@@ -11949,7 +11949,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### sqlalchemy 2.1.6 (MIT)
+### sqlalchemy 2.1.8 (MIT)
 
 `LICENSE`:
 
@@ -12044,7 +12044,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### threadpoolctl 3.7.0 (BSD-3-Clause)
+### threadpoolctl 3.8.0 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -12138,7 +12138,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### twilio 9.12.0 (MIT)
+### twilio 9.13.0 (MIT)
 
 `LICENSE`:
 
@@ -12216,7 +12216,7 @@ We'd like to thank the following people who have contributed to the
 
 `LICENSE`: the same text as aiohappyeyeballs's, above.
 
-### typing-inspection 0.4.4 (MIT)
+### typing-inspection 0.4.5 (MIT)
 
 `LICENSE`:
 
@@ -12701,7 +12701,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### websockets 17.3 (BSD-3-Clause)
+### websockets 17.4 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -12732,7 +12732,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### xmlsec 1.3.17 (MIT)
+### xmlsec 1.3.18 (MIT)
 
 `LICENSE`:
 
