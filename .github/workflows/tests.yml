@@ -35,9 +35,9 @@ jobs:
         shard: [1, 2, 3]
         include:
           - python-version: "3.11"
-            image: ghcr.io/chaffed/openclear-ci@sha256:2bae1102503c0e85bcaaf7780dfd006abd94f281e2644d39e1379619cc8c42e8  # py3.11
+            image: ghcr.io/chaffed/openclear-ci@sha256:5c9297dd2072170a33db82d6fb48bcd062db145f82b840758f909f4c963604be  # py3.11
           - python-version: "3.13"
-            image: ghcr.io/chaffed/openclear-ci@sha256:921ef8081264154aa92f27fd30013a2aa1f447ec1636528c4ad77a11ddb37e83  # py3.13
+            image: ghcr.io/chaffed/openclear-ci@sha256:965959999c568d82a467b387de3be30b9c5d45ece3bc36cef4aea895822bac1c  # py3.13
     container:
       image: ${{ matrix.image }}
 
@@ -76,7 +76,7 @@ jobs:
     # non-superuser role.
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/chaffed/openclear-ci@sha256:921ef8081264154aa92f27fd30013a2aa1f447ec1636528c4ad77a11ddb37e83  # py3.13
+      image: ghcr.io/chaffed/openclear-ci@sha256:965959999c568d82a467b387de3be30b9c5d45ece3bc36cef4aea895822bac1c  # py3.13
     services:
       postgres:
         image: postgres:16@sha256:1beaa3084eee2676f20a9cd9928f0bf2c5bf674f8e49f81017912183d377c61c  # 16, pinned (REVIEW_1_33_PLAN.md K9)
