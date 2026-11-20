@@ -1047,7 +1047,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### annotated-doc 0.0.5 (MIT)
+### annotated-doc 0.0.6 (MIT)
 
 `LICENSE`:
 
@@ -1103,7 +1103,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### anyio 4.15.1 (MIT)
+### anyio 4.16.0 (MIT)
 
 `LICENSE`:
 
@@ -1184,7 +1184,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### authlib 1.9.1 (BSD-3-Clause)
+### authlib 1.9.8 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -1252,11 +1252,11 @@ SOFTWARE.
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
-### azure-identity 1.26.0 (MIT)
+### azure-identity 1.27.0 (MIT)
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
-### azure-storage-blob 12.31.0 (MIT)
+### azure-storage-blob 12.31.1 (MIT)
 
 `LICENSE`: the same text as azure-ai-documentintelligence's, above.
 
@@ -1468,7 +1468,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### boto3 1.43.118 (Apache-2.0)
+### boto3 1.44.3 (Apache-2.0)
 
 `LICENSE`:
 
@@ -1658,7 +1658,7 @@ boto3
 Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 ```
 
-### botocore 1.43.118 (Apache-2.0)
+### botocore 1.44.3 (Apache-2.0)
 
 `LICENSE.txt`: the same text as boto3's, above.
 
@@ -1753,7 +1753,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### cbor2 6.1.5 (MIT)
+### cbor2 6.3.0 (MIT)
 
 `LICENSE.txt`:
 
@@ -1863,7 +1863,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### click 8.5.0 (BSD-3-Clause)
+### click 8.5.1 (BSD-3-Clause)
 
 `LICENSE.txt`:
 
@@ -2263,7 +2263,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### email-validator 2.3.0 (Unlicense)
+### email-validator 2.4.0 (Unlicense)
 
 `LICENSE`:
 
@@ -2640,7 +2640,7 @@ The authors in alphabetical order
 * Elias Rabel
 ```
 
-### fastapi 0.162.0 (MIT)
+### fastapi 0.163.1 (MIT)
 
 `LICENSE`:
 
@@ -2668,7 +2668,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### fonttools 4.67.0 (MIT)
+### fonttools 4.68.0 (MIT)
 
 `LICENSE`:
 
@@ -3399,7 +3399,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### joserfc 1.7.7 (BSD-3-Clause)
+### joserfc 1.8.0 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -3630,7 +3630,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### markdown 3.11.2 (BSD-3-Clause)
+### markdown 3.11.3 (BSD-3-Clause)
 
 `LICENSE.md`:
 
@@ -3765,7 +3765,7 @@ MIT License
 
 `LICENSE`: the same text as aiohttp's, above.
 
-### narwhals 2.27.1 (MIT)
+### narwhals 2.28.0 (MIT)
 
 `LICENSE.md`:
 
@@ -3821,7 +3821,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### numpy 2.5.4 (BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0)
+### numpy 2.5.5 (BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0)
 
 `LICENSE.txt`:
 
@@ -3956,9 +3956,9 @@ License: BSD-3-Clause-Open-MPI
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Name: GCC runtime library
-Files: numpy.libs/libgfortran*.so
-Description: dynamically linked to files compiled with gcc
+Name: GCC runtime library libgfortran
+Files: numpy.libs/libscipy_openblas*.so
+Description: statically linked to files compiled with gcc
 Availability: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran
 License: GPL-3.0-or-later WITH GCC-exception-3.1
   Copyright (C) 2002-2017 Free Software Foundation, Inc.
@@ -4739,28 +4739,6 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
-
-Name: libquadmath
-Files: numpy.libs/libquadmath*.so
-Description: dynamically linked to files compiled with gcc
-Availability: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libquadmath
-License: LGPL-2.1-or-later
-
-    GCC Quad-Precision Math Library
-    Copyright (C) 2010-2019 Free Software Foundation, Inc.
-    Written by Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
-
-    This file is part of the libquadmath library.
-    Libquadmath is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Library General Public
-    License as published by the Free Software Foundation; either
-    version 2.1 of the License, or (at your option) any later version.
-
-    Libquadmath is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.
-    https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 ```
 
 `LICENSE.txt`:
@@ -5965,7 +5943,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### pandas 3.1.0 (BSD-3-Clause)
+### pandas 3.1.1 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -8743,7 +8721,7 @@ Copyright 2016-2021, Andrew Svetlov and aio-libs team
    limitations under the License.
 ```
 
-### psycopg 3.3.6 (LGPL-3.0-only)
+### psycopg 3.3.9 (LGPL-3.0-only)
 
 `LICENSE.txt`:
 
@@ -8915,7 +8893,7 @@ permanent authorization for you to choose that version for the
 Library.
 ```
 
-### psycopg-binary 3.3.6 (LGPL-3.0-only)
+### psycopg-binary 3.3.9 (LGPL-3.0-only)
 
 `LICENSE.txt`: the same text as psycopg's, above.
 
@@ -8988,7 +8966,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### pydantic 2.14.1 (MIT)
+### pydantic 2.14.3 (MIT)
 
 `LICENSE`:
 
@@ -9016,7 +8994,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pydantic-core 2.50.1 (MIT)
+### pydantic-core 2.50.4 (MIT)
 
 `LICENSE`:
 
@@ -9044,7 +9022,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pydantic-settings 2.16.1 (MIT)
+### pydantic-settings 2.16.3 (MIT)
 
 `LICENSE`:
 
@@ -10545,7 +10523,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### python-multipart 0.0.32 (Apache-2.0)
+### python-multipart 0.0.34 (Apache-2.0)
 
 `LICENSE.txt`: the same text as opentelemetry-api's, above.
 
@@ -11949,7 +11927,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### sqlalchemy 2.1.6 (MIT)
+### sqlalchemy 2.1.8 (MIT)
 
 `LICENSE`:
 
@@ -12044,7 +12022,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### threadpoolctl 3.7.0 (BSD-3-Clause)
+### threadpoolctl 3.8.0 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -12138,7 +12116,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### twilio 9.12.0 (MIT)
+### twilio 9.13.0 (MIT)
 
 `LICENSE`:
 
@@ -12216,7 +12194,7 @@ We'd like to thank the following people who have contributed to the
 
 `LICENSE`: the same text as aiohappyeyeballs's, above.
 
-### typing-inspection 0.4.4 (MIT)
+### typing-inspection 0.4.5 (MIT)
 
 `LICENSE`:
 
@@ -12701,7 +12679,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### websockets 17.3 (BSD-3-Clause)
+### websockets 17.4 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -12732,7 +12710,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### xmlsec 1.3.17 (MIT)
+### xmlsec 1.3.18 (MIT)
 
 `LICENSE`:
 
