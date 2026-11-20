@@ -2221,9 +2221,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### dnspython 2.9.0 (ISC)
+### dnspython 2.9.2 (ISC)
 
-`dnspython.txt, from the package's source (its wheel leaves it out)`:
+`LICENSE`:
 
 ```text
 ISC License
@@ -5717,7 +5717,7 @@ See <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 `LICENCE.rst`: the same text as et-xmlfile's, above.
 
-### opentelemetry-api 1.45.1 (Apache-2.0)
+### opentelemetry-api 1.45.2 (Apache-2.0)
 
 `LICENSE`:
 
