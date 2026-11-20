@@ -12,6 +12,12 @@ updates:
     directory: /
     schedule: {interval: weekly}
     groups: {docker: {patterns: ["*"]}}
+    # The image's Python moves with the hashed locks and the tests' matrix (3.11, 3.13), not on
+    # its own: a new minor (3.15 in #73 and #81) has no wheels yet for packages the lock pins
+    # (numpy, scipy, pyyaml, xmlsec), so the image doesn't build. Rebuilds of 3.13-slim still come.
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: npm
     directories: [/sdks/typescript, /sdks/embed]
     schedule: {interval: weekly}
