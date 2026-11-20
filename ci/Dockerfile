@@ -19,9 +19,10 @@ ARG PLAYWRIGHT_VERSION
 
 # tesseract-ocr: OCR. libpango, libpangoft2, libcairo2: WeasyPrint's PDFs. git: actions/checkout.
 # libstdc++6: Node. The TypeScript SDK's tests run TypeScript directly, which needs Node 22.18+.
+# libatomic1: the Node that Playwright bundles from 1.65 on (`playwright install` won't start without it).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tesseract-ocr libpango-1.0-0 libpangoft2-1.0-0 libcairo2 \
-       git ca-certificates libstdc++6 \
+       git ca-certificates libstdc++6 libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 
