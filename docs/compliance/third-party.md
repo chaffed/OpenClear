@@ -38,7 +38,7 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | cloudpickle | 3.1.2 | BSD-3-Clause | for joblib |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | OpenClear |
 | cssselect2 | 0.10.1 | BSD | for weasyprint |
-| dnspython | 2.9.0 | ISC | for email-validator |
+| dnspython | 2.9.2 | ISC | for email-validator |
 | email-validator | 2.3.0 | Unlicense | OpenClear |
 | et-xmlfile | 2.0.0 | MIT | for openpyxl |
 | fastapi | 0.162.0 | MIT | OpenClear |
@@ -65,7 +65,7 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | nh3 | 0.3.7 | MIT | OpenClear |
 | numpy | 2.5.4 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | OpenClear |
 | openpyxl | 3.1.5 | MIT | OpenClear |
-| opentelemetry-api | 1.45.1 | Apache-2.0 | for fastapi |
+| opentelemetry-api | 1.45.2 | Apache-2.0 | for fastapi |
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | for pytesseract |
 | pandas | 3.1.0 | BSD-3-Clause | OpenClear |
 | pillow | 13.0.0 | MIT-CMU | OpenClear |
