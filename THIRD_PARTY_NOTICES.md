@@ -1047,7 +1047,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### annotated-doc 0.0.6 (MIT)
+### annotated-doc 0.0.7 (MIT)
 
 `LICENSE`:
 
@@ -1184,7 +1184,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### authlib 1.9.8 (BSD-3-Clause)
+### authlib 1.9.10 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -1468,7 +1468,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### boto3 1.44.3 (Apache-2.0)
+### boto3 1.44.9 (Apache-2.0)
 
 `LICENSE`:
 
@@ -1658,7 +1658,7 @@ boto3
 Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 ```
 
-### botocore 1.44.3 (Apache-2.0)
+### botocore 1.44.9 (Apache-2.0)
 
 `LICENSE.txt`: the same text as boto3's, above.
 
@@ -1780,7 +1780,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### certifi 2026.10.23 (MPL-2.0)
+### certifi 2026.11.20 (MPL-2.0)
 
 `LICENSE`:
 
@@ -1835,7 +1835,7 @@ documentation is licensed as follows:
     DEALINGS IN THE SOFTWARE.
 ```
 
-### charset-normalizer 3.5.2 (MIT)
+### charset-normalizer 3.5.3 (MIT)
 
 `LICENSE`:
 
@@ -1898,7 +1898,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### cloudpickle 3.1.2 (BSD-3-Clause)
+### cloudpickle 3.1.3 (BSD-3-Clause)
 
 `LICENSE`:
 
@@ -2640,7 +2640,7 @@ The authors in alphabetical order
 * Elias Rabel
 ```
 
-### fastapi 0.163.1 (MIT)
+### fastapi 0.165.0 (MIT)
 
 `LICENSE`:
 
@@ -3765,7 +3765,7 @@ MIT License
 
 `LICENSE`: the same text as aiohttp's, above.
 
-### narwhals 2.28.0 (MIT)
+### narwhals 2.29.0 (MIT)
 
 `LICENSE.md`:
 
@@ -3793,7 +3793,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### nh3 0.3.7 (MIT)
+### nh3 0.3.8 (MIT)
 
 `LICENSE`:
 
@@ -8966,7 +8966,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### pydantic 2.14.3 (MIT)
+### pydantic 2.14.4 (MIT)
 
 `LICENSE`:
 
@@ -8994,7 +8994,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### pydantic-core 2.50.4 (MIT)
+### pydantic-core 2.50.5 (MIT)
 
 `LICENSE`:
 
@@ -10557,7 +10557,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### pyyaml 6.0.3 (MIT)
+### pyyaml 6.0.4 (MIT)
 
 `LICENSE`:
 
@@ -10612,7 +10612,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### redis 8.1.0 (MIT)
+### redis 8.2.0 (MIT)
 
 `LICENSE`:
 
@@ -11927,7 +11927,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### sqlalchemy 2.1.8 (MIT)
+### sqlalchemy 2.1.9 (MIT)
 
 `LICENSE`:
 
