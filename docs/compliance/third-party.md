@@ -16,32 +16,32 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | aiohttp-retry | 2.9.1 | MIT | for twilio |
 | aiosignal | 1.4.0 | Apache-2.0 | for aiohttp |
 | alembic | 1.20.1 | MIT | OpenClear |
-| annotated-doc | 0.0.6 | MIT | for fastapi |
+| annotated-doc | 0.0.7 | MIT | for fastapi |
 | annotated-types | 0.8.0 | MIT | for pydantic |
 | anyio | 4.16.0 | MIT | for fastapi, httpx, starlette, watchfiles |
 | apscheduler | 3.11.3 | MIT | OpenClear |
 | attrs | 26.1.0 | MIT | for aiohttp |
-| authlib | 1.9.8 | BSD-3-Clause | OpenClear |
+| authlib | 1.9.10 | BSD-3-Clause | OpenClear |
 | azure-ai-documentintelligence | 1.0.2 | MIT | OpenClear |
 | azure-core | 1.41.0 | MIT | for azure-ai-documentintelligence, azure-identity, azure-storage-blob |
 | azure-identity | 1.27.0 | MIT | OpenClear |
 | azure-storage-blob | 12.31.1 | MIT | OpenClear |
 | bcrypt | 5.0.0 | Apache-2.0 | OpenClear |
-| boto3 | 1.44.3 | Apache-2.0 | OpenClear |
-| botocore | 1.44.3 | Apache-2.0 | for boto3, s3transfer |
+| boto3 | 1.44.9 | Apache-2.0 | OpenClear |
+| botocore | 1.44.9 | Apache-2.0 | for boto3, s3transfer |
 | brotli | 1.2.1 | MIT | for fonttools |
 | cbor2 | 6.3.0 | MIT | for webauthn |
-| certifi | 2026.10.23 | MPL-2.0 | for httpcore, httpx, requests |
+| certifi | 2026.11.20 | MPL-2.0 | for httpcore, httpx, requests |
 | cffi | 2.1.1 | MIT-0 | for brotlicffi, cryptography, weasyprint |
-| charset-normalizer | 3.5.2 | MIT | for requests |
+| charset-normalizer | 3.5.3 | MIT | for requests |
 | click | 8.5.1 | BSD-3-Clause | for uvicorn |
-| cloudpickle | 3.1.2 | BSD-3-Clause | for joblib |
+| cloudpickle | 3.1.3 | BSD-3-Clause | for joblib |
 | cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | OpenClear |
 | cssselect2 | 0.10.1 | BSD | for weasyprint |
 | dnspython | 2.9.2 | ISC | for email-validator |
 | email-validator | 2.4.0 | Unlicense | OpenClear |
 | et-xmlfile | 2.0.0 | MIT | for openpyxl |
-| fastapi | 0.163.1 | MIT | OpenClear |
+| fastapi | 0.165.0 | MIT | OpenClear |
 | fonttools | 4.68.0 | MIT | for weasyprint |
 | frozenlist | 1.8.0 | Apache-2.0 | for aiohttp, aiosignal |
 | h11 | 0.16.0 | MIT | for httpcore, uvicorn |
@@ -61,8 +61,8 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | msal | 1.39.0 | MIT | for azure-identity, msal-extensions |
 | msal-extensions | 1.3.1 | MIT | for azure-identity |
 | multidict | 7.2.1 | Apache-2.0 | for aiohttp, yarl |
-| narwhals | 2.28.0 | MIT | for scikit-learn |
-| nh3 | 0.3.7 | MIT | OpenClear |
+| narwhals | 2.29.0 | MIT | for scikit-learn |
+| nh3 | 0.3.8 | MIT | OpenClear |
 | numpy | 2.5.5 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | OpenClear |
 | openpyxl | 3.1.5 | MIT | OpenClear |
 | opentelemetry-api | 1.45.2 | Apache-2.0 | for fastapi |
@@ -75,8 +75,8 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | pyasn1 | 0.6.5 | BSD-2-Clause | for pyasn1-modules, webauthn |
 | pyasn1-modules | 0.4.2 | BSD | for webauthn |
 | pycparser | 3.12 | BSD-3-Clause | for cffi |
-| pydantic | 2.14.3 | MIT | OpenClear |
-| pydantic-core | 2.50.4 | MIT | for pydantic |
+| pydantic | 2.14.4 | MIT | OpenClear |
+| pydantic-core | 2.50.5 | MIT | for pydantic |
 | pydantic-settings | 2.16.3 | MIT | OpenClear |
 | pydyf | 0.13.0 | BSD | for weasyprint |
 | pyjwt | 2.15.1 | MIT | OpenClear |
@@ -87,15 +87,15 @@ Installed from the hashed lock `requirements/runtime.txt` and nothing else.
 | python-dotenv | 1.2.4 | BSD-3-Clause | for pydantic-settings, uvicorn |
 | python-multipart | 0.0.34 | Apache-2.0 | OpenClear |
 | python3-saml | 1.16.0 | MIT | OpenClear |
-| pyyaml | 6.0.3 | MIT | for uvicorn |
+| pyyaml | 6.0.4 | MIT | for uvicorn |
 | rapidfuzz | 3.14.6 | MIT | OpenClear |
-| redis | 8.1.0 | MIT | OpenClear |
+| redis | 8.2.0 | MIT | OpenClear |
 | requests | 2.34.2 | Apache-2.0 | for azure-core, msal, twilio |
 | s3transfer | 0.19.3 | Apache-2.0 | for boto3 |
 | scikit-learn | 1.9.1 | BSD-3-Clause | OpenClear |
 | scipy | 1.18.1 | BSD | for scikit-learn |
 | six | 1.17.0 | MIT | for python-dateutil |
-| sqlalchemy | 2.1.8 | MIT | OpenClear |
+| sqlalchemy | 2.1.9 | MIT | OpenClear |
 | starlette | 1.10.0 | BSD-3-Clause | for fastapi |
 | threadpoolctl | 3.8.0 | BSD-3-Clause | for scikit-learn |
 | tinycss2 | 1.5.1 | BSD | for cssselect2, weasyprint |
@@ -169,21 +169,21 @@ In `requirements/dev.txt` and not in the image: the test suite, the browser chec
 |---|---|---|
 | arrow | 1.4.0 | Apache-2.0 |
 | babel | 2.18.0 | BSD-3-Clause |
-| backrefs | 8.3 | MIT |
+| backrefs | 8.3.1 | MIT |
 | bandit | 1.9.4 | Apache-2.0 |
 | boolean-py | 5.0 | BSD-2-Clause |
-| cachecontrol | 0.14.4 | Apache-2.0 |
+| cachecontrol | 0.15.0 | Apache-2.0 |
 | chardet | 7.7.0 | 0BSD |
 | colorama | 0.4.6 | BSD |
-| coverage | 7.17.3 | Apache-2.0 |
-| cyclonedx-bom | 8.0.1 | Apache-2.0 |
+| coverage | 7.17.5 | Apache-2.0 |
+| cyclonedx-bom | 9.0.0 | Apache-2.0 |
 | cyclonedx-python-lib | 11.12.0 | Apache-2.0 |
 | defusedxml | 0.7.1 | PSF-2.0 |
 | execnet | 2.1.2 | MIT |
 | factory-boy | 3.3.3 | MIT |
-| faker | 40.54.0 | MIT |
-| fakeredis | 2.40.0 | BSD-3-Clause |
-| filelock | 4.2.10 | MIT |
+| faker | 40.63.0 | MIT |
+| fakeredis | 2.41.0 | BSD-3-Clause |
+| filelock | 4.3.1 | MIT |
 | fqdn | 1.6.0 | MPL-2.0 |
 | ghp-import | 2.1.0 | Apache-2.0 |
 | greenlet | 3.5.6 | MIT AND PSF-2.0 |
@@ -202,9 +202,9 @@ In `requirements/dev.txt` and not in the image: the test suite, the browser chec
 | mergedeep | 1.3.4 | MIT |
 | mkdocs | 1.6.1 | BSD-2-Clause |
 | mkdocs-get-deps | 0.2.2 | MIT |
-| mkdocs-material | 9.8.1 | MIT |
+| mkdocs-material | 9.8.2 | MIT |
 | mkdocs-material-extensions | 1.3.1 | MIT |
-| moto | 5.2.5 | Apache-2.0 |
+| moto | 5.2.6 | Apache-2.0 |
 | msgpack | 1.2.4 | Apache-2.0 |
 | packageurl-python | 0.17.6 | MIT |
 | paginate | 0.5.7 | MIT |
@@ -214,13 +214,13 @@ In `requirements/dev.txt` and not in the image: the test suite, the browser chec
 | pip-api | 0.0.35 | Apache-2.0 |
 | pip-audit | 2.10.1 | Apache-2.0 |
 | pip-requirements-parser | 32.0.1 | MIT |
-| platformdirs | 4.14.5 | MIT |
+| platformdirs | 4.14.8 | MIT |
 | playwright | 1.65.2 | Apache-2.0 |
 | pluggy | 1.7.0 | MIT |
 | py-partiql-parser | 0.6.3 | MIT |
 | py-serializable | 2.2.0 | Apache-2.0 |
 | pygments | 2.21.0 | BSD-2-Clause |
-| pymdown-extensions | 13.1 | MIT |
+| pymdown-extensions | 13.1.2 | MIT |
 | pyparsing | 3.3.3 | MIT |
 | pytest | 9.2.0 | MIT |
 | pytest-cov | 7.1.0 | MIT |
@@ -241,8 +241,8 @@ In `requirements/dev.txt` and not in the image: the test suite, the browser chec
 | tomli | 2.5.0 | MIT |
 | tomli-w | 1.2.0 | MIT |
 | uri-template | 1.3.0 | MIT |
-| uv | 0.13.8 | MIT OR Apache-2.0 |
-| watchdog | 7.1.0 | Apache-2.0 |
+| uv | 0.13.9 | MIT OR Apache-2.0 |
+| watchdog | 7.1.1 | Apache-2.0 |
 | webcolors | 25.10.0 | BSD-3-Clause |
 | werkzeug | 3.1.9 | BSD-3-Clause |
 | xmltodict | 1.0.4 | MIT |
